@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome Trashers</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .welcome-text {
+            font-size: 4rem;
+            font-weight: bold;
+            text-align: center;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .clock {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            font-size: 1.5rem;
+            font-weight: 500;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        .clock-time {
+            font-size: 2rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+
+        .clock-location {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .welcome-text {
+                font-size: 2.5rem;
+                padding: 20px;
+            }
+
+            .clock {
+                font-size: 1.2rem;
+                padding: 10px 15px;
+                top: 10px;
+                right: 10px;
+            }
+
+            .clock-time {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="welcome-text">
+        Welcome Trashers
+    </div>
+
+    <div class="clock">
+        <div class="clock-time" id="clock-time">00:00:00</div>
+        <div class="clock-location">Porto, Portugal</div>
+    </div>
+
+    <script>
+        function updateClock() {
+            const now = new Date();
+
+            // Format time for Porto, Portugal (Europe/Lisbon timezone)
+            const options = {
+                timeZone: 'Europe/Lisbon',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            };
+
+            const timeString = now.toLocaleTimeString('en-GB', options);
+            document.getElementById('clock-time').textContent = timeString;
+        }
+
+        // Update clock immediately
+        updateClock();
+
+        // Update clock every second
+        setInterval(updateClock, 1000);
+    </script>
+</body>
+</html>
