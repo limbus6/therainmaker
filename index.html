@@ -816,7 +816,7 @@
         // ---- STATE ----
         var diff = "normal";
         var state = {};
-        var history = [];
+        var gameHistory = [];
         var deltaTimers = {};
 
         // ---- REFS ----
@@ -991,11 +991,11 @@
             // History
             var hbox = document.getElementById("end-history");
             hbox.innerHTML = "";
-            if (history.length === 0) {
+            if (gameHistory.length === 0) {
                 hbox.innerHTML = '<div class="hist-entry" style="color:var(--muted)">Sem historico de decisoes.</div>';
             }
-            for (var j = 0; j < history.length; j++) {
-                var h = history[j];
+            for (var j = 0; j < gameHistory.length; j++) {
+                var h = gameHistory[j];
                 var div = document.createElement("div");
                 div.className = "hist-entry";
                 if (h.type === "event") {
@@ -1035,7 +1035,7 @@
                 '</div>';
             var deltas = applyEffects(ev.effects, false);
             updateStats(deltas);
-            history.push({ type: "event", label: ev.title, text: ev.desc });
+            gameHistory.push({ type: "event", label: ev.title, text: ev.desc });
             addLog("Evento: " + ev.title + " \u2014 " + ev.desc, ev.good ? "good" : "bad");
             checkLose();
         }
@@ -1067,7 +1067,7 @@
                         var deltas = applyEffects(opt.effects, false);
                         var phaseLabel = ph.id + " \u2014 Fase " + (state.phaseIndex + 1);
                         state.phaseIndex += 1;
-                        history.push({ type: "choice", phase: phaseLabel, text: opt.text });
+                        gameHistory.push({ type: "choice", phase: phaseLabel, text: opt.text });
                         addLog(opt.log);
                         updateStats(deltas);
                         if (checkLose()) { return; }
@@ -1085,7 +1085,7 @@
             var cfg = DIFF[diff];
             var deltas = applyEffects(cfg.drift, true);
             addLog("Avancaste sem decisao: a incerteza aumentou e a confianca deteriorou-se.", "bad");
-            history.push({ type: "drift" });
+            gameHistory.push({ type: "drift" });
             state.phaseIndex += 1;
             updateStats(deltas);
             if (checkLose()) { return; }
@@ -1105,7 +1105,7 @@
         function startGame() {
             var cfg = DIFF[diff];
             state = { phaseIndex: 0, ended: false, cliente: cfg.start.cliente, equipa: cfg.start.equipa, compradores: cfg.start.compradores, valor: cfg.start.valor, fecho: cfg.start.fecho, dias: cfg.start.dias };
-            history = [];
+            gameHistory = [];
             R.log.innerHTML = "";
             R.eventArea.innerHTML = "";
             R.startOv.className = "overlay hidden";
