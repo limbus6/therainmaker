@@ -28,3 +28,7 @@ A aplicação é estática e corre apenas com `index.html` (HTML+CSS+JavaScript)
 ## Como usar localmente
 
 Abrir `index.html` num browser.
+
+## Nota de compatibilidade
+
+Foram removidas APIs menos compatíveis (`prepend` e `Object.entries`) para evitar falhas em alguns ambientes de pré-visualização.

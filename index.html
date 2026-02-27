@@ -171,6 +171,9 @@
     </style>
 </head>
 <body>
+    <noscript>
+        <p style="max-width:1100px;margin:0 auto 12px;background:#2b1430;color:#ffd3dd;border:1px solid #ff7b91;padding:10px 12px;border-radius:10px;">Este jogo requer JavaScript activo para funcionar.</p>
+    </noscript>
     <main class="layout">
         <aside class="panel">
             <h1>M&A Dealmaker</h1>
@@ -418,7 +421,7 @@
             const div = document.createElement("div");
             div.className = `log-entry ${tone}`.trim();
             div.textContent = message;
-            refs.log.prepend(div);
+            refs.log.insertBefore(div, refs.log.firstChild);
         }
 
         function updateStats() {
@@ -434,8 +437,8 @@
         }
 
         function applyEffects(effects) {
-            Object.entries(effects).forEach(([key, value]) => {
-                state[key] += value;
+            Object.keys(effects).forEach((key) => {
+                state[key] += effects[key];
             });
             state.cliente = clamp(state.cliente, 0, 100);
             state.equipa = clamp(state.equipa, 0, 100);
