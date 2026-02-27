@@ -1011,19 +1011,12 @@
             R.endOv.className = "overlay";
         }
 
-        // ---- RANDOM EVENT ----
+        // ---- RANDOM EVENT (non-blocking: applies effects immediately, shows notification) ----
         function maybeEvent() {
-            if (state.ended) return false;
+            if (state.ended) return;
             var cfg = DIFF[diff];
-            if (Math.random() >= cfg.eventChance) return false;
+            if (Math.random() >= cfg.eventChance) return;
             var ev = EVENTS[Math.floor(Math.random() * EVENTS.length)];
-            showEvent(ev);
-            return true;
-        }
-
-        function showEvent(ev) {
-            R.choices.innerHTML = "";
-
             var labelNames = { cliente: "Cliente", equipa: "Equipa", compradores: "Compradores", valor: "Valor", fecho: "Fecho", dias: "Dias" };
             var tagsHtml = "";
             var ekeys = Object.keys(ev.effects);
@@ -1034,28 +1027,17 @@
                 var sign = v > 0 ? "+" : "";
                 tagsHtml += '<span class="eff-tag ' + (v > 0 ? "eff-pos" : "eff-neg") + '">' + labelNames[k] + " " + sign + v + '</span>';
             }
-
-            var card = document.createElement("div");
-            card.className = "event-card" + (ev.good ? " ev-good" : "");
-            card.innerHTML =
+            R.eventArea.innerHTML = '<div class="event-card' + (ev.good ? " ev-good" : "") + '">' +
                 '<div class="event-label">Evento inesperado</div>' +
                 '<div class="event-title-text">' + ev.title + '</div>' +
                 '<p style="margin:0 0 6px;font-size:0.86rem;">' + ev.desc + '</p>' +
                 '<div class="event-effects">' + tagsHtml + '</div>' +
-                '<button class="continue-btn">Continuar</button>';
-
-            R.eventArea.innerHTML = "";
-            R.eventArea.appendChild(card);
-
-            card.querySelector(".continue-btn").addEventListener("click", function() {
-                var deltas = applyEffects(ev.effects, false);
-                updateStats(deltas);
-                history.push({ type: "event", label: ev.title, text: ev.desc });
-                addLog("Evento: " + ev.title + " — " + ev.desc, ev.good ? "good" : "bad");
-                R.eventArea.innerHTML = "";
-                if (checkLose()) { updateStats(); return; }
-                renderPhase();
-            });
+                '</div>';
+            var deltas = applyEffects(ev.effects, false);
+            updateStats(deltas);
+            history.push({ type: "event", label: ev.title, text: ev.desc });
+            addLog("Evento: " + ev.title + " \u2014 " + ev.desc, ev.good ? "good" : "bad");
+            checkLose();
         }
 
         // ---- RENDER PHASE ----
@@ -1088,8 +1070,9 @@
                         history.push({ type: "choice", phase: phaseLabel, text: opt.text });
                         addLog(opt.log);
                         updateStats(deltas);
-                        if (checkLose()) { updateStats(); return; }
-                        if (!maybeEvent()) { renderPhase(); }
+                        if (checkLose()) { return; }
+                        maybeEvent();
+                        if (!state.ended) { renderPhase(); }
                     });
                     R.choices.appendChild(btn);
                 })(ph.options[i], i, ph.id);
@@ -1105,8 +1088,9 @@
             history.push({ type: "drift" });
             state.phaseIndex += 1;
             updateStats(deltas);
-            if (checkLose()) { updateStats(); return; }
-            if (!maybeEvent()) { renderPhase(); }
+            if (checkLose()) { return; }
+            maybeEvent();
+            if (!state.ended) { renderPhase(); }
         }
 
         // ---- DIFFICULTY SELECT ----
