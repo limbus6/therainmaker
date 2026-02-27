@@ -45,10 +45,25 @@
             padding: 18px;
         }
 
-        h1 { margin: 0 0 8px; font-size: 1.6rem; }
+        h1 { margin: 0 0 4px; font-size: 1.5rem; }
         h2 { margin: 0 0 8px; font-size: 1rem; color: #dce2ff; }
         p { margin: 0 0 10px; color: var(--muted); line-height: 1.4; }
 
+        /* ---- Difficulty badge ---- */
+        .diff-badge {
+            display: inline-block;
+            padding: 2px 9px;
+            border-radius: 999px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            vertical-align: middle;
+            margin-left: 6px;
+        }
+        .diff-facil   { background: rgba(99, 240, 182, 0.18); color: var(--good); }
+        .diff-normal  { background: rgba(255, 201, 112, 0.18); color: var(--warn); }
+        .diff-dificil { background: rgba(255, 123, 145, 0.18); color: var(--bad); }
+
+        /* ---- Stats ---- */
         .stats {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -61,18 +76,32 @@
             border: 1px solid rgba(255,255,255,0.08);
             padding: 10px;
             background: rgba(9, 13, 34, 0.8);
+            position: relative;
         }
 
         .stat .label {
             display: block;
             text-transform: uppercase;
             letter-spacing: 0.08em;
-            font-size: 0.67rem;
+            font-size: 0.66rem;
             color: #95a1d7;
-            margin-bottom: 6px;
+            margin-bottom: 5px;
         }
 
-        .stat strong { font-size: 1.12rem; }
+        .stat strong { font-size: 1.1rem; }
+
+        .stat-delta {
+            position: absolute;
+            top: 8px;
+            right: 10px;
+            font-size: 0.74rem;
+            font-weight: 700;
+            opacity: 0;
+            transition: opacity 0.25s;
+        }
+        .stat-delta.show { opacity: 1; }
+        .stat-delta.pos  { color: var(--good); }
+        .stat-delta.neg  { color: var(--bad); }
 
         .meter {
             margin-top: 8px;
@@ -86,20 +115,35 @@
             display: block;
             height: 100%;
             background: linear-gradient(90deg, var(--bad), var(--warn), var(--good));
+            transition: width 0.5s ease;
         }
 
+        /* ---- Progress bar ---- */
+        .progress-wrap {
+            margin-bottom: 14px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 999px;
+            height: 6px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), var(--good));
+            border-radius: 999px;
+            transition: width 0.6s ease;
+        }
+
+        /* ---- Phase label ---- */
         .phase {
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             color: var(--accent);
             font-weight: 600;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
         }
 
-        .choices {
-            display: grid;
-            gap: 10px;
-            margin: 14px 0;
-        }
+        /* ---- Choices ---- */
+        .choices { display: grid; gap: 10px; margin: 14px 0; }
 
         button {
             border: 1px solid rgba(255,255,255,0.14);
@@ -109,26 +153,32 @@
             padding: 12px;
             text-align: left;
             cursor: pointer;
-            transition: transform 0.15s ease, border-color 0.15s ease;
+            transition: transform 0.15s, border-color 0.15s, background 0.15s;
+            font-size: 0.92rem;
+            line-height: 1.4;
         }
 
         button:hover:not(:disabled) {
             transform: translateY(-1px);
-            border-color: rgba(134, 215, 255, 0.7);
+            border-color: rgba(134, 215, 255, 0.65);
+            background: rgba(28, 42, 100, 0.95);
         }
 
         button:disabled { opacity: 0.45; cursor: not-allowed; }
 
-        .small {
-            font-size: 0.84rem;
-            color: #9ea9dd;
+        .choice-hint {
+            display: block;
+            font-size: 0.78rem;
+            color: #6e7cbf;
+            margin-top: 4px;
         }
 
+        /* ---- Log ---- */
         .log {
             margin-top: 12px;
-            max-height: 280px;
+            max-height: 220px;
             overflow: auto;
-            border: 1px solid rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.09);
             border-radius: 12px;
             padding: 10px;
             background: rgba(6, 10, 24, 0.7);
@@ -136,15 +186,16 @@
 
         .log-entry {
             border-bottom: 1px solid rgba(255,255,255,0.06);
-            padding: 7px 0;
-            font-size: 0.88rem;
+            padding: 6px 0;
+            font-size: 0.86rem;
+            line-height: 1.35;
         }
-
         .log-entry:last-child { border-bottom: none; }
         .good { color: var(--good); }
         .warn { color: var(--warn); }
-        .bad { color: var(--bad); }
+        .bad  { color: var(--bad);  }
 
+        /* ---- Footer actions ---- */
         .footer-actions {
             display: flex;
             gap: 10px;
@@ -154,19 +205,192 @@
 
         .footer-actions button {
             text-align: center;
-            flex: 1 1 140px;
+            flex: 1 1 130px;
             background: linear-gradient(135deg, #7ec5ff, #8fffc6);
             color: #021126;
             font-weight: 700;
+            font-size: 0.9rem;
         }
 
         .footer-actions button.secondary {
-            background: rgba(255,255,255,0.12);
+            background: rgba(255,255,255,0.11);
             color: var(--text);
+            font-weight: 400;
         }
+
+        .small { font-size: 0.82rem; color: #9ea9dd; }
+
+        /* ---- Event card ---- */
+        .event-card {
+            background: rgba(255, 180, 50, 0.07);
+            border: 1px solid rgba(255, 180, 50, 0.35);
+            border-radius: 14px;
+            padding: 16px;
+            margin: 14px 0;
+        }
+        .event-card.ev-good {
+            background: rgba(99, 240, 182, 0.07);
+            border-color: rgba(99, 240, 182, 0.3);
+        }
+        .event-label {
+            font-size: 0.69rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-weight: 700;
+            color: var(--warn);
+            margin-bottom: 4px;
+        }
+        .ev-good .event-label { color: var(--good); }
+        .event-title-text { font-size: 1rem; font-weight: 700; margin-bottom: 6px; }
+        .event-effects {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin: 10px 0;
+        }
+        .eff-tag {
+            font-size: 0.73rem;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-weight: 600;
+        }
+        .eff-pos { background: rgba(99, 240, 182, 0.18); color: var(--good); }
+        .eff-neg { background: rgba(255, 123, 145, 0.18); color: var(--bad); }
+        .continue-btn {
+            background: rgba(255,255,255,0.1);
+            color: var(--text);
+            border: 1px solid rgba(255,255,255,0.18);
+            border-radius: 10px;
+            padding: 9px 20px;
+            cursor: pointer;
+            font-size: 0.88rem;
+            transition: all 0.15s;
+        }
+        .continue-btn:hover { background: rgba(255,255,255,0.17); transform: translateY(-1px); }
+
+        /* ---- Overlays ---- */
+        .overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(2, 4, 20, 0.88);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            padding: 20px;
+            backdrop-filter: blur(6px);
+        }
+        .overlay.hidden { display: none; }
+
+        .ov-card {
+            background: rgba(12, 18, 50, 0.99);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.7);
+            padding: 32px;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+
+        /* ---- Start screen ---- */
+        .start-title { font-size: 2rem; margin: 0 0 6px; }
+        .start-sub   { font-size: 0.95rem; color: var(--muted); margin-bottom: 24px; }
+
+        .diff-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 16px 0 24px;
+        }
+        .diff-opt {
+            border: 2px solid rgba(255,255,255,0.15);
+            background: rgba(15, 22, 55, 0.95);
+            color: var(--text);
+            border-radius: 14px;
+            padding: 16px 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+        .diff-opt:hover { transform: translateY(-2px); border-color: rgba(134, 215, 255, 0.5); }
+        .diff-opt.sel   { border-color: var(--accent); background: rgba(28, 48, 120, 0.9); }
+        .diff-opt-name  { font-size: 1.05rem; font-weight: 700; display: block; margin-bottom: 5px; }
+        .diff-opt-desc  { font-size: 0.76rem; color: var(--muted); }
+
+        .start-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #7ec5ff, #8fffc6);
+            color: #021126;
+            font-weight: 700;
+            border: none;
+            border-radius: 14px;
+            padding: 14px;
+            font-size: 1.05rem;
+            cursor: pointer;
+            transition: transform 0.15s;
+        }
+        .start-btn:hover { transform: translateY(-2px); }
+
+        /* ---- End screen ---- */
+        .end-grade {
+            font-size: 5rem;
+            font-weight: 900;
+            line-height: 1;
+            margin: 8px 0;
+        }
+        .end-score {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 6px;
+        }
+        .end-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin: 18px 0 14px;
+            text-align: center;
+        }
+        .end-stat-box {
+            background: rgba(9, 13, 34, 0.8);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 11px;
+            padding: 10px 6px;
+        }
+        .end-stat-val   { font-size: 1.25rem; font-weight: 700; }
+        .end-stat-label { font-size: 0.67rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; margin-top: 3px; }
+
+        .history-box {
+            max-height: 190px;
+            overflow-y: auto;
+            text-align: left;
+            background: rgba(6, 10, 24, 0.7);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            padding: 10px;
+            margin-bottom: 16px;
+        }
+        .hist-entry {
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            font-size: 0.81rem;
+        }
+        .hist-entry:last-child { border-bottom: none; }
+        .hist-phase  { color: var(--accent); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; }
+        .hist-text   { color: var(--text); margin-top: 1px; }
+        .hist-event  { color: var(--warn); }
+        .hist-drift  { color: var(--bad); }
 
         @media (max-width: 900px) {
             .layout { grid-template-columns: 1fr; }
+            .diff-grid { grid-template-columns: 1fr; }
+            .end-stats-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 500px) {
+            body { padding: 10px; }
+            .ov-card { padding: 20px 14px; }
+            .end-grade { font-size: 3.5rem; }
         }
     </style>
 </head>
@@ -174,376 +398,748 @@
     <noscript>
         <p style="max-width:1100px;margin:0 auto 12px;background:#2b1430;color:#ffd3dd;border:1px solid #ff7b91;padding:10px 12px;border-radius:10px;">Este jogo requer JavaScript activo para funcionar.</p>
     </noscript>
+
+    <!-- Start overlay -->
+    <div class="overlay" id="start-overlay">
+        <div class="ov-card">
+            <h1 class="start-title">M&A Dealmaker</h1>
+            <p class="start-sub">Simulacao interactiva de mandato de venda &mdash; do pitch ao closing.</p>
+            <p style="font-size:0.88rem;color:var(--muted);margin-bottom:10px;">Gere o cliente, a equipa e os compradores em 9 fases criticas. Eventos aleatorios testam a tua resiliencia a cada passo.</p>
+            <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:6px;font-weight:700;">Dificuldade</div>
+            <div class="diff-grid">
+                <div class="diff-opt" id="diff-facil" onclick="selectDiff('facil')">
+                    <span class="diff-opt-name" style="color:var(--good)">Facil</span>
+                    <span class="diff-opt-desc">Stats favoraveis, eventos mais suaves, menos frequentes</span>
+                </div>
+                <div class="diff-opt sel" id="diff-normal" onclick="selectDiff('normal')">
+                    <span class="diff-opt-name" style="color:var(--warn)">Normal</span>
+                    <span class="diff-opt-desc">Experiencia equilibrada com risco genuino</span>
+                </div>
+                <div class="diff-opt" id="diff-dificil" onclick="selectDiff('dificil')">
+                    <span class="diff-opt-name" style="color:var(--bad)">Dificil</span>
+                    <span class="diff-opt-desc">Stats apertadas, eventos frequentes e mais severos</span>
+                </div>
+            </div>
+            <button class="start-btn" onclick="startGame()">Iniciar Mandato</button>
+        </div>
+    </div>
+
+    <!-- End overlay -->
+    <div class="overlay hidden" id="end-overlay">
+        <div class="ov-card">
+            <div class="end-grade" id="end-grade">A</div>
+            <div class="end-score" id="end-score">750 pontos</div>
+            <h2 id="end-title" style="font-size:1.15rem;margin-bottom:4px;"></h2>
+            <p id="end-desc" style="font-size:0.88rem;margin-bottom:0;"></p>
+            <div class="end-stats-grid" id="end-stats-grid"></div>
+            <div class="history-box" id="end-history"></div>
+            <button class="start-btn" onclick="backToMenu()">Jogar Novamente</button>
+        </div>
+    </div>
+
+    <!-- Game -->
     <main class="layout">
         <aside class="panel">
-            <h1>M&A Dealmaker</h1>
-            <p>Simulação interactiva de mandato de venda: do pitch ao closing, gerindo cliente, equipa e compradores.</p>
-
+            <h1>M&A Dealmaker <span class="diff-badge diff-normal" id="diff-badge">Normal</span></h1>
+            <p style="margin-bottom:10px;">Mandato de sell-side: do pitch ao closing, gerindo cliente, equipa e compradores.</p>
             <div class="stats">
                 <div class="stat">
                     <span class="label">Cliente</span>
-                    <strong id="cliente">70</strong>
-                    <div class="meter"><span id="meter-cliente"></span></div>
+                    <strong id="s-cliente">70</strong>
+                    <span class="stat-delta" id="d-cliente"></span>
+                    <div class="meter"><span id="m-cliente"></span></div>
                 </div>
                 <div class="stat">
                     <span class="label">Equipa</span>
-                    <strong id="equipa">65</strong>
-                    <div class="meter"><span id="meter-equipa"></span></div>
+                    <strong id="s-equipa">65</strong>
+                    <span class="stat-delta" id="d-equipa"></span>
+                    <div class="meter"><span id="m-equipa"></span></div>
                 </div>
                 <div class="stat">
                     <span class="label">Compradores</span>
-                    <strong id="compradores">55</strong>
-                    <div class="meter"><span id="meter-compradores"></span></div>
+                    <strong id="s-compradores">55</strong>
+                    <span class="stat-delta" id="d-compradores"></span>
+                    <div class="meter"><span id="m-compradores"></span></div>
                 </div>
                 <div class="stat">
                     <span class="label">Valor (€m)</span>
-                    <strong id="valor">55</strong>
+                    <strong id="s-valor">55</strong>
+                    <span class="stat-delta" id="d-valor"></span>
                 </div>
                 <div class="stat">
                     <span class="label">Prob. Closing</span>
-                    <strong id="fecho">35%</strong>
+                    <strong id="s-fecho">35%</strong>
+                    <span class="stat-delta" id="d-fecho"></span>
                 </div>
                 <div class="stat">
                     <span class="label">Dias para closing</span>
-                    <strong id="dias">240</strong>
+                    <strong id="s-dias">240</strong>
+                    <span class="stat-delta" id="d-dias"></span>
                 </div>
             </div>
-
-            <p class="small">Se qualquer relação cair abaixo de 20, perdes o mandato. Se chegares ao closing com valor > 65 e probabilidade > 70%, vitória premium.</p>
+            <p class="small">Relacao abaixo de 20 = mandato perdido. Vitoria premium: valor &gt; 65 e prob. &gt; 70%.</p>
             <div class="footer-actions">
-                <button id="restart">Novo Mandato</button>
-                <button id="next" class="secondary">Avançar sem decisão</button>
+                <button id="btn-restart">Novo Mandato</button>
+                <button class="secondary" id="btn-skip">Avançar sem decisao</button>
             </div>
         </aside>
 
         <section class="panel">
-            <div class="phase" id="phase"></div>
-            <h2 id="title"></h2>
-            <p id="description"></p>
-
+            <div class="phase" id="phase-label"></div>
+            <div class="progress-wrap">
+                <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+            </div>
+            <h2 id="phase-title"></h2>
+            <p id="phase-desc"></p>
+            <div id="event-area"></div>
             <div class="choices" id="choices"></div>
-
             <div class="log" id="log" aria-live="polite"></div>
         </section>
     </main>
 
     <script>
-        const phases = [
+        // ---- DIFFICULTY CONFIG ----
+        var DIFF = {
+            facil: {
+                label: "Facil", badgeClass: "diff-facil",
+                start: { cliente: 80, equipa: 75, compradores: 65, valor: 60, fecho: 40, dias: 240 },
+                drift: { cliente: -1, equipa: 0, compradores: -1, valor: 0, fecho: 0, dias: -7 },
+                eventChance: 0.20, negScale: 0.75, scoreMultiplier: 0.85
+            },
+            normal: {
+                label: "Normal", badgeClass: "diff-normal",
+                start: { cliente: 70, equipa: 65, compradores: 55, valor: 55, fecho: 35, dias: 240 },
+                drift: { cliente: -2, equipa: -1, compradores: -2, valor: 0, fecho: -1, dias: -7 },
+                eventChance: 0.35, negScale: 1.0, scoreMultiplier: 1.0
+            },
+            dificil: {
+                label: "Dificil", badgeClass: "diff-dificil",
+                start: { cliente: 60, equipa: 55, compradores: 45, valor: 50, fecho: 28, dias: 240 },
+                drift: { cliente: -3, equipa: -2, compradores: -3, valor: 0, fecho: -2, dias: -7 },
+                eventChance: 0.50, negScale: 1.30, scoreMultiplier: 1.20
+            }
+        };
+
+        // ---- RANDOM EVENTS ----
+        var EVENTS = [
             {
-                id: "pitch",
+                title: "Noticia negativa do sector",
+                desc: "Um artigo de imprensa levanta questoes sobre valuations do sector e comprime multiplos de referencia.",
+                effects: { cliente: -4, equipa: 0, compradores: -8, valor: -5, fecho: -7, dias: 0 },
+                good: false
+            },
+            {
+                title: "Membro chave da equipa sai",
+                desc: "O associate senior que conduzia o data room recebe uma oferta competitiva e sai esta semana.",
+                effects: { cliente: -3, equipa: -10, compradores: -2, valor: 0, fecho: -4, dias: 10 },
+                good: false
+            },
+            {
+                title: "Regulador solicita esclarecimentos",
+                desc: "A autoridade de supervisao pede documentacao adicional de compliance, atrasando o cronograma.",
+                effects: { cliente: -5, equipa: -4, compradores: -5, valor: 0, fecho: -6, dias: 15 },
+                good: false
+            },
+            {
+                title: "Comprador principal hesita",
+                desc: "O bidder preferencial pede uma semana adicional para aprovacao interna do Investment Committee.",
+                effects: { cliente: -6, equipa: -2, compradores: -8, valor: -2, fecho: -8, dias: 10 },
+                good: false
+            },
+            {
+                title: "Vaga de transaccoes no sector",
+                desc: "Multiplas transaccoes comparaveis sao anunciadas com premios acima das expectativas do mercado.",
+                effects: { cliente: 5, equipa: 3, compradores: 6, valor: 5, fecho: 6, dias: 0 },
+                good: true
+            },
+            {
+                title: "Novo comprador estrategico surge",
+                desc: "Um grupo estrangeiro contacta directamente o cliente, criando pressao competitiva inesperada.",
+                effects: { cliente: 4, equipa: -3, compradores: 5, valor: 4, fecho: 3, dias: -5 },
+                good: true
+            },
+            {
+                title: "Mercado de credito deteriora",
+                desc: "Subida inesperada de spreads afecta a capacidade de financiamento dos compradores financeiros.",
+                effects: { cliente: -3, equipa: 0, compradores: -10, valor: -6, fecho: -9, dias: 8 },
+                good: false
+            },
+            {
+                title: "Resultados trimestrais surpreendem",
+                desc: "O target divulga numeros acima de guidance, reforcando significativamente a narrativa de crescimento.",
+                effects: { cliente: 6, equipa: 4, compradores: 7, valor: 6, fecho: 7, dias: 0 },
+                good: true
+            },
+            {
+                title: "Rumores de processo vazam",
+                desc: "Uma nota num blog de M&A menciona o nome do target. O cliente esta furioso com a quebra de confidencialidade.",
+                effects: { cliente: -10, equipa: -5, compradores: 2, valor: -3, fecho: -5, dias: 5 },
+                good: false
+            },
+            {
+                title: "Concorrente lanca processo rival",
+                desc: "Um competitor do target anuncia venda, capturando a atencao dos mesmos compradores estrategicos.",
+                effects: { cliente: -2, equipa: 0, compradores: -8, valor: -3, fecho: -5, dias: 5 },
+                good: false
+            }
+        ];
+
+        // ---- PHASES ----
+        var PHASES = [
+            {
+                id: "PITCH",
                 title: "Pitch inicial ao accionista",
-                description: "Tens 90 minutos para convencer o fundador a vender no timing certo.",
+                desc: "Tens 90 minutos para convencer o fundador a vender no timing certo. O nivel de ambicao que prometeres vai definir as expectativas para todo o processo.",
                 options: [
                     {
-                        text: "Focar valuation agressiva e comparáveis optimistas",
-                        effects: { cliente: +8, equipa: -6, compradores: -3, valor: +6, fecho: +3, dias: -10 },
-                        log: "O cliente ficou entusiasmado, mas a equipa receia expectativas difíceis de cumprir."
+                        text: "Focar valuation agressiva e comparaveis optimistas",
+                        hint: "Alto risco/retorno. O cliente fica entusiasmado mas as expectativas podem ser dificeis de cumprir.",
+                        effects: { cliente: 8, equipa: -6, compradores: -3, valor: 6, fecho: 3, dias: -10 },
+                        log: "O cliente ficou entusiasmado com a ambicao, mas a equipa receia expectativas dificeis de cumprir."
                     },
                     {
                         text: "Prometer processo disciplinado com downside analysis transparente",
-                        effects: { cliente: +4, equipa: +5, compradores: +2, valor: +1, fecho: +7, dias: -5 },
-                        log: "Transmitiste credibilidade e alinhamento técnico com menor risco reputacional."
+                        hint: "Abordagem equilibrada que constroi credibilidade duradoura. Menor risco reputacional.",
+                        effects: { cliente: 4, equipa: 5, compradores: 2, valor: 1, fecho: 7, dias: -5 },
+                        log: "Transmitiste credibilidade e alinhamento tecnico com menor risco reputacional."
                     },
                     {
-                        text: "Aceitar desconto de fee para ganhar mandato",
-                        effects: { cliente: +6, equipa: -4, compradores: 0, valor: -2, fecho: +2, dias: 0 },
-                        log: "Ganhaste o mandato, mas a tua equipa sente pressão sobre rentabilidade."
+                        text: "Aceitar desconto de fee para ganhar o mandato",
+                        hint: "Wins o mandato mas cria pressao interna. A equipa vai ressentir.",
+                        effects: { cliente: 6, equipa: -4, compradores: 0, valor: -2, fecho: 2, dias: 0 },
+                        log: "Ganhaste o mandato, mas a equipa sente pressao adicional sobre rentabilidade."
                     }
                 ]
             },
             {
-                id: "teaser",
-                title: "Preparação de teaser e information memorandum",
-                description: "Definir storyline: crescimento orgânico vs. sinergias e carve-out potencial.",
+                id: "TEASER / IM",
+                title: "Preparacao de teaser e information memorandum",
+                desc: "Definir storyline: crescimento organico vs. sinergias e carve-out potencial. A qualidade do IM e fundamental para atrair os compradores certos.",
                 options: [
                     {
                         text: "Storyline com embelezamento forte e ajustamentos ambiciosos",
-                        effects: { cliente: +5, equipa: -7, compradores: -8, valor: +5, fecho: -6, dias: -12 },
-                        log: "Documentação impressiona no papel, mas buyers experientes levantam red flags."
+                        hint: "Impressiona no papel, mas buyers experientes identificam inconsistencias rapidamente.",
+                        effects: { cliente: 5, equipa: -7, compradores: -8, valor: 5, fecho: -6, dias: -12 },
+                        log: "Documentacao impressiona, mas buyers experientes levantam red flags sobre ajustamentos."
                     },
                     {
                         text: "Narrativa equilibrada com QofE preliminar e riscos mapeados",
-                        effects: { cliente: +2, equipa: +4, compradores: +8, valor: +2, fecho: +8, dias: -6 },
-                        log: "Os interessados valorizam transparência e mantêm engagement no processo."
+                        hint: "Mais trabalho inicial, mas constroi confianca genuina e sustentada com compradores.",
+                        effects: { cliente: 2, equipa: 4, compradores: 8, valor: 2, fecho: 8, dias: -6 },
+                        log: "Os interessados valorizam a transparencia e mantem elevado engagement no processo."
                     },
                     {
                         text: "Ultra-conservador para minimizar risco legal",
-                        effects: { cliente: -5, equipa: +3, compradores: +1, valor: -5, fecho: +4, dias: +5 },
-                        log: "Protegeste execução, mas o cliente questiona ambição comercial."
+                        hint: "Protege a firma legalmente mas pode parecer ausencia de ambicao comercial.",
+                        effects: { cliente: -5, equipa: 3, compradores: 1, valor: -5, fecho: 4, dias: 5 },
+                        log: "Protegeste a execucao, mas o cliente questiona a ambicao comercial da abordagem."
                     }
                 ]
             },
             {
-                id: "buyers",
-                title: "Contactar compradores e gerir tensão competitiva",
-                description: "Precisas de criar pressão sem alienar fundos e estratégicos.",
+                id: "MGMT PRES",
+                title: "Management presentation e Q&A com buyers",
+                desc: "A equipa de gestao do target apresenta ao top-3 bidders. A forma como o CEO e o CFO se apresentam pode fazer ou desfazer uma proposta.",
+                options: [
+                    {
+                        text: "Preparar sessao de coaching intensivo com o management (2 dias)",
+                        hint: "Investimento elevado de tempo da equipa mas a apresentacao fica muito mais forte.",
+                        effects: { cliente: 3, equipa: -5, compradores: 10, valor: 3, fecho: 8, dias: -8 },
+                        log: "O management impressionou os buyers com clareza estrategica e dominio total dos numeros."
+                    },
+                    {
+                        text: "Sessao de prep basica e deixar o management improvisar",
+                        hint: "Menos esforco mas maior risco de mensagens inconsistentes ou contradicoes.",
+                        effects: { cliente: 1, equipa: 2, compradores: -3, valor: 0, fecho: -2, dias: 0 },
+                        log: "A apresentacao foi razoavel, mas alguns Q&As criaram incerteza desnecessaria nos buyers."
+                    },
+                    {
+                        text: "Co-apresentar com o management para controlar a mensagem",
+                        hint: "Controlo maximo da narrativa mas pode sinalizar que o management nao e autonomo.",
+                        effects: { cliente: -2, equipa: 3, compradores: 4, valor: 1, fecho: 5, dias: -4 },
+                        log: "Mensagem bem controlada, mas alguns buyers questionaram a autonomia do management."
+                    }
+                ]
+            },
+            {
+                id: "BUYERS",
+                title: "Contactar compradores e gerir tensao competitiva",
+                desc: "Precisas de criar pressao de mercado sem alienar fundos e estrategicos. A seleccao de quem contactar e como e critica para o outcome final.",
                 options: [
                     {
                         text: "Lançar processo alargado (30+ compradores)",
-                        effects: { cliente: +4, equipa: -8, compradores: +4, valor: +3, fecho: +2, dias: -7 },
-                        log: "A concorrência sobe, mas a tua equipa entra em modo de sobrevivência."
+                        hint: "Maxima pressao competitiva mas estira a equipa ao limite operacional.",
+                        effects: { cliente: 4, equipa: -8, compradores: 4, valor: 3, fecho: 2, dias: -7 },
+                        log: "A concorrencia sobe, mas a equipa entra em modo de sobrevivencia com risco de erros."
                     },
                     {
-                        text: "Shortlist focada em 8 compradores com maior fit",
-                        effects: { cliente: +1, equipa: +5, compradores: +5, valor: +1, fecho: +6, dias: -4 },
-                        log: "Processo mais controlado e com interacções de maior qualidade."
+                        text: "Shortlist focada em 8 compradores com maior fit estrategico",
+                        hint: "Processo controlado com interaccoes mais profundas e de maior qualidade.",
+                        effects: { cliente: 1, equipa: 5, compradores: 5, valor: 1, fecho: 6, dias: -4 },
+                        log: "Processo mais controlado e com interaccoes de qualidade superior."
                     },
                     {
-                        text: "Dar exclusividade cedo ao bidder mais simpático",
-                        effects: { cliente: -8, equipa: +2, compradores: -10, valor: -7, fecho: -4, dias: +10 },
-                        log: "Perdeste alavanca negocial e o cliente sente que vendeste barato."
+                        text: "Dar exclusividade cedo ao bidder mais simpatico",
+                        hint: "Muito arriscado. Perdes alavanca negocial e o cliente vai sentir que vendeste barato.",
+                        effects: { cliente: -8, equipa: 2, compradores: -10, valor: -7, fecho: -4, dias: 10 },
+                        log: "Perdeste alavanca negocial e o cliente sente claramente que foi vendido a um preco inferior."
                     }
                 ]
             },
             {
-                id: "offers",
-                title: "Recepção e negociação de propostas não vinculativas",
-                description: "Há propostas de 48 a 72 milhões, com estruturas de earn-out e rollover.",
+                id: "OFFERS",
+                title: "Recepcao e negociacao de propostas nao vinculativas",
+                desc: "Ha propostas entre 48 e 72 milhoes, com estruturas de earn-out e rollover. Como orquestras este momento define o pico de tensao competitiva do processo.",
                 options: [
                     {
                         text: "Maximizar headline price e ignorar condicionalidades",
-                        effects: { cliente: +7, equipa: -4, compradores: -6, valor: +7, fecho: -8, dias: -5 },
-                        log: "Conseguiste número alto, mas termos frágeis ameaçam execução."
+                        hint: "Numero alto no papel mas termos frageis ameacam a execucao do fecho.",
+                        effects: { cliente: 7, equipa: -4, compradores: -6, valor: 7, fecho: -8, dias: -5 },
+                        log: "Conseguiste numero alto, mas os termos frageis ameacam seriamente a execucao."
                     },
                     {
                         text: "Optimizar EV-to-cash com foco em termos e certeza de fecho",
-                        effects: { cliente: +3, equipa: +3, compradores: +4, valor: +2, fecho: +9, dias: -6 },
-                        log: "Equilibraste preço e risco, reforçando credibilidade com todas as partes."
+                        hint: "Abordagem tecnica que equilibra preco com probabilidade real de closing.",
+                        effects: { cliente: 3, equipa: 3, compradores: 4, valor: 2, fecho: 9, dias: -6 },
+                        log: "Equilibraste preco e risco, reforcando credibilidade com todas as partes envolvidas."
                     },
                     {
-                        text: "Negociar em paralelo até ao limite e adiar decisão",
-                        effects: { cliente: -4, equipa: -6, compradores: -5, valor: +3, fecho: -2, dias: +12 },
-                        log: "A tensão competitiva estica demasiado e alguns bidders ameaçam sair."
+                        text: "Negociar em paralelo ate ao limite e adiar a decisao",
+                        hint: "Tentativa de maximizacao que arriscas perder todos os bidders simultaneamente.",
+                        effects: { cliente: -4, equipa: -6, compradores: -5, valor: 3, fecho: -2, dias: 12 },
+                        log: "A tensao estica em excesso e varios bidders ameacam retirar as suas propostas."
                     }
                 ]
             },
             {
-                id: "dd",
-                title: "Due diligence e data room",
-                description: "Pedidos críticos: clientes-chave, contencioso laboral, dívida e compliance fiscal.",
+                id: "DUE DILIGENCE",
+                title: "Due diligence e gestao do data room",
+                desc: "Pedidos criticos: clientes-chave, contencioso laboral, divida e compliance fiscal. A forma como geres a DD define a confianca final dos compradores antes do binding.",
                 options: [
                     {
-                        text: "Responder rápido com equipa dedicada e PMO diário",
-                        effects: { cliente: +4, equipa: -7, compradores: +9, valor: +1, fecho: +10, dias: -15 },
-                        log: "Compradores reconhecem disciplina, mas a tua equipa está no limite."
+                        text: "Responder rapido com equipa dedicada e PMO diario",
+                        hint: "Maxima eficiencia e os buyers adoram, mas a equipa pode atingir o limite.",
+                        effects: { cliente: 4, equipa: -7, compradores: 9, valor: 1, fecho: 10, dias: -15 },
+                        log: "Compradores reconhecem a disciplina excepcional, mas a equipa esta perto do burnout."
                     },
                     {
                         text: "Priorizar qualidade, com respostas em 48h e memo de contexto",
-                        effects: { cliente: +2, equipa: +3, compradores: +5, valor: +1, fecho: +7, dias: -7 },
-                        log: "Menos atrito e menor risco de contradições em management Q&A."
+                        hint: "Equilibrado. Menos erros e menor risco de contradicoes em management Q&A.",
+                        effects: { cliente: 2, equipa: 3, compradores: 5, valor: 1, fecho: 7, dias: -7 },
+                        log: "Menor atrito e menor risco de contradicoes no management Q&A subsequente."
                     },
                     {
-                        text: "Filtrar informação sensível e adiar temas críticos",
-                        effects: { cliente: -2, equipa: +1, compradores: -12, valor: -4, fecho: -12, dias: +8 },
-                        log: "A falta de transparência gera desconfiança e pedidos de desconto."
+                        text: "Filtrar informacao sensivel e adiar temas criticos",
+                        hint: "Muito arriscado. Buyers experientes identificam evasoes e perdem confianca.",
+                        effects: { cliente: -2, equipa: 1, compradores: -12, valor: -4, fecho: -12, dias: 8 },
+                        log: "A falta de transparencia gera desconfianca significativa e pedidos de desconto de preco."
                     }
                 ]
             },
             {
-                id: "spa",
-                title: "Negociação do SPA e condições precedentes",
-                description: "Pontos quentes: cap basket, indemnities, MAC, escrow e earn-out metrics.",
+                id: "SPA",
+                title: "Negociacao do SPA e condicoes precedentes",
+                desc: "Pontos quentes: cap basket, indemnities, MAC, escrow e earn-out metrics. Cada cedencia tem implicacoes patrimoniais directas para o cliente vendedor.",
                 options: [
                     {
-                        text: "Ceder em garantias para proteger preço",
-                        effects: { cliente: +1, equipa: -2, compradores: +6, valor: +3, fecho: +5, dias: -6 },
-                        log: "Fecho acelera, mas o cliente fica exposto em risco pós-closing."
+                        text: "Ceder em garantias para proteger o preco headline",
+                        hint: "Fecho mais rapido em troca de exposicao pos-closing para o cliente.",
+                        effects: { cliente: 1, equipa: -2, compradores: 6, valor: 3, fecho: 5, dias: -6 },
+                        log: "Fecho acelera, mas o cliente fica exposto a riscos patrimoniais relevantes pos-closing."
                     },
                     {
-                        text: "Negociação cirúrgica: preço + limites equilibrados de responsabilidade",
-                        effects: { cliente: +5, equipa: +1, compradores: +2, valor: +2, fecho: +8, dias: -5 },
-                        log: "Conquistaste equilíbrio entre protecção jurídica e viabilidade comercial."
+                        text: "Negociacao cirurgica: preco + limites equilibrados de responsabilidade",
+                        hint: "Abordagem optima que protege interesses de todas as partes de forma sustentada.",
+                        effects: { cliente: 5, equipa: 1, compradores: 2, valor: 2, fecho: 8, dias: -5 },
+                        log: "Conquistaste o equilibrio certo entre proteccao juridica e viabilidade comercial."
                     },
                     {
-                        text: "Levar tudo ao limite para ganho marginal de preço",
-                        effects: { cliente: +2, equipa: -6, compradores: -8, valor: +4, fecho: -7, dias: +10 },
-                        log: "A negociação entra em impasse e o risco de break aumenta."
+                        text: "Levar tudo ao limite para ganho marginal de preco",
+                        hint: "Ganho marginal que arrisca impasse total e saida definitiva do buyer.",
+                        effects: { cliente: 2, equipa: -6, compradores: -8, valor: 4, fecho: -7, dias: 10 },
+                        log: "A negociacao entra em impasse e o risco de break do deal aumenta significativamente."
                     }
                 ]
             },
             {
-                id: "closing",
-                title: "Waivers bancários, registos e closing",
-                description: "Última milha: consentimentos de bancos, documentação notarial e checklist legal.",
+                id: "SIGNING",
+                title: "Alinhamento final e gestao pre-assinatura",
+                desc: "Momento critico antes do closing formal. Surgem sempre pedidos de ultima hora de ambos os lados. Como geres esta fase define a experiencia final do cliente.",
+                options: [
+                    {
+                        text: "Manter disciplina negocial e nao ceder a pedidos de ultima hora",
+                        hint: "Posicao de forca que protege o deal previamente negociado entre as partes.",
+                        effects: { cliente: 4, equipa: 3, compradores: -3, valor: 2, fecho: 6, dias: -6 },
+                        log: "Mantiveste a integridade do acordo e o cliente sentiu-se bem representado e protegido."
+                    },
+                    {
+                        text: "Fazer concessoes para garantir a assinatura esta semana",
+                        hint: "Certeza de assinatura em troca de valor. Um balanco delicado de gerir.",
+                        effects: { cliente: -2, equipa: 2, compradores: 5, valor: -3, fecho: 8, dias: -10 },
+                        log: "Assinatura garantida, mas o cliente questiona algunas das cedencias realizadas."
+                    },
+                    {
+                        text: "Convocar reuniao de todas as partes para resolver em conjunto",
+                        hint: "Abordagem colaborativa que pode atrasar mas resolve questoes pendentes de forma definitiva.",
+                        effects: { cliente: 3, equipa: -4, compradores: 3, valor: 0, fecho: 4, dias: 5 },
+                        log: "Reuniao produtiva que resolve pendencias, mas com custo relevante em tempo e energia."
+                    }
+                ]
+            },
+            {
+                id: "CLOSING",
+                title: "Waivers bancarios, registos e closing",
+                desc: "Ultima milha: consentimentos de bancos, documentacao notarial e checklist legal completa. Qualquer falha aqui pode adiar o closing por semanas criticas.",
                 options: [
                     {
                         text: "War room 24/7 com advisors e banco agente",
-                        effects: { cliente: +6, equipa: -8, compradores: +4, valor: 0, fecho: +12, dias: -18 },
-                        log: "Conseguiste alinhar todos os intervenientes e reduzir risco de derrapagem final."
+                        hint: "Maximo esforco para fechar rapidamente. Equipa exausta mas deal muito seguro.",
+                        effects: { cliente: 6, equipa: -8, compradores: 4, valor: 0, fecho: 12, dias: -18 },
+                        log: "Conseguiste alinhar todos os intervenientes e eliminar o risco de derrapagem final."
                     },
                     {
                         text: "Plano faseado com responsabilidades claras por workstream",
-                        effects: { cliente: +4, equipa: +4, compradores: +3, valor: 0, fecho: +9, dias: -12 },
-                        log: "Execução sólida e sustentável até à assinatura e transferência de fundos."
+                        hint: "Execucao estruturada e sustentavel com menor risco de erros por pressao.",
+                        effects: { cliente: 4, equipa: 4, compradores: 3, valor: 0, fecho: 9, dias: -12 },
+                        log: "Execucao solida e sustentavel ate a assinatura final e transferencia de fundos."
                     },
                     {
-                        text: "Apostar que tudo fecha sem gestão activa dos waivers",
-                        effects: { cliente: -10, equipa: +1, compradores: -9, valor: -3, fecho: -15, dias: +15 },
-                        log: "Surgem bloqueios de última hora em bancos e documentação de registo."
+                        text: "Apostar que tudo fecha sem gestao activa dos waivers",
+                        hint: "Muito arriscado. Bloqueios de ultima hora sao comuns e destroem credibilidade.",
+                        effects: { cliente: -10, equipa: 1, compradores: -9, valor: -3, fecho: -15, dias: 15 },
+                        log: "Surgem bloqueios criticos de ultima hora em bancos e documentacao de registo."
                     }
                 ]
             }
         ];
 
-        const state = {
-            phaseIndex: 0,
-            cliente: 70,
-            equipa: 65,
-            compradores: 55,
-            valor: 55,
-            fecho: 35,
-            dias: 240,
-            ended: false
+        // ---- STATE ----
+        var diff = "normal";
+        var state = {};
+        var history = [];
+        var deltaTimers = {};
+
+        // ---- REFS ----
+        var R = {
+            startOv:    document.getElementById("start-overlay"),
+            endOv:      document.getElementById("end-overlay"),
+            phaseLabel: document.getElementById("phase-label"),
+            phaseTitle: document.getElementById("phase-title"),
+            phaseDesc:  document.getElementById("phase-desc"),
+            choices:    document.getElementById("choices"),
+            eventArea:  document.getElementById("event-area"),
+            log:        document.getElementById("log"),
+            restart:    document.getElementById("btn-restart"),
+            skip:       document.getElementById("btn-skip"),
+            progress:   document.getElementById("progress-fill"),
+            badge:      document.getElementById("diff-badge"),
+            sCliente:   document.getElementById("s-cliente"),
+            sEquipa:    document.getElementById("s-equipa"),
+            sCompr:     document.getElementById("s-compradores"),
+            sValor:     document.getElementById("s-valor"),
+            sFecho:     document.getElementById("s-fecho"),
+            sDias:      document.getElementById("s-dias"),
+            mCliente:   document.getElementById("m-cliente"),
+            mEquipa:    document.getElementById("m-equipa"),
+            mCompr:     document.getElementById("m-compradores"),
+            dCliente:   document.getElementById("d-cliente"),
+            dEquipa:    document.getElementById("d-equipa"),
+            dCompr:     document.getElementById("d-compradores"),
+            dValor:     document.getElementById("d-valor"),
+            dFecho:     document.getElementById("d-fecho"),
+            dDias:      document.getElementById("d-dias")
         };
 
-        const refs = {
-            phase: document.getElementById("phase"),
-            title: document.getElementById("title"),
-            description: document.getElementById("description"),
-            choices: document.getElementById("choices"),
-            log: document.getElementById("log"),
-            restart: document.getElementById("restart"),
-            next: document.getElementById("next"),
-            cliente: document.getElementById("cliente"),
-            equipa: document.getElementById("equipa"),
-            compradores: document.getElementById("compradores"),
-            valor: document.getElementById("valor"),
-            fecho: document.getElementById("fecho"),
-            dias: document.getElementById("dias"),
-            mc: document.getElementById("meter-cliente"),
-            me: document.getElementById("meter-equipa"),
-            mb: document.getElementById("meter-compradores")
-        };
+        // ---- HELPERS ----
+        function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
-        const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
-
-        function addLog(message, tone = "") {
-            const div = document.createElement("div");
-            div.className = `log-entry ${tone}`.trim();
-            div.textContent = message;
-            refs.log.insertBefore(div, refs.log.firstChild);
+        function addLog(msg, tone) {
+            var div = document.createElement("div");
+            div.className = "log-entry" + (tone ? " " + tone : "");
+            div.textContent = msg;
+            R.log.insertBefore(div, R.log.firstChild);
         }
 
-        function updateStats() {
-            refs.cliente.textContent = state.cliente;
-            refs.equipa.textContent = state.equipa;
-            refs.compradores.textContent = state.compradores;
-            refs.valor.textContent = state.valor;
-            refs.fecho.textContent = `${state.fecho}%`;
-            refs.dias.textContent = state.dias;
-            refs.mc.style.width = `${state.cliente}%`;
-            refs.me.style.width = `${state.equipa}%`;
-            refs.mb.style.width = `${state.compradores}%`;
+        function showDelta(el, val) {
+            if (!el || val === 0) return;
+            el.textContent = (val > 0 ? "+" : "") + val;
+            el.className = "stat-delta show " + (val > 0 ? "pos" : "neg");
+            var id = el.id;
+            clearTimeout(deltaTimers[id]);
+            deltaTimers[id] = setTimeout(function() { el.className = "stat-delta"; }, 2200);
         }
 
-        function applyEffects(effects) {
-            Object.keys(effects).forEach((key) => {
-                state[key] += effects[key];
-            });
-            state.cliente = clamp(state.cliente, 0, 100);
-            state.equipa = clamp(state.equipa, 0, 100);
+        function updateStats(deltas) {
+            R.sCliente.textContent = state.cliente;
+            R.sEquipa.textContent  = state.equipa;
+            R.sCompr.textContent   = state.compradores;
+            R.sValor.textContent   = state.valor;
+            R.sFecho.textContent   = state.fecho + "%";
+            R.sDias.textContent    = state.dias;
+            R.mCliente.style.width = state.cliente + "%";
+            R.mEquipa.style.width  = state.equipa  + "%";
+            R.mCompr.style.width   = state.compradores + "%";
+            if (deltas) {
+                showDelta(R.dCliente, deltas.cliente || 0);
+                showDelta(R.dEquipa,  deltas.equipa  || 0);
+                showDelta(R.dCompr,   deltas.compradores || 0);
+                showDelta(R.dValor,   deltas.valor  || 0);
+                showDelta(R.dFecho,   deltas.fecho  || 0);
+                showDelta(R.dDias,    deltas.dias   || 0);
+            }
+        }
+
+        function applyEffects(rawFx, skipScale) {
+            var cfg = DIFF[diff];
+            var fx = {};
+            var keys = Object.keys(rawFx);
+            for (var i = 0; i < keys.length; i++) {
+                var k = keys[i];
+                var v = rawFx[k];
+                if (!skipScale && v < 0) {
+                    fx[k] = Math.round(v * cfg.negScale);
+                } else {
+                    fx[k] = v;
+                }
+            }
+            var before = { cliente: state.cliente, equipa: state.equipa, compradores: state.compradores, valor: state.valor, fecho: state.fecho, dias: state.dias };
+            var skeys = Object.keys(fx);
+            for (var j = 0; j < skeys.length; j++) { state[skeys[j]] += fx[skeys[j]]; }
+            state.cliente     = clamp(state.cliente, 0, 100);
+            state.equipa      = clamp(state.equipa,  0, 100);
             state.compradores = clamp(state.compradores, 0, 100);
-            state.valor = clamp(state.valor, 20, 120);
-            state.fecho = clamp(state.fecho, 0, 100);
-            state.dias = clamp(state.dias, 0, 300);
+            state.valor       = clamp(state.valor, 20, 120);
+            state.fecho       = clamp(state.fecho, 0, 100);
+            state.dias        = clamp(state.dias, 0, 360);
+            return { cliente: state.cliente - before.cliente, equipa: state.equipa - before.equipa, compradores: state.compradores - before.compradores, valor: state.valor - before.valor, fecho: state.fecho - before.fecho, dias: state.dias - before.dias };
         }
 
-        function endGame(message, tone = "warn") {
+        // ---- GAME OVER ----
+        function endGame(msg, tone) {
             state.ended = true;
-            refs.choices.innerHTML = "";
-            refs.title.textContent = "Mandato terminado";
-            refs.description.textContent = message;
-            addLog(message, tone);
+            addLog(msg, tone);
+            showEndScreen(msg, tone);
         }
 
-        function evaluateState() {
-            if (state.cliente < 20) {
-                endGame("O cliente perdeu confiança na tua liderança e terminou o mandato.", "bad");
-                return true;
-            }
-            if (state.equipa < 20) {
-                endGame("A tua equipa entrou em burnout e não conseguiu sustentar o processo.", "bad");
-                return true;
-            }
-            if (state.compradores < 20) {
-                endGame("Os compradores desistiram por falta de confiança no processo.", "bad");
-                return true;
-            }
+        function checkLose() {
+            if (state.cliente < 20)     { endGame("O cliente perdeu a confianca na tua lideranca e terminou o mandato.", "bad"); return true; }
+            if (state.equipa < 20)      { endGame("A equipa entrou em burnout e nao conseguiu sustentar o processo.", "bad"); return true; }
+            if (state.compradores < 20) { endGame("Os compradores desistiram por falta de confianca no processo.", "bad"); return true; }
             return false;
         }
 
         function finishCampaign() {
-            const premium = state.valor >= 65 && state.fecho >= 70;
-            const success = state.fecho >= 55;
+            var premium = state.valor >= 65 && state.fecho >= 70;
+            var ok      = state.fecho >= 55;
             if (premium) {
-                endGame("Closing assinado com desempenho premium: cliente satisfeito, boa execução e valor forte.", "good");
-            } else if (success) {
-                endGame("Transacção fechada com sucesso. Há pontos de melhoria, mas o mandato cumpriu objectivos.", "warn");
+                endGame("Closing assinado com desempenho premium: cliente satisfeito, execucao excelente e valor forte.", "good");
+            } else if (ok) {
+                endGame("Transaccao fechada com sucesso. Ha pontos de melhoria, mas o mandato cumpriu os objectivos definidos.", "warn");
             } else {
-                endGame("Chegaste ao fim do cronograma, mas a probabilidade de fecho ficou curta e o deal caiu.", "bad");
+                endGame("Chegaste ao fim do cronograma, mas a probabilidade de fecho ficou aquem e o deal acabou por cair.", "bad");
             }
         }
 
+        // ---- SCORE / END SCREEN ----
+        function calcScore() {
+            var cfg = DIFF[diff];
+            var dealVal   = Math.max(0, state.valor - 20) / 100 * 350;
+            var closeVal  = state.fecho / 100 * 350;
+            var relVal    = (state.cliente + state.equipa + state.compradores) / 3 / 100 * 200;
+            var speedVal  = Math.max(0, (240 - state.dias) / 240) * 100;
+            return Math.min(1000, Math.max(0, Math.round((dealVal + closeVal + relVal + speedVal) * cfg.scoreMultiplier)));
+        }
+
+        function getGrade(score, tone) {
+            if (tone === "bad") return { g: "F", c: "var(--bad)" };
+            if (score >= 870)   return { g: "A+", c: "var(--good)" };
+            if (score >= 720)   return { g: "A",  c: "var(--good)" };
+            if (score >= 560)   return { g: "B",  c: "#a8ff98" };
+            if (score >= 400)   return { g: "C",  c: "var(--warn)" };
+            if (score >= 240)   return { g: "D",  c: "#ffaa40" };
+            return { g: "F", c: "var(--bad)" };
+        }
+
+        function showEndScreen(msg, tone) {
+            var score = calcScore();
+            var gr    = getGrade(score, tone);
+
+            document.getElementById("end-grade").textContent = gr.g;
+            document.getElementById("end-grade").style.color = gr.c;
+            document.getElementById("end-score").textContent = score + " pontos";
+            document.getElementById("end-title").textContent = tone === "good" ? "Mandato concluido com sucesso" : tone === "bad" ? "Mandato interrompido" : "Mandato concluido";
+            document.getElementById("end-desc").textContent  = msg;
+
+            // Stat summary
+            var grid = document.getElementById("end-stats-grid");
+            grid.innerHTML = "";
+            var items = [
+                { l: "Valor (EUR m)", v: state.valor, c: state.valor >= 65 ? "var(--good)" : "var(--warn)" },
+                { l: "Prob. Closing", v: state.fecho + "%", c: state.fecho >= 70 ? "var(--good)" : "var(--warn)" },
+                { l: "Cliente",       v: state.cliente, c: state.cliente >= 50 ? "var(--good)" : "var(--bad)" },
+                { l: "Equipa",        v: state.equipa,  c: state.equipa  >= 50 ? "var(--good)" : "var(--bad)" },
+                { l: "Compradores",   v: state.compradores, c: state.compradores >= 50 ? "var(--good)" : "var(--bad)" },
+                { l: "Dias poupados", v: Math.max(0, 240 - state.dias), c: state.dias < 200 ? "var(--good)" : "var(--muted)" }
+            ];
+            for (var i = 0; i < items.length; i++) {
+                var box = document.createElement("div");
+                box.className = "end-stat-box";
+                box.innerHTML = '<div class="end-stat-val" style="color:' + items[i].c + '">' + items[i].v + '</div><div class="end-stat-label">' + items[i].l + '</div>';
+                grid.appendChild(box);
+            }
+
+            // History
+            var hbox = document.getElementById("end-history");
+            hbox.innerHTML = "";
+            if (history.length === 0) {
+                hbox.innerHTML = '<div class="hist-entry" style="color:var(--muted)">Sem historico de decisoes.</div>';
+            }
+            for (var j = 0; j < history.length; j++) {
+                var h = history[j];
+                var div = document.createElement("div");
+                div.className = "hist-entry";
+                if (h.type === "event") {
+                    div.innerHTML = '<div class="hist-event">Evento: ' + h.label + '</div><div style="color:var(--muted);font-size:0.76rem;">' + h.text + '</div>';
+                } else if (h.type === "drift") {
+                    div.innerHTML = '<div class="hist-drift">Avancou sem decisao (penalizacao aplicada)</div>';
+                } else {
+                    div.innerHTML = '<div class="hist-phase">' + h.phase + '</div><div class="hist-text">' + h.text + '</div>';
+                }
+                hbox.appendChild(div);
+            }
+
+            R.endOv.className = "overlay";
+        }
+
+        // ---- RANDOM EVENT ----
+        function maybeEvent() {
+            if (state.ended) return false;
+            var cfg = DIFF[diff];
+            if (Math.random() >= cfg.eventChance) return false;
+            var ev = EVENTS[Math.floor(Math.random() * EVENTS.length)];
+            showEvent(ev);
+            return true;
+        }
+
+        function showEvent(ev) {
+            R.choices.innerHTML = "";
+
+            var labelNames = { cliente: "Cliente", equipa: "Equipa", compradores: "Compradores", valor: "Valor", fecho: "Fecho", dias: "Dias" };
+            var tagsHtml = "";
+            var ekeys = Object.keys(ev.effects);
+            for (var i = 0; i < ekeys.length; i++) {
+                var k = ekeys[i];
+                var v = ev.effects[k];
+                if (v === 0) continue;
+                var sign = v > 0 ? "+" : "";
+                tagsHtml += '<span class="eff-tag ' + (v > 0 ? "eff-pos" : "eff-neg") + '">' + labelNames[k] + " " + sign + v + '</span>';
+            }
+
+            var card = document.createElement("div");
+            card.className = "event-card" + (ev.good ? " ev-good" : "");
+            card.innerHTML =
+                '<div class="event-label">Evento inesperado</div>' +
+                '<div class="event-title-text">' + ev.title + '</div>' +
+                '<p style="margin:0 0 6px;font-size:0.86rem;">' + ev.desc + '</p>' +
+                '<div class="event-effects">' + tagsHtml + '</div>' +
+                '<button class="continue-btn">Continuar</button>';
+
+            R.eventArea.innerHTML = "";
+            R.eventArea.appendChild(card);
+
+            card.querySelector(".continue-btn").addEventListener("click", function() {
+                var deltas = applyEffects(ev.effects, false);
+                updateStats(deltas);
+                history.push({ type: "event", label: ev.title, text: ev.desc });
+                addLog("Evento: " + ev.title + " — " + ev.desc, ev.good ? "good" : "bad");
+                R.eventArea.innerHTML = "";
+                if (checkLose()) { updateStats(); return; }
+                renderPhase();
+            });
+        }
+
+        // ---- RENDER PHASE ----
         function renderPhase() {
             updateStats();
             if (state.ended) return;
+            if (checkLose()) { updateStats(); return; }
 
-            if (evaluateState()) {
-                updateStats();
-                return;
+            if (state.phaseIndex >= PHASES.length) { finishCampaign(); return; }
+
+            var ph    = PHASES[state.phaseIndex];
+            var total = PHASES.length;
+            var pct   = (state.phaseIndex / total) * 100;
+
+            R.progress.style.width = pct + "%";
+            R.phaseLabel.textContent = "Fase " + (state.phaseIndex + 1) + " de " + total + " \u00B7 " + ph.id;
+            R.phaseTitle.textContent = ph.title;
+            R.phaseDesc.textContent  = ph.desc;
+            R.choices.innerHTML      = "";
+            R.eventArea.innerHTML    = "";
+
+            for (var i = 0; i < ph.options.length; i++) {
+                (function(opt, idx, phId) {
+                    var btn = document.createElement("button");
+                    btn.innerHTML = '<strong>' + (idx + 1) + '. ' + opt.text + '</strong><span class="choice-hint">' + opt.hint + '</span>';
+                    btn.addEventListener("click", function() {
+                        var deltas = applyEffects(opt.effects, false);
+                        var phaseLabel = ph.id + " \u2014 Fase " + (state.phaseIndex + 1);
+                        state.phaseIndex += 1;
+                        history.push({ type: "choice", phase: phaseLabel, text: opt.text });
+                        addLog(opt.log);
+                        updateStats(deltas);
+                        if (checkLose()) { updateStats(); return; }
+                        if (!maybeEvent()) { renderPhase(); }
+                    });
+                    R.choices.appendChild(btn);
+                })(ph.options[i], i, ph.id);
             }
-
-            if (state.phaseIndex >= phases.length) {
-                finishCampaign();
-                return;
-            }
-
-            const current = phases[state.phaseIndex];
-            refs.phase.textContent = `Fase ${state.phaseIndex + 1} de ${phases.length} · ${current.id.toUpperCase()}`;
-            refs.title.textContent = current.title;
-            refs.description.textContent = current.description;
-            refs.choices.innerHTML = "";
-
-            current.options.forEach((option, index) => {
-                const button = document.createElement("button");
-                button.textContent = `${index + 1}. ${option.text}`;
-                button.addEventListener("click", () => {
-                    applyEffects(option.effects);
-                    state.phaseIndex += 1;
-                    addLog(option.log);
-                    renderPhase();
-                });
-                refs.choices.appendChild(button);
-            });
         }
 
-        function randomDrift() {
+        // ---- DRIFT (skip) ----
+        function skipPhase() {
             if (state.ended) return;
-            applyEffects({ cliente: -2, equipa: -1, compradores: -2, valor: 0, fecho: -1, dias: -7 });
-            addLog("Avançaste sem decisão: a incerteza aumentou e a confiança deteriorou-se.", "bad");
+            var cfg = DIFF[diff];
+            var deltas = applyEffects(cfg.drift, true);
+            addLog("Avancaste sem decisao: a incerteza aumentou e a confianca deteriorou-se.", "bad");
+            history.push({ type: "drift" });
             state.phaseIndex += 1;
+            updateStats(deltas);
+            if (checkLose()) { updateStats(); return; }
+            if (!maybeEvent()) { renderPhase(); }
+        }
+
+        // ---- DIFFICULTY SELECT ----
+        function selectDiff(d) {
+            diff = d;
+            document.getElementById("diff-facil").className   = "diff-opt" + (d === "facil"   ? " sel" : "");
+            document.getElementById("diff-normal").className  = "diff-opt" + (d === "normal"  ? " sel" : "");
+            document.getElementById("diff-dificil").className = "diff-opt" + (d === "dificil" ? " sel" : "");
+        }
+
+        // ---- START / RESTART ----
+        function startGame() {
+            var cfg = DIFF[diff];
+            state = { phaseIndex: 0, ended: false, cliente: cfg.start.cliente, equipa: cfg.start.equipa, compradores: cfg.start.compradores, valor: cfg.start.valor, fecho: cfg.start.fecho, dias: cfg.start.dias };
+            history = [];
+            R.log.innerHTML = "";
+            R.eventArea.innerHTML = "";
+            R.startOv.className = "overlay hidden";
+            R.badge.textContent = cfg.label;
+            R.badge.className   = "diff-badge " + cfg.badgeClass;
+            R.progress.style.width = "0%";
+            addLog("Mandato iniciado em modo " + cfg.label + ". Define bem a estrategia do processo.", "warn");
             renderPhase();
         }
 
-        function restart() {
-            Object.assign(state, {
-                phaseIndex: 0,
-                cliente: 70,
-                equipa: 65,
-                compradores: 55,
-                valor: 55,
-                fecho: 35,
-                dias: 240,
-                ended: false
-            });
-            refs.log.innerHTML = "";
-            addLog("Novo mandato iniciado. Define bem a estratégia do processo.", "warn");
-            renderPhase();
+        function backToMenu() {
+            R.endOv.className   = "overlay hidden";
+            R.startOv.className = "overlay";
         }
 
-        refs.restart.addEventListener("click", restart);
-        refs.next.addEventListener("click", randomDrift);
-        restart();
+        // ---- EVENTS ----
+        R.restart.addEventListener("click", backToMenu);
+        R.skip.addEventListener("click", skipPhase);
     </script>
 </body>
 </html>
