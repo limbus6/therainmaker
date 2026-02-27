@@ -407,20 +407,20 @@
             <p style="font-size:0.88rem;color:var(--muted);margin-bottom:10px;">Gere o cliente, a equipa e os compradores em 9 fases criticas. Eventos aleatorios testam a tua resiliencia a cada passo.</p>
             <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:6px;font-weight:700;">Dificuldade</div>
             <div class="diff-grid">
-                <div class="diff-opt" id="diff-facil" onclick="selectDiff('facil')">
+                <div class="diff-opt" id="diff-facil">
                     <span class="diff-opt-name" style="color:var(--good)">Facil</span>
                     <span class="diff-opt-desc">Stats favoraveis, eventos mais suaves, menos frequentes</span>
                 </div>
-                <div class="diff-opt sel" id="diff-normal" onclick="selectDiff('normal')">
+                <div class="diff-opt sel" id="diff-normal">
                     <span class="diff-opt-name" style="color:var(--warn)">Normal</span>
                     <span class="diff-opt-desc">Experiencia equilibrada com risco genuino</span>
                 </div>
-                <div class="diff-opt" id="diff-dificil" onclick="selectDiff('dificil')">
+                <div class="diff-opt" id="diff-dificil">
                     <span class="diff-opt-name" style="color:var(--bad)">Dificil</span>
                     <span class="diff-opt-desc">Stats apertadas, eventos frequentes e mais severos</span>
                 </div>
             </div>
-            <button class="start-btn" onclick="startGame()">Iniciar Mandato</button>
+            <button class="start-btn" id="btn-start">Iniciar Mandato</button>
         </div>
     </div>
 
@@ -433,7 +433,7 @@
             <p id="end-desc" style="font-size:0.88rem;margin-bottom:0;"></p>
             <div class="end-stats-grid" id="end-stats-grid"></div>
             <div class="history-box" id="end-history"></div>
-            <button class="start-btn" onclick="backToMenu()">Jogar Novamente</button>
+            <button class="start-btn" id="btn-play-again">Jogar Novamente</button>
         </div>
     </div>
 
@@ -1137,9 +1137,15 @@
             R.startOv.className = "overlay";
         }
 
-        // ---- EVENTS ----
+        // ---- WIRE UP ALL EVENT LISTENERS ----
         R.restart.addEventListener("click", backToMenu);
         R.skip.addEventListener("click", skipPhase);
+
+        document.getElementById("btn-start").addEventListener("click", startGame);
+        document.getElementById("btn-play-again").addEventListener("click", backToMenu);
+        document.getElementById("diff-facil").addEventListener("click", function() { selectDiff("facil"); });
+        document.getElementById("diff-normal").addEventListener("click", function() { selectDiff("normal"); });
+        document.getElementById("diff-dificil").addEventListener("click", function() { selectDiff("dificil"); });
     </script>
 </body>
 </html>
