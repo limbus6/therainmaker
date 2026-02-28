@@ -365,6 +365,7 @@
             backdrop-filter: blur(6px);
         }
         .overlay.hidden { display: none; }
+        .hidden { display: none !important; }
 
         .ov-card {
             background: rgba(12, 18, 50, 0.99);
@@ -543,19 +544,19 @@
     <!-- End overlay -->
     <div class="overlay hidden" id="end-overlay">
         <div class="ov-card">
-            <div class="end-grade" id="end-grade">A</div>
-            <div class="end-score" id="end-score">750 pontos</div>
+            <h1 style="margin:0 0 12px;font-size:2rem;">Deal Post-Mortem</h1>
             <h2 id="end-title" style="font-size:1.15rem;margin-bottom:4px;"></h2>
-            <p id="end-desc" style="font-size:0.88rem;margin-bottom:0;"></p>
+            <p id="end-desc" style="font-size:0.88rem;margin-bottom:14px;"></p>
             <div class="end-stats-grid" id="end-stats-grid"></div>
+            <div class="closing-compare" id="postmortem-narrative"></div>
             <div class="closing-compare" id="closing-comparison"></div>
             <div class="history-box" id="end-history"></div>
-            <button class="start-btn" id="btn-play-again">Jogar Novamente</button>
+            <button class="start-btn" id="btn-play-again">Novo Mandato</button>
         </div>
     </div>
 
     <!-- Game -->
-    <main class="layout">
+    <main class="layout" id="game-layout">
         <aside class="panel">
             <h1>M&A Dealmaker <span class="diff-badge diff-normal" id="diff-badge">Normal</span></h1>
             <p style="margin-bottom:10px;">Mandato de sell-side: do pitch ao closing, gerindo cliente, equipa e compradores.</p>
@@ -1151,7 +1152,9 @@
             btnReviewApprove:   document.getElementById("btn-review-approve"),
             btnReviewCorrect:   document.getElementById("btn-review-correct"),
             btnReviewImprove:   document.getElementById("btn-review-improve"),
-            btnReviewRedo:      document.getElementById("btn-review-redo")
+            btnReviewRedo:      document.getElementById("btn-review-redo"),
+            gameLayout:         document.getElementById("game-layout"),
+            postmortemNarrative:document.getElementById("postmortem-narrative")
         };
 
         // ---- HELPERS ----
@@ -1824,39 +1827,59 @@
         // ---- GAME OVER ----
         function endGame(msg, tone) {
             state.ended = true;
+            R.gameLayout.classList.add("hidden");
             addLog(msg, tone);
             showEndScreen(msg, tone);
         }
 
         function checkLose() {
-            if (state.teamMorale < 15)  { endGame("Your team suffered severe burnout and resigned en masse.", "bad"); return true; }
-            if (state.cliente < 20) { endGame("O cliente perdeu a confianca na tua lideranca e terminou o mandato.", "bad"); return true; }
-            if (state.teamMorale < 20)  { endGame("A equipa entrou em burnout e nao conseguiu sustentar o processo.", "bad"); return true; }
+            if (state.teamMorale < 15 || state.cliente < 20) {
+                endGame("Mandate terminated: trust and/or team resilience fell below critical thresholds.", "bad");
+                return true;
+            }
             if (state.bidderExclusivo) {
                 if (!state.bidders || state.bidders.length === 0 || state.bidders[0].interesse <= 0) {
-                    endGame("Exclusividade colapsou: o comprador exclusivo perdeu totalmente o interesse e o processo falhou de imediato.", "bad");
+                    endGame("Market rejection: exclusivity collapsed after the last active bidder walked out.", "bad");
                     return true;
                 }
             }
-            if (state.bidders && state.bidders.length > 0 && avgInteresse() < 20) {
-                endGame("Os compradores perderam interesse — processo terminou sem deal.", "bad");
+            if (state.bidders && state.bidders.length > 0 && avgInteresse() <= 0) {
+                endGame("Market rejection: bidder interest hit zero and no buyer remained active.", "bad");
                 return true;
             }
             return false;
         }
 
         function finishCampaign() {
-            var ev      = calcularEV();
-            state.signedValue = ev;
-            var premium = ev >= 60 && state.fecho >= 70;
-            var ok      = state.fecho >= 55;
-            if (premium) {
-                endGame("Closing assinado com desempenho premium: EV EUR " + ev.toFixed(1) + "m (EBITDA " + state.ebitda.toFixed(1) + "M€ \u00D7 " + state.multiplo.toFixed(1) + "x). Excelente execucao.", "good");
-            } else if (ok) {
-                endGame("Transaccao fechada com sucesso. EV EUR " + ev.toFixed(1) + "m. Ha pontos de melhoria, mas o mandato cumpriu os objectivos.", "warn");
-            } else {
-                endGame("Chegaste ao fim do processo, mas a probabilidade de fecho ficou aquem e o deal caiu.", "bad");
+            var bidder = null;
+            if (state.bidderExclusivo && state.bidders && state.bidders.length > 0) {
+                bidder = state.bidders[0];
             }
+            var appliedMultiple = bidder ? bidder.multiploProposto : state.multiplo;
+            var finalEV = parseFloat((state.ebitda * appliedMultiple).toFixed(1));
+            var finalInterest = bidder ? bidder.interesse : (state.bidders && state.bidders.length > 0 ? avgInteresse() : 0);
+            var expectationFloor = parseFloat((state.clientExpectationEV * 0.9).toFixed(1));
+
+            state.multiplo = appliedMultiple;
+            state.signedValue = finalEV;
+
+            if (state.teamMorale < 15 || state.cliente < 20) {
+                endGame("Mandate terminated: trust and/or team resilience fell below critical thresholds.", "bad");
+                return;
+            }
+            if (finalInterest <= 0) {
+                endGame("Market rejection: bidder interest reached zero before signing.", "bad");
+                return;
+            }
+            if (finalEV < expectationFloor) {
+                endGame("Deal leak/client walkout: final valuation fell more than 10% below client expectations.", "bad");
+                return;
+            }
+            if (state.phaseIndex >= PHASES.length && finalEV > 0 && finalInterest > 0) {
+                endGame("Deal Closed Successfully: enterprise value and buyer engagement remained positive through closing.", "good");
+                return;
+            }
+            endGame("Mandate terminated before final signing conditions were met.", "bad");
         }
 
         // ---- SCORE / END SCREEN ----
@@ -1883,27 +1906,28 @@
         }
 
         function showEndScreen(msg, tone) {
-            var score = calcScore();
-            var gr    = getGrade(score, tone);
+            var financials = calculateAdvisorMargin();
+            var ev = state.signedValue !== null && state.signedValue !== undefined ? state.signedValue : calcularEV();
+            var expectedEV = state.clientExpectationEV || 0;
+            var hiddenFlawsHit = state.hiddenFlaws && state.hiddenFlaws.length > 0;
+            var outcomeLabel =
+                tone === "good" ? "Deal Closed Successfully" :
+                msg.toLowerCase().indexOf("market rejection") !== -1 ? "Market Rejection" :
+                msg.toLowerCase().indexOf("walkout") !== -1 || msg.toLowerCase().indexOf("deal leak") !== -1 ? "Client Walkout" :
+                "Mandate Terminated";
 
-            document.getElementById("end-grade").textContent = gr.g;
-            document.getElementById("end-grade").style.color = gr.c;
-            document.getElementById("end-score").textContent = score + " pontos";
-            document.getElementById("end-title").textContent =
-                tone === "good" ? "Mandato concluido com sucesso" :
-                tone === "bad"  ? "Mandato interrompido" : "Mandato concluido";
+            document.getElementById("end-title").textContent = outcomeLabel;
             document.getElementById("end-desc").textContent = msg;
 
             var grid = document.getElementById("end-stats-grid");
             grid.innerHTML = "";
-            var ev = calcularEV();
             var items = [
-                { l: "EV (EUR m)",         v: "EUR " + ev.toFixed(1) + "m",              c: ev >= 60 ? "var(--good)" : "var(--warn)" },
-                { l: "Prob. Closing",       v: state.fecho + "%",           c: state.fecho >= 70 ? "var(--good)" : "var(--warn)" },
-                { l: "Cliente",             v: state.cliente,               c: state.cliente >= 50 ? "var(--good)" : "var(--bad)" },
-                { l: "Equipa",              v: state.teamMorale,                c: state.teamMorale  >= 50 ? "var(--good)" : "var(--bad)" },
-                { l: "Interesse Compradores", v: state.bidders.length > 0 ? avgInteresse() + "%" : "N/A", c: state.bidders.length > 0 && avgInteresse() >= 50 ? "var(--good)" : "var(--bad)" },
-                { l: "Semanas restantes",   v: Math.max(0, state.semanasTotais - state.semanaAtual), c: state.semanaAtual <= Math.round(state.semanasTotais * 0.8) ? "var(--good)" : "var(--muted)" }
+                { l: "Outcome Status", v: outcomeLabel, c: tone === "good" ? "var(--good)" : "var(--bad)" },
+                { l: "Duration", v: state.semanaAtual + " Weeks", c: "var(--accent)" },
+                { l: "Initial Expectation vs Final EV", v: expectedEV.toFixed(1) + " M€ vs " + ev.toFixed(1) + " M€", c: ev >= expectedEV ? "var(--good)" : "var(--warn)" },
+                { l: "Gross Advisor Fee", v: financials.grossFee.toFixed(3) + " M€", c: "var(--accent)" },
+                { l: "Execution Costs", v: financials.totalCosts.toFixed(3) + " M€", c: "var(--warn)" },
+                { l: "Final Net Margin", v: financials.netMargin.toFixed(3) + " M€", c: financials.netMargin >= 0 ? "var(--good)" : "var(--bad)" }
             ];
             for (var i = 0; i < items.length; i++) {
                 var box = document.createElement("div");
@@ -1911,6 +1935,21 @@
                 box.innerHTML = '<div class="end-stat-val" style="color:' + items[i].c + '">' + items[i].v + '</div><div class="end-stat-label">' + items[i].l + '</div>';
                 grid.appendChild(box);
             }
+
+            var narrative = "";
+            if (tone === "good" && financials.netMargin < 0) {
+                narrative = "You closed the deal, but endless document revisions and team exhaustion consumed the entire fee. The firm lost money (Negative Net Margin).";
+            } else if (hiddenFlawsHit && ev < expectedEV) {
+                narrative = "Your sloppy deliverables early on led to massive price chipping by the auditors. The valuation crashed, and the client walked away.";
+            } else if (tone === "good" && !hiddenFlawsHit && financials.netMargin > 0.3) {
+                narrative = "Premium execution. You managed expectations, kept the team efficient, and secured a highly profitable margin.";
+            } else if (tone === "good") {
+                narrative = "The deal closed, but margin discipline and stakeholder management left room for improvement.";
+            } else {
+                narrative = "The mandate ended before closing due to a breakdown in trust, team stamina, bidder appetite, or valuation support.";
+            }
+            R.postmortemNarrative.innerHTML = '<div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent);margin-bottom:6px;">Narrative</div>' +
+                '<div style="font-size:0.86rem;line-height:1.45;color:var(--text);">' + narrative + '</div>';
 
             var cmp = document.getElementById("closing-comparison");
             var initialExpected = state.initialExpectedValue;
@@ -2272,6 +2311,7 @@
             R.log.innerHTML       = "";
             R.eventArea.innerHTML = "";
             R.startOv.className   = "overlay hidden";
+            R.gameLayout.classList.remove("hidden");
             R.badge.textContent   = cfg.label;
             R.badge.className     = "diff-badge " + cfg.badgeClass;
             R.progress.style.width              = "0%";
@@ -2284,6 +2324,7 @@
 
         function backToMenu() {
             R.endOv.className   = "overlay hidden";
+            R.gameLayout.classList.remove("hidden");
             R.startOv.className = "overlay";
         }
 

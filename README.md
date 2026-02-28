@@ -35,4 +35,4 @@ Foram removidas APIs menos compatíveis (`prepend` e `Object.entries`) para evit
 
 ## Version Control Reminder
 
-`git pull`, `git add .`, `git commit -m "feat: Brutal Review Board with severe EBITDA penalties and compounding team burnout"`, `git push`.
+`git pull`, `git add .`, `git commit -m "feat: Post-Mortem analytics screen, final Net Margin calculation in EUR and dynamic narrative"`, `git push`.
