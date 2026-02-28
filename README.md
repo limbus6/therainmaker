@@ -35,4 +35,4 @@ Foram removidas APIs menos compatíveis (`prepend` e `Object.entries`) para evit
 
 ## Version Control Reminder
 
-`git pull`, `git add .`, `git commit -m "feat: team management actions, hiring, salary increases, and strict results demands"`, `git push`.
+`git pull`, `git add .`, `git commit -m "fix: dynamic exclusivity probability, SPA phase and initial expectation anchoring in EUR"`, `git push`.
