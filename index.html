@@ -505,7 +505,7 @@
                     <div class="meter"><span id="m-cliente"></span></div>
                 </div>
                 <div class="stat">
-                    <span class="label">Equipa</span>
+                    <span class="label">Team Morale</span>
                     <strong id="s-equipa">65</strong>
                     <span class="stat-delta" id="d-equipa"></span>
                     <div class="meter"><span id="m-equipa"></span></div>
@@ -533,6 +533,16 @@
                     </div>
                 </div>
             </div>
+
+            <div class="stat" style="margin:6px 0 12px;">
+                <span class="label">Advisor P&amp;L</span>
+                <div style="display:grid;grid-template-columns:1fr auto;gap:4px 8px;font-size:0.78rem;line-height:1.4;">
+                    <span>Success Fee (%)</span><strong id="s-fee-percentage" style="color:var(--accent);">0.00%</strong>
+                    <span>Execution Costs (M€)</span><strong id="s-execution-costs" style="color:var(--warn);">0.0 M€</strong>
+                    <span>Expected Net Margin (M€)</span><strong id="s-net-margin" style="color:var(--good);">0.0 M€</strong>
+                </div>
+            </div>
+
             <div id="bidder-list"></div>
 
             <!-- Pontos de Acao display -->
@@ -582,17 +592,17 @@
         var DIFF = {
             facil: {
                 label: "Facil", badgeClass: "diff-facil",
-                start: { cliente: 80, equipa: 75, ebitda: 6.0, multiplo: 9.0, fecho: 40 },
+                start: { cliente: 80, teamMorale: 75, ebitda: 6.0, multiplo: 9.0, fecho: 40 },
                 eventChance: 0.20, negScale: 0.75, scoreMultiplier: 0.85
             },
             normal: {
                 label: "Normal", badgeClass: "diff-normal",
-                start: { cliente: 70, equipa: 65, ebitda: 5.5, multiplo: 8.0, fecho: 35 },
+                start: { cliente: 70, teamMorale: 65, ebitda: 5.5, multiplo: 8.0, fecho: 35 },
                 eventChance: 0.30, negScale: 1.0, scoreMultiplier: 1.0
             },
             dificil: {
                 label: "Dificil", badgeClass: "diff-dificil",
-                start: { cliente: 60, equipa: 55, ebitda: 5.0, multiplo: 7.5, fecho: 28 },
+                start: { cliente: 60, teamMorale: 55, ebitda: 5.0, multiplo: 7.5, fecho: 28 },
                 eventChance: 0.45, negScale: 1.30, scoreMultiplier: 1.20
             }
         };
@@ -602,61 +612,61 @@
             {
                 title: "Noticia negativa do sector",
                 desc: "Um artigo de imprensa levanta questoes sobre valuations do sector e comprime multiplos de referencia.",
-                effects: { cliente: -4, equipa: 0, interesseBidders: -8, multiplo: -0.5, fecho: -7 },
+                effects: { cliente: -4, teamMorale: 0, interesseBidders: -8, multiplo: -0.5, fecho: -7 },
                 good: false
             },
             {
                 title: "Membro chave da equipa sai",
                 desc: "O associate senior que conduzia o data room recebe uma oferta competitiva e sai esta semana.",
-                effects: { cliente: -3, equipa: -10, interesseBidders: -2, fecho: -4 },
+                effects: { cliente: -3, teamMorale: -10, interesseBidders: -2, fecho: -4 },
                 good: false
             },
             {
                 title: "Regulador solicita esclarecimentos",
                 desc: "A autoridade de supervisao pede documentacao adicional de compliance, atrasando o cronograma.",
-                effects: { cliente: -5, equipa: -4, interesseBidders: -5, fecho: -6 },
+                effects: { cliente: -5, teamMorale: -4, interesseBidders: -5, fecho: -6 },
                 good: false
             },
             {
                 title: "Comprador principal hesita",
                 desc: "O bidder preferencial pede uma semana adicional para aprovacao interna do Investment Committee.",
-                effects: { cliente: -6, equipa: -2, interesseBidders: -8, multiplo: -0.3, fecho: -8 },
+                effects: { cliente: -6, teamMorale: -2, interesseBidders: -8, multiplo: -0.3, fecho: -8 },
                 good: false
             },
             {
                 title: "Vaga de transaccoes no sector",
                 desc: "Multiplas transaccoes comparaveis sao anunciadas com premios acima das expectativas do mercado.",
-                effects: { cliente: 5, equipa: 3, interesseBidders: 6, multiplo: 0.5, fecho: 6 },
+                effects: { cliente: 5, teamMorale: 3, interesseBidders: 6, multiplo: 0.5, fecho: 6 },
                 good: true
             },
             {
                 title: "Novo comprador estrategico surge",
                 desc: "Um grupo estrangeiro contacta directamente o cliente, criando pressao competitiva inesperada.",
-                effects: { cliente: 4, equipa: -3, interesseBidders: 5, ebitda: 0.3, fecho: 3 },
+                effects: { cliente: 4, teamMorale: -3, interesseBidders: 5, ebitda: 0.3, fecho: 3 },
                 good: true
             },
             {
                 title: "Mercado de credito deteriora",
                 desc: "Subida inesperada de spreads afecta a capacidade de financiamento dos compradores financeiros.",
-                effects: { cliente: -3, equipa: 0, interesseBidders: -10, multiplo: -0.8, fecho: -9 },
+                effects: { cliente: -3, teamMorale: 0, interesseBidders: -10, multiplo: -0.8, fecho: -9 },
                 good: false
             },
             {
                 title: "Resultados trimestrais surpreendem",
                 desc: "O target divulga numeros acima de guidance, reforcando significativamente a narrativa de crescimento.",
-                effects: { cliente: 6, equipa: 4, interesseBidders: 7, ebitda: 0.5, fecho: 7 },
+                effects: { cliente: 6, teamMorale: 4, interesseBidders: 7, ebitda: 0.5, fecho: 7 },
                 good: true
             },
             {
                 title: "Rumores de processo vazam",
                 desc: "Uma nota num blog de M&A menciona o nome do target. O cliente esta furioso com a quebra de confidencialidade.",
-                effects: { cliente: -10, equipa: -5, interesseBidders: 2, multiplo: -0.4, fecho: -5 },
+                effects: { cliente: -10, teamMorale: -5, interesseBidders: 2, multiplo: -0.4, fecho: -5 },
                 good: false
             },
             {
                 title: "Concorrente lanca processo rival",
                 desc: "Um competitor do target anuncia venda, capturando a atencao dos mesmos compradores estrategicos.",
-                effects: { cliente: -2, equipa: 0, interesseBidders: -8, multiplo: -0.3, fecho: -5 },
+                effects: { cliente: -2, teamMorale: 0, interesseBidders: -8, multiplo: -0.3, fecho: -5 },
                 good: false
             }
         ];
@@ -722,22 +732,22 @@
                 desc: "Convence o fundador a vender no timing certo. Define a tese de valor e alinha expectativas. Usa os teus Pontos de Acao com sabedoria.",
                 actions: [
                     {
-                        text: "Apresentar tese de venda e timing de mercado",
-                        hint: "Argumentacao centrada na janela de oportunidade. Avanca o pitch significativamente.",
-                        effects: { cliente: 5, equipa: -2, multiplo: 0.3, progressoFase: 25 },
-                        log: "A tese de venda foi bem recebida — momentum positivo no processo."
+                        text: "Demandar success fee de 3.0% (alto risco de perder o cliente)",
+                        hint: "Maximiza economia do parceiro, mas pode gerar friccao no mandato logo no arranque.",
+                        effects: { feePercentage: 0.03, cliente: -8, fecho: -2, teamMorale: -2, multiplo: 0.3, progressoFase: 25 },
+                        log: "Negociacao agressiva de fee: 3.0% proposto no pitch inicial."
                     },
                     {
-                        text: "Refinar analise de valorizacao e comparaveis (EUR m)",
-                        hint: "Trabalho tecnico que fortalece a narrativa financeira. Consome recursos da equipa.",
-                        effects: { multiplo: 0.5, ebitda: 0.2, equipa: -3, progressoFase: 18 },
-                        log: "A analise de comparaveis em EUR reforca a argumentacao de valor junto do cliente."
+                        text: "Negociar success fee de 2.0% (equilibrio risco/retorno)",
+                        hint: "Abordagem balanced com boa probabilidade de aceitar e economics saudavel.",
+                        effects: { feePercentage: 0.02, cliente: 3, fecho: 2, teamMorale: -1, multiplo: 0.2, progressoFase: 18 },
+                        log: "Mandato avanca com fee de 2.0% e alinhamento razoavel com o accionista."
                     },
                     {
-                        text: "Reuniao de alinhamento e gestao de expectativas",
-                        hint: "Constroi confianca com o accionista. Progresso moderado mas essencial.",
-                        effects: { cliente: 8, fecho: 2, progressoFase: 7 },
-                        log: "O cliente sente-se ouvido e alinhado com a estrategia proposta."
+                        text: "Aceitar success fee de 1.5% para garantir o mandato",
+                        hint: "Reduz economics, mas reforca confianca do cliente e seguranca de execucao.",
+                        effects: { feePercentage: 0.015, cliente: 8, fecho: 3, progressoFase: 7 },
+                        log: "Fee competitivo de 1.5% assegurou o mandato com forte buy-in do cliente."
                     }
                 ]
             },
@@ -749,13 +759,13 @@
                     {
                         text: "Redigir e finalizar Information Memorandum",
                         hint: "Producao do documento principal. Trabalho intensivo para a equipa.",
-                        effects: { fecho: 3, equipa: -5, ebitda: 0.3, progressoFase: 20 },
+                        effects: { fecho: 3, teamMorale: -5, ebitda: 0.3, progressoFase: 20 },
                         log: "O IM esta a tomar forma — documentacao solida que transmite credibilidade ao mercado."
                     },
                     {
                         text: "Afinar narrativa de crescimento e projecoes financeiras",
                         hint: "Melhora a historia em EUR. Aumenta o valor percebido pelos compradores.",
-                        effects: { multiplo: 0.4, ebitda: 0.2, fecho: 3, equipa: -3, progressoFase: 15 },
+                        effects: { multiplo: 0.4, ebitda: 0.2, fecho: 3, teamMorale: -3, progressoFase: 15 },
                         log: "A narrativa de crescimento foi refinada — projecoes em EUR mais convincentes."
                     },
                     {
@@ -774,19 +784,19 @@
                     {
                         text: "Coaching intensivo do management para a apresentacao",
                         hint: "Preparacao aprofundada que maximiza o impacto junto dos compradores.",
-                        effects: { fecho: 5, ebitda: 0.2, equipa: -5, progressoFase: 25 },
+                        effects: { fecho: 5, ebitda: 0.2, teamMorale: -5, progressoFase: 25 },
                         log: "O management apresentou com clareza e confianca — buyers muito positivos."
                     },
                     {
                         text: "Simular Q&A e antecipar questoes criticas",
                         hint: "Reduz risco de surpresas no Q&A. Melhora o engagement dos compradores.",
-                        effects: { fecho: 4, equipa: -3, progressoFase: 18 },
+                        effects: { fecho: 4, teamMorale: -3, progressoFase: 18 },
                         log: "A simulacao de Q&A eliminou as principais vulnerabilidades da apresentacao."
                     },
                     {
                         text: "Preparar materiais de suporte e data pack",
                         hint: "Suporte tecnico que transmite profissionalismo. Reforca confianca do cliente.",
-                        effects: { cliente: 5, equipa: 3, progressoFase: 7 },
+                        effects: { cliente: 5, teamMorale: 3, progressoFase: 7 },
                         log: "Os materiais de suporte foram bem recebidos — processo transmite profissionalismo."
                     }
                 ]
@@ -799,13 +809,13 @@
                     {
                         text: "Contactar e qualificar estrategicos industriais",
                         hint: "Industriais oferecem premios mais altos mas o interesse cai mais rapido se o processo vacilar.",
-                        effects: { interesseBiddersIndustrial: 12, interesseBiddersPE: -2, equipa: -4, progressoFase: 22 },
+                        effects: { interesseBiddersIndustrial: 12, interesseBiddersPE: -2, teamMorale: -4, progressoFase: 22 },
                         log: "Estrategicos industriais muito receptivos — interesse elevado apos contacto inicial."
                     },
                     {
                         text: "Reunioes bilaterais com fundos de Private Equity",
                         hint: "PE oferece mais estabilidade de interesse mas com multiplos mais conservadores.",
-                        effects: { interesseBiddersPE: 12, interesseBiddersIndustrial: -2, equipa: -3, fecho: 3, progressoFase: 18 },
+                        effects: { interesseBiddersPE: 12, interesseBiddersIndustrial: -2, teamMorale: -3, fecho: 3, progressoFase: 18 },
                         log: "Fundos PE engajados — analise de retorno e estrutura de deal em curso."
                     },
                     {
@@ -831,13 +841,13 @@
                     {
                         text: "Solicitar e analisar IOIs dos compradores",
                         hint: "Recolhe indicacoes de interesse — cristaliza o valor de mercado em EUR.",
-                        effects: { fecho: 6, multiplo: 0.6, equipa: -4, progressoFase: 25 },
+                        effects: { fecho: 6, multiplo: 0.6, teamMorale: -4, progressoFase: 25 },
                         log: "IOIs recebidos — valoracoes entre EUR 48m e EUR 72m. Tensao competitiva elevada."
                     },
                     {
                         text: "Negociar termos e maximizar valor na shortlist",
                         hint: "Pressiona os melhores compradores para melhorar as propostas em EUR.",
-                        effects: { multiplo: 0.7, fecho: 4, interesseBidders: -3, equipa: -2, progressoFase: 18 },
+                        effects: { multiplo: 0.7, fecho: 4, interesseBidders: -3, teamMorale: -2, progressoFase: 18 },
                         log: "Negociacao intensa — proposta lider subiu e competitividade mantida no processo."
                     },
                     {
@@ -856,19 +866,19 @@
                     {
                         text: "Coordenar respostas criticas ao data room",
                         hint: "Resposta rapida aos pedidos mais importantes dos buyers. Intenso para a equipa.",
-                        effects: { interesseBidders: 8, equipa: -6, progressoFase: 12 },
+                        effects: { interesseBidders: 8, teamMorale: -6, progressoFase: 12 },
                         log: "Respostas criticas entregues — compradores reconhecem a qualidade do data room."
                     },
                     {
                         text: "Gerir PMO diario e antecipar questoes sensiveis",
                         hint: "Coordenacao sistematica que acelera o processo e previne surpresas.",
-                        effects: { interesseBidders: 5, fecho: 4, equipa: -4, progressoFase: 10 },
+                        effects: { interesseBidders: 5, fecho: 4, teamMorale: -4, progressoFase: 10 },
                         log: "PMO eficiente a reduzir atrito no processo de DD — compradores satisfeitos."
                     },
                     {
                         text: "Mitigar riscos identificados e briefing ao cliente",
                         hint: "Controla o impacto de achados negativos e mantem o cliente informado.",
-                        effects: { cliente: 5, interesseBidders: 4, equipa: -2, progressoFase: 5 },
+                        effects: { cliente: 5, interesseBidders: 4, teamMorale: -2, progressoFase: 5 },
                         log: "Riscos mitigados proactivamente — cliente e compradores mais confortaveis."
                     }
                 ]
@@ -887,13 +897,13 @@
                     {
                         text: "Negociar clausulas criticas do SPA com advisors",
                         hint: "Avanca nas condicoes contratuais mais complexas. Resultado directo no valor EUR.",
-                        effects: { fecho: 6, ebitda: 0.2, equipa: -4, progressoFase: 20 },
+                        effects: { fecho: 6, ebitda: 0.2, teamMorale: -4, progressoFase: 20 },
                         log: "Clausulas criticas alinhadas — SPA a ganhar forma com posicoes equilibradas."
                     },
                     {
                         text: "Alinhar earn-out e mecanismos de ajuste de preco",
                         hint: "Define os mecanismos financeiros pos-closing. Complexo mas decisivo para o EUR final.",
-                        effects: { multiplo: 0.4, ebitda: 0.2, fecho: 4, equipa: -3, progressoFase: 15 },
+                        effects: { multiplo: 0.4, ebitda: 0.2, fecho: 4, teamMorale: -3, progressoFase: 15 },
                         log: "Earn-out e mecanismos de preco alinhados — valor EUR preservado para o accionista."
                     },
                     {
@@ -912,19 +922,19 @@
                     {
                         text: "Preparar e rever documentos finais de assinatura",
                         hint: "Producao e verificacao dos documentos legais finais. Essencial para o closing.",
-                        effects: { fecho: 7, equipa: -3, progressoFase: 25 },
+                        effects: { fecho: 7, teamMorale: -3, progressoFase: 25 },
                         log: "Documentos finais preparados e revistos — processo encaminhado para assinatura."
                     },
                     {
                         text: "Resolver pendencias de ultima hora das partes",
                         hint: "Gere as questoes finais que poderiam atrasar ou bloquear a assinatura.",
-                        effects: { fecho: 5, interesseBidders: 4, multiplo: 0.2, equipa: -2, progressoFase: 18 },
+                        effects: { fecho: 5, interesseBidders: 4, multiplo: 0.2, teamMorale: -2, progressoFase: 18 },
                         log: "Pendencias de ultima hora resolvidas — partes alinhadas para a assinatura."
                     },
                     {
                         text: "Coordenar equipa e logistica da assinatura",
                         hint: "Garante que todos os envolvidos estao preparados para o evento.",
-                        effects: { cliente: 5, equipa: 3, fecho: 2, progressoFase: 7 },
+                        effects: { cliente: 5, teamMorale: 3, fecho: 2, progressoFase: 7 },
                         log: "Logistica da assinatura coordenada — equipa e cliente prontos para o grande dia."
                     }
                 ]
@@ -937,13 +947,13 @@
                     {
                         text: "Coordenar waivers bancarios e consentimentos",
                         hint: "Essencial para a transferencia de fundos EUR. Processo critico e sensivel ao tempo.",
-                        effects: { fecho: 8, equipa: -5, progressoFase: 25 },
+                        effects: { fecho: 8, teamMorale: -5, progressoFase: 25 },
                         log: "Waivers bancarios obtidos — transferencia de fundos EUR encaminhada."
                     },
                     {
                         text: "Acompanhar registos notariais e documentacao legal",
                         hint: "Garante que todos os documentos legais estao correctamente registados.",
-                        effects: { fecho: 6, interesseBidders: 3, equipa: -4, progressoFase: 20 },
+                        effects: { fecho: 6, interesseBidders: 3, teamMorale: -4, progressoFase: 20 },
                         log: "Documentacao notarial completa — processo legal a decorrer sem incidentes."
                     },
                     {
@@ -964,7 +974,7 @@
                         var successFx = act.effects;
                         act.effects = {
                             success: { prob: 0.7, effects: successFx },
-                            failure: { prob: 0.3, effects: { equipa: -2, cliente: -1 } }
+                            failure: { prob: 0.3, effects: { teamMorale: -2, cliente: -1 } }
                         };
                     }
                 }
@@ -995,7 +1005,7 @@
             progress:           document.getElementById("progress-fill"),
             badge:              document.getElementById("diff-badge"),
             sCliente:           document.getElementById("s-cliente"),
-            sEquipa:            document.getElementById("s-equipa"),
+            sTeamMorale:            document.getElementById("s-equipa"),
             sEV:                document.getElementById("s-ev"),
             sEbitda:            document.getElementById("s-ebitda"),
             sMultiplo:          document.getElementById("s-multiplo"),
@@ -1006,10 +1016,13 @@
             sPA:                document.getElementById("s-pa"),
             paPips:             document.getElementById("pa-pips"),
             mCliente:           document.getElementById("m-cliente"),
-            mEquipa:            document.getElementById("m-equipa"),
+            mTeamMorale:            document.getElementById("m-equipa"),
             dCliente:           document.getElementById("d-cliente"),
-            dEquipa:            document.getElementById("d-equipa"),
+            dTeamMorale:            document.getElementById("d-equipa"),
             dFecho:             document.getElementById("d-fecho"),
+            sFeePercentage:     document.getElementById("s-fee-percentage"),
+            sExecutionCosts:    document.getElementById("s-execution-costs"),
+            sNetMargin:         document.getElementById("s-net-margin"),
             progressoFaseBar:   document.getElementById("progresso-fase-fill"),
             progressoFaseLabel: document.getElementById("fase-progresso-label")
         };
@@ -1018,9 +1031,9 @@
         function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
         // Calculate Action Points from team strength
-        function calcPA(equipa) {
-            if (equipa > 60) return 3;
-            if (equipa >= 30) return 2;
+        function calcPA(teamMorale) {
+            if (teamMorale > 60) return 3;
+            if (teamMorale >= 30) return 2;
             return 1;
         }
 
@@ -1029,6 +1042,17 @@
             var ebitda   = Math.max(1.0, state.ebitda);
             var multiplo = Math.max(4.0, state.multiplo);
             return parseFloat((ebitda * multiplo).toFixed(1));
+        }
+
+        function calculateAdvisorMargin() {
+            var grossFee = calcularEV() * (state.feePercentage || 0);
+            var totalCosts = (state.teamHeadcount || 0) * (state.weeklyCostPerHead || 0) * (state.semanaAtual || 0);
+            var netMargin = grossFee - totalCosts;
+            return {
+                grossFee: parseFloat(grossFee.toFixed(3)),
+                totalCosts: parseFloat(totalCosts.toFixed(3)),
+                netMargin: parseFloat(netMargin.toFixed(3))
+            };
         }
 
         // ---- BIDDER SYSTEM ----
@@ -1100,16 +1124,16 @@
                 text: "Prepare CEO for Q&A with " + bidder.nome,
                 hint: "Apresentacao focada para elevar interesse e multiplo proposto deste bidder.",
                 getEffects: function() {
-                    var teamPenalty = Math.max(0, (55 - state.equipa) / 100);
+                    var teamPenalty = Math.max(0, (55 - state.teamMorale) / 100);
                     var successProb = clamp(0.75 - teamPenalty, 0.35, 0.88);
                     return {
                         success: {
                             prob: successProb,
-                            effects: { fecho: 4, equipa: -3, progressoFase: 16 }
+                            effects: { fecho: 4, teamMorale: -3, progressoFase: 16 }
                         },
                         failure: {
                             prob: 1 - successProb,
-                            effects: { equipa: -4, cliente: -1, progressoFase: 8 }
+                            effects: { teamMorale: -4, cliente: -1, progressoFase: 8 }
                         }
                     };
                 },
@@ -1261,12 +1285,18 @@
 
         function updateStats(deltas) {
             R.sCliente.textContent  = state.cliente;
-            R.sEquipa.textContent   = state.equipa;
+            R.sTeamMorale.textContent   = state.teamMorale;
             // Financial valuation: EBITDA x Multiple = EV (all EUR)
             R.sEbitda.textContent   = state.ebitda.toFixed(1);
             R.sMultiplo.textContent = state.multiplo.toFixed(1);
             R.sEV.textContent       = "EUR " + calcularEV().toFixed(1) + "m";
             R.sFecho.textContent    = state.fecho + "%";
+
+            var pnl = calculateAdvisorMargin();
+            R.sFeePercentage.textContent = (state.feePercentage * 100).toFixed(2) + "%";
+            R.sExecutionCosts.textContent = pnl.totalCosts.toFixed(3) + " M€";
+            R.sNetMargin.textContent = pnl.netMargin.toFixed(3) + " M€";
+            R.sNetMargin.style.color = pnl.netMargin >= 0 ? "var(--good)" : "var(--bad)";
 
             // Turn-based displays
             R.sSemana.textContent    = state.semanaAtual;
@@ -1290,11 +1320,11 @@
 
             // Meters
             R.mCliente.style.width = state.cliente + "%";
-            R.mEquipa.style.width  = state.equipa  + "%";
+            R.mTeamMorale.style.width  = state.teamMorale  + "%";
 
             if (deltas) {
                 showDelta(R.dCliente, deltas.cliente  || 0);
-                showDelta(R.dEquipa,  deltas.equipa   || 0);
+                showDelta(R.dTeamMorale,  deltas.teamMorale   || 0);
                 showDelta(R.dFecho,   deltas.fecho    || 0);
                 // Show EV delta when ebitda or multiplo changed
                 var evDelta = parseFloat(((deltas.ebitda || 0) * state.multiplo + (deltas.multiplo || 0) * state.ebitda).toFixed(1));
@@ -1305,7 +1335,7 @@
         }
 
         // Financial keys are never integer-scaled — they use decimal precision
-        var FINANCIAL_KEYS = { ebitda: true, multiplo: true, progressoFase: true };
+        var FINANCIAL_KEYS = { ebitda: true, multiplo: true, progressoFase: true, feePercentage: true, weeklyCostPerHead: true };
 
         function resolveActionOutcome(effectSpec) {
             if (!effectSpec || !effectSpec.success || !effectSpec.failure) {
@@ -1338,7 +1368,7 @@
                 }
             }
             var before = {
-                cliente: state.cliente, equipa: state.equipa,
+                cliente: state.cliente, teamMorale: state.teamMorale,
                 avgInteresse: avgInteresse(),
                 ebitda: state.ebitda, multiplo: state.multiplo,
                 fecho: state.fecho, progressoFase: state.progressoFase
@@ -1353,7 +1383,7 @@
                 }
             }
             state.cliente       = clamp(state.cliente, 0, 100);
-            state.equipa        = clamp(state.equipa, 0, 100);
+            state.teamMorale        = clamp(state.teamMorale, 0, 100);
             state.ebitda        = clamp(parseFloat(state.ebitda.toFixed(2)), 1.0, 20.0);
             state.multiplo      = clamp(parseFloat(state.multiplo.toFixed(2)), 4.0, 15.0);
             state.fecho         = clamp(state.fecho, 0, 100);
@@ -1361,7 +1391,7 @@
             return {
                 deltas: {
                     cliente:      state.cliente      - before.cliente,
-                    equipa:       state.equipa       - before.equipa,
+                    teamMorale:       state.teamMorale       - before.teamMorale,
                     avgInteresse: avgInteresse()     - before.avgInteresse,
                     ebitda:       parseFloat((state.ebitda   - before.ebitda).toFixed(2)),
                     multiplo:     parseFloat((state.multiplo - before.multiplo).toFixed(2)),
@@ -1401,7 +1431,7 @@
             var drop = parseFloat(ev.ebitdaDrop.toFixed(2));
             var apCost = 1;
             var canDefend = state.pontosAcao >= apCost;
-            var defendSuccessProb = clamp(0.25 + (state.equipa / 100) * 0.6, 0.25, 0.9);
+            var defendSuccessProb = clamp(0.25 + (state.teamMorale / 100) * 0.6, 0.25, 0.9);
             var defended = false;
 
             if (canDefend) {
@@ -1418,7 +1448,7 @@
                     '<p style="margin:0 0 6px;font-size:0.86rem;">' + ev.desc + '</p>' +
                     '<div class="event-effects"><span class="eff-tag eff-pos">EBITDA protegido</span><span class="eff-tag eff-neg">PA -1</span></div>' +
                     '</div>';
-                updateStats({ ebitda: 0, fecho: 0, cliente: 0, equipa: 0 });
+                updateStats({ ebitda: 0, fecho: 0, cliente: 0, teamMorale: 0 });
                 return;
             }
 
@@ -1439,7 +1469,7 @@
                 (canDefend ? '<span class="eff-tag eff-neg">PA -1</span>' : '<span class="eff-tag eff-neg">Sem defesa</span>') +
                 '</div>' +
                 '</div>';
-            updateStats({ ebitda: -actualDrop, fecho: 0, cliente: 0, equipa: 0 });
+            updateStats({ ebitda: -actualDrop, fecho: 0, cliente: 0, teamMorale: 0 });
             checkLose();
         }
 
@@ -1452,7 +1482,7 @@
 
         function checkLose() {
             if (state.cliente < 20) { endGame("O cliente perdeu a confianca na tua lideranca e terminou o mandato.", "bad"); return true; }
-            if (state.equipa < 20)  { endGame("A equipa entrou em burnout e nao conseguiu sustentar o processo.", "bad"); return true; }
+            if (state.teamMorale < 20)  { endGame("A equipa entrou em burnout e nao conseguiu sustentar o processo.", "bad"); return true; }
             if (state.bidderExclusivo) {
                 if (!state.bidders || state.bidders.length === 0 || state.bidders[0].interesse <= 0) {
                     endGame("Exclusividade colapsou: o comprador exclusivo perdeu totalmente o interesse e o processo falhou de imediato.", "bad");
@@ -1487,7 +1517,7 @@
             var dealVal  = Math.max(0, ev - 20) / 100 * 350;
             var closeVal = state.fecho / 100 * 350;
             var avg      = (state.bidders && state.bidders.length > 0) ? avgInteresse() : 50;
-            var relVal   = (state.cliente + state.equipa + avg) / 3 / 100 * 200;
+            var relVal   = (state.cliente + state.teamMorale + avg) / 3 / 100 * 200;
             // Speed bonus: weeks saved vs total available
             var speedVal = Math.max(0, (state.semanasTotais - state.semanaAtual) / state.semanasTotais) * 100;
             return Math.min(1000, Math.max(0, Math.round((dealVal + closeVal + relVal + speedVal) * cfg.scoreMultiplier)));
@@ -1522,7 +1552,7 @@
                 { l: "EV (EUR m)",         v: "EUR " + ev.toFixed(1) + "m",              c: ev >= 60 ? "var(--good)" : "var(--warn)" },
                 { l: "Prob. Closing",       v: state.fecho + "%",           c: state.fecho >= 70 ? "var(--good)" : "var(--warn)" },
                 { l: "Cliente",             v: state.cliente,               c: state.cliente >= 50 ? "var(--good)" : "var(--bad)" },
-                { l: "Equipa",              v: state.equipa,                c: state.equipa  >= 50 ? "var(--good)" : "var(--bad)" },
+                { l: "Equipa",              v: state.teamMorale,                c: state.teamMorale  >= 50 ? "var(--good)" : "var(--bad)" },
                 { l: "Interesse Compradores", v: state.bidders.length > 0 ? avgInteresse() + "%" : "N/A", c: state.bidders.length > 0 && avgInteresse() >= 50 ? "var(--good)" : "var(--bad)" },
                 { l: "Semanas restantes",   v: Math.max(0, state.semanasTotais - state.semanaAtual), c: state.semanaAtual <= Math.round(state.semanasTotais * 0.8) ? "var(--good)" : "var(--muted)" }
             ];
@@ -1578,7 +1608,7 @@
             var cfg = DIFF[diff];
             if (Math.random() >= cfg.eventChance) return;
             var ev = EVENTS[Math.floor(Math.random() * EVENTS.length)];
-            var labelNames = { cliente: "Cliente", equipa: "Equipa", interesseBidders: "Compradores", interesseBiddersIndustrial: "Industriais", interesseBiddersPE: "Private Equity", ebitda: "EBITDA", multiplo: "Multiplo", fecho: "Fecho" };
+            var labelNames = { cliente: "Cliente", teamMorale: "Equipa", interesseBidders: "Compradores", interesseBiddersIndustrial: "Industriais", interesseBiddersPE: "Private Equity", ebitda: "EBITDA", multiplo: "Multiplo", fecho: "Fecho" };
             var tagsHtml = "";
             var ekeys = Object.keys(ev.effects);
             for (var i = 0; i < ekeys.length; i++) {
@@ -1704,10 +1734,10 @@
             }
 
             // Recalculate PA from current team strength
-            state.pontosAcao = calcPA(state.equipa);
+            state.pontosAcao = calcPA(state.teamMorale);
 
             // Weak team erodes bidder confidence — Industrials more affected (higher dropRate)
-            if (state.bidders && state.bidders.length > 0 && state.equipa < 40) {
+            if (state.bidders && state.bidders.length > 0 && state.teamMorale < 40) {
                 for (var i = 0; i < state.bidders.length; i++) {
                     var decay = Math.round(2 * state.bidders[i].dropRate);
                     state.bidders[i].interesse = clamp(state.bidders[i].interesse - decay, 0, 100);
@@ -1793,22 +1823,25 @@
         // ---- START / RESTART ----
         function startGame() {
             var cfg        = DIFF[diff];
-            var startEquipa = cfg.start.equipa;
+            var startTeamMorale = cfg.start.teamMorale;
             state = {
                 phaseIndex:    0,
                 ended:         false,
                 cliente:       cfg.start.cliente,
-                equipa:        startEquipa,
+                teamMorale:        startTeamMorale,
                 bidders:       [],
                 bidderExclusivo: null,
                 initialExpectedValue: null,
                 signedValue: null,
+                feePercentage: 0,
+                teamHeadcount: 3,
+                weeklyCostPerHead: 0.005,
                 ebitda:        cfg.start.ebitda,
                 multiplo:      cfg.start.multiplo,
                 fecho:         cfg.start.fecho,
                 semanaAtual:   1,
                 semanasTotais: 34,
-                pontosAcao:    calcPA(startEquipa),
+                pontosAcao:    calcPA(startTeamMorale),
                 progressoFase: 0,
                 semanasNaFase: 0,
                 marketNews:    []
