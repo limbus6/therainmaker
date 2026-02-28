@@ -195,6 +195,28 @@
         .warn { color: var(--warn); }
         .bad  { color: var(--bad);  }
 
+        .market-news {
+            margin-top: 12px;
+            border: 1px solid rgba(255,255,255,0.09);
+            border-radius: 12px;
+            padding: 10px;
+            background: rgba(6, 10, 24, 0.7);
+        }
+        .market-news h3 {
+            margin: 0 0 8px;
+            font-size: 0.84rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--accent);
+        }
+        .market-news-entry {
+            font-size: 0.82rem;
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .market-news-entry:last-child { border-bottom: none; }
+        .market-news-empty { color: var(--muted); font-size: 0.8rem; }
+
         /* ---- Footer actions ---- */
         .footer-actions {
             display: flex;
@@ -534,6 +556,7 @@
             <p id="phase-desc"></p>
             <div id="event-area"></div>
             <div class="choices" id="choices"></div>
+            <div class="market-news" id="market-news" aria-live="polite"></div>
             <div class="log" id="log" aria-live="polite"></div>
         </section>
     </main>
@@ -619,6 +642,33 @@
                 desc: "Um competitor do target anuncia venda, capturando a atencao dos mesmos compradores estrategicos.",
                 effects: { cliente: -2, equipa: 0, interesseBidders: -8, multiplo: -0.3, fecho: -5 },
                 good: false
+            }
+        ];
+
+        var eventosMacro = [
+            {
+                title: "ECB raises rates",
+                desc: "Custo de capital sobe no mercado europeu e os compradores revem disciplina de valuation.",
+                effects: { multiplo: -0.5, fecho: -4, interesseBidders: -6 },
+                tone: "bad"
+            },
+            {
+                title: "Supply chain crisis",
+                desc: "Nova ruptura logistica afecta visibilidade operacional e pressiona expectativas de margem.",
+                effects: { ebitda: -0.4, fecho: -3, cliente: -2 },
+                tone: "bad"
+            },
+            {
+                title: "Euro weakens vs USD",
+                desc: "Activos europeus ficam relativamente mais atractivos para compradores estrategicos internacionais.",
+                effects: { multiplo: 0.3, interesseBiddersIndustrial: 5, fecho: 2 },
+                tone: "good"
+            },
+            {
+                title: "Energy prices normalize",
+                desc: "Custos de producao aliviam e previsibilidade de cash-flow melhora para investidores.",
+                effects: { ebitda: 0.3, multiplo: 0.2, fecho: 2 },
+                tone: "good"
             }
         ];
 
@@ -854,6 +904,23 @@
             }
         ];
 
+        function injectActionRNG() {
+            for (var p = 0; p < PHASES.length; p++) {
+                for (var a = 0; a < PHASES[p].actions.length; a++) {
+                    var act = PHASES[p].actions[a];
+                    if (act.effects && !act.effects.success && !act.effects.failure) {
+                        var successFx = act.effects;
+                        act.effects = {
+                            success: { prob: 0.7, effects: successFx },
+                            failure: { prob: 0.3, effects: { equipa: -2, cliente: -1 } }
+                        };
+                    }
+                }
+            }
+        }
+
+        injectActionRNG();
+
         // ---- STATE ----
         var diff = "normal";
         var state = {};
@@ -872,6 +939,7 @@
             log:                document.getElementById("log"),
             restart:            document.getElementById("btn-restart"),
             endWeekBtn:         document.getElementById("btn-end-week"),
+            marketNews:         document.getElementById("market-news"),
             progress:           document.getElementById("progress-fill"),
             badge:              document.getElementById("diff-badge"),
             sCliente:           document.getElementById("s-cliente"),
@@ -1066,7 +1134,24 @@
         // Financial keys are never integer-scaled — they use decimal precision
         var FINANCIAL_KEYS = { ebitda: true, multiplo: true, progressoFase: true };
 
-        function applyEffects(rawFx, skipScale) {
+        function resolveActionOutcome(effectSpec) {
+            if (!effectSpec || !effectSpec.success || !effectSpec.failure) {
+                return { effects: effectSpec || {}, outcome: null, prob: 1, roll: null };
+            }
+            var successProb = clamp(effectSpec.success.prob || 0, 0, 1);
+            var roll = Math.random();
+            var isSuccess = roll < successProb;
+            return {
+                effects: isSuccess ? (effectSpec.success.effects || {}) : (effectSpec.failure.effects || {}),
+                outcome: isSuccess ? "success" : "failure",
+                prob: successProb,
+                roll: roll
+            };
+        }
+
+        function applyEffects(effectSpec, skipScale) {
+            var resolved = resolveActionOutcome(effectSpec);
+            var rawFx = resolved.effects;
             var cfg = DIFF[diff];
             var fx = {};
             var keys = Object.keys(rawFx);
@@ -1101,14 +1186,32 @@
             state.fecho         = clamp(state.fecho, 0, 100);
             state.progressoFase = clamp(state.progressoFase, 0, 100);
             return {
-                cliente:      state.cliente      - before.cliente,
-                equipa:       state.equipa       - before.equipa,
-                avgInteresse: avgInteresse()     - before.avgInteresse,
-                ebitda:       parseFloat((state.ebitda   - before.ebitda).toFixed(2)),
-                multiplo:     parseFloat((state.multiplo - before.multiplo).toFixed(2)),
-                fecho:        state.fecho        - before.fecho,
-                progressoFase: state.progressoFase - before.progressoFase
+                deltas: {
+                    cliente:      state.cliente      - before.cliente,
+                    equipa:       state.equipa       - before.equipa,
+                    avgInteresse: avgInteresse()     - before.avgInteresse,
+                    ebitda:       parseFloat((state.ebitda   - before.ebitda).toFixed(2)),
+                    multiplo:     parseFloat((state.multiplo - before.multiplo).toFixed(2)),
+                    fecho:        state.fecho        - before.fecho,
+                    progressoFase: state.progressoFase - before.progressoFase
+                },
+                outcome: resolved.outcome,
+                prob: resolved.prob,
+                roll: resolved.roll
             };
+        }
+
+        function renderMarketNews() {
+            if (!state.marketNews || state.marketNews.length === 0) {
+                R.marketNews.innerHTML = '<h3>Market News</h3><div class="market-news-empty">Sem novidades macroeconomicas esta semana.</div>';
+                return;
+            }
+            var html = '<h3>Market News</h3>';
+            for (var i = 0; i < state.marketNews.length; i++) {
+                var n = state.marketNews[i];
+                html += '<div class="market-news-entry ' + n.tone + '">[S' + n.week + '] ' + n.title + ' — ' + n.desc + '</div>';
+            }
+            R.marketNews.innerHTML = html;
         }
 
         // ---- GAME OVER ----
@@ -1238,10 +1341,22 @@
                 '<p style="margin:0 0 6px;font-size:0.86rem;">' + ev.desc + '</p>' +
                 '<div class="event-effects">' + tagsHtml + '</div>' +
                 '</div>';
-            var deltas = applyEffects(ev.effects, false);
-            updateStats(deltas);
+            var evResult = applyEffects(ev.effects, false);
+            updateStats(evResult.deltas);
             gameHistory.push({ type: "event", label: ev.title, text: ev.desc });
             addLog("Evento [S" + state.semanaAtual + "]: " + ev.title + " \u2014 " + ev.desc, ev.good ? "good" : "bad");
+            checkLose();
+        }
+
+        function maybeMacroEvent() {
+            if (state.ended || Math.random() >= 0.25) return;
+            var ev = eventosMacro[Math.floor(Math.random() * eventosMacro.length)];
+            var evResult = applyEffects(ev.effects, true);
+            state.marketNews.unshift({ week: state.semanaAtual, title: ev.title, desc: ev.desc, tone: ev.tone || "warn" });
+            if (state.marketNews.length > 6) state.marketNews.length = 6;
+            renderMarketNews();
+            updateStats(evResult.deltas);
+            addLog("Macro [S" + state.semanaAtual + "]: " + ev.title + " \u2014 " + ev.desc, ev.tone || "warn");
             checkLose();
         }
 
@@ -1250,8 +1365,19 @@
             if (state.ended || state.pontosAcao <= 0) return;
 
             state.pontosAcao--;
-            var deltas = applyEffects(act.effects, false);
+            var actionResult = applyEffects(act.effects, false);
+            var deltas = actionResult.deltas;
             gameHistory.push({ type: "choice", phase: PHASES[state.phaseIndex].id, text: act.text });
+            if (actionResult.outcome) {
+                var outcomeTone = actionResult.outcome === "success" ? "good" : "bad";
+                addLog(
+                    "[S" + state.semanaAtual + "] RNG acao: " +
+                    Math.round(actionResult.prob * 100) + "% sucesso, roll " +
+                    Math.round(actionResult.roll * 100) + "% \u2192 " +
+                    (actionResult.outcome === "success" ? "SUCESSO" : "FALHA"),
+                    outcomeTone
+                );
+            }
             addLog("[S" + state.semanaAtual + "] " + act.log);
             updateStats(deltas);
 
@@ -1329,6 +1455,9 @@
 
             addLog("Semana " + state.semanaAtual + " iniciada. " + state.pontosAcao + " pontos de acao disponiveis.", "warn");
 
+            maybeMacroEvent();
+            if (state.ended) return;
+
             maybeEvent();
             if (!state.ended) {
                 updateStats();
@@ -1359,14 +1488,16 @@
             for (var i = 0; i < ph.actions.length; i++) {
                 (function(act, idx) {
                     var btn = document.createElement("button");
-                    var progressLabel = act.effects.progressoFase
-                        ? " \u00B7 +" + act.effects.progressoFase + "% fase"
+                    var successProb = act.effects.success ? act.effects.success.prob : 1;
+                    var progressFx = act.effects.success ? act.effects.success.effects : act.effects;
+                    var progressLabel = progressFx.progressoFase
+                        ? " \u00B7 +" + progressFx.progressoFase + "% fase"
                         : "";
                     btn.innerHTML =
                         "<strong>" + (idx + 1) + ". " + act.text + "</strong>" +
                         '<span class="choice-hint">' + act.hint + '</span>' +
                         '<span class="choice-hint" style="color:var(--accent);font-size:0.72rem;margin-top:3px;">' +
-                        "\u25B8 1 Ponto de Acao" + progressLabel + "</span>";
+                        "\u25B8 1 Ponto de Acao" + progressLabel + " \u00B7 " + Math.round(successProb * 100) + "% sucesso</span>";
                     btn.disabled = noPA;
                     btn.addEventListener("click", function() { doAction(act); });
                     R.choices.appendChild(btn);
@@ -1408,7 +1539,8 @@
                 semanasTotais: 34,
                 pontosAcao:    calcPA(startEquipa),
                 progressoFase: 0,
-                semanasNaFase: 0
+                semanasNaFase: 0,
+                marketNews:    []
             };
             gameHistory = [];
             R.log.innerHTML       = "";
@@ -1419,6 +1551,7 @@
             R.progress.style.width              = "0%";
             R.progressoFaseBar.style.width      = "0%";
             R.progressoFaseLabel.textContent    = "0%";
+            renderMarketNews();
             addLog("Mandato iniciado em modo " + cfg.label + ". " + state.pontosAcao + " pontos de acao disponiveis na Semana 1.", "warn");
             renderPhase();
         }
