@@ -186,6 +186,27 @@
             margin: 0;
         }
 
+        .review-board {
+            margin: 12px 0;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,123,145,0.45);
+            background: rgba(53, 12, 27, 0.55);
+        }
+
+        .review-board h3 {
+            margin: 0 0 8px;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--bad);
+        }
+
+        .review-board .choices {
+            margin: 8px 0 0;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
         button {
             border: 1px solid rgba(255,255,255,0.14);
             background: rgba(21, 31, 71, 0.95);
@@ -625,6 +646,17 @@
             <h2 id="phase-title"></h2>
             <p id="phase-desc"></p>
             <div id="event-area"></div>
+            <div class="review-board" id="review-board" style="display:none;">
+                <h3>Partner Review Board</h3>
+                <p id="review-board-status" style="margin-bottom:6px;"></p>
+                <div id="review-board-meta" class="small"></div>
+                <div class="choices">
+                    <button id="btn-review-approve"><strong>Aprovar</strong><span class="choice-hint">Sem custo imediato. Se fraco, vira bomba relogio na DD.</span></button>
+                    <button id="btn-review-correct"><strong>Corrigir</strong><span class="choice-hint">+15 qualidade · 0 semanas · Team Morale -5</span></button>
+                    <button id="btn-review-improve"><strong>Melhorar</strong><span class="choice-hint">+25 qualidade · +1 semana · Team Morale -10</span></button>
+                    <button id="btn-review-redo"><strong>Refazer</strong><span class="choice-hint">Reroll com bonus · +2 semanas · Team Morale -25 · Cliente -10</span></button>
+                </div>
+            </div>
             <div class="global-actions">
                 <h3>Global Actions</h3>
                 <div class="choices" id="global-actions"></div>
@@ -1112,7 +1144,14 @@
             sNetMargin:         document.getElementById("s-net-margin"),
             progressoFaseBar:   document.getElementById("progresso-fase-fill"),
             progressoFaseLabel: document.getElementById("fase-progresso-label"),
-            vddBadge:           document.getElementById("vdd-badge")
+            vddBadge:           document.getElementById("vdd-badge"),
+            reviewBoard:        document.getElementById("review-board"),
+            reviewBoardStatus:  document.getElementById("review-board-status"),
+            reviewBoardMeta:    document.getElementById("review-board-meta"),
+            btnReviewApprove:   document.getElementById("btn-review-approve"),
+            btnReviewCorrect:   document.getElementById("btn-review-correct"),
+            btnReviewImprove:   document.getElementById("btn-review-improve"),
+            btnReviewRedo:      document.getElementById("btn-review-redo")
         };
 
         // ---- HELPERS ----
@@ -1328,6 +1367,126 @@
             if (currentPhaseId === "TEASER / IM" && state.hasVDD) return 150;
             if (currentPhaseId === "DUE DILIGENCE" && state.hasVDD) return 50;
             return 100;
+        }
+
+        function getDeliverableNameForPhase(phaseId) {
+            var names = {
+                "PITCH": "Equity Story Draft",
+                "TEASER / IM": "Draft Teaser",
+                "MGMT PRES": "Management Presentation",
+                "BUYERS": "Buyer Long List",
+                "OFFERS": "Indicative Offers Matrix",
+                "DUE DILIGENCE": "Financial Model",
+                "BINDING OFFERS": "Binding Offer Comparison",
+                "SPA": "SPA Mark-up",
+                "SIGNING": "Signing Checklist",
+                "CLOSING": "Closing Memorandum"
+            };
+            return names[phaseId] || (phaseId + " Pack");
+        }
+
+        function maybeGenerateDeliverable(prevProgress, nextProgress) {
+            if (state.currentDeliverable || state.phaseIndex >= PHASES.length) return;
+            if (prevProgress < 50 && nextProgress >= 50) {
+                var phaseId = PHASES[state.phaseIndex].id;
+                if (state.generatedDeliverables[phaseId]) return;
+                var baseRoll = 35 + Math.floor(Math.random() * 71);
+                var moralePenalty = Math.max(0, 55 - state.teamMorale) * 1.2 + Math.max(0, 25 - state.teamMorale) * 1.4;
+                var quality = clamp(Math.round(baseRoll - moralePenalty), 0, 120);
+                state.currentDeliverable = {
+                    name: getDeliverableNameForPhase(phaseId),
+                    quality: quality,
+                    iterations: 0
+                };
+                state.generatedDeliverables[phaseId] = true;
+                addLog("Partner Review Board activado: \"" + state.currentDeliverable.name + "\" entrou em revisao forense.", "warn");
+            }
+        }
+
+        function getReviewHint(quality) {
+            if (quality < 40) return "The formatting is sloppy and numbers don't tie.";
+            if (quality < 55) return "The narrative feels rushed and control checks are weak.";
+            if (quality < 70) return "The structure works, but assumptions still look fragile.";
+            return "The assumptions look robust.";
+        }
+
+        function applyReviewWeekCost(weeks) {
+            if (!weeks) return true;
+            state.semanaAtual += weeks;
+            state.semanasNaFase += weeks;
+            state.extraExecutionCosts += (state.teamHeadcount || 0) * (state.weeklyCostPerHead || 0) * weeks;
+            addLog("Review Board consumiu " + weeks + " semana(s): execution costs subiram e a margem em EUR foi comprimida.", "bad");
+            if (state.semanaAtual > state.semanasTotais) {
+                endGame("O prazo de " + state.semanasTotais + " semanas do mandato expirou sem conclusao do processo.", "bad");
+                return false;
+            }
+            return true;
+        }
+
+        function processReviewBoard(action) {
+            if (state.ended || !state.currentDeliverable) return;
+            var doc = state.currentDeliverable;
+            var moraleMultiplier = doc.iterations >= 2 ? 2 : 1;
+            if (action === "approve") {
+                if (doc.quality < 50) {
+                    state.hiddenFlaws.push({
+                        phase: PHASES[state.phaseIndex] ? PHASES[state.phaseIndex].id : "UNKNOWN",
+                        document: doc.name,
+                        quality: doc.quality
+                    });
+                    addLog("Aprovaste um documento fraco. Falha critica escondida foi semeada para a Confirmatory DD.", "bad");
+                } else {
+                    addLog("Documento aprovado no Partner Review Board sem findings imediatos.", "good");
+                }
+                state.currentDeliverable = null;
+                renderPhase();
+                return;
+            }
+
+            if (action === "correct") {
+                state.teamMorale = clamp(state.teamMorale - (5 * moraleMultiplier), 0, 100);
+                doc.quality = clamp(doc.quality + 15, 0, 120);
+                doc.iterations += 1;
+                addLog("Board: correcao aplicada (+15 qualidade). A equipa sente desgaste adicional.", "warn");
+            } else if (action === "improve") {
+                if (!applyReviewWeekCost(1)) return;
+                state.teamMorale = clamp(state.teamMorale - (10 * moraleMultiplier), 0, 100);
+                doc.quality = clamp(doc.quality + 25, 0, 120);
+                doc.iterations += 1;
+                addLog("Board: melhoria pesada executada (+25 qualidade).", "warn");
+            } else if (action === "redo") {
+                if (!applyReviewWeekCost(2)) return;
+                state.teamMorale = clamp(state.teamMorale - (25 * moraleMultiplier), 0, 100);
+                state.cliente = clamp(state.cliente - 10, 0, 100);
+                doc.quality = clamp(45 + Math.floor(Math.random() * 56) + 15, 0, 120);
+                doc.iterations += 1;
+                addLog("Board: documento totalmente refeito. Queimaste tempo, margem e confianca do cliente.", "bad");
+            }
+
+            updateStats({ cliente: 0, teamMorale: 0, fecho: 0, ebitda: 0, multiplo: 0 });
+            if (checkLose()) return;
+            renderPhase();
+        }
+
+        function runFatalDueDiligenceMassacre() {
+            if (state.ddMassacreResolved) return;
+            state.ddMassacreResolved = true;
+            if (!state.hiddenFlaws || state.hiddenFlaws.length === 0) return;
+
+            for (var i = 0; i < state.hiddenFlaws.length; i++) {
+                var flaw = state.hiddenFlaws[i];
+                var beforeEbitda = state.ebitda;
+                state.ebitda = clamp(parseFloat((state.ebitda - 1.5).toFixed(2)), 1.0, 20.0);
+                var drop = parseFloat((beforeEbitda - state.ebitda).toFixed(2));
+                state.cliente = clamp(state.cliente - 25, 0, 100);
+                addLog("Fatal Red Flag (" + flaw.document + "): Auditors shredded your initial financial model. EBITDA adjusted downwards.", "bad");
+                gameHistory.push({ type: "red_flag", label: "Fatal Red Flag", text: flaw.document + " exposto em Confirmatory DD. EBITDA -" + drop.toFixed(2) + "M€." });
+            }
+
+            updateStats({ cliente: 0, teamMorale: 0, fecho: 0, ebitda: 0, multiplo: 0 });
+            if (calcularEV() < state.clientExpectationEV || state.cliente < 20) {
+                endGame("The client fired you for gross negligence and value destruction.", "bad");
+            }
         }
 
         function getGlobalActions() {
@@ -1670,6 +1829,7 @@
         }
 
         function checkLose() {
+            if (state.teamMorale < 15)  { endGame("Your team suffered severe burnout and resigned en masse.", "bad"); return true; }
             if (state.cliente < 20) { endGame("O cliente perdeu a confianca na tua lideranca e terminou o mandato.", "bad"); return true; }
             if (state.teamMorale < 20)  { endGame("A equipa entrou em burnout e nao conseguiu sustentar o processo.", "bad"); return true; }
             if (state.bidderExclusivo) {
@@ -1837,6 +1997,7 @@
             if (state.ended || state.pontosAcao <= 0) return;
 
             state.pontosAcao--;
+            var previousProgress = state.progressoFase;
             var effectSpec = typeof act.getEffects === "function" ? act.getEffects() : act.effects;
             var actionResult = applyEffects(effectSpec, false);
             var deltas = actionResult.deltas;
@@ -1851,6 +2012,10 @@
             } else if (act.type === "preemptive_exclusivity") {
                 applyPreemptiveExclusivity(actionResult.outcome);
                 if (actionResult.outcome === "success") {
+                    if (PHASES[state.phaseIndex] && PHASES[state.phaseIndex].id === "DUE DILIGENCE") {
+                        runFatalDueDiligenceMassacre();
+                        if (state.ended) return;
+                    }
                     updateStats(deltas);
                     renderPhase();
                     return;
@@ -1879,8 +2044,10 @@
 
             if (checkLose()) return;
 
+            maybeGenerateDeliverable(previousProgress, state.progressoFase);
+
             // Phase completes when progressoFase reaches target for the current phase
-            if (state.progressoFase >= getPhaseProgressTarget()) {
+            if (!state.currentDeliverable && state.progressoFase >= getPhaseProgressTarget()) {
                 advancePhase();
                 return;
             }
@@ -1915,6 +2082,11 @@
             if ((state.phaseIndex === 2 || state.phaseIndex === 3) && state.bidders.length === 0) {
                 state.bidders = gerarBidders();
                 addLog(state.bidders.length + " compradores identificados e qualificados para o processo.", "good");
+            }
+
+            if (PHASES[state.phaseIndex] && PHASES[state.phaseIndex].id === "DUE DILIGENCE") {
+                runFatalDueDiligenceMassacre();
+                if (state.ended) return;
             }
 
             maybeEvent();
@@ -1997,6 +2169,16 @@
             // eventArea is NOT cleared here — event notifications persist until next endWeek
 
             var noPA = (state.pontosAcao <= 0);
+            var boardLocked = !!state.currentDeliverable;
+
+            if (boardLocked) {
+                var hintText = getReviewHint(state.currentDeliverable.quality);
+                R.reviewBoard.style.display = "block";
+                R.reviewBoardStatus.textContent = "Deliverable: " + state.currentDeliverable.name + " — \"" + hintText + "\"";
+                R.reviewBoardMeta.textContent = "Quality: " + state.currentDeliverable.quality + "/120 · Iterations: " + state.currentDeliverable.iterations + " · Hidden flaws: " + state.hiddenFlaws.length;
+            } else {
+                R.reviewBoard.style.display = "none";
+            }
 
             for (var i = 0; i < phaseActions.length; i++) {
                 (function(act, idx) {
@@ -2012,7 +2194,7 @@
                         '<span class="choice-hint">' + act.hint + '</span>' +
                         '<span class="choice-hint" style="color:var(--accent);font-size:0.72rem;margin-top:3px;">' +
                         "\u25B8 1 Ponto de Acao" + progressLabel + " \u00B7 " + Math.round(successProb * 100) + "% sucesso</span>";
-                    btn.disabled = noPA;
+                    btn.disabled = noPA || boardLocked;
                     btn.addEventListener("click", function() { doAction(act); });
                     R.choices.appendChild(btn);
                 })(phaseActions[i], i);
@@ -2036,7 +2218,7 @@
                         '<span class="choice-hint">' + act.hint + '</span>' +
                         '<span class="choice-hint" style="color:var(--accent);font-size:0.72rem;margin-top:3px;">' +
                         "▸ " + act.apCost + " Ponto de Acao" + (act.weekCost ? " · " + act.weekCost + " semana" : "") + "</span>";
-                    btn.disabled = noPA;
+                    btn.disabled = noPA || boardLocked;
                     btn.addEventListener("click", function() { doGlobalAction(act.id); });
                     R.globalChoices.appendChild(btn);
                 })(globalActions[g]);
@@ -2079,6 +2261,11 @@
                 pontosAcao:    calcPA(startTeamMorale),
                 progressoFase: 0,
                 semanasNaFase: 0,
+                currentDeliverable: null,
+                hiddenFlaws: [],
+                generatedDeliverables: {},
+                ddMassacreResolved: false,
+                clientExpectationEV: parseFloat(((cfg.start.ebitda * cfg.start.multiplo) + 4).toFixed(1)),
                 marketNews:    []
             };
             gameHistory = [];
@@ -2109,6 +2296,10 @@
         document.getElementById("diff-facil").addEventListener("click",   function() { selectDiff("facil"); });
         document.getElementById("diff-normal").addEventListener("click",  function() { selectDiff("normal"); });
         document.getElementById("diff-dificil").addEventListener("click", function() { selectDiff("dificil"); });
+        R.btnReviewApprove.addEventListener("click", function() { processReviewBoard("approve"); });
+        R.btnReviewCorrect.addEventListener("click", function() { processReviewBoard("correct"); });
+        R.btnReviewImprove.addEventListener("click", function() { processReviewBoard("improve"); });
+        R.btnReviewRedo.addEventListener("click", function() { processReviewBoard("redo"); });
     </script>
 </body>
 </html>

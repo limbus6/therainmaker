@@ -32,3 +32,7 @@ Abrir `index.html` num browser.
 ## Nota de compatibilidade
 
 Foram removidas APIs menos compatíveis (`prepend` e `Object.entries`) para evitar falhas em alguns ambientes de pré-visualização.
+
+## Version Control Reminder
+
+`git pull`, `git add .`, `git commit -m "feat: Brutal Review Board with severe EBITDA penalties and compounding team burnout"`, `git push`.
