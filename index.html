@@ -420,6 +420,10 @@
             font-weight: 700;
             white-space: nowrap;
         }
+        .bidder-badge.shortlist {
+            background: rgba(99, 240, 182, 0.16);
+            color: var(--good);
+        }
 
         @media (max-width: 900px) {
             .layout { grid-template-columns: 1fr; }
@@ -774,6 +778,13 @@
                         hint: "Envolve todos os compradores em simultaneo. Gera tensao competitiva saudavel.",
                         effects: { interesseBidders: 6, cliente: 5, fecho: 2, progressoFase: 10 },
                         log: "Sessao Q&A criou tensao competitiva — todos os compradores mais motivados."
+                    },
+                    {
+                        text: "Filter Bidders",
+                        hint: "Ordena por oferta em EUR e elimina os mais fracos para formar shortlist de 2-3 compradores.",
+                        effects: { cliente: 3, fecho: 2, progressoFase: 14 },
+                        type: "filter_bidders",
+                        log: "Shortlist formalizada com os bidders mais competitivos."
                     }
                 ]
             },
@@ -1037,6 +1048,83 @@
             }
         }
 
+        function bidderOfferEUR(bidder) {
+            return parseFloat((state.ebitda * bidder.multiploProposto).toFixed(1));
+        }
+
+        function buildMpActionForBidder(bidder) {
+            return {
+                type: "mp_bidder",
+                bidderName: bidder.nome,
+                text: "Prepare CEO for Q&A with " + bidder.nome,
+                hint: "Apresentacao focada para elevar interesse e multiplo proposto deste bidder.",
+                getEffects: function() {
+                    var teamPenalty = Math.max(0, (55 - state.equipa) / 100);
+                    var successProb = clamp(0.75 - teamPenalty, 0.35, 0.88);
+                    return {
+                        success: {
+                            prob: successProb,
+                            effects: { fecho: 4, equipa: -3, progressoFase: 16 }
+                        },
+                        failure: {
+                            prob: 1 - successProb,
+                            effects: { equipa: -4, cliente: -1, progressoFase: 8 }
+                        }
+                    };
+                },
+                log: "Management presentation concluida com " + bidder.nome + "."
+            };
+        }
+
+        function getPhaseActions(phase) {
+            var actions = phase.actions.slice();
+            if (phase.id === "MGMT PRES" && state.bidders && state.bidders.length > 0) {
+                for (var i = 0; i < state.bidders.length; i++) {
+                    actions.push(buildMpActionForBidder(state.bidders[i]));
+                }
+            }
+            return actions;
+        }
+
+        function applyMpBidderOutcome(act, outcome) {
+            if (!act || !act.bidderName || !state.bidders || state.bidders.length === 0) return;
+            var bidder = null;
+            for (var i = 0; i < state.bidders.length; i++) {
+                if (state.bidders[i].nome === act.bidderName) {
+                    bidder = state.bidders[i];
+                    break;
+                }
+            }
+            if (!bidder) return;
+
+            if (outcome === "success") {
+                var interesseUp = 7 + Math.floor(Math.random() * 5);
+                var multipleUp = parseFloat((0.15 + Math.random() * 0.3).toFixed(2));
+                bidder.interesse = clamp(bidder.interesse + interesseUp, 0, 100);
+                bidder.multiploProposto = clamp(parseFloat((bidder.multiploProposto + multipleUp).toFixed(2)), 4.0, 20.0);
+                addLog("MP com " + bidder.nome + " foi um sucesso: interesse +" + interesseUp + " e multiplo +" + multipleUp.toFixed(2) + "x.", "good");
+            } else if (outcome === "failure") {
+                bidder.interesse = clamp(bidder.interesse - 4, 0, 100);
+                addLog("MP com " + bidder.nome + " teve friccao no Q&A: interesse -4.", "bad");
+            }
+        }
+
+        function filterTopBidders() {
+            if (!state.bidders || state.bidders.length <= 2) {
+                addLog("Shortlist nao aplicada: e necessario ter mais de 2 compradores activos.", "warn");
+                return;
+            }
+            var keepCount = state.bidders.length >= 5 ? 3 : 2;
+            state.bidders.sort(function(a, b) { return bidderOfferEUR(b) - bidderOfferEUR(a); });
+            var kept = state.bidders.slice(0, keepCount);
+            var dropped = state.bidders.slice(keepCount);
+            for (var i = 0; i < kept.length; i++) kept[i].shortlisted = true;
+            state.bidders = kept;
+            var droppedNames = [];
+            for (var j = 0; j < dropped.length; j++) droppedNames.push(dropped[j].nome);
+            addLog("Shortlist concluida: passam " + keepCount + " bidders. Eliminados: " + droppedNames.join(", ") + ".", "warn");
+        }
+
         // Render the bidder list panel
         function renderBidderList() {
             var el = document.getElementById("bidder-list");
@@ -1056,7 +1144,10 @@
                 html += '<div class="bidder-card">' +
                     '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">' +
                         '<span style="font-size:0.86rem;font-weight:600;">' + b.nome + '</span>' +
-                        '<span class="bidder-badge" style="background:' + bgCol + ';color:' + tcCol + ';">' + b.tipo + '</span>' +
+                        '<div style="display:flex;gap:5px;align-items:center;">' +
+                            '<span class="bidder-badge" style="background:' + bgCol + ';color:' + tcCol + ';">' + b.tipo + '</span>' +
+                            (b.shortlisted ? '<span class="bidder-badge shortlist">Shortlist</span>' : '') +
+                        '</div>' +
                     '</div>' +
                     '<div style="display:flex;justify-content:space-between;margin-top:5px;font-size:0.77rem;">' +
                         '<span>Interesse: <strong style="color:' + iColor + ';">' + b.interesse + '%</strong></span>' +
@@ -1365,9 +1456,17 @@
             if (state.ended || state.pontosAcao <= 0) return;
 
             state.pontosAcao--;
-            var actionResult = applyEffects(act.effects, false);
+            var effectSpec = typeof act.getEffects === "function" ? act.getEffects() : act.effects;
+            var actionResult = applyEffects(effectSpec, false);
             var deltas = actionResult.deltas;
             gameHistory.push({ type: "choice", phase: PHASES[state.phaseIndex].id, text: act.text });
+
+            if (act.type === "filter_bidders") {
+                filterTopBidders();
+            } else if (act.type === "mp_bidder") {
+                applyMpBidderOutcome(act, actionResult.outcome);
+            }
+
             if (actionResult.outcome) {
                 var outcomeTone = actionResult.outcome === "success" ? "good" : "bad";
                 addLog(
@@ -1406,8 +1505,8 @@
                 return;
             }
 
-            // Generate bidders when entering BUYERS phase (index 3)
-            if (state.phaseIndex === 3 && state.bidders.length === 0) {
+            // Generate bidders when entering MGMT PRES (index 2), fallback on BUYERS (index 3)
+            if ((state.phaseIndex === 2 || state.phaseIndex === 3) && state.bidders.length === 0) {
                 state.bidders = gerarBidders();
                 addLog(state.bidders.length + " compradores identificados e qualificados para o processo.", "good");
             }
@@ -1473,6 +1572,7 @@
             if (state.phaseIndex >= PHASES.length) { finishCampaign(); return; }
 
             var ph    = PHASES[state.phaseIndex];
+            var phaseActions = getPhaseActions(ph);
             var total = PHASES.length;
             var pct   = (state.phaseIndex / total) * 100;
 
@@ -1485,11 +1585,12 @@
 
             var noPA = (state.pontosAcao <= 0);
 
-            for (var i = 0; i < ph.actions.length; i++) {
+            for (var i = 0; i < phaseActions.length; i++) {
                 (function(act, idx) {
                     var btn = document.createElement("button");
-                    var successProb = act.effects.success ? act.effects.success.prob : 1;
-                    var progressFx = act.effects.success ? act.effects.success.effects : act.effects;
+                    var effectSpec = typeof act.getEffects === "function" ? act.getEffects() : act.effects;
+                    var successProb = effectSpec.success ? effectSpec.success.prob : 1;
+                    var progressFx = effectSpec.success ? effectSpec.success.effects : effectSpec;
                     var progressLabel = progressFx.progressoFase
                         ? " \u00B7 +" + progressFx.progressoFase + "% fase"
                         : "";
@@ -1501,7 +1602,7 @@
                     btn.disabled = noPA;
                     btn.addEventListener("click", function() { doAction(act); });
                     R.choices.appendChild(btn);
-                })(ph.actions[i], i);
+                })(phaseActions[i], i);
             }
 
             // PA-exhausted notice inside choices area
