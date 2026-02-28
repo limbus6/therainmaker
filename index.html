@@ -166,6 +166,26 @@
         /* ---- Choices ---- */
         .choices { display: grid; gap: 10px; margin: 14px 0; }
 
+        .global-actions {
+            margin: 12px 0 14px;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(10, 17, 43, 0.75);
+        }
+
+        .global-actions h3 {
+            margin: 0 0 8px;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--accent);
+        }
+
+        .global-actions .choices {
+            margin: 0;
+        }
+
         button {
             border: 1px solid rgba(255,255,255,0.14);
             background: rgba(21, 31, 71, 0.95);
@@ -605,6 +625,10 @@
             <h2 id="phase-title"></h2>
             <p id="phase-desc"></p>
             <div id="event-area"></div>
+            <div class="global-actions">
+                <h3>Global Actions</h3>
+                <div class="choices" id="global-actions"></div>
+            </div>
             <div class="choices" id="choices"></div>
             <div class="market-news" id="market-news" aria-live="polite"></div>
             <div class="log" id="log" aria-live="polite"></div>
@@ -873,6 +897,25 @@
                         effects: { cliente: 3, fecho: 2, progressoFase: 14 },
                         type: "filter_bidders",
                         log: "Shortlist formalizada com os bidders mais competitivos."
+                    },
+                    {
+                        text: "Propose Pre-emptive Exclusivity",
+                        hint: "Alto risco: pode fechar exclusividade ja com o top bidder e saltar fases, ou perder o comprador lider.",
+                        type: "preemptive_exclusivity",
+                        getEffects: function() {
+                            var successProb = clamp(0.28 + (state.cliente / 100) * 0.18 + (state.teamMorale / 100) * 0.12, 0.2, 0.62);
+                            return {
+                                success: {
+                                    prob: successProb,
+                                    effects: { cliente: 2, fecho: 8, teamMorale: -2, progressoFase: 30 }
+                                },
+                                failure: {
+                                    prob: 1 - successProb,
+                                    effects: { cliente: -6, fecho: -5, teamMorale: -3, progressoFase: 5 }
+                                }
+                            };
+                        },
+                        log: "Tentativa de exclusividade pre-emptiva apresentada ao comprador lider."
                     }
                 ]
             },
@@ -1039,6 +1082,7 @@
             phaseLabel:         document.getElementById("phase-label"),
             phaseTitle:         document.getElementById("phase-title"),
             phaseDesc:          document.getElementById("phase-desc"),
+            globalChoices:      document.getElementById("global-actions"),
             choices:            document.getElementById("choices"),
             eventArea:          document.getElementById("event-area"),
             log:                document.getElementById("log"),
@@ -1091,6 +1135,7 @@
         function calculateAdvisorMargin() {
             var grossFee = calcularEV() * (state.feePercentage || 0);
             var totalCosts = (state.teamHeadcount || 0) * (state.weeklyCostPerHead || 0) * (state.semanaAtual || 0);
+            totalCosts += state.extraExecutionCosts || 0;
             var netMargin = grossFee - totalCosts;
             return {
                 grossFee: parseFloat(grossFee.toFixed(3)),
@@ -1161,6 +1206,14 @@
             return parseFloat((state.ebitda * bidder.multiploProposto).toFixed(1));
         }
 
+        function getTopBidderByOffer() {
+            if (!state.bidders || state.bidders.length === 0) return null;
+            var sorted = state.bidders.slice().sort(function(a, b) {
+                return bidderOfferEUR(b) - bidderOfferEUR(a);
+            });
+            return sorted[0] || null;
+        }
+
         function buildMpActionForBidder(bidder) {
             return {
                 type: "mp_bidder",
@@ -1219,6 +1272,34 @@
             addLog("ALERTA: Mercado fechado em exclusividade com " + exclusive.nome + ". Todo o risco de execucao passa a depender de um unico buyer.", "bad");
         }
 
+        function applyPreemptiveExclusivity(outcome) {
+            var topBidder = getTopBidderByOffer();
+            if (!topBidder) {
+                addLog("Exclusividade pre-emptiva falhou: nao existem compradores activos para abordar.", "warn");
+                return;
+            }
+
+            if (outcome === "success") {
+                selectExclusiveBidder(topBidder.nome);
+                state.phaseIndex = 5; // Jump directly to Due Diligence
+                state.skipBindingOffers = true;
+                state.progressoFase = 0;
+                state.semanasNaFase = 0;
+                addLog("Pre-emptive strike bem-sucedido: fases de shortlist e binding offers foram contornadas.", "good");
+                gameHistory.push({ type: "phase_skip", label: "Pre-emptive Exclusivity", text: "Jump directo para Due Diligence" });
+            } else {
+                var remaining = [];
+                for (var i = 0; i < state.bidders.length; i++) {
+                    if (state.bidders[i].nome !== topBidder.nome) {
+                        remaining.push(state.bidders[i]);
+                    }
+                }
+                topBidder.interesse = 0;
+                state.bidders = remaining;
+                addLog("Falha no pre-emptive strike: " + topBidder.nome + " perdeu interesse e saiu do processo.", "bad");
+            }
+        }
+
         function getPhaseActions(phase) {
             var actions = phase.actions.slice();
             if (phase.id === "TEASER / IM" && state.hasVDD) {
@@ -1247,6 +1328,50 @@
             if (currentPhaseId === "TEASER / IM" && state.hasVDD) return 150;
             if (currentPhaseId === "DUE DILIGENCE" && state.hasVDD) return 50;
             return 100;
+        }
+
+        function getGlobalActions() {
+            return [
+                {
+                    id: "retention_bonus",
+                    text: "Pay Retention Bonus",
+                    hint: "Custo extra fixo de 0.05 M€ em execution costs. Sobe forte team morale e reduz fadiga da equipa.",
+                    apCost: 1,
+                    weekCost: 0
+                },
+                {
+                    id: "team_building",
+                    text: "Team Building / Day Off",
+                    hint: "Consome 1 PA e 1 semana para recuperar team morale para maximo.",
+                    apCost: 1,
+                    weekCost: 1
+                }
+            ];
+        }
+
+        function doGlobalAction(actionId) {
+            if (state.ended || state.pontosAcao <= 0) return;
+
+            if (actionId === "retention_bonus") {
+                state.pontosAcao -= 1;
+                state.extraExecutionCosts += 0.05;
+                state.teamMorale = clamp(state.teamMorale + 16, 0, 100);
+                state.teamHeadcountFatigue = clamp(state.teamHeadcountFatigue - 12, 0, 100);
+                addLog("Retention bonus pago: execution costs +0.05 M€, moral da equipa reforcada e fadiga reduzida.", "good");
+                updateStats({ teamMorale: 16 });
+                renderPhase();
+                return;
+            }
+
+            if (actionId === "team_building") {
+                state.pontosAcao -= 1;
+                var moraleGain = 100 - state.teamMorale;
+                state.teamMorale = 100;
+                state.teamHeadcountFatigue = 0;
+                addLog("Team building realizado: equipa em maximo de energia. A agenda avanca 1 semana.", "good");
+                updateStats({ teamMorale: moraleGain });
+                endWeek();
+            }
         }
 
         function applyMpBidderOutcome(act, outcome) {
@@ -1723,9 +1848,20 @@
                 applyMpBidderOutcome(act, actionResult.outcome);
             } else if (act.type === "bind_exclusive") {
                 selectExclusiveBidder(act.bidderName);
+            } else if (act.type === "preemptive_exclusivity") {
+                applyPreemptiveExclusivity(actionResult.outcome);
+                if (actionResult.outcome === "success") {
+                    updateStats(deltas);
+                    renderPhase();
+                    return;
+                }
             } else if (act.type === "vdd_decision" && actionResult.outcome === "success" && !state.hasVDD) {
                 state.hasVDD = true;
                 addLog("Vendor Due Diligence activada: preparacao mais longa, DD final mais rapida e menor risco de price chipping.", "good");
+            }
+
+            if (deltas.teamMorale < 0) {
+                state.teamHeadcountFatigue = clamp(state.teamHeadcountFatigue + Math.abs(deltas.teamMorale), 0, 100);
             }
 
             if (actionResult.outcome) {
@@ -1766,6 +1902,15 @@
                 return;
             }
 
+            if (state.skipBindingOffers && PHASES[state.phaseIndex].id === "BINDING OFFERS") {
+                addLog("Binding Offers contornada pela exclusividade pre-emptiva. Processo segue para SPA.", "warn");
+                state.phaseIndex++;
+                if (state.phaseIndex >= PHASES.length) {
+                    finishCampaign();
+                    return;
+                }
+            }
+
             // Generate bidders when entering MGMT PRES (index 2), fallback on BUYERS (index 3)
             if ((state.phaseIndex === 2 || state.phaseIndex === 3) && state.bidders.length === 0) {
                 state.bidders = gerarBidders();
@@ -1802,7 +1947,9 @@
             }
 
             // Recalculate PA from current team strength
-            state.pontosAcao = calcPA(state.teamMorale);
+            state.teamHeadcountFatigue = clamp(state.teamHeadcountFatigue + (state.teamMorale >= 55 ? 2 : 4), 0, 100);
+            var effectiveMorale = clamp(state.teamMorale - Math.round(state.teamHeadcountFatigue * 0.35), 0, 100);
+            state.pontosAcao = calcPA(effectiveMorale);
 
             // Weak team erodes bidder confidence — Industrials more affected (higher dropRate)
             if (state.bidders && state.bidders.length > 0 && state.teamMorale < 40) {
@@ -1846,6 +1993,7 @@
             R.phaseTitle.textContent = ph.title;
             R.phaseDesc.textContent  = ph.desc;
             R.choices.innerHTML      = "";
+            R.globalChoices.innerHTML = "";
             // eventArea is NOT cleared here — event notifications persist until next endWeek
 
             var noPA = (state.pontosAcao <= 0);
@@ -1878,6 +2026,21 @@
                 hint.textContent = "Pontos de Acao esgotados \u2014 clica em \"Terminar Semana\" para continuar.";
                 R.choices.appendChild(hint);
             }
+
+            var globalActions = getGlobalActions();
+            for (var g = 0; g < globalActions.length; g++) {
+                (function(act) {
+                    var btn = document.createElement("button");
+                    btn.innerHTML =
+                        "<strong>" + act.text + "</strong>" +
+                        '<span class="choice-hint">' + act.hint + '</span>' +
+                        '<span class="choice-hint" style="color:var(--accent);font-size:0.72rem;margin-top:3px;">' +
+                        "▸ " + act.apCost + " Ponto de Acao" + (act.weekCost ? " · " + act.weekCost + " semana" : "") + "</span>";
+                    btn.disabled = noPA;
+                    btn.addEventListener("click", function() { doGlobalAction(act.id); });
+                    R.globalChoices.appendChild(btn);
+                })(globalActions[g]);
+            }
         }
 
         // ---- DIFFICULTY SELECT ----
@@ -1902,8 +2065,11 @@
                 initialExpectedValue: null,
                 signedValue: null,
                 hasVDD:       false,
+                skipBindingOffers: false,
                 feePercentage: 0,
+                extraExecutionCosts: 0,
                 teamHeadcount: 3,
+                teamHeadcountFatigue: 0,
                 weeklyCostPerHead: 0.005,
                 ebitda:        cfg.start.ebitda,
                 multiplo:      cfg.start.multiplo,
