@@ -140,6 +140,27 @@
             color: var(--accent);
             font-weight: 600;
             font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .vdd-badge {
+            display: inline-block;
+            padding: 2px 9px;
+            border-radius: 999px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            color: var(--muted);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .vdd-badge.active {
+            color: var(--good);
+            border-color: rgba(99, 240, 182, 0.42);
+            background: rgba(99, 240, 182, 0.16);
         }
 
         /* ---- Choices ---- */
@@ -562,7 +583,10 @@
         </aside>
 
         <section class="panel">
-            <div class="phase" id="phase-label"></div>
+            <div class="phase">
+                <span id="phase-label"></span>
+                <span class="vdd-badge" id="vdd-badge">VDD: Inactive</span>
+            </div>
 
             <!-- Overall campaign progress (phase index) -->
             <div class="progress-wrap">
@@ -773,6 +797,25 @@
                         hint: "Alinha expectativas e garante aprovacao formal do accionista.",
                         effects: { cliente: 6, fecho: 2, progressoFase: 6 },
                         log: "O cliente aprovou o documento e sente confianca na abordagem adoptada."
+                    },
+                    {
+                        text: "Convencer cliente a executar Vendor Due Diligence",
+                        hint: "Se resultar, a fase actual demora mais, mas acelera a due diligence final dos compradores e reduz risco de red flags.",
+                        type: "vdd_decision",
+                        getEffects: function() {
+                            var successProb = clamp(0.45 + (state.cliente / 100) * 0.35, 0.45, 0.88);
+                            return {
+                                success: {
+                                    prob: successProb,
+                                    effects: { cliente: 3, teamMorale: -2, progressoFase: 8 }
+                                },
+                                failure: {
+                                    prob: 1 - successProb,
+                                    effects: { cliente: -3, teamMorale: -2, progressoFase: 4 }
+                                }
+                            };
+                        },
+                        log: "Tentativa de alinhar cliente para Vendor Due Diligence em curso."
                     }
                 ]
             },
@@ -1024,7 +1067,8 @@
             sExecutionCosts:    document.getElementById("s-execution-costs"),
             sNetMargin:         document.getElementById("s-net-margin"),
             progressoFaseBar:   document.getElementById("progresso-fase-fill"),
-            progressoFaseLabel: document.getElementById("fase-progresso-label")
+            progressoFaseLabel: document.getElementById("fase-progresso-label"),
+            vddBadge:           document.getElementById("vdd-badge")
         };
 
         // ---- HELPERS ----
@@ -1177,6 +1221,9 @@
 
         function getPhaseActions(phase) {
             var actions = phase.actions.slice();
+            if (phase.id === "TEASER / IM" && state.hasVDD) {
+                actions = actions.filter(function(act) { return act.type !== "vdd_decision"; });
+            }
             if (phase.id === "MGMT PRES" && state.bidders && state.bidders.length > 0) {
                 for (var i = 0; i < state.bidders.length; i++) {
                     actions.push(buildMpActionForBidder(state.bidders[i]));
@@ -1189,6 +1236,17 @@
                 }
             }
             return actions;
+        }
+
+        function getPhaseProgressTarget(phaseId) {
+            var currentPhaseId = phaseId;
+            if (!currentPhaseId && state.phaseIndex < PHASES.length) {
+                currentPhaseId = PHASES[state.phaseIndex].id;
+            }
+            if (!currentPhaseId) return 100;
+            if (currentPhaseId === "TEASER / IM" && state.hasVDD) return 150;
+            if (currentPhaseId === "DUE DILIGENCE" && state.hasVDD) return 50;
+            return 100;
         }
 
         function applyMpBidderOutcome(act, outcome) {
@@ -1315,8 +1373,13 @@
             R.endWeekBtn.className = (state.pontosAcao === 0) ? "" : "secondary";
 
             // Phase progress bar
-            R.progressoFaseBar.style.width   = state.progressoFase + "%";
-            R.progressoFaseLabel.textContent = state.progressoFase + "%";
+            var phaseTarget = getPhaseProgressTarget();
+            var phasePct = Math.round(clamp((state.progressoFase / phaseTarget) * 100, 0, 100));
+            R.progressoFaseBar.style.width   = phasePct + "%";
+            R.progressoFaseLabel.textContent = phasePct + "% (" + state.progressoFase + "/" + phaseTarget + ")";
+
+            R.vddBadge.textContent = state.hasVDD ? "VDD: Active" : "VDD: Inactive";
+            R.vddBadge.className = "vdd-badge" + (state.hasVDD ? " active" : "");
 
             // Meters
             R.mCliente.style.width = state.cliente + "%";
@@ -1387,7 +1450,7 @@
             state.ebitda        = clamp(parseFloat(state.ebitda.toFixed(2)), 1.0, 20.0);
             state.multiplo      = clamp(parseFloat(state.multiplo.toFixed(2)), 4.0, 15.0);
             state.fecho         = clamp(state.fecho, 0, 100);
-            state.progressoFase = clamp(state.progressoFase, 0, 100);
+            state.progressoFase = clamp(state.progressoFase, 0, 150);
             return {
                 deltas: {
                     cliente:      state.cliente      - before.cliente,
@@ -1425,7 +1488,8 @@
 
         function triggerPriceChipping() {
             if (state.ended || !state.bidderExclusivo || !isPriceChippingPhase()) return;
-            if (Math.random() >= 0.55) return;
+            var redFlagChance = state.hasVDD ? 0.275 : 0.55;
+            if (Math.random() >= redFlagChance) return;
 
             var ev = RED_FLAG_EVENTS[Math.floor(Math.random() * RED_FLAG_EVENTS.length)];
             var drop = parseFloat(ev.ebitdaDrop.toFixed(2));
@@ -1659,6 +1723,9 @@
                 applyMpBidderOutcome(act, actionResult.outcome);
             } else if (act.type === "bind_exclusive") {
                 selectExclusiveBidder(act.bidderName);
+            } else if (act.type === "vdd_decision" && actionResult.outcome === "success" && !state.hasVDD) {
+                state.hasVDD = true;
+                addLog("Vendor Due Diligence activada: preparacao mais longa, DD final mais rapida e menor risco de price chipping.", "good");
             }
 
             if (actionResult.outcome) {
@@ -1676,8 +1743,8 @@
 
             if (checkLose()) return;
 
-            // Phase completes when progressoFase reaches 100
-            if (state.progressoFase >= 100) {
+            // Phase completes when progressoFase reaches target for the current phase
+            if (state.progressoFase >= getPhaseProgressTarget()) {
                 advancePhase();
                 return;
             }
@@ -1725,7 +1792,8 @@
             }
 
             // Patience penalty: >5 weeks in the same phase with <80% progress
-            if (state.semanasNaFase > 5 && state.progressoFase < 80) {
+            var patienceThreshold = Math.round(getPhaseProgressTarget() * 0.8);
+            if (state.semanasNaFase > 5 && state.progressoFase < patienceThreshold) {
                 var penalty = -2;
                 state.cliente = clamp(state.cliente + penalty, 0, 100);
                 addLog("O cliente esta a perder paciencia — a fase actual esta a demorar demasiado.", "bad");
@@ -1833,6 +1901,7 @@
                 bidderExclusivo: null,
                 initialExpectedValue: null,
                 signedValue: null,
+                hasVDD:       false,
                 feePercentage: 0,
                 teamHeadcount: 3,
                 weeklyCostPerHead: 0.005,
