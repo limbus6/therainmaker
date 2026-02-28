@@ -393,6 +393,17 @@
             padding: 10px;
             margin-bottom: 16px;
         }
+
+        .closing-compare {
+            margin: 12px 0 16px;
+            padding: 10px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(6, 10, 24, 0.7);
+            text-align: left;
+            font-size: 0.83rem;
+        }
+        .closing-compare strong { color: var(--accent); }
         .hist-entry {
             padding: 5px 0;
             border-bottom: 1px solid rgba(255,255,255,0.05);
@@ -475,6 +486,7 @@
             <h2 id="end-title" style="font-size:1.15rem;margin-bottom:4px;"></h2>
             <p id="end-desc" style="font-size:0.88rem;margin-bottom:0;"></p>
             <div class="end-stats-grid" id="end-stats-grid"></div>
+            <div class="closing-compare" id="closing-comparison"></div>
             <div class="history-box" id="end-history"></div>
             <button class="start-btn" id="btn-play-again">Jogar Novamente</button>
         </div>
@@ -673,6 +685,29 @@
                 desc: "Custos de producao aliviam e previsibilidade de cash-flow melhora para investidores.",
                 effects: { ebitda: 0.3, multiplo: 0.2, fecho: 2 },
                 tone: "good"
+            }
+        ];
+
+        var RED_FLAG_EVENTS = [
+            {
+                title: "Passivos laborais ocultos",
+                desc: "Auditoria forense identifica litigios laborais nao provisionados, exigindo ajuste de preco imediato.",
+                ebitdaDrop: 0.4
+            },
+            {
+                title: "Reconhecimento agressivo de receita",
+                desc: "Politicas comerciais elevavam receita antecipada; comprador exige haircut directo no EBITDA ajustado.",
+                ebitdaDrop: 0.3
+            },
+            {
+                title: "Risco fiscal em transaccoes intra-grupo",
+                desc: "DD fiscal detecta exposicao potencial e o bidder aplica reducao de valor para cobrir contingencia.",
+                ebitdaDrop: 0.5
+            },
+            {
+                title: "Capex de manutencao subestimado",
+                desc: "Necessidades de investimento eram superiores ao plano e comprimem o EBITDA sustentavel no closing.",
+                ebitdaDrop: 0.2
             }
         ];
 
@@ -1110,6 +1145,7 @@
             }
             if (!exclusive) return;
             state.bidderExclusivo = exclusive.nome;
+            state.initialExpectedValue = bidderOfferEUR(exclusive);
             exclusive.shortlisted = true;
             state.bidders = [exclusive];
             addLog("ALERTA: Mercado fechado em exclusividade com " + exclusive.nome + ". Todo o risco de execucao passa a depender de um unico buyer.", "bad");
@@ -1351,6 +1387,62 @@
             R.marketNews.innerHTML = html;
         }
 
+        function isPriceChippingPhase() {
+            if (state.phaseIndex >= PHASES.length) return false;
+            var phaseId = PHASES[state.phaseIndex].id;
+            return phaseId === "SPA" || phaseId === "SIGNING" || phaseId === "CLOSING";
+        }
+
+        function triggerPriceChipping() {
+            if (state.ended || !state.bidderExclusivo || !isPriceChippingPhase()) return;
+            if (Math.random() >= 0.55) return;
+
+            var ev = RED_FLAG_EVENTS[Math.floor(Math.random() * RED_FLAG_EVENTS.length)];
+            var drop = parseFloat(ev.ebitdaDrop.toFixed(2));
+            var apCost = 1;
+            var canDefend = state.pontosAcao >= apCost;
+            var defendSuccessProb = clamp(0.25 + (state.equipa / 100) * 0.6, 0.25, 0.9);
+            var defended = false;
+
+            if (canDefend) {
+                state.pontosAcao -= apCost;
+                defended = Math.random() < defendSuccessProb;
+            }
+
+            if (defended) {
+                addLog("Red Flag [S" + state.semanaAtual + "]: " + ev.title + ". Defesa de EBITDA bem-sucedida (1 PA).", "good");
+                gameHistory.push({ type: "red_flag", label: ev.title, text: "Defesa bem-sucedida, sem impacto no EBITDA." });
+                R.eventArea.innerHTML = '<div class="event-card ev-good">' +
+                    '<div class="event-label">Price Chipping neutralizado</div>' +
+                    '<div class="event-title-text">' + ev.title + '</div>' +
+                    '<p style="margin:0 0 6px;font-size:0.86rem;">' + ev.desc + '</p>' +
+                    '<div class="event-effects"><span class="eff-tag eff-pos">EBITDA protegido</span><span class="eff-tag eff-neg">PA -1</span></div>' +
+                    '</div>';
+                updateStats({ ebitda: 0, fecho: 0, cliente: 0, equipa: 0 });
+                return;
+            }
+
+            var before = state.ebitda;
+            state.ebitda = clamp(parseFloat((state.ebitda - drop).toFixed(2)), 1.0, 20.0);
+            var actualDrop = parseFloat((before - state.ebitda).toFixed(2));
+            var failReason = canDefend
+                ? "Defesa falhou (1 PA gasto)."
+                : "Sem Pontos de Acao para defender EBITDA.";
+
+            addLog("Red Flag [S" + state.semanaAtual + "]: " + ev.title + ". " + failReason + " EBITDA -" + actualDrop.toFixed(2) + "M€.", "bad");
+            gameHistory.push({ type: "red_flag", label: ev.title, text: failReason + " EBITDA ajustado em -" + actualDrop.toFixed(2) + "M€." });
+            R.eventArea.innerHTML = '<div class="event-card">' +
+                '<div class="event-label">Price Chipping</div>' +
+                '<div class="event-title-text">' + ev.title + '</div>' +
+                '<p style="margin:0 0 6px;font-size:0.86rem;">' + ev.desc + '</p>' +
+                '<div class="event-effects"><span class="eff-tag eff-neg">EBITDA -' + actualDrop.toFixed(2) + 'M€</span>' +
+                (canDefend ? '<span class="eff-tag eff-neg">PA -1</span>' : '<span class="eff-tag eff-neg">Sem defesa</span>') +
+                '</div>' +
+                '</div>';
+            updateStats({ ebitda: -actualDrop, fecho: 0, cliente: 0, equipa: 0 });
+            checkLose();
+        }
+
         // ---- GAME OVER ----
         function endGame(msg, tone) {
             state.ended = true;
@@ -1376,6 +1468,7 @@
 
         function finishCampaign() {
             var ev      = calcularEV();
+            state.signedValue = ev;
             var premium = ev >= 60 && state.fecho >= 70;
             var ok      = state.fecho >= 55;
             if (premium) {
@@ -1440,6 +1533,21 @@
                 grid.appendChild(box);
             }
 
+            var cmp = document.getElementById("closing-comparison");
+            var initialExpected = state.initialExpectedValue;
+            var signedValue = state.signedValue !== null && state.signedValue !== undefined ? state.signedValue : ev;
+            if (initialExpected !== null && initialExpected !== undefined) {
+                var deltaSigned = parseFloat((signedValue - initialExpected).toFixed(1));
+                var toneClass = deltaSigned >= 0 ? "good" : "bad";
+                cmp.innerHTML = '<div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent);margin-bottom:6px;">Comparativo de Closing</div>' +
+                    '<div>Initial Expected Value (Shortlist): <strong>EUR ' + initialExpected.toFixed(1) + 'm</strong></div>' +
+                    '<div>Actual Signed Value: <strong>EUR ' + signedValue.toFixed(1) + 'm</strong></div>' +
+                    '<div class="' + toneClass + '" style="margin-top:4px;">Variação: ' + (deltaSigned >= 0 ? '+' : '') + deltaSigned.toFixed(1) + 'm</div>';
+            } else {
+                cmp.innerHTML = '<div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent);margin-bottom:6px;">Comparativo de Closing</div>' +
+                    '<div class="small">Initial Expected Value indisponível (sem exclusividade formalizada).</div>';
+            }
+
             var hbox = document.getElementById("end-history");
             hbox.innerHTML = "";
             if (gameHistory.length === 0) {
@@ -1453,6 +1561,8 @@
                     div.innerHTML = '<div class="hist-event">Evento: ' + h.label + '</div><div style="color:var(--muted);font-size:0.76rem;">' + h.text + '</div>';
                 } else if (h.type === "phase_complete") {
                     div.innerHTML = '<div class="hist-phase" style="color:var(--good);">&#10003; Fase concluida: ' + h.label + '</div>';
+                } else if (h.type === "red_flag") {
+                    div.innerHTML = '<div class="hist-drift">Red Flag: ' + h.label + '</div><div style="color:var(--muted);font-size:0.76rem;">' + h.text + '</div>';
                 } else {
                     div.innerHTML = '<div class="hist-phase">' + h.phase + '</div><div class="hist-text">' + h.text + '</div>';
                 }
@@ -1612,6 +1722,9 @@
             if (state.ended) return;
 
             maybeEvent();
+            if (state.ended) return;
+
+            triggerPriceChipping();
             if (!state.ended) {
                 updateStats();
                 renderPhase();
@@ -1688,6 +1801,8 @@
                 equipa:        startEquipa,
                 bidders:       [],
                 bidderExclusivo: null,
+                initialExpectedValue: null,
+                signedValue: null,
                 ebitda:        cfg.start.ebitda,
                 multiplo:      cfg.start.multiplo,
                 fecho:         cfg.start.fecho,
