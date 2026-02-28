@@ -521,7 +521,7 @@
         <div class="ov-card">
             <h1 class="start-title">M&A Dealmaker</h1>
             <p class="start-sub">Simulacao interactiva de mandato de venda &mdash; do pitch ao closing.</p>
-            <p style="font-size:0.88rem;color:var(--muted);margin-bottom:10px;">Gere o cliente, a equipa e os compradores em 9 fases criticas. Usa Pontos de Acao por semana com sabedoria. Eventos aleatorios testam a tua resiliencia.</p>
+            <p style="font-size:0.88rem;color:var(--muted);margin-bottom:10px;">Gere o cliente, a equipa e os compradores em 10 fases criticas. Usa Pontos de Acao por semana com sabedoria. Eventos aleatorios testam a tua resiliencia.</p>
             <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:6px;font-weight:700;">Dificuldade</div>
             <div class="diff-grid">
                 <div class="diff-opt" id="diff-facil">
@@ -586,6 +586,7 @@
                     <span class="label">Prob. Closing</span>
                     <strong id="s-fecho">35%</strong>
                     <span class="stat-delta" id="d-fecho"></span>
+                    <div id="s-fecho-note" style="font-size:0.69rem;color:var(--muted);margin-top:5px;">Sem exclusividade formalizada.</div>
                 </div>
                 <!-- Replaces "Dias para closing" -->
                 <div class="stat">
@@ -820,6 +821,19 @@
                         log: "Go-to-market narrative desenvolvido com foco em clareza de posicionamento e equity story."
                     },
                     {
+                        text: "Definir expectativa inicial de valuation (M€)",
+                        hint: "Obrigatorio no pitch: ancora formal de expectativa do cliente em Milhoes de EUR para o resto do processo.",
+                        type: "set_client_expectation",
+                        effects: {
+                            success: {
+                                prob: 1,
+                                effects: { progressoFase: 10 }
+                            },
+                            failure: { prob: 0, effects: {} }
+                        },
+                        log: "Expectativa inicial de valuation discutida com o cliente e registada em M€."
+                    },
+                    {
                         text: "Review Market Comparables",
                         hint: "Recalibra a expectativa do cliente com benchmarks recentes para aproximar EV esperado da realidade.",
                         type: "review_market_comparables",
@@ -1024,15 +1038,29 @@
                 desc: "Pontos quentes: cap basket, indemnities, MAC e earn-out metrics. Cada cedencia tem implicacoes patrimoniais directas.",
                 actions: [
                     {
+                        text: "Negotiate aggressive Escrow/Caps",
+                        hint: "Custa 1 PA. Protege o cliente no pos-closing, mas reduz interesse do bidder exclusivo e a probabilidade de fecho.",
+                        type: "spa_escrow_caps",
+                        effects: { teamMorale: -3, progressoFase: 18 },
+                        log: "Posicao agressiva em escrow/caps apresentada para blindar o cliente."
+                    },
+                    {
+                        text: "Concede on Warranties to secure the deal",
+                        hint: "Custa 1 PA. Aumenta instantaneamente a probabilidade de closing em +15%, mas activa risco de responsabilidade legal.",
+                        type: "spa_concede_warranties",
+                        effects: { teamMorale: -1, progressoFase: 14 },
+                        log: "Concessao em warranties aceite para proteger a trajectoria de assinatura."
+                    },
+                    {
                         text: "Negociar clausulas criticas do SPA com advisors",
                         hint: "Avanca nas condicoes contratuais mais complexas. Resultado directo no valor EUR.",
-                        effects: { fecho: 6, ebitda: 0.2, teamMorale: -4, progressoFase: 20 },
+                        effects: { ebitda: 0.2, teamMorale: -4, progressoFase: 20 },
                         log: "Clausulas criticas alinhadas — SPA a ganhar forma com posicoes equilibradas."
                     },
                     {
                         text: "Alinhar earn-out e mecanismos de ajuste de preco",
                         hint: "Define os mecanismos financeiros pos-closing. Complexo mas decisivo para o EUR final.",
-                        effects: { multiplo: 0.4, ebitda: 0.2, fecho: 4, teamMorale: -3, progressoFase: 15 },
+                        effects: { multiplo: 0.4, ebitda: 0.2, teamMorale: -3, progressoFase: 15 },
                         log: "Earn-out e mecanismos de preco alinhados — valor EUR preservado para o accionista."
                     },
                     {
@@ -1141,6 +1169,7 @@
             sMultiplo:          document.getElementById("s-multiplo"),
             dEV:                document.getElementById("d-ev"),
             sFecho:             document.getElementById("s-fecho"),
+            sFechoNote:         document.getElementById("s-fecho-note"),
             sSemana:            document.getElementById("s-semana"),
             sRestantes:         document.getElementById("s-restantes"),
             sPA:                document.getElementById("s-pa"),
@@ -1193,6 +1222,9 @@
             var totalCosts = weeklyBurn * (state.semanaAtual || 0);
             totalCosts += state.extraExecutionCosts || 0;
             var netMargin = grossFee - totalCosts;
+            if (state.liabilityRiskActive && state.ended && state.endTone === "good") {
+                netMargin -= state.liabilityPenaltyEUR || 0;
+            }
             return {
                 grossFee: parseFloat(grossFee.toFixed(3)),
                 weeklyBurn: parseFloat(weeklyBurn.toFixed(3)),
@@ -1263,6 +1295,28 @@
             return parseFloat((state.ebitda * bidder.multiploProposto).toFixed(1));
         }
 
+        function isBadMarket() {
+            return state.multiplo < 8.0;
+        }
+
+        function calculateClosingProbability() {
+            if (!state.bidderExclusivo || !state.bidders || state.bidders.length === 0) {
+                return clamp(state.fecho, 0, 100);
+            }
+            var bidderExclusivo = state.bidders[0];
+            var offer = bidderOfferEUR(bidderExclusivo);
+            var expectation = Math.max(0.1, state.clientExpectationEV || 0.1);
+            var ratio = offer / expectation;
+            var interestFactor = clamp((bidderExclusivo.interesse || 0) / 100, 0, 1);
+            var probability = ratio * interestFactor * 100;
+
+            if ((bidderExclusivo.tipo === "Private Equity" || bidderExclusivo.tipo === "Opportunistic/PE") && isBadMarket()) {
+                probability -= 15;
+            }
+
+            return Math.round(clamp(probability, 0, 100));
+        }
+
         function getTopBidderByOffer() {
             if (!state.bidders || state.bidders.length === 0) return null;
             var sorted = state.bidders.slice().sort(function(a, b) {
@@ -1304,7 +1358,7 @@
                 effects: {
                     success: {
                         prob: 1,
-                        effects: { cliente: 2, fecho: 5, progressoFase: 100 }
+                        effects: { cliente: 2, progressoFase: 100 }
                     },
                     failure: { prob: 0, effects: {} }
                 },
@@ -1326,6 +1380,7 @@
             state.initialExpectedValue = bidderOfferEUR(exclusive);
             exclusive.shortlisted = true;
             state.bidders = [exclusive];
+            state.fecho = clamp(calculateClosingProbability() + (state.closingProbBonus || 0), 0, 100);
             addLog("ALERTA: Mercado fechado em exclusividade com " + exclusive.nome + ". Todo o risco de execucao passa a depender de um unico buyer.", "bad");
         }
 
@@ -1755,7 +1810,16 @@
             R.sEbitda.textContent   = state.ebitda.toFixed(1);
             R.sMultiplo.textContent = state.multiplo.toFixed(1);
             R.sEV.textContent       = "EUR " + calcularEV().toFixed(1) + "m";
+            state.fecho = clamp(calculateClosingProbability() + (state.closingProbBonus || 0), 0, 100);
             R.sFecho.textContent    = state.fecho + "%";
+            if (state.bidderExclusivo) {
+                var critical = state.fecho < 30;
+                R.sFechoNote.textContent = critical ? "Perigo critico na exclusividade (<30%)." : "Probabilidade dinamica em exclusividade.";
+                R.sFechoNote.style.color = critical ? "var(--bad)" : "var(--muted)";
+            } else {
+                R.sFechoNote.textContent = "Sem exclusividade formalizada.";
+                R.sFechoNote.style.color = "var(--muted)";
+            }
 
             var pnl = calculateAdvisorMargin();
             R.sFeePercentage.textContent = (state.feePercentage * 100).toFixed(2) + "%";
@@ -1952,6 +2016,7 @@
         // ---- GAME OVER ----
         function endGame(msg, tone) {
             state.ended = true;
+            state.endTone = tone;
             R.gameLayout.classList.add("hidden");
             addLog(msg, tone);
             showEndScreen(msg, tone);
@@ -2046,12 +2111,14 @@
 
             var grid = document.getElementById("end-stats-grid");
             grid.innerHTML = "";
+            var liabilityPenalty = (state.liabilityRiskActive && tone === "good") ? (state.liabilityPenaltyEUR || 0) : 0;
             var items = [
                 { l: "Outcome Status", v: outcomeLabel, c: tone === "good" ? "var(--good)" : "var(--bad)" },
                 { l: "Duration", v: state.semanaAtual + " Weeks", c: "var(--accent)" },
                 { l: "Initial Expectation vs Final EV", v: expectedEV.toFixed(1) + " M€ vs " + ev.toFixed(1) + " M€", c: ev >= expectedEV ? "var(--good)" : "var(--warn)" },
                 { l: "Gross Advisor Fee", v: financials.grossFee.toFixed(3) + " M€", c: "var(--accent)" },
                 { l: "Execution Costs", v: financials.totalCosts.toFixed(3) + " M€", c: "var(--warn)" },
+                { l: "Liability Penalty", v: (liabilityPenalty > 0 ? "-" : "") + liabilityPenalty.toFixed(3) + " M€", c: liabilityPenalty > 0 ? "var(--bad)" : "var(--muted)" },
                 { l: "Final Net Margin", v: financials.netMargin.toFixed(3) + " M€", c: financials.netMargin >= 0 ? "var(--good)" : "var(--bad)" }
             ];
             for (var i = 0; i < items.length; i++) {
@@ -2068,6 +2135,8 @@
                 narrative = "Your sloppy deliverables early on led to massive price chipping by the auditors. The valuation crashed, and the client walked away.";
             } else if (tone === "good" && !hiddenFlawsHit && financials.netMargin > 0.3) {
                 narrative = "Premium execution. You managed expectations, kept the team efficient, and secured a highly profitable margin.";
+            } else if (tone === "good" && state.liabilityRiskActive) {
+                narrative = "The deal closed, but warranty concessions triggered post-closing liabilities and legal backlash, materially reducing net margin.";
             } else if (tone === "good") {
                 narrative = "The deal closed, but margin discipline and stakeholder management left room for improvement.";
             } else {
@@ -2213,6 +2282,35 @@
                     renderPhase();
                     return;
                 }
+            } else if (act.type === "set_client_expectation") {
+                var marketEV = calcularEV();
+                var suggested = (state.clientExpectationEV || marketEV).toFixed(1);
+                var inputEV = window.prompt("Negocia e fixa a expectativa inicial do cliente (M€):", suggested);
+                var targetEV = parseFloat(inputEV);
+                if (isNaN(targetEV) || targetEV <= 0) {
+                    state.progressoFase = Math.max(0, state.progressoFase - 10);
+                    addLog("Expectativa invalida. A ancora inicial continua pendente e o progresso desta accao foi anulado.", "warn");
+                } else {
+                    state.clientExpectationEV = parseFloat(targetEV.toFixed(1));
+                    state.expectationAnchored = true;
+                    if (targetEV > marketEV * 1.3) {
+                        state.cliente = clamp(state.cliente + 6, 0, 100);
+                        state.cliente = clamp(state.cliente - 18, 0, 100);
+                        addLog("Ancora agressiva (>30% acima do EV): cliente satisfeito no curto prazo, mas confianca estrutural caiu significativamente.", "bad");
+                        updateStats({ cliente: -12 });
+                    } else {
+                        addLog("Expectativa inicial do cliente fixada em " + state.clientExpectationEV.toFixed(1) + "M€.", "good");
+                    }
+                }
+            } else if (act.type === "spa_escrow_caps") {
+                if (state.bidders && state.bidders.length > 0) {
+                    state.bidders[0].interesse = clamp(state.bidders[0].interesse - 12, 0, 100);
+                    addLog("Escrow/Caps agressivos reduziram o interesse do bidder exclusivo.", "warn");
+                }
+            } else if (act.type === "spa_concede_warranties") {
+                state.closingProbBonus = clamp((state.closingProbBonus || 0) + 15, 0, 35);
+                state.liabilityRiskActive = true;
+                addLog("Concessao em warranties: +15% probabilidade de closing, mas Liability Risk activado.", "warn");
             } else if (act.type === "vdd_decision" && actionResult.outcome === "success" && !state.hasVDD) {
                 state.hasVDD = true;
                 addLog("Vendor Due Diligence activada: preparacao mais longa, DD final mais rapida e menor risco de price chipping.", "good");
@@ -2253,8 +2351,12 @@
 
             // Phase completes when progressoFase reaches target for the current phase
             if (!state.currentDeliverable && state.progressoFase >= getPhaseProgressTarget()) {
-                advancePhase();
-                return;
+                if (PHASES[state.phaseIndex].id === "PITCH" && !state.expectationAnchored) {
+                    addLog("Antes de fechar o Pitch, tens de negociar e fixar a expectativa inicial de valuation em M€.", "warn");
+                } else {
+                    advancePhase();
+                    return;
+                }
             }
 
             renderPhase(); // refresh to update button disabled state
@@ -2473,6 +2575,10 @@
                 generatedDeliverables: {},
                 ddMassacreResolved: false,
                 clientExpectationEV: parseFloat(((cfg.start.ebitda * cfg.start.multiplo) + 4).toFixed(1)),
+                liabilityRiskActive: false,
+                liabilityPenaltyEUR: 0.45,
+                closingProbBonus: 0,
+                expectationAnchored: false,
                 marketNews:    [],
                 lastMacroTone: null,
                 lastMacroWeek: 0,
