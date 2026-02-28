@@ -601,6 +601,7 @@
                 <span class="label">Advisor P&amp;L</span>
                 <div style="display:grid;grid-template-columns:1fr auto;gap:4px 8px;font-size:0.78rem;line-height:1.4;">
                     <span>Success Fee (%)</span><strong id="s-fee-percentage" style="color:var(--accent);">0.00%</strong>
+                    <span>Projected Weekly Burn (M€)</span><strong id="s-weekly-burn" style="color:var(--warn);">0.000 M€</strong>
                     <span>Execution Costs (M€)</span><strong id="s-execution-costs" style="color:var(--warn);">0.0 M€</strong>
                     <span>Expected Net Margin (M€)</span><strong id="s-net-margin" style="color:var(--good);">0.0 M€</strong>
                 </div>
@@ -659,7 +660,7 @@
                 </div>
             </div>
             <div class="global-actions">
-                <h3>Global Actions</h3>
+                <h3>Gestão de Equipa</h3>
                 <div class="choices" id="global-actions"></div>
             </div>
             <div class="choices" id="choices"></div>
@@ -1150,6 +1151,7 @@
             dTeamMorale:            document.getElementById("d-equipa"),
             dFecho:             document.getElementById("d-fecho"),
             sFeePercentage:     document.getElementById("s-fee-percentage"),
+            sWeeklyBurn:       document.getElementById("s-weekly-burn"),
             sExecutionCosts:    document.getElementById("s-execution-costs"),
             sNetMargin:         document.getElementById("s-net-margin"),
             progressoFaseBar:   document.getElementById("progresso-fase-fill"),
@@ -1171,9 +1173,11 @@
 
         // Calculate Action Points from team strength
         function calcPA(teamMorale) {
-            if (teamMorale > 60) return 3;
-            if (teamMorale >= 30) return 2;
-            return 1;
+            var baseCap = 0;
+            if (teamMorale > 60) baseCap = 3;
+            else if (teamMorale >= 30) baseCap = 2;
+            else baseCap = 1;
+            return baseCap + (state.hiredHeadcountBoost || 0);
         }
 
         // Enterprise Value = EBITDA x Multiple (EUR m), floored by minimums
@@ -1185,11 +1189,13 @@
 
         function calculateAdvisorMargin() {
             var grossFee = calcularEV() * (state.feePercentage || 0);
-            var totalCosts = (state.teamHeadcount || 0) * (state.weeklyCostPerHead || 0) * (state.semanaAtual || 0);
+            var weeklyBurn = (state.teamHeadcount || 0) * (state.weeklyCostPerHead || 0);
+            var totalCosts = weeklyBurn * (state.semanaAtual || 0);
             totalCosts += state.extraExecutionCosts || 0;
             var netMargin = grossFee - totalCosts;
             return {
                 grossFee: parseFloat(grossFee.toFixed(3)),
+                weeklyBurn: parseFloat(weeklyBurn.toFixed(3)),
                 totalCosts: parseFloat(totalCosts.toFixed(3)),
                 netMargin: parseFloat(netMargin.toFixed(3))
             };
@@ -1401,7 +1407,12 @@
             if (state.currentDeliverable || state.phaseIndex >= PHASES.length) return false;
             var phaseId = PHASES[state.phaseIndex].id;
             var baseRoll = 45 + Math.floor(Math.random() * 41);
-            var quality = clamp(baseRoll + (qualityBoost || 0), 0, 120);
+            var usedBonus = !!state.nextDeliverableBonus;
+            var quality = clamp(baseRoll + (qualityBoost || 0) + (usedBonus ? 25 : 0), 0, 120);
+            if (usedBonus) {
+                addLog("A reuniao dura gerou tracao imediata: +25 qualidade no proximo deliverable.", "warn");
+                state.nextDeliverableBonus = false;
+            }
             state.currentDeliverable = {
                 name: name || getDeliverableNameForPhase(phaseId),
                 quality: quality,
@@ -1429,7 +1440,11 @@
                 if (state.generatedDeliverables[phaseId]) return;
                 var baseRoll = 35 + Math.floor(Math.random() * 71);
                 var moralePenalty = Math.max(0, 55 - state.teamMorale) * 1.2 + Math.max(0, 25 - state.teamMorale) * 1.4;
-                var quality = clamp(Math.round(baseRoll - moralePenalty), 0, 120);
+                var quality = clamp(Math.round(baseRoll - moralePenalty + (state.nextDeliverableBonus ? 25 : 0)), 0, 120);
+                if (state.nextDeliverableBonus) {
+                    addLog("A reuniao dura gerou tracao imediata: +25 qualidade no proximo deliverable.", "warn");
+                    state.nextDeliverableBonus = false;
+                }
                 state.currentDeliverable = {
                     name: getDeliverableNameForPhase(phaseId),
                     quality: quality,
@@ -1529,23 +1544,23 @@
         function getGlobalActions() {
             return [
                 {
-                    id: "retention_bonus",
-                    text: "Pay Retention Bonus",
-                    hint: "Custo extra fixo de 0.05 M€ em execution costs. Sobe forte team morale e reduz fadiga da equipa.",
+                    id: "hire_analyst_associate",
+                    text: "Hire Analyst/Associate (Contratar)",
+                    hint: "+1 headcount permanente, Team Morale -10, e +1 ao cap de Pontos de Acao em todas as semanas futuras.",
                     apCost: 1,
                     weekCost: 0
                 },
                 {
-                    id: "team_building",
-                    text: "Team Building / Day Off",
-                    hint: "Consome 1 PA e 1 semana para recuperar team morale para maximo.",
+                    id: "increase_salaries",
+                    text: "Increase Salaries (Aumentar Salários)",
+                    hint: "Aumenta o custo semanal por pessoa em 0.001 M€ e sobe Team Morale em +25.",
                     apCost: 1,
-                    weekCost: 1
+                    weekCost: 0
                 },
                 {
-                    id: "weekly_status_update",
-                    text: "Weekly Status Update with Client",
-                    hint: "Check-in semanal reactivo a condicoes de mercado. Requer 1 PA.",
+                    id: "demand_results",
+                    text: "Demand Results / Hard Meeting (Reunião a Exigir Resultados)",
+                    hint: "Team Morale -20 e o proximo deliverable recebe +25 de qualidade base. Risco de colapso da equipa se moral < 15.",
                     apCost: 1,
                     weekCost: 0
                 }
@@ -1555,30 +1570,38 @@
         function doGlobalAction(actionId) {
             if (state.ended || state.pontosAcao <= 0) return;
 
-            if (actionId === "retention_bonus") {
+            if (actionId === "hire_analyst_associate") {
                 state.pontosAcao -= 1;
-                state.extraExecutionCosts += 0.05;
-                state.teamMorale = clamp(state.teamMorale + 16, 0, 100);
-                state.teamHeadcountFatigue = clamp(state.teamHeadcountFatigue - 12, 0, 100);
-                addLog("Retention bonus pago: execution costs +0.05 M€, moral da equipa reforcada e fadiga reduzida.", "good");
-                updateStats({ teamMorale: 16 });
+                state.teamHeadcount += 1;
+                state.hiredHeadcountBoost += 1;
+                state.teamMorale = clamp(state.teamMorale - 10, 0, 100);
+                addLog("Novo Analyst/Associate contratado: headcount +1, Team Morale -10 e cap de PA semanal +1 permanente.", "warn");
+                updateStats({ teamMorale: -10 });
+                if (checkLose()) return;
                 renderPhase();
                 return;
             }
 
-            if (actionId === "team_building") {
+            if (actionId === "increase_salaries") {
                 state.pontosAcao -= 1;
-                var moraleGain = 100 - state.teamMorale;
-                state.teamMorale = 100;
-                state.teamHeadcountFatigue = 0;
-                addLog("Team building realizado: equipa em maximo de energia. A agenda avanca 1 semana.", "good");
-                updateStats({ teamMorale: moraleGain });
-                endWeek();
+                state.weeklyCostPerHead = parseFloat((state.weeklyCostPerHead + 0.001).toFixed(3));
+                state.teamMorale = clamp(state.teamMorale + 25, 0, 100);
+                addLog("Aumentou os salários. A moral subiu, mas a sua margem de lucro líquido (Net Margin) será penalizada até ao fecho.", "warn");
+                updateStats({ teamMorale: 25 });
+                renderPhase();
                 return;
             }
 
-            if (actionId === "weekly_status_update") {
-                reuniaoPontoSituacao();
+            if (actionId === "demand_results") {
+                state.pontosAcao -= 1;
+                state.teamMorale = clamp(state.teamMorale - 20, 0, 100);
+                state.nextDeliverableBonus = true;
+                addLog("Reunião a exigir resultados: pressão máxima aplicada. Próximo deliverable terá bónus de qualidade.", "bad");
+                updateStats({ teamMorale: -20 });
+                if (state.teamMorale < 15) {
+                    endGame("You pushed them too hard. The team resigned en masse. Mandate failed.", "bad");
+                    return;
+                }
                 if (checkLose()) return;
                 renderPhase();
             }
@@ -1736,6 +1759,7 @@
 
             var pnl = calculateAdvisorMargin();
             R.sFeePercentage.textContent = (state.feePercentage * 100).toFixed(2) + "%";
+            R.sWeeklyBurn.textContent = pnl.weeklyBurn.toFixed(3) + " M€";
             R.sExecutionCosts.textContent = pnl.totalCosts.toFixed(3) + " M€";
             R.sNetMargin.textContent = pnl.netMargin.toFixed(3) + " M€";
             R.sNetMargin.style.color = pnl.netMargin >= 0 ? "var(--good)" : "var(--bad)";
@@ -1747,7 +1771,7 @@
 
             // PA pips: filled vs empty circles
             var pips = "";
-            var maxPips = 3;
+            var maxPips = Math.max(1, calcPA(100));
             for (var p = 0; p < maxPips; p++) {
                 pips += (p < state.pontosAcao) ? "\u25CF" : "\u25CB";
             }
@@ -2434,6 +2458,8 @@
                 teamHeadcount: 3,
                 teamHeadcountFatigue: 0,
                 weeklyCostPerHead: 0.005,
+                hiredHeadcountBoost: 0,
+                nextDeliverableBonus: false,
                 ebitda:        cfg.start.ebitda,
                 multiplo:      cfg.start.multiplo,
                 fecho:         cfg.start.fecho,
