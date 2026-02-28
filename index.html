@@ -813,22 +813,31 @@
                 desc: "Convence o fundador a vender no timing certo. Define a tese de valor e alinha expectativas. Usa os teus Pontos de Acao com sabedoria.",
                 actions: [
                     {
-                        text: "Demandar success fee de 3.0% (alto risco de perder o cliente)",
-                        hint: "Maximiza economia do parceiro, mas pode gerar friccao no mandato logo no arranque.",
-                        effects: { feePercentage: 0.03, cliente: -8, fecho: -2, teamMorale: -2, multiplo: 0.3, progressoFase: 25 },
-                        log: "Negociacao agressiva de fee: 3.0% proposto no pitch inicial."
+                        text: "Develop Go-to-Market Narrative",
+                        hint: "Estrutura a tese comercial para o cliente e reforca ligeiramente a confianca no advisor.",
+                        effects: { cliente: 4, fecho: 1, progressoFase: 14 },
+                        log: "Go-to-market narrative desenvolvido com foco em clareza de posicionamento e equity story."
                     },
                     {
-                        text: "Negociar success fee de 2.0% (equilibrio risco/retorno)",
-                        hint: "Abordagem balanced com boa probabilidade de aceitar e economics saudavel.",
-                        effects: { feePercentage: 0.02, cliente: 3, fecho: 2, teamMorale: -1, multiplo: 0.2, progressoFase: 18 },
-                        log: "Mandato avanca com fee de 2.0% e alinhamento razoavel com o accionista."
+                        text: "Review Market Comparables",
+                        hint: "Recalibra a expectativa do cliente com benchmarks recentes para aproximar EV esperado da realidade.",
+                        type: "review_market_comparables",
+                        effects: { cliente: 2, progressoFase: 12 },
+                        log: "Comparables revistos com o cliente; expectativa de valor ajustada de forma incremental."
                     },
                     {
-                        text: "Aceitar success fee de 1.5% para garantir o mandato",
-                        hint: "Reduz economics, mas reforca confianca do cliente e seguranca de execucao.",
-                        effects: { feePercentage: 0.015, cliente: 8, fecho: 3, progressoFase: 7 },
-                        log: "Fee competitivo de 1.5% assegurou o mandato com forte buy-in do cliente."
+                        text: "Promise Detailed Market Mapping",
+                        hint: "Grande boost de confianca: geras imediatamente um deliverable para o Partner Review Board e assumes risco de execucao.",
+                        type: "promise_market_mapping",
+                        effects: { cliente: 18, teamMorale: -2, progressoFase: 20 },
+                        log: "Promessa de market mapping detalhado feita ao cliente; execucao entrou em revisao imediata do Board."
+                    },
+                    {
+                        text: "Force Mandate Signature",
+                        hint: "So funciona com Cliente >= 75. Em caso de sucesso, defines o success fee final e fechas a fase imediatamente.",
+                        type: "force_mandate_signature",
+                        effects: {},
+                        log: "Tentativa de assinatura forcada do mandato apresentada ao cliente."
                     }
                 ]
             },
@@ -1388,6 +1397,31 @@
             return names[phaseId] || (phaseId + " Pack");
         }
 
+        function createImmediateDeliverable(name, qualityBoost) {
+            if (state.currentDeliverable || state.phaseIndex >= PHASES.length) return false;
+            var phaseId = PHASES[state.phaseIndex].id;
+            var baseRoll = 45 + Math.floor(Math.random() * 41);
+            var quality = clamp(baseRoll + (qualityBoost || 0), 0, 120);
+            state.currentDeliverable = {
+                name: name || getDeliverableNameForPhase(phaseId),
+                quality: quality,
+                iterations: 0
+            };
+            state.generatedDeliverables[phaseId] = true;
+            addLog("Partner Review Board activado: \"" + state.currentDeliverable.name + "\" entrou em revisao forense.", "warn");
+            return true;
+        }
+
+        function adjustClientExpectationTowardsReality(step) {
+            var currentEV = calcularEV();
+            var diff = currentEV - state.clientExpectationEV;
+            if (Math.abs(diff) < 0.1) return 0;
+            var move = Math.min(Math.abs(diff), step || 0.8);
+            var signedMove = diff > 0 ? move : -move;
+            state.clientExpectationEV = parseFloat((state.clientExpectationEV + signedMove).toFixed(1));
+            return parseFloat(signedMove.toFixed(1));
+        }
+
         function maybeGenerateDeliverable(prevProgress, nextProgress) {
             if (state.currentDeliverable || state.phaseIndex >= PHASES.length) return;
             if (prevProgress < 50 && nextProgress >= 50) {
@@ -1507,6 +1541,13 @@
                     hint: "Consome 1 PA e 1 semana para recuperar team morale para maximo.",
                     apCost: 1,
                     weekCost: 1
+                },
+                {
+                    id: "weekly_status_update",
+                    text: "Weekly Status Update with Client",
+                    hint: "Check-in semanal reactivo a condicoes de mercado. Requer 1 PA.",
+                    apCost: 1,
+                    weekCost: 0
                 }
             ];
         }
@@ -1533,6 +1574,31 @@
                 addLog("Team building realizado: equipa em maximo de energia. A agenda avanca 1 semana.", "good");
                 updateStats({ teamMorale: moraleGain });
                 endWeek();
+                return;
+            }
+
+            if (actionId === "weekly_status_update") {
+                state.pontosAcao -= 1;
+                var recentNegativeMacro = state.lastMacroTone === "bad" && (state.semanaAtual - state.lastMacroWeek <= 1);
+                if (recentNegativeMacro) {
+                    var trustProtected = state.teamMorale >= 62;
+                    if (trustProtected) {
+                        state.cliente = clamp(state.cliente + 1, 0, 100);
+                        addLog("Weekly Status Update: reuniao tensa apos noticia macro negativa (" + state.lastMacroTitle + "), mas a equipa segurou a confianca do cliente.", "warn");
+                        updateStats({ cliente: 1 });
+                    } else {
+                        state.cliente = clamp(state.cliente - 4, 0, 100);
+                        state.teamMorale = clamp(state.teamMorale - 2, 0, 100);
+                        addLog("Weekly Status Update: reuniao tensa em mercado adverso (" + state.lastMacroTitle + "). Moral insuficiente e confianca do cliente caiu.", "bad");
+                        updateStats({ cliente: -4, teamMorale: -2 });
+                    }
+                } else {
+                    state.cliente = clamp(state.cliente + 3, 0, 100);
+                    addLog("Weekly Status Update: reuniao construtiva com condicoes de mercado estaveis. Cliente alinhado com proximos passos.", "good");
+                    updateStats({ cliente: 3 });
+                }
+                if (checkLose()) return;
+                renderPhase();
             }
         }
 
@@ -1729,7 +1795,11 @@
                 if (BIDDER_FX_KEYS[key]) {
                     applyBidderEffects(fx[key], BIDDER_FX_KEYS[key]);
                 } else if (state[key] !== undefined) {
-                    state[key] += fx[key];
+                    if (key === "feePercentage") {
+                        state[key] = fx[key];
+                    } else {
+                        state[key] += fx[key];
+                    }
                 }
             }
             state.cliente       = clamp(state.cliente, 0, 100);
@@ -2024,6 +2094,9 @@
             var ev = eventosMacro[Math.floor(Math.random() * eventosMacro.length)];
             var evResult = applyEffects(ev.effects, true);
             state.marketNews.unshift({ week: state.semanaAtual, title: ev.title, desc: ev.desc, tone: ev.tone || "warn" });
+            state.lastMacroTone = ev.tone || "warn";
+            state.lastMacroWeek = state.semanaAtual;
+            state.lastMacroTitle = ev.title;
             if (state.marketNews.length > 6) state.marketNews.length = 6;
             renderMarketNews();
             updateStats(evResult.deltas);
@@ -2037,6 +2110,32 @@
 
             state.pontosAcao--;
             var previousProgress = state.progressoFase;
+
+            if (act.type === "force_mandate_signature") {
+                if (state.cliente < 75) {
+                    state.cliente = clamp(state.cliente - 8, 0, 100);
+                    addLog("Force Mandate Signature falhou: confianca insuficiente (Cliente < 75). O cliente recuou e a semana foi desperdicada.", "bad");
+                    updateStats({ cliente: -8 });
+                    endWeek();
+                    return;
+                }
+
+                var input = window.prompt("The client agrees to sign. Enter your final success fee percentage (e.g., 1.5 to 5.0):", ((state.feePercentage || 0.02) * 100).toFixed(2));
+                var feePct = parseFloat(input);
+                if (!isNaN(feePct) && feePct > 0) {
+                    state.feePercentage = feePct / 100;
+                    state.progressoFase = 100;
+                    addLog("Mandato assinado com success fee final de " + feePct.toFixed(2) + "%.", "good");
+                    updateStats({ progressoFase: 100 - previousProgress });
+                    advancePhase();
+                    return;
+                }
+
+                addLog("Assinatura interrompida: fee invalido. A tentativa consumiu 1 PA.", "warn");
+                renderPhase();
+                return;
+            }
+
             var effectSpec = typeof act.getEffects === "function" ? act.getEffects() : act.effects;
             var actionResult = applyEffects(effectSpec, false);
             var deltas = actionResult.deltas;
@@ -2062,6 +2161,18 @@
             } else if (act.type === "vdd_decision" && actionResult.outcome === "success" && !state.hasVDD) {
                 state.hasVDD = true;
                 addLog("Vendor Due Diligence activada: preparacao mais longa, DD final mais rapida e menor risco de price chipping.", "good");
+            } else if (act.type === "review_market_comparables") {
+                var movedBy = adjustClientExpectationTowardsReality(0.9);
+                if (movedBy !== 0) {
+                    addLog("Market comparables actualizaram a expectativa de EV do cliente em " + (movedBy > 0 ? "+" : "") + movedBy.toFixed(1) + "M€ em direccao ao mercado.", "warn");
+                } else {
+                    addLog("Market comparables confirmam que a expectativa de EV ja estava bem calibrada.", "good");
+                }
+            } else if (act.type === "promise_market_mapping") {
+                var generated = createImmediateDeliverable("Market Mapping Draft", 20);
+                if (generated) {
+                    addLog("Deliverable imediato criado: Market Mapping Draft enviado para o Partner Review Board.", "warn");
+                }
             }
 
             if (deltas.teamMorale < 0) {
@@ -2305,7 +2416,10 @@
                 generatedDeliverables: {},
                 ddMassacreResolved: false,
                 clientExpectationEV: parseFloat(((cfg.start.ebitda * cfg.start.multiplo) + 4).toFixed(1)),
-                marketNews:    []
+                marketNews:    [],
+                lastMacroTone: null,
+                lastMacroWeek: 0,
+                lastMacroTitle: "mercado sem choque macro recente"
             };
             gameHistory = [];
             R.log.innerHTML       = "";
