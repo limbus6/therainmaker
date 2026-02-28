@@ -1578,27 +1578,58 @@
             }
 
             if (actionId === "weekly_status_update") {
-                state.pontosAcao -= 1;
-                var recentNegativeMacro = state.lastMacroTone === "bad" && (state.semanaAtual - state.lastMacroWeek <= 1);
-                if (recentNegativeMacro) {
-                    var trustProtected = state.teamMorale >= 62;
-                    if (trustProtected) {
-                        state.cliente = clamp(state.cliente + 1, 0, 100);
-                        addLog("Weekly Status Update: reuniao tensa apos noticia macro negativa (" + state.lastMacroTitle + "), mas a equipa segurou a confianca do cliente.", "warn");
-                        updateStats({ cliente: 1 });
-                    } else {
-                        state.cliente = clamp(state.cliente - 4, 0, 100);
-                        state.teamMorale = clamp(state.teamMorale - 2, 0, 100);
-                        addLog("Weekly Status Update: reuniao tensa em mercado adverso (" + state.lastMacroTitle + "). Moral insuficiente e confianca do cliente caiu.", "bad");
-                        updateStats({ cliente: -4, teamMorale: -2 });
-                    }
-                } else {
-                    state.cliente = clamp(state.cliente + 3, 0, 100);
-                    addLog("Weekly Status Update: reuniao construtiva com condicoes de mercado estaveis. Cliente alinhado com proximos passos.", "good");
-                    updateStats({ cliente: 3 });
-                }
+                reuniaoPontoSituacao();
                 if (checkLose()) return;
                 renderPhase();
+            }
+        }
+
+        function reuniaoPontoSituacao() {
+            var baseMultiplo = 8.0;
+            var multiploDiff = parseFloat((state.multiplo - baseMultiplo).toFixed(2));
+            var marketSentiment = state.multiplo < baseMultiplo ? "Bearish" : "Bullish";
+
+            var baseChance = 0.70;
+            if (marketSentiment === "Bearish") baseChance -= 0.25;
+            if (state.teamMorale > 80) baseChance += 0.15;
+            if (state.teamMorale < 40) baseChance -= 0.20;
+            var successThreshold = clamp(baseChance, 0.10, 0.95);
+
+            var roll = Math.random();
+            var isSuccess = roll <= successThreshold;
+            var clienteDelta = 0;
+            var tone = "warn";
+
+            state.pontosAcao -= 1;
+
+            if (isSuccess && marketSentiment === "Bullish") {
+                clienteDelta = 8;
+                tone = "good";
+                addLog("Reunião construtiva. O mercado está forte (Múltiplo a " + state.multiplo.toFixed(1) + "x) e o cliente confia na valorização final em EUR.", tone);
+            } else if (!isSuccess && marketSentiment === "Bullish") {
+                clienteDelta = -5;
+                tone = "bad";
+                addLog("Apesar do mercado favorável, a equipa apresentou dados desatualizados. O cliente demonstrou irritação.", tone);
+            } else if (isSuccess && marketSentiment === "Bearish") {
+                clienteDelta = 5;
+                tone = "warn";
+                addLog("Reunião tensa, mas conseguiu justificar a quebra do mercado e manter o cliente alinhado.", tone);
+            } else {
+                clienteDelta = -15;
+                tone = "bad";
+                addLog("Desastre. O cliente entrou em pânico com a queda do múltiplo e questionou a viabilidade da operação em EUR.", tone);
+            }
+
+            state.cliente = clamp(state.cliente + clienteDelta, 0, 100);
+            updateStats({ cliente: clienteDelta });
+            if (state.debugRng) {
+                addLog(
+                    "[S" + state.semanaAtual + "] Weekly Status RNG: sentiment=" + marketSentiment +
+                    " diff=" + (multiploDiff > 0 ? "+" : "") + multiploDiff.toFixed(2) +
+                    " threshold=" + successThreshold.toFixed(2) +
+                    " roll=" + roll.toFixed(3),
+                    "warn"
+                );
             }
         }
 
