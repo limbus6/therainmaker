@@ -953,13 +953,14 @@
             { title: "Competitor Pitch", desc: "Um concorrente entra no mandato no último minuto e semeia dúvidas sobre a tua credibilidade.", effects: { cliente: -14, teamMorale: -5, fecho: -7 }, good: false, type: "negative", requires: { phase: 0, moraleMin: 35 }, mitigation: { prompt: "Queres activar roadshow de credibilidade para blindar o cliente contra o pitch concorrente?", apCost: 2, cashCost: 0.1, successEffects: { cliente: 10, fecho: 5 } } },
             { title: "Kick-off Vision Alignment", desc: "O accionista valida a tua tese e acelera decisões críticas logo no início.", effects: { cliente: 7, teamMorale: 3, progressoFase: 10 }, good: true, type: "positive", requires: { phase: 0 } },
             { title: "Teaser Draft Rework", desc: "O teaser inicial foi considerado fraco e exige reescrita com impacto no ritmo da equipa.", effects: { teamMorale: -6, cliente: -4, progressoFase: -6 }, good: false, type: "negative", requires: { phase: 1, moraleMin: 30 }, mitigation: { prompt: "Queres chamar senior advisor para reforçar a narrativa do teaser?", apCost: 2, cashCost: 0.1, successEffects: { teamMorale: 4, cliente: 3, progressoFase: 4 } } },
-            { title: "Data Room Leak", desc: "Um ficheiro confidencial foi partilhado por engano. A confiança no processo cai de imediato.", effects: { cliente: -15, teamMorale: -6, interesseBidders: -10, fecho: -8 }, good: false, type: "negative", requires: { phase: 2 }, mitigation: { prompt: "Leak detectado. Activar forense digital e plano de remediação já?", apCost: 2, cashCost: 0.1, successEffects: { cliente: 9, interesseBidders: 6, fecho: 5 } } },
+            { title: "Data Room Leak", desc: "Um ficheiro confidencial foi partilhado por engano. A confiança no processo cai de imediato.", effects: { cliente: -15, teamMorale: -6, interesseBidders: -10, fecho: -8 }, good: false, type: "negative", requires: { phase: 2 }, mitigation: { prompt: "Leak detectado. Activar forense digital e plano de remediação já?", apCost: 2, cashCost: 0.1, recover70: true } },
             { title: "Unsolicited Strategic Approach", desc: "Um comprador estratégico não contactado envia interesse firme e cria tensão competitiva.", effects: { interesseBiddersIndustrial: 14, multiplo: 0.6, fecho: 5, cliente: 4 }, good: true, type: "positive", requires: { phase: 3 } },
             { title: "Buyer Churn", desc: "Dois compradores reduzem prioridade ao dossier devido a capacidade interna limitada.", effects: { interesseBidders: -10, fecho: -6, teamMorale: -3 }, good: false, type: "negative", requires: { phase: 3, moraleMin: 25 }, mitigation: { prompt: "Fazes re-engagement sprint com CFO calls para recuperar atenção dos bidders?", apCost: 2, cashCost: 0.1, successEffects: { interesseBidders: 7, fecho: 4 } } },
             { title: "Management Dry-Run Exemplar", desc: "A apresentação de gestão corre acima das expectativas e melhora a leitura de execução.", effects: { cliente: 5, interesseBidders: 6, fecho: 5 }, good: true, type: "positive", requires: { phase: 4 } },
             { title: "Q&A Desalinhado", desc: "Respostas contraditórias no Q&A levantam dúvidas de governance.", effects: { cliente: -8, interesseBidders: -9, fecho: -7 }, good: false, type: "negative", requires: { phase: 4 }, mitigation: { prompt: "Queres montar war-room para alinhar mensagens e publicar errata controlada?", apCost: 2, cashCost: 0.1, successEffects: { cliente: 6, interesseBidders: 6, fecho: 4 } } },
             { title: "Indicative Bids Above Plan", desc: "As NBOs chegam acima do intervalo-base e reforçam a tua narrativa de valor.", effects: { multiplo: 0.5, interesseBidders: 7, fecho: 6 }, good: true, type: "positive", requires: { phase: 5 } },
             { title: "Skeleton in the Closet", desc: "Na due diligence surge um passivo oculto não mapeado no IM.", effects: { ebitda: -0.6, cliente: -10, interesseBidders: -8, fecho: -9 }, good: false, type: "negative", requires: { phase: 6 }, mitigation: { prompt: "Activar pacote de indemnização e carve-out técnico para conter dano?", apCost: 2, cashCost: 0.1, successEffects: { ebitda: 0.4, cliente: 7, fecho: 6 } } },
+            { title: "EBITDA Surprise", desc: "A due diligence financeira identificou ajustes extraordinários e o EBITDA recorrente caiu face ao teaser.", effects: { ebitda: -0.5, cliente: -12, interesseBidders: -12, fecho: -7 }, good: false, type: "negative", requires: { phase: 6 }, mitigation: { prompt: "Activar task-force financeira e auditoria flash para conter erosão de confiança/interesse?", apCost: 2, cashCost: 0.1, recover70: true } },
             { title: "DD Streamlined", desc: "A diligence avança com menos pedidos do que o esperado devido à qualidade do VDR.", effects: { teamMorale: 4, progressoFase: 8, fecho: 4 }, good: true, type: "positive", requires: { phase: 6 } },
             { title: "Exclusivity Fatigue", desc: "A exclusividade prolongada sem milestones reduz a pressão competitiva.", effects: { interesseBidders: -7, fecho: -8, cliente: -4 }, good: false, type: "negative", requires: { phase: 7 }, mitigation: { prompt: "Queres impor data certa com reverse break e comité semanal de decisão?", apCost: 2, cashCost: 0.1, successEffects: { fecho: 6, cliente: 5 } } },
             { title: "Seller-Friendly Draft", desc: "Primeiro draft do SPA fica surpreendentemente favorável ao vendedor.", effects: { fecho: 7, cliente: 4, teamMorale: 2 }, good: true, type: "positive", requires: { phase: 8 } },
@@ -1427,10 +1428,17 @@
             return out;
         }
 
+        function getActionWorkstream(action) {
+            var source = ((action && (action.text || (action.textKey ? t(action.textKey) : ""))) || "").toLowerCase();
+            if (source.indexOf("spa") >= 0 || source.indexOf("warrant") >= 0 || source.indexOf("legal") >= 0 || source.indexOf("contrat") >= 0 || source.indexOf("garantia") >= 0 || source.indexOf("mark-up") >= 0) return "Legal";
+            if (source.indexOf("ebitda") >= 0 || source.indexOf("financial") >= 0 || source.indexOf("dívida") >= 0 || source.indexOf("divida") >= 0 || source.indexOf("valuation") >= 0 || source.indexOf("capex") >= 0 || source.indexOf("net debt") >= 0 || source.indexOf("normaliza") >= 0) return "Financial";
+            return "Commercial";
+        }
+
         var PHASES_PRO = [
             { id: "PITCH", title: "Pitch inicial ao accionista", desc: "Fase comercial crítica para conquistar o mandato.", microPhases: [
                 { id: "p0-1", name: "0.1 Diagnóstico inicial", progressTarget: 100, actions: generateMicroActions("p01", ["Kick-off com acionistas", "Mapeamento de objetivos", "Análise de posicionamento", "Plano de comunicação"], 70, { cliente: 3, fecho: 1, progressoFase: 10 }) },
-                { id: "p0-2", name: "0.2 Equity Story", progressTarget: 100, actions: generateMicroActions("p02", ["Narrativa equity story", "Mensagens para investidores", "Tese de crescimento", "Validação com CFO"], 68, { cliente: 2, fecho: 2, progressoFase: 10 }) },
+                { id: "p0-2", name: "0.2 Equity Story", progressTarget: 100, actions: generateMicroActions("p02", ["Refinar Equity Story", "Mensagens para investidores", "Tese de crescimento", "Validação com CFO"], 68, { cliente: 2, fecho: 2, progressoFase: 10 }) },
                 { id: "p0-3", name: "0.3 Valuation Anchor", progressTarget: 100, actions: [buildAction("set-expectation", { type: "set_client_expectation", name: "Definir expectativa EV do cliente", hint: "Formaliza a âncora de valuation em M€.", baseProb: 75, effects: { cliente: 4, fecho: 2, progressoFase: 20 }, failure: { cliente: -5, progressoFase: 5 }, log: "Expectativa de EV discutida com cliente." })].concat(generateMicroActions("p03", ["Revisão de comparáveis", "Sensibilidade de múltiplos", "Alinhamento de downside"], 66, { fecho: 2, progressoFase: 10 })) },
                 { id: "p0-4", name: "0.4 Roadmap de processo", progressTarget: 100, actions: generateMicroActions("p04", ["Roadmap de marcos", "Calendário macro", "Plano de governance", "Matriz de riscos"], 67, { teamMorale: 1, fecho: 1, progressoFase: 10 }) },
                 { id: "p0-5", name: "0.5 Ensaios de pitch", progressTarget: 100, actions: generateMicroActions("p05", ["Ensaio interno", "Q&A desafiante", "Refino visual", "Storyline final"], 69, { cliente: 2, teamMorale: 1, progressoFase: 10 }) },
@@ -1448,7 +1456,7 @@
                 { id: "p2-4", name: "2.4 VDR Setup", progressTarget: 100, actions: [buildAction("vdr-setup", { name: "VDR Setup", hint: "Configura o data room com permissões e trilhos de auditoria.", baseProb: 65, success: { currentPhaseWorkload: 10, teamMorale: -3, progressoFase: 20, fecho: 2 }, failure: { teamMorale: -4, progressoFase: 6 }, log: "VDR configurado." })].concat(generateMicroActions("p24", ["Índice de pastas", "Permissões por bidder", "Q&A tracker"], 66, { progressoFase: 9 })) }
             ]},
             { id: "MARKET OUTREACH", title: "Market Outreach", desc: "Lançamento de mercado e interação com buyers.", microPhases: [
-                { id: "p3-1", name: "3.1 Buyer Universe Definition", progressTarget: 100, actions: generateMicroActions("p31", ["Buyer Universe Definition", "Priorização por fit", "Mapa de decisão", "Aprovação universo", "Calibração de tiering"], 68, { fecho: 2, progressoFase: 10 }) },
+                { id: "p3-1", name: "3.1 Buyer Universe Definition", progressTarget: 100, actions: generateMicroActions("p31", ["Buyer Universe Definition", "Priorização por fit", "Estratégia de Abordagem a Compradores", "Aprovação universo", "Calibração de tiering"], 68, { fecho: 2, progressoFase: 10 }) },
                 { id: "p3-2", name: "3.2 Teaser Outreach", progressTarget: 100, actions: generateMicroActions("p32", ["Teaser Outreach", "Follow-up targets", "NDA management", "Pipeline tracking", "Escalonamento de resposta"], 67, { fecho: 2, progressoFase: 10 }) },
                 { id: "p3-3", name: "3.3 Management Presentation", progressTarget: 100, actions: generateMicroActions("p33", ["Management Presentation", "Q&A com buyers", "Debrief interno", "Ajustes narrativos", "Refuerzo de mensagem CEO"], 66, { teamMorale: -2, fecho: 3, progressoFase: 10 }) },
                 { id: "p4-4", name: "4.4 Process Letter II", progressTarget: 100, actions: generateMicroActions("p44", ["Process Letter II", "Deadline final NBO", "Critérios de avaliação", "Confirmação de receção", "Round-up de instruções"], 68, { fecho: 2, progressoFase: 10 }) }
@@ -1462,7 +1470,7 @@
             ]},
             { id: "DUE DILIGENCE", title: "Due Diligence", desc: "Fase de validação profunda por workstream.", microPhases: [
                 { id: "p6-1", name: "6.1 DD Launch", progressTarget: 100, actions: generateMicroActions("p61", ["Kick-off DD", "Plano de requests", "Governance de Q&A", "SLA de respostas", "War room setup"], 66, { teamMorale: -2, progressoFase: 8 }) },
-                { id: "p6-2", name: "6.2 Financial Q&A", progressTarget: 100, actions: generateMicroActions("p62", ["Financial Q&A batch 1", "Financial Q&A batch 2", "Bridge EBITDA", "Normalizações", "Capex debate"], 65, { teamMorale: -2, fecho: 2, progressoFase: 8 }) },
+                { id: "p6-2", name: "6.2 Financial Q&A", progressTarget: 100, actions: generateMicroActions("p62", ["Financial Q&A batch 1", "Normalização de EBITDA", "Bridge EBITDA", "Análise de Dívida Líquida", "Capex debate"], 65, { teamMorale: -2, fecho: 2, progressoFase: 8 }) },
                 { id: "p6-3", name: "6.3 Tax Q&A", progressTarget: 100, actions: generateMicroActions("p63", ["Tax Q&A batch 1", "Tax Q&A batch 2", "Posições fiscais", "Contingências", "Mitigação fiscal"], 64, { teamMorale: -2, fecho: 1, progressoFase: 8 }) },
                 { id: "p6-4", name: "6.4 Legal Q&A", progressTarget: 100, actions: generateMicroActions("p64", ["Legal Q&A contratos", "Legal Q&A laboral", "Legal Q&A regulatório", "Litigation review", "Legal close memo"], 64, { teamMorale: -2, fecho: 2, progressoFase: 8 }) }
             ]},
@@ -1472,8 +1480,8 @@
                 { id: "p7-3", name: "7.3 Enter Exclusivity", progressTarget: 100, actions: generateMicroActions("p73", ["Confirmar exclusividade", "Plano de exclusividade", "Governance de exclusividade", "Kick-off SPA"], 70, { fecho: 4, progressoFase: 10 }) }
             ]},
             { id: "SPA NEGOTIATION", title: "SPA Negotiation", desc: "Negociação jurídica e comercial de signing.", microPhases: [
-                { id: "p8-1", name: "8.1 SPA Draft", progressTarget: 100, actions: generateMicroActions("p81", ["SPA Draft Review", "Ronda de markups", "Posições de risco", "Aprovação draft"], 66, { fecho: 2, progressoFase: 10 }) },
-                { id: "p8-2", name: "8.2 Warranties & Liability", progressTarget: 100, actions: [buildAction("spa-warranties", { type: "spa_concede_warranties", name: "Negociar Warranties", hint: "Ajusta warranties e limites de responsabilidade.", baseProb: 65, effects: { fecho: 5, progressoFase: 18 }, failure: { cliente: -4, progressoFase: 6 }, log: "Warranties negociadas." })].concat(generateMicroActions("p82", ["Cap table legal", "Disclosure letter", "Escrow mechanics"], 65, { progressoFase: 8 })) },
+                { id: "p8-1", name: "8.1 SPA Draft", progressTarget: 100, actions: generateMicroActions("p81", ["Mark-up do SPA", "Ronda de markups", "Posições de risco", "Aprovação draft"], 66, { fecho: 2, progressoFase: 10 }) },
+                { id: "p8-2", name: "8.2 Warranties & Liability", progressTarget: 100, actions: [buildAction("spa-warranties", { type: "spa_concede_warranties", name: "Revisão de Garantias (Warranties)", hint: "Ajusta warranties e limites de responsabilidade.", baseProb: 65, effects: { fecho: 5, progressoFase: 18 }, failure: { cliente: -4, progressoFase: 6 }, log: "Warranties negociadas." })].concat(generateMicroActions("p82", ["Cap table legal", "Disclosure letter", "Escrow mechanics"], 65, { progressoFase: 8 })) },
                 { id: "p8-3", name: "8.3 Economics e ajustes", progressTarget: 100, actions: generateMicroActions("p83", ["Working capital peg", "Net debt adjustment", "Earnout terms", "Leakage clauses", "Mecanismo locked-box"], 66, { fecho: 2, progressoFase: 9 }) }
             ]},
             { id: "SIGNING", title: "Signing", desc: "Preparação final para assinatura e transição para closing.", microPhases: [
@@ -2793,6 +2801,54 @@
                 : "Preview: EBITDA 2.0-4.5 M€ · Multiple 10.0x-14.0x";
         }
 
+
+        async function maybeTriggerFeeRivalEvent() {
+            if (!state || state.ended) return false;
+            if (state.currentPhaseIndex !== 0) return false;
+            if ((state.currentMicroPhaseIndex || 0) < 5) return false;
+            if (state.feeRivalResolved) return false;
+            if ((state.baseFee || 0) <= 0.01) return false;
+            if (Math.random() > 0.45) return false;
+
+            var keepFee = state.baseFee;
+            var keepUpside = state.incentiveFee;
+            var choice = await showModal(
+                "Advisor Rival (Fee Under-cut)",
+                "Um advisor rival apresentou uma proposta de fee 30% inferior à nossa. O cliente está a ponderar e exige uma revisão das nossas condições.",
+                [
+                    { label: "Match Fee", value: "match" },
+                    { label: "Defender Valor", value: "hold" },
+                    { label: "Estrutura Ratchet", value: "ratchet" }
+                ]
+            );
+
+            if (choice === "match") {
+                state.baseFee = Math.max(0.005, parseFloat((state.baseFee - 0.003).toFixed(4)));
+                state.cliente = clamp(state.cliente + 15, 0, 100);
+                addLog("Fee rival: fizeste match de fee. Cliente +15, margem líquida estruturalmente comprimida.", "warn");
+                updateStats({ cliente: 15, baseFee: 0 });
+            } else if (choice === "hold") {
+                var holdProb = clamp(0.35 + (state.cliente / 100) * 0.35 + (state.teamMorale / 100) * 0.3, 0.2, 0.92);
+                if (Math.random() <= holdProb) {
+                    state.cliente = clamp(state.cliente + 10, 0, 100);
+                    addLog("Fee rival: defendeste valor com sucesso. Cliente +10 sem concessão económica.", "good");
+                    updateStats({ cliente: 10 });
+                } else {
+                    state.cliente = clamp(state.cliente - 20, 0, 100);
+                    addLog("Fee rival: defesa de valor falhou. Cliente -20 e risco de mandato negado aumentou.", "bad");
+                    updateStats({ cliente: -20 });
+                }
+            } else if (choice === "ratchet") {
+                state.baseFee = Math.max(0.005, parseFloat((state.baseFee - 0.002).toFixed(4)));
+                state.incentiveFee = Math.min(0.12, parseFloat((state.incentiveFee + 0.015).toFixed(4)));
+                state.cliente = clamp(state.cliente + 5, 0, 100);
+                addLog("Fee rival: aplicaste estrutura ratchet (base down, upside up). Cliente +5 e risco financeiro redistribuído.", "good");
+                updateStats({ cliente: 5, incentiveFee: 0, baseFee: 0 });
+            }
+            state.feeRivalResolved = true;
+            return true;
+        }
+
         function showDelta(el, val) {
             if (!el || val === 0) return;
             el.textContent = (val > 0 ? "+" : "") + val;
@@ -3268,17 +3324,35 @@
             }
 
             var mitigated = false;
+            var mitigatedPenalty = null;
             if (ev.mitigation && ev.type === "negative" && state.pontosAcao >= ev.mitigation.apCost) {
-                var wantsMitigation = await showModal("Mitigação de Evento", ev.mitigation.prompt + " (Disponível: " + state.pontosAcao + " PA)", [{ label: "Mitigar", value: true }, { label: "Não mitigar", value: false, tone: "danger" }]);
+                var wantsMitigation = await showModal("Mitigação de Evento", ev.mitigation.prompt + " (Custo: " + ev.mitigation.apCost + " PA + " + ev.mitigation.cashCost.toFixed(1) + " M€)", [{ label: "Mitigar", value: true }, { label: "Não mitigar", value: false, tone: "danger" }]);
                 if (wantsMitigation) {
                     state.pontosAcao -= ev.mitigation.apCost;
                     state.extraExecutionCosts = parseFloat((state.extraExecutionCosts + ev.mitigation.cashCost).toFixed(3));
-                    var mitResult = applyEffects(ev.mitigation.successEffects || {}, false);
-                    updateStats(mitResult.deltas);
-                    addLog("Mitigacao activada para '" + ev.title + "': -" + ev.mitigation.apCost + " PA e -" + ev.mitigation.cashCost.toFixed(1) + "M€ em custos de execucao.", "warn");
-                    gameHistory.push({ type: "event", label: ev.title + " (Mitigado)", text: "Evento mitigado com custo de equipa e caixa." });
                     mitigated = true;
                     tagsHtml += '<span class="eff-tag eff-neg">PA -' + ev.mitigation.apCost + '</span><span class="eff-tag eff-neg">Custo -' + ev.mitigation.cashCost.toFixed(1) + 'M€</span>';
+
+                    if (ev.mitigation.recover70) {
+                        mitigatedPenalty = {};
+                        var basePenalty = ev.effects || {};
+                        var penaltyKeys = Object.keys(basePenalty);
+                        for (var mk = 0; mk < penaltyKeys.length; mk++) {
+                            var mKey = penaltyKeys[mk];
+                            var mVal = basePenalty[mKey];
+                            if (typeof mVal === "number" && mVal < 0 && (mKey === "cliente" || mKey.indexOf("interesseBidders") === 0)) {
+                                mitigatedPenalty[mKey] = Math.round(mVal * 0.3);
+                            } else {
+                                mitigatedPenalty[mKey] = mVal;
+                            }
+                        }
+                    } else {
+                        var mitResult = applyEffects(ev.mitigation.successEffects || {}, false);
+                        updateStats(mitResult.deltas);
+                    }
+
+                    addLog("Mitigacao activada para '" + ev.title + "': -" + ev.mitigation.apCost + " PA e -" + ev.mitigation.cashCost.toFixed(1) + "M€ em custos de execucao.", "warn");
+                    gameHistory.push({ type: "event", label: ev.title + " (Mitigado)", text: "Evento mitigado com custo de equipa e caixa." });
                 }
             }
 
@@ -3289,7 +3363,7 @@
                 '<div class="event-effects">' + tagsHtml + '</div>' +
                 '</div>';
 
-            var baseEffects = (mitigated && !ev.good) ? {} : ev.effects;
+            var baseEffects = (mitigated && mitigatedPenalty) ? mitigatedPenalty : ((mitigated && !ev.good && ev.mitigation && !ev.mitigation.recover70) ? {} : ev.effects);
             var personaCfg = CLIENT_TYPES[state.persona] || CLIENT_TYPES.founder;
             if (!ev.good && baseEffects) {
                 var scaled = {};
@@ -3456,6 +3530,7 @@
                     state.progressoMicroFase = Math.max(state.progressoMicroFase, getPhaseProgressTarget());
                     addLog("Fee ratchet acordado: " + basePct.toFixed(2) + "% base / " + incentivePct.toFixed(2) + "% incentivo.", "good");
                     updateStats({ feePercentage: 0 });
+                    await maybeTriggerFeeRivalEvent();
                     renderPhase();
                     return;
                 }
@@ -3748,6 +3823,9 @@
             var triggerRandom = opts.triggerRandom !== false;
             var triggerPriceChipping = opts.triggerPriceChipping !== false;
 
+            // Hotfix UI/estado: restaurar PA imediatamente no início da semana
+            state.pontosAcao = calcPA(state.teamMorale);
+
             // 1) Incrementar semana
             state.semanaAtual++;
             state.semanasNaFase++;
@@ -3862,6 +3940,7 @@
         // ---- RENDER PHASE ----
         function renderPhase() {
             if (R.choices) R.choices.innerHTML = "";
+            if (R.globalChoices) R.globalChoices.innerHTML = "";
             updateStats();
             if (state.ended) return;
             if (checkLose()) return;
@@ -3926,11 +4005,11 @@
                         ? " \u00B7 +" + progressFx.progressoFase + "% fase"
                         : "";
                     btn.innerHTML =
-                        "<strong>" + (idx + 1) + ". " + (act.textKey ? t(act.textKey) : act.text) + "</strong>" +
+                        "<strong>" + (idx + 1) + ". [" + getActionWorkstream(act) + "] " + (act.textKey ? t(act.textKey) : act.text) + "</strong>" +
                         '<span class="choice-hint">' + (act.hintKey ? t(act.hintKey) : act.hint) + '</span>' +
                         '<span class="choice-hint" style="color:var(--accent);font-size:0.72rem;margin-top:3px;">' +
                         "\u25B8 " + (act.apCost || 1) + " Ponto" + ((act.apCost || 1) > 1 ? "s" : "") + " de Acao" + progressLabel + " \u00B7 " + Math.round(successProb * 100) + "% sucesso</span>";
-                    btn.disabled = (state.pontosAcao <= 0) || boardLocked || (state.pontosAcao < (act.apCost || 1));
+                    btn.disabled = (state.pontosAcao < (act.apCost || 1));
                     btn.addEventListener("click", function() { doAction(act); });
                     R.choices.appendChild(btn);
                 })(phaseActions[i], i);
@@ -3956,7 +4035,7 @@
                         '<span class="choice-hint" style="color:var(--accent);font-size:0.72rem;margin-top:3px;">' +
                         "▸ " + actionCost + " " + (actionCost > 1 ? t("ui.points") : t("ui.point")) + (act.weekCost ? " · " + act.weekCost + " semana" : "") + "</span>";
                     var blockedByMorale = act.id === "demand_results" && state.teamMorale < 35;
-                    btn.disabled = (state.pontosAcao <= 0) || boardLocked || (state.pontosAcao < actionCost) || blockedByMorale;
+                    btn.disabled = (state.pontosAcao < actionCost);
                     btn.addEventListener("click", function() { doGlobalAction(act.id, act.bidderName); });
                     R.globalChoices.appendChild(btn);
                     if (blockedByMorale) {
@@ -4140,6 +4219,7 @@
                 closingProbBonus: 0,
                 expectationAnchored: false,
                 feeNegotiated: false,
+                feeRivalResolved: false,
                 expectationTrapActive: false,
                 marketNews:    [],
                 macroState: {
