@@ -974,9 +974,9 @@
 
     <button id="debug-toggle" class="debug-toggle secondary" title="Debug (D)">?</button>
     <div id="debug-panel" class="debug-panel hidden" aria-live="polite">
-        <h3>Debug Info</h3>
+        <h3 data-i18n="debug.title">Debug</h3>
         <pre id="debug-content">-</pre>
-        <button id="debug-force-render" class="secondary" style="min-height:36px;text-align:center;">Force Reset UI</button>
+        <button id="debug-force-render" class="secondary" style="min-height:36px;text-align:center;" data-i18n="debug.forceRender">Force Reset UI</button>
     </div>
 
     <div class="modal-overlay hidden" id="game-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
@@ -1149,7 +1149,7 @@
                         log: "Promessa de market mapping detalhado feita ao cliente; execucao entrou em revisao imediata do Board."
                     },
                     {
-                        text: "Negotiate Fee Ratchet",
+                        text: "Negociar Fee Ratchet",
                         hint: "Micro-fase obrigatoria. Negocia base fee (0.5%-2.0%) e incentivo (3%-10%) no mandato.",
                         type: "negotiate_fee_ratchet",
                         effects: {},
@@ -1541,7 +1541,7 @@
                 { id: "p0-3", name: "0.3 Valuation Anchor", progressTarget: 100, actions: [buildAction("set-expectation", { type: "set_client_expectation", name: "Definir expectativa EV do cliente", hint: "Formaliza a âncora de valuation em M€.", baseProb: 75, effects: { cliente: 4, fecho: 2, progressoFase: 20 }, failure: { cliente: -5, progressoFase: 5 }, log: "Expectativa de EV discutida com cliente." })].concat(generateMicroActions("p03", ["Revisão de comparáveis", "Sensibilidade de múltiplos", "Alinhamento de downside"], 66, { fecho: 2, progressoFase: 10 })) },
                 { id: "p0-4", name: "0.4 Roadmap de processo", progressTarget: 100, actions: generateMicroActions("p04", ["Roadmap de marcos", "Calendário macro", "Plano de governance", "Matriz de riscos"], 67, { teamMorale: 1, fecho: 1, progressoFase: 10 }) },
                 { id: "p0-5", name: "0.5 Ensaios de pitch", progressTarget: 100, actions: generateMicroActions("p05", ["Ensaio interno", "Q&A desafiante", "Refino visual", "Storyline final"], 69, { cliente: 2, teamMorale: 1, progressoFase: 10 }) },
-                { id: "p0-6", name: "0.6 Negociação de Fees", progressTarget: 100, actions: [buildAction("fee-negotiation", { type: "negotiate_fee_ratchet", name: "Negociação de Fees", hint: "Define base fee e incentive fee no mandato.", baseProb: 72, effects: { cliente: 5, progressoFase: 20 }, failure: { cliente: -10, progressoFase: 0 }, log: "Negociação de fees executada." })] }
+                { id: "p0-6", name: "0.6 Negociação de Fees", progressTarget: 100, actions: [buildAction("fee-negotiation", { type: "negotiate_fee_ratchet", name: "Negociar Fee Ratchet", hint: "Define base fee e incentive fee no mandato.", baseProb: 72, effects: { cliente: 5, progressoFase: 20 }, failure: { cliente: -10, progressoFase: 0 }, log: "Negociação de fees executada." })] }
             ]},
             { id: "MANDATO ASSINADO", title: "Mandato assinado", desc: "Arranque operacional do projeto com governance robusta.", microPhases: [
                 { id: "p1-1", name: "1.1 Kick-off do mandato", progressTarget: 100, actions: generateMicroActions("p11", ["Kick-off formal", "RACI do projeto", "Plano de weekly steering", "Protocolos de decisão"], 71, { cliente: 2, teamMorale: 2, progressoFase: 12 }) },
@@ -1589,6 +1589,57 @@
                 { id: "p10-1", name: "10.1 CPs/Funding Monitoring", progressTarget: 100, actions: generateMicroActions("p101", ["CPs/Funding Monitoring", "Waivers bancários", "Fluxo de fundos", "Conferência final", "Confirmação de closing"], 69, { fecho: 4, progressoFase: 10 }) }
             ]}
         ];
+
+        var PHASES = PHASES_PRO;
+
+        function findMicroPhase(phaseId, microId) {
+            for (var i = 0; i < PHASES.length; i++) {
+                if (PHASES[i].id !== phaseId) continue;
+                var micros = PHASES[i].microPhases || [];
+                for (var j = 0; j < micros.length; j++) {
+                    if (micros[j].id === microId) return micros[j];
+                }
+            }
+            return null;
+        }
+
+        function injectWorkstreamActions() {
+            var mapping = [
+                { phase: "PITCH", micro: "p0-2", id: "commercial-equity-story-polish", name: "Equity Story Polish", hint: "Refina o equity story para elevar credibilidade junto do cliente e compradores.", baseProb: 74, effects: { cliente: 5, fecho: 3, progressoFase: 18 }, failure: { cliente: -3, progressoFase: 5 }, log: "Equity Story Polish concluído." },
+                { phase: "PITCH", micro: "p0-4", id: "commercial-market-mapping", name: "Market Mapping", hint: "Mapeia compradores-alvo com granularidade setorial para acelerar outreach.", baseProb: 72, effects: { cliente: 4, interesseBidders: 6, progressoFase: 16 }, failure: { teamMorale: -2, progressoFase: 4 }, log: "Market Mapping executado." },
+                { phase: "MARKET OUTREACH", micro: "p3-1", id: "commercial-buyer-outreach", name: "Buyer Outreach", hint: "Ativa contactos direcionados para maximizar tensão competitiva.", baseProb: 73, effects: { interesseBidders: 8, fecho: 2, progressoFase: 14 }, failure: { interesseBidders: -4, progressoFase: 4 }, log: "Buyer Outreach lançado." },
+                { phase: "SHORTLIST", micro: "p4-4", id: "commercial-management-coaching", name: "Management Coaching", hint: "Prepara a equipa de gestão para sessões críticas com compradores.", baseProb: 71, effects: { cliente: 3, teamMorale: 4, fecho: 3, progressoFase: 14 }, failure: { teamMorale: -3, progressoFase: 4 }, log: "Management Coaching concluído." },
+
+                { phase: "PREPARACAO", micro: "p2-3", id: "financial-ebitda-normalization", name: "EBITDA Normalization", hint: "Normaliza EBITDA para remover itens não recorrentes antes da DD.", baseProb: 72, effects: { ebitda: 0.3, fecho: 3, progressoFase: 15 }, failure: { cliente: -3, progressoFase: 5 }, log: "EBITDA Normalization executado." },
+                { phase: "PREPARACAO", micro: "p2-3", id: "financial-net-debt-bridge", name: "Net Debt Bridge", hint: "Constrói ponte robusta de dívida líquida para reduzir disputas de preço.", baseProb: 71, effects: { fecho: 4, progressoFase: 13 }, failure: { cliente: -2, progressoFase: 4 }, log: "Net Debt Bridge preparado." },
+                { phase: "DUE DILIGENCE", micro: "p6-2", id: "financial-financial-qa-stream", name: "Financial Q&A Stream", hint: "Orquestra fluxo financeiro de Q&A com SLA rigoroso.", baseProb: 70, effects: { fecho: 3, interesseBidders: 4, progressoFase: 13 }, failure: { teamMorale: -2, progressoFase: 4 }, log: "Financial Q&A Stream em execução." },
+                { phase: "DUE DILIGENCE", micro: "p6-1", id: "financial-vdd-execution", name: "VDD Execution", hint: "Executa Vendor Due Diligence para antecipar riscos e reduzir chipping.", baseProb: 69, effects: { fecho: 4, progressoFase: 14 }, failure: { teamMorale: -2, progressoFase: 4 }, log: "VDD Execution concluída." },
+
+                { phase: "SPA NEGOTIATION", micro: "p8-1", id: "legal-spa-markup", name: "SPA Markup", hint: "Conduz markup jurídico do SPA com foco em riscos materiais.", baseProb: 70, effects: { fecho: 4, progressoFase: 15 }, failure: { cliente: -3, progressoFase: 5 }, log: "SPA Markup concluído." },
+                { phase: "SPA NEGOTIATION", micro: "p8-2", id: "legal-warranty-negotiation", name: "Warranty Negotiation", hint: "Negocia pacote de warranties equilibrando proteção e closing.", baseProb: 69, effects: { fecho: 5, progressoFase: 14 }, failure: { fecho: -3, progressoFase: 5 }, log: "Warranty Negotiation executada." },
+                { phase: "SIGNING", micro: "p9-1", id: "legal-cps-checklist", name: "CPs Checklist", hint: "Garante rastreabilidade completa das condições precedentes.", baseProb: 72, effects: { fecho: 4, progressoFase: 15 }, failure: { teamMorale: -2, progressoFase: 5 }, log: "CPs Checklist atualizado." },
+                { phase: "CLOSING", micro: "p10-1", id: "legal-funding-monitoring", name: "Funding Monitoring", hint: "Monitora funding e funds flow até ao fecho efetivo.", baseProb: 71, effects: { fecho: 5, progressoFase: 14 }, failure: { fecho: -4, progressoFase: 4 }, log: "Funding Monitoring ativado." }
+            ];
+
+            for (var m = 0; m < mapping.length; m++) {
+                var target = findMicroPhase(mapping[m].phase, mapping[m].micro);
+                if (!target || !target.actions) continue;
+                target.actions.push(buildAction(mapping[m].id, mapping[m]));
+            }
+        }
+
+        function injectWorkstreamEvents() {
+            EVENTS.push(
+                { title: "Advisor Rival Fee Pressure", desc: "Na fase de pitch, um rival pressiona fees e tenta descredibilizar a tua proposta de valor.", effects: { cliente: -10, fecho: -4 }, good: false, type: "negative", requires: { phase: 0 }, mitigation: { prompt: "Queres defender proposta com fee-ratchet e caso de valor comprovado?", apCost: 1, cashCost: 0.1, successEffects: { cliente: 7, fecho: 3 } } },
+                { title: "Strategic Interest Surprise", desc: "Um comprador estratégico inesperado demonstra interesse e acelera competição.", effects: { interesseBiddersIndustrial: 10, fecho: 5, cliente: 4 }, good: true, type: "positive", requires: { phase: 3 } },
+                { title: "Audit Red Flag", desc: "A auditoria financeira identifica inconsistências e aumenta a tensão na DD.", effects: { cliente: -9, interesseBidders: -7, fecho: -6 }, good: false, type: "negative", requires: { phase: 6 }, mitigation: { prompt: "Ativar resposta de auditoria e reconciliação imediata?", apCost: 2, cashCost: 0.2, recover70: true } },
+                { title: "Regulatory Block", desc: "A autoridade regulatória sinaliza bloqueio potencial e ameaça o calendário de signing.", effects: { fecho: -16, cliente: -8, interesseBiddersIndustrial: -7 }, good: false, type: "negative", requires: { phase: 9 }, mitigation: { prompt: "Queres montar taskforce regulatória para desbloquear o processo?", apCost: 2, cashCost: 0.2, successEffects: { fecho: 11, cliente: 4 } } },
+                { title: "Funding Squeeze (Credit Freeze)", desc: "O mercado de crédito aperta e o comprador enfrenta stress de financiamento.", effects: { fecho: -14, interesseBiddersPE: -10, cliente: -5 }, good: false, type: "negative", requires: { phase: 10 }, mitigation: { prompt: "Ativar plano de financiamento alternativo de emergência?", apCost: 2, cashCost: 0.2, successEffects: { fecho: 9, interesseBiddersPE: 6 } } }
+            );
+        }
+
+        injectWorkstreamActions();
+        injectWorkstreamEvents();
 
         function injectActionRNG() {
             return true;
@@ -1651,7 +1702,29 @@
                 "mobile.closeDrawer": "Fechar painel",
                 "mobile.bidders": "Lista de Compradores",
                 "mobile.news": "Notícias de Mercado",
-                "ui.forecast": "Previsão"
+                "ui.forecast": "Previsão",
+                "ui.generating": "A gerar materiais...",
+                "onboarding.none": "Onboarding: sem contratações pendentes.",
+                "onboarding.pending": "Recrutamento: Onboarding",
+                "onboarding.weekRemaining": "semana restante",
+                "onboarding.resources": "recurso(s) em onboarding.",
+                "onboarding.completed": "Onboarding concluído: equipa pronta para ativar capacidade adicional.",
+                "debug.title": "Debug",
+                "debug.forceRender": "Force Reset UI",
+                "debug.hardResetAp": "Hard Reset AP",
+                "debug.emergencyHint": "Reinicia para a micro-fase 0 e desbloqueia as ações.",
+                "debug.ap": "PA",
+                "debug.morale": "Moral",
+                "debug.capacity": "Capacidade",
+                "debug.workload": "Carga",
+                "debug.burnout": "Penalidade Burnout",
+                "debug.phase": "Fase",
+                "debug.micro": "Micro-fase",
+                "debug.progress": "Progresso %",
+                "modal.continue": "Continuar",
+                "modal.close": "Fechar",
+                "fee.modalTitle": "Negociação de Fees",
+                "fee.modalBody": "A micro-fase 0.6 é obrigatória. Define o fee ratchet para concluir o Pitch."
             },
             en: {
                 "lang.label": "Language",
@@ -1701,7 +1774,29 @@
                 "mobile.closeDrawer": "Close panel",
                 "mobile.bidders": "Bidder List",
                 "mobile.news": "Market News",
-                "ui.forecast": "Forecast"
+                "ui.forecast": "Forecast",
+                "ui.generating": "Generating materials...",
+                "onboarding.none": "Onboarding: no pending hires.",
+                "onboarding.pending": "Recruitment: Onboarding",
+                "onboarding.weekRemaining": "week remaining",
+                "onboarding.resources": "resource(s) in onboarding.",
+                "onboarding.completed": "Onboarding complete: team ready to activate additional capacity.",
+                "debug.title": "Debug",
+                "debug.forceRender": "Force Reset UI",
+                "debug.hardResetAp": "Hard Reset AP",
+                "debug.emergencyHint": "Resets to micro-phase 0 and restores action rendering.",
+                "debug.ap": "AP",
+                "debug.morale": "Morale",
+                "debug.capacity": "Capacity",
+                "debug.workload": "Workload",
+                "debug.burnout": "Burnout Penalty",
+                "debug.phase": "Phase",
+                "debug.micro": "Micro-Phase",
+                "debug.progress": "Progress %",
+                "modal.continue": "Continue",
+                "modal.close": "Close",
+                "fee.modalTitle": "Fee Negotiation",
+                "fee.modalBody": "Micro-phase 0.6 is mandatory. Set the fee ratchet to complete Pitch."
             }
         };
         var currentLang = "pt";
@@ -2263,6 +2358,9 @@
                     failure: { progressoFase: 0 },
                     log: "Fallback de sincronização executado."
                 }));
+            }
+            if (phase.id === "PITCH" && state.currentPhaseIndex === 0 && state.currentMicroPhaseIndex === 5) {
+                actions = actions.filter(function(act) { return act.type === "negotiate_fee_ratchet"; });
             }
             if (phase.id === "PREPARACAO" && micro && micro.id === "vdd" && state.hasVDD) {
                 actions = actions.filter(function(act) { return act.type !== "vdd_decision"; });
@@ -2913,15 +3011,15 @@
 
         function getOnboardingStatusText() {
             var queue = state.onboardingQueue || [];
-            if (!queue.length) return "Onboarding: sem contratações pendentes.";
+            if (!queue.length) return t("onboarding.none");
             var total = 0;
             var maxWeeks = 0;
             for (var i = 0; i < queue.length; i++) {
                 total += queue[i].count;
                 maxWeeks = Math.max(maxWeeks, queue[i].weeksRemaining || 0);
             }
-            if (maxWeeks > 0) return "Recrutamento em curso (" + maxWeeks + " semana restante) · " + total + " recurso(s) em onboarding.";
-            return "Onboarding concluído: equipa pronta para ativar capacidade adicional.";
+            if (maxWeeks > 0) return t("onboarding.pending") + " (" + maxWeeks + " " + t("onboarding.weekRemaining") + ") · " + total + " " + t("onboarding.resources");
+            return t("onboarding.completed");
         }
 
         function updateDebugPanel() {
@@ -3937,6 +4035,10 @@
         // ---- ADVANCE PHASE ----
         function advancePhase() {
             var completed = PHASES[state.currentPhaseIndex];
+            if (state.currentPhaseIndex === 0 && !state.feeNegotiated) {
+                showModal(t("fee.modalTitle"), t("fee.modalBody"), [{ label: t("modal.continue"), value: true }]);
+                return;
+            }
             state.currentPhaseIndex++;
             state.currentMicroPhaseIndex = 0;
             state.progressoFase = 0;
@@ -4084,6 +4186,7 @@
             // 7) Risco PE e condições de derrota
             if (checkPersonaTerminationRisk()) return false;
             if (checkLose()) return false;
+            if (state.ended) return false;
 
             if (triggerMacro) {
                 maybeMacroEvent();
@@ -4100,6 +4203,7 @@
 
             if (checkPersonaTerminationRisk()) return false;
             if (checkLose()) return false;
+            if (state.ended) return false;
             var safePhase = PHASES[state.currentPhaseIndex] || null;
             if (!safePhase) state.currentPhaseIndex = Math.max(0, Math.min(state.currentPhaseIndex, PHASES.length - 1));
             var microCount = (PHASES[state.currentPhaseIndex] && PHASES[state.currentPhaseIndex].microPhases) ? PHASES[state.currentPhaseIndex].microPhases.length : 0;
@@ -4115,20 +4219,19 @@
 
         // ---- RENDER PHASE ----
         function renderPhase() {
-            if (R.choices) R.choices.innerHTML = "";
+            R.choices.innerHTML = ""; R.globalChoices.innerHTML = "";
             if (!i18nReady) {
                 console.warn("[renderPhase] i18n ainda não inicializado.");
                 return;
             }
             console.log("[renderPhase] phaseIndex=" + state.currentPhaseIndex + " microPhaseIndex=" + state.currentMicroPhaseIndex);
-            if (R.globalChoices) R.globalChoices.innerHTML = "";
+            state.pontosAcao = calcPA(state.teamMorale, getTeamCapacity());
             updateStats();
             if (state.ended) return;
             if (checkLose()) return;
             if (state.currentPhaseIndex >= PHASES.length) { finishCampaign(); return; }
 
             var ph = PHASES[state.currentPhaseIndex] || { id: "Unknown", title: "", desc: "", microPhases: [] };
-            var phaseActions = getPhaseActions(ph) || [];
             var total = PHASES.length;
             var pct   = (state.currentPhaseIndex / total) * 100;
             if (R.progress) R.progress.style.width = pct + "%";
@@ -4150,15 +4253,10 @@
                 }
                 R.microBreadcrumbs.textContent = parts.join("  ·  ");
             }
-            if (!R.choices) R.choices = document.getElementById("choices");
-            if (!R.globalChoices) R.globalChoices = document.getElementById("global-actions");
             if (!R.choices || !R.globalChoices) {
                 console.error(t("ui.missingChoices"));
                 return;
             }
-            R.choices.innerHTML = "";
-            R.globalChoices.innerHTML = "";
-            // eventArea is NOT cleared here — event notifications persist until next endWeek
 
             var noPA = (state.pontosAcao <= 0);
             var boardLocked = !!state.currentDeliverable;
@@ -4172,70 +4270,81 @@
                 R.reviewBoard.style.display = "none";
             }
 
-            for (var i = 0; i < phaseActions.length; i++) {
-                (function(act, idx) {
-                    var btn = document.createElement("button");
-                    var effectSpec = typeof act.getEffects === "function" ? act.getEffects() : act.effects;
-            if (effectSpec && effectSpec.success && effectSpec.failure && typeof act.baseProb === "number") {
-                effectSpec = { success: { prob: calculateActionSuccess(act, state), effects: effectSpec.success.effects || {} }, failure: { prob: 1, effects: effectSpec.failure.effects || {} } };
-            }
-                    effectSpec = effectSpec || { success: { prob: 1, effects: {} } };
-                    var successProb = effectSpec.success ? effectSpec.success.prob : 1;
-                    var progressFx = effectSpec.success ? (effectSpec.success.effects || {}) : (effectSpec || {});
-                    var progressLabel = progressFx.progressoFase
-                        ? " \u00B7 +" + progressFx.progressoFase + "% fase"
-                        : "";
-                    btn.innerHTML =
-                        "<strong>" + (idx + 1) + ". [" + getActionWorkstream(act) + "] " + (act.textKey ? t(act.textKey) : act.text) + "</strong>" +
-                        '<span class="choice-hint">' + (act.hintKey ? t(act.hintKey) : act.hint) + '</span>' +
-                        '<span class="choice-hint" style="color:var(--accent);font-size:0.72rem;margin-top:3px;">' +
-                        "\u25B8 " + (act.apCost || 1) + " Ponto" + ((act.apCost || 1) > 1 ? "s" : "") + " de Acao" + progressLabel + " \u00B7 " + Math.round(successProb * 100) + "% sucesso</span>";
-                    btn.disabled = (state.pontosAcao < (act.apCost || 1));
-                    btn.addEventListener("click", function() { doAction(act); });
-                    R.choices.appendChild(btn);
-                })(phaseActions[i], i);
+            try {
+                var phaseActions = getPhaseActions(ph) || [];
+                for (var i = 0; i < phaseActions.length; i++) {
+                    (function(act, idx) {
+                        var btn = document.createElement("button");
+                        var effectSpec = typeof act.getEffects === "function" ? act.getEffects() : act.effects;
+                        if (effectSpec && effectSpec.success && effectSpec.failure && typeof act.baseProb === "number") {
+                            effectSpec = { success: { prob: calculateActionSuccess(act, state), effects: effectSpec.success.effects || {} }, failure: { prob: 1, effects: effectSpec.failure.effects || {} } };
+                        }
+                        effectSpec = effectSpec || { success: { prob: 1, effects: {} } };
+                        var successProb = effectSpec.success ? effectSpec.success.prob : 1;
+                        var progressFx = effectSpec.success ? (effectSpec.success.effects || {}) : (effectSpec || {});
+                        var progressLabel = progressFx.progressoFase ? " · +" + progressFx.progressoFase + "% " + t("ui.phaseProgress") : "";
+                        btn.innerHTML =
+                            "<strong>" + (idx + 1) + ". [" + getActionWorkstream(act) + "] " + (act.textKey ? t(act.textKey) : act.text) + "</strong>" +
+                            '<span class="choice-hint">' + (act.hintKey ? t(act.hintKey) : act.hint) + '</span>' +
+                            '<span class="choice-hint" style="color:var(--accent);font-size:0.72rem;margin-top:3px;">' +
+                            "▸ " + (act.apCost || 1) + " " + ((act.apCost || 1) > 1 ? t("ui.points") : t("ui.point")) + progressLabel + " · " + Math.round(successProb * 100) + "% " + t("ui.success") + "</span>";
+                        btn.disabled = (state.pontosAcao < (act.apCost || 1));
+                        btn.addEventListener("click", function() { doAction(act); });
+                        R.choices.appendChild(btn);
+                    })(phaseActions[i], i);
+                }
+
+                if (!phaseActions.length) {
+                    var standby = document.createElement("p");
+                    standby.className = "small";
+                    standby.textContent = t("ui.generating");
+                    R.choices.appendChild(standby);
+                }
+
+                var globalActions = getGlobalActions() || [];
+                for (var g = 0; g < globalActions.length; g++) {
+                    (function(act) {
+                        var btn = document.createElement("button");
+                        var actionCost = act.apCost || 1;
+                        btn.innerHTML =
+                            "<strong>" + act.text + "</strong>" +
+                            '<span class="choice-hint">' + (act.hintKey ? t(act.hintKey) : act.hint) + '</span>' +
+                            '<span class="choice-hint" style="color:var(--accent);font-size:0.72rem;margin-top:3px;">' +
+                            "▸ " + actionCost + " " + (actionCost > 1 ? t("ui.points") : t("ui.point")) + (act.weekCost ? " · " + act.weekCost + " semana" : "") + "</span>";
+                        var blockedByMorale = act.id === "demand_results" && state.teamMorale < 35;
+                        btn.disabled = (state.pontosAcao < actionCost);
+                        btn.addEventListener("click", function() { doGlobalAction(act.id, act.bidderName); });
+                        R.globalChoices.appendChild(btn);
+                        if (blockedByMorale) {
+                            var warn = document.createElement("div");
+                            warn.className = "warning-label";
+                            warn.textContent = "Bloqueado: Team Morale < 35 (risco de resignação total).";
+                            R.globalChoices.appendChild(warn);
+                        }
+                    })(globalActions[g]);
+                }
+            } catch (err) {
+                console.error("[renderPhase] emergency recovery", err);
+                var emergencyBtn = document.createElement("button");
+                emergencyBtn.innerHTML = "<strong>Emergency Recovery</strong><span class=\"choice-hint\">" + t("debug.emergencyHint") + "</span>";
+                emergencyBtn.addEventListener("click", function() {
+                    state.currentMicroPhaseIndex = 0;
+                    state.progressoMicroFase = 0;
+                    renderPhase();
+                });
+                R.choices.appendChild(emergencyBtn);
             }
 
-            if (!phaseActions.length) {
-                var standby = document.createElement("p");
-                standby.className = "small";
-                standby.textContent = "Generating materials...";
-                R.choices.appendChild(standby);
-            }
-
-            // PA-exhausted notice inside choices area
             if (noPA) {
                 var hint = document.createElement("p");
                 hint.className = "warn";
                 hint.style.cssText = "font-size:0.84rem;text-align:center;margin:4px 0 0;";
-                hint.textContent = "Pontos de Acao esgotados \u2014 clica em \"Terminar Semana\" para continuar.";
+                hint.textContent = t("ui.exhausted");
                 R.choices.appendChild(hint);
-            }
-
-            var globalActions = getGlobalActions() || [];
-            for (var g = 0; g < globalActions.length; g++) {
-                (function(act) {
-                    var btn = document.createElement("button");
-                    var actionCost = act.apCost || 1;
-                    btn.innerHTML =
-                        "<strong>" + act.text + "</strong>" +
-                        '<span class="choice-hint">' + (act.hintKey ? t(act.hintKey) : act.hint) + '</span>' +
-                        '<span class="choice-hint" style="color:var(--accent);font-size:0.72rem;margin-top:3px;">' +
-                        "▸ " + actionCost + " " + (actionCost > 1 ? t("ui.points") : t("ui.point")) + (act.weekCost ? " · " + act.weekCost + " semana" : "") + "</span>";
-                    var blockedByMorale = act.id === "demand_results" && state.teamMorale < 35;
-                    btn.disabled = (state.pontosAcao < actionCost);
-                    btn.addEventListener("click", function() { doGlobalAction(act.id, act.bidderName); });
-                    R.globalChoices.appendChild(btn);
-                    if (blockedByMorale) {
-                        var warn = document.createElement("div");
-                        warn.className = "warning-label";
-                        warn.textContent = "Bloqueado: Team Morale < 35 (risco de resignação total).";
-                        R.globalChoices.appendChild(warn);
-                    }
-                })(globalActions[g]);
             }
             updateDebugPanel();
         }
+
 
 
         function randomRange(min, max) {
@@ -4518,8 +4627,27 @@
 
         if (R.debugToggle) {
             R.debugToggle.addEventListener("click", function() {
-                if (R.debugPanel) R.debugPanel.classList.toggle("hidden");
                 updateDebugPanel();
+                var pressure = getWorkloadPressure();
+                var phaseId = (PHASES[state.currentPhaseIndex] && PHASES[state.currentPhaseIndex].id) ? PHASES[state.currentPhaseIndex].id : "N/A";
+                showModal(
+                    t("debug.title"),
+                    t("debug.phase") + ": " + phaseId + " / " + state.currentMicroPhaseIndex + "\n" +
+                    t("debug.workload") + ": " + pressure.workload + " | " + t("debug.capacity") + ": " + pressure.capacity,
+                    [
+                        { label: t("debug.hardResetAp"), value: "hard-reset" },
+                        { label: t("debug.forceRender"), value: "render" },
+                        { label: t("modal.close"), value: "close" }
+                    ]
+                ).then(function(choice) {
+                    if (choice === "hard-reset") {
+                        state.pontosAcao = Math.max(3, state.pontosAcao);
+                        addLog("Debug: Hard Reset AP executado (>=3).", "warn");
+                        renderPhase();
+                    } else if (choice === "render") {
+                        renderPhase();
+                    }
+                });
             });
         }
         if (R.debugForceRender) {
