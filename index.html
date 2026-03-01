@@ -816,6 +816,14 @@
                 title: "ECB raises rates",
                 desc: "Custo de capital sobe no mercado europeu e os compradores revem disciplina de valuation.",
                 effects: { multiplo: -0.5, fecho: -4, interesseBidders: -6 },
+                creditFreeze: true,
+                tone: "bad"
+            },
+            {
+                title: "Mercado de credito deteriora",
+                desc: "Bancos recuam em underwriting e varios processos alavancados entram em stress de financiamento.",
+                effects: { multiplo: -0.4, fecho: -6, interesseBiddersPE: -10 },
+                creditFreeze: true,
                 tone: "bad"
             },
             {
@@ -1140,6 +1148,29 @@
                         hint: "Mantem o cliente informado e confiante no processo.",
                         effects: { cliente: 8, fecho: 2, progressoFase: 6 },
                         log: "O cliente esta actualizado e confiante na evolucao do SPA."
+                    },
+                    {
+                        text: "Help PE Buyer secure alternative debt financing",
+                        hint: "Repetivel. Custa 2 PA e +1 semana de execution costs. Sucesso depende muito da geracao de cash-flow (EBITDA).",
+                        type: "spa_help_pe_financing",
+                        apCost: 2,
+                        getEffects: function() {
+                            var ebitdaFactor = clamp((state.ebitda - 4) / 8, 0, 1);
+                            var baseProb = 0.2 + (ebitdaFactor * 0.6);
+                            var moraleAdj = (state.teamMorale - 50) / 200;
+                            var successProb = clamp(baseProb + moraleAdj, 0.1, 0.92);
+                            return {
+                                success: {
+                                    prob: successProb,
+                                    effects: { fecho: 6, teamMorale: -2, progressoFase: 10 }
+                                },
+                                failure: {
+                                    prob: 1 - successProb,
+                                    effects: { teamMorale: -3, progressoFase: 4 }
+                                }
+                            };
+                        },
+                        log: "Tentativa de estruturar financiamento alternativo para o comprador PE executada."
                     }
                 ]
             },
@@ -2465,6 +2496,46 @@
             checkLose();
         }
 
+        function resolveExclusiveBidder() {
+            if (!state.bidderExclusivo || !state.bidders || state.bidders.length === 0) return null;
+            for (var i = 0; i < state.bidders.length; i++) {
+                if (state.bidders[i].nome === state.bidderExclusivo) return state.bidders[i];
+            }
+            return state.bidders[0] || null;
+        }
+
+        function triggerCreditFreezeFinancingShock(macroEvent) {
+            if (!macroEvent || !macroEvent.creditFreeze || state.ended || !state.bidderExclusivo) return;
+            var exclusive = resolveExclusiveBidder();
+            if (!exclusive) return;
+
+            if (exclusive.tipo === "Industrial") {
+                addLog("Credit market froze, but your Industrial buyer is paying with balance sheet cash. The deal is safe from financing risk.", "good");
+                return;
+            }
+
+            if (exclusive.tipo !== "Private Equity") return;
+
+            state.peFinancingRiskActive = true;
+            state.peFinancingRiskLastWeek = state.semanaAtual;
+            var before = exclusive.interesse;
+            exclusive.interesse = clamp(exclusive.interesse - 40, 0, 100);
+            var drop = before - exclusive.interesse;
+
+            R.eventArea.innerHTML = '<div class="event-card">' +
+                '<div class="event-label">Critical Event</div>' +
+                '<div class="event-title-text">Credit Freeze: Your PE buyer lost their bank financing!</div>' +
+                '<p style="margin:0 0 6px;font-size:0.86rem;">A turbulencia no credito secou a divida do LBO e derrubou a conviccao do bidder exclusivo.</p>' +
+                '<div class="event-effects"><span class="eff-tag eff-neg">Interesse PE -' + drop + '</span><span class="eff-tag eff-neg">Closing em risco</span></div>' +
+                '</div>';
+
+            gameHistory.push({ type: "event", label: "Credit Freeze", text: "Credit Freeze: Your PE buyer lost their bank financing! Interesse do exclusivo caiu " + drop + " pontos." });
+            addLog("Critical Event: Credit Freeze: Your PE buyer lost their bank financing! Interesse do exclusivo caiu " + drop + " pontos.", "bad");
+            state.fecho = clamp(calculateClosingProbability() + (state.closingProbBonus || 0), 0, 100);
+            updateStats({ fecho: 0 });
+            checkLose();
+        }
+
         function maybeMacroEvent() {
             if (state.ended || Math.random() >= 0.25) return;
             var ev = eventosMacro[Math.floor(Math.random() * eventosMacro.length)];
@@ -2477,6 +2548,7 @@
             renderMarketNews();
             updateStats(evResult.deltas);
             addLog("Macro [S" + state.semanaAtual + "]: " + ev.title + " \u2014 " + ev.desc, ev.tone || "warn");
+            triggerCreditFreezeFinancingShock(ev);
             checkLose();
         }
 
@@ -2619,6 +2691,32 @@
                     state.liabilityRisk = false;
                     state.liabilityRiskActive = false;
                     addLog("Posicao dura no SPA removeu o Liability Risk activo para proteger o cliente no pos-closing.", "good");
+                }
+            } else if (act.type === "spa_help_pe_financing") {
+                var exclusiveBidder = resolveExclusiveBidder();
+                if (!exclusiveBidder || !state.bidderExclusivo) {
+                    addLog("Nao existe bidder exclusivo para estruturar financiamento alternativo.", "warn");
+                } else if (exclusiveBidder.tipo !== "Private Equity") {
+                    addLog("Accao irrelevante: o bidder exclusivo nao depende de divida LBO para fechar.", "warn");
+                } else {
+                    if (!applyReviewWeekCost(1)) return;
+                    if (actionResult.outcome === "success") {
+                        var recovered = state.peFinancingRiskActive ? 40 : 18;
+                        exclusiveBidder.interesse = clamp(exclusiveBidder.interesse + recovered, 0, 100);
+                        state.peFinancingRiskActive = false;
+                        addLog("Financiamento alternativo assegurado: interesse do comprador PE recuperou e o risco de financiamento foi removido.", "good");
+                        updateStats({ interesseBiddersPE: recovered });
+                    } else {
+                        state.bidders = [];
+                        state.bidderExclusivo = null;
+                        state.initialExpectedValue = null;
+                        state.fecho = clamp(state.fecho - 50, 0, 100);
+                        addLog("Market Rejection: Exclusivity collapsed due to lack of funding.", "bad");
+                        gameHistory.push({ type: "event", label: "Financing Failure", text: "Market Rejection: Exclusivity collapsed due to lack of funding." });
+                        updateStats({ fecho: -50 });
+                        endGame("Market Rejection: Exclusivity collapsed due to lack of funding.", "bad");
+                        return;
+                    }
                 }
             } else if (act.type === "spa_concede_warranties") {
                 state.closingProbBonus = clamp((state.closingProbBonus || 0) + 20, 0, 45);
@@ -2986,7 +3084,9 @@
                 marketNews:    [],
                 lastMacroTone: null,
                 lastMacroWeek: 0,
-                lastMacroTitle: "mercado sem choque macro recente"
+                lastMacroTitle: "mercado sem choque macro recente",
+                peFinancingRiskActive: false,
+                peFinancingRiskLastWeek: 0
             };
             gameHistory = [];
             R.log.innerHTML       = "";
