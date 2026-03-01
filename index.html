@@ -509,13 +509,54 @@
         .hist-event  { color: var(--warn); }
         .hist-drift  { color: var(--bad); }
 
-        /* ---- Bidder cards ---- */
+        /* ---- M&A Funnel (Kanban) ---- */
+        .kanban-board {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .kanban-column {
+            background: rgba(0,0,0,0.2);
+            border-radius: 12px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-height: 180px;
+        }
+
+        .kanban-header {
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-size: 0.68rem;
+            font-weight: 700;
+            padding-bottom: 4px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+            margin-bottom: 2px;
+        }
+
+        .kanban-empty {
+            font-size: 0.76rem;
+            color: var(--muted);
+            text-align: center;
+            padding: 8px 4px;
+        }
+
         .bidder-card {
             border-radius: 10px;
             border: 1px solid rgba(255,255,255,0.08);
             padding: 8px 10px;
             background: rgba(9, 13, 34, 0.8);
-            margin-bottom: 6px;
+        }
+
+        .bidder-card.bidder-dropped {
+            filter: grayscale(1) saturate(0.15);
+            opacity: 0.72;
+            border-style: dashed;
+            margin-top: auto;
         }
         .bidder-badge {
             display: inline-block;
@@ -534,6 +575,7 @@
             .layout { grid-template-columns: 1fr; }
             .diff-grid { grid-template-columns: 1fr; }
             .end-stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .kanban-board { grid-template-columns: 1fr; }
         }
         @media (max-width: 500px) {
             body { padding: 10px; }
@@ -1573,6 +1615,14 @@
             var expectationGap = parseFloat((state.clientExpectationEV - weightedOffer).toFixed(1));
             var totalExpectationHit = state.initialExpectedValue >= state.clientExpectationEV;
             exclusive.shortlisted = true;
+            if (!state.droppedBidders) state.droppedBidders = [];
+            for (var x = 0; x < state.bidders.length; x++) {
+                if (state.bidders[x].nome !== exclusive.nome) {
+                    state.bidders[x].dropped = true;
+                    state.bidders[x].droppedColumn = state.bidders[x].shortlisted ? 2 : 1;
+                    state.droppedBidders.push(state.bidders[x]);
+                }
+            }
             state.bidders = [exclusive];
 
             if (totalExpectationHit && (exclusive.earnoutPercentage || 0) >= 0.5) {
@@ -1624,6 +1674,10 @@
                     }
                 }
                 topBidder.interesse = 0;
+                topBidder.dropped = true;
+                topBidder.droppedColumn = topBidder.shortlisted ? 2 : 1;
+                if (!state.droppedBidders) state.droppedBidders = [];
+                state.droppedBidders.push(topBidder);
                 state.bidders = remaining;
                 addLog("Falha no pre-emptive strike: " + topBidder.nome + " perdeu interesse e saiu do processo.", "bad");
             }
@@ -2001,6 +2055,12 @@
             var dropped = state.bidders.slice(keepCount);
             for (var i = 0; i < kept.length; i++) kept[i].shortlisted = true;
             state.bidders = kept;
+            if (!state.droppedBidders) state.droppedBidders = [];
+            for (var d = 0; d < dropped.length; d++) {
+                dropped[d].dropped = true;
+                dropped[d].droppedColumn = 1;
+                state.droppedBidders.push(dropped[d]);
+            }
             var droppedNames = [];
             for (var j = 0; j < dropped.length; j++) droppedNames.push(dropped[j].nome);
             if (hasUnknown) {
@@ -2009,51 +2069,107 @@
             addLog("Shortlist concluida: passam " + keepCount + " bidders. Eliminados: " + droppedNames.join(", ") + ".", "warn");
         }
 
-        // Render the bidder list panel
+        function formatMEur(val) {
+            return (typeof val === "number" ? val : parseFloat(val || 0)).toFixed(1) + " M€";
+        }
+
+        function buildBidderCardHtml(b, isDropped) {
+            var offer = bidderOfferEUR(b);
+            var cashOffer = bidderCashOfferEUR(b);
+            var earnoutOffer = bidderEarnoutOfferEUR(b);
+            var rangeMin = b.perceivedMin || (offer * 0.85);
+            var rangeMax = b.perceivedMax || (offer * 1.15);
+            var perceivedMid = (rangeMin + rangeMax) / 2;
+            var isPE = b.tipo === "Private Equity";
+            var bgCol = isPE ? "rgba(134,215,255,0.12)" : "rgba(255,201,112,0.12)";
+            var tcCol = isPE ? "var(--accent)" : "var(--warn)";
+            var iColor = b.interesse >= 60 ? "var(--good)" : b.interesse >= 35 ? "var(--warn)" : "var(--bad)";
+
+            return '<div class="bidder-card' + (isDropped ? ' bidder-dropped' : '') + '">' +
+                '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">' +
+                    '<span style="font-size:0.86rem;font-weight:600;">' + b.nome + '</span>' +
+                    '<div style="display:flex;gap:5px;align-items:center;">' +
+                        '<span class="bidder-badge" style="background:' + bgCol + ';color:' + tcCol + ';">' + b.tipo + '</span>' +
+                        (b.shortlisted ? '<span class="bidder-badge shortlist">Shortlist</span>' : '') +
+                        (!b.offerKnown ? '<span class="bidder-badge" style="background:rgba(255,201,112,0.18);color:var(--warn);">Fog of War ?</span>' : '') +
+                        (state.bidderExclusivo === b.nome ? '<span class="bidder-badge" style="background:rgba(255,123,145,0.16);color:var(--bad);">Exclusivo</span>' : '') +
+                        (isDropped ? '<span class="bidder-badge" style="background:rgba(255,255,255,0.12);color:var(--muted);">Dropped</span>' : '') +
+                    '</div>' +
+                '</div>' +
+                '<div style="display:flex;justify-content:space-between;margin-top:5px;font-size:0.77rem;">' +
+                    '<span>Interesse: <strong style="color:' + iColor + ';">' + b.interesse + '%</strong></span>' +
+                    (b.offerKnown
+                        ? '<span>Total Offer: <strong style="color:var(--accent);">' + formatMEur(offer) + '</strong></span>'
+                        : '<span>Indicative Avg: <strong style="color:var(--warn);">' + formatMEur(perceivedMid) + '</strong></span>') +
+                '</div>' +
+                '<div style="margin-top:3px;font-size:0.74rem;color:var(--muted);">' +
+                    (b.offerKnown
+                        ? '(Cash: ' + formatMEur(cashOffer) + ' | Earn-out: ' + formatMEur(earnoutOffer) + ')'
+                        : 'Indicative Range: ' + formatMEur(rangeMin) + ' - ' + formatMEur(rangeMax) + ' | Structure: Unknown') +
+                '</div>' +
+                '<div style="margin-top:5px;background:rgba(255,255,255,0.1);border-radius:999px;height:4px;overflow:hidden;">' +
+                    '<div style="height:100%;width:' + b.interesse + '%;background:linear-gradient(90deg,var(--bad),var(--warn),var(--good));transition:width 0.5s;"></div>' +
+                '</div>' +
+            '</div>';
+        }
+
+        // Render the bidder list panel as M&A Funnel Kanban
         function renderBidderList() {
             var el = document.getElementById("bidder-list");
             if (!el) return;
-            if (!state.bidders || state.bidders.length === 0) {
+            if ((!state.bidders || state.bidders.length === 0) && (!state.droppedBidders || state.droppedBidders.length === 0)) {
                 el.innerHTML = '<p style="font-size:0.78rem;color:var(--muted);text-align:center;margin:8px 0 0;">Compradores identificados na fase BUYERS.</p>';
                 return;
             }
-            var html = '<div style="font-size:0.67rem;text-transform:uppercase;letter-spacing:0.08em;color:#95a1d7;margin:12px 0 6px;font-weight:700;">Compradores</div>';
+
+            var col1 = [];
+            var col2 = [];
+            var col3 = [];
+            var dropped1 = [];
+            var dropped2 = [];
+            var dropped3 = [];
+
             for (var i = 0; i < state.bidders.length; i++) {
-                var b      = state.bidders[i];
-                var offer  = bidderOfferEUR(b);
-                var cashOffer = bidderCashOfferEUR(b);
-                var earnoutOffer = bidderEarnoutOfferEUR(b);
-                var perceivedMid = (((b.perceivedMin || (offer * 0.85)) + (b.perceivedMax || (offer * 1.15))) / 2);
-                var isPE   = b.tipo === "Private Equity";
-                var bgCol  = isPE ? "rgba(134,215,255,0.12)" : "rgba(255,201,112,0.12)";
-                var tcCol  = isPE ? "var(--accent)" : "var(--warn)";
-                var iColor = b.interesse >= 60 ? "var(--good)" : b.interesse >= 35 ? "var(--warn)" : "var(--bad)";
-                html += '<div class="bidder-card">' +
-                    '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">' +
-                        '<span style="font-size:0.86rem;font-weight:600;">' + b.nome + '</span>' +
-                        '<div style="display:flex;gap:5px;align-items:center;">' +
-                            '<span class="bidder-badge" style="background:' + bgCol + ';color:' + tcCol + ';">' + b.tipo + '</span>' +
-                            (b.shortlisted ? '<span class="bidder-badge shortlist">Shortlist</span>' : '') +
-                            (!b.offerKnown ? '<span class="bidder-badge" style="background:rgba(255,201,112,0.18);color:var(--warn);">Fog of War ?</span>' : '') +
-                            (state.bidderExclusivo === b.nome ? '<span class="bidder-badge" style="background:rgba(255,123,145,0.16);color:var(--bad);">Exclusivo</span>' : '') +
-                        '</div>' +
+                var bidder = state.bidders[i];
+                if (!bidder.shortlisted) {
+                    col1.push(buildBidderCardHtml(bidder, false));
+                } else if (state.bidderExclusivo !== bidder.nome) {
+                    col2.push(buildBidderCardHtml(bidder, false));
+                } else {
+                    col3.push(buildBidderCardHtml(bidder, false));
+                }
+            }
+
+            var droppedList = state.droppedBidders || [];
+            for (var d = 0; d < droppedList.length; d++) {
+                var droppedBidder = droppedList[d];
+                var dropColumn = droppedBidder.droppedColumn || (!droppedBidder.shortlisted ? 1 : (state.bidderExclusivo === droppedBidder.nome ? 3 : 2));
+                if (dropColumn === 3) dropped3.push(buildBidderCardHtml(droppedBidder, true));
+                else if (dropColumn === 2) dropped2.push(buildBidderCardHtml(droppedBidder, true));
+                else dropped1.push(buildBidderCardHtml(droppedBidder, true));
+            }
+
+            function cardsOrEmpty(cards, droppedCards) {
+                var finalCards = cards.slice().concat(droppedCards);
+                return finalCards.length > 0 ? finalCards.join("") : '<div class="kanban-empty">Sem bidders nesta etapa</div>';
+            }
+
+            var html =
+                '<div style="font-size:0.67rem;text-transform:uppercase;letter-spacing:0.08em;color:#95a1d7;margin:12px 0 6px;font-weight:700;">M&A Funnel</div>' +
+                '<div class="kanban-board">' +
+                    '<div class="kanban-column">' +
+                        '<div class="kanban-header">Long List / Market (Phase 3-4)</div>' +
+                        cardsOrEmpty(col1, dropped1) +
                     '</div>' +
-                    '<div style="display:flex;justify-content:space-between;margin-top:5px;font-size:0.77rem;">' +
-                        '<span>Interesse: <strong style="color:' + iColor + ';">' + b.interesse + '%</strong></span>' +
-                        (b.offerKnown
-                            ? '<span>Total Offer: <strong style="color:var(--accent);">' + offer.toFixed(1) + ' M\u20AC</strong></span>'
-                            : '<span>Indicative Avg: <strong style="color:var(--warn);">' + perceivedMid.toFixed(1) + ' M\u20AC</strong></span>') +
+                    '<div class="kanban-column">' +
+                        '<div class="kanban-header">Shortlist (Phase 5-6)</div>' +
+                        cardsOrEmpty(col2, dropped2) +
                     '</div>' +
-                    '<div style="margin-top:3px;font-size:0.74rem;color:var(--muted);">' +
-                        (b.offerKnown
-                            ? '(Cash: ' + cashOffer.toFixed(1) + ' M\u20AC | Earn-out: ' + earnoutOffer.toFixed(1) + ' M\u20AC)'
-                            : 'Indicative Range: ' + (b.perceivedMin || (offer * 0.85)).toFixed(1) + ' M\u20AC - ' + (b.perceivedMax || (offer * 1.15)).toFixed(1) + ' M\u20AC | Structure: Unknown') +
-                    '</div>' +
-                    '<div style="margin-top:5px;background:rgba(255,255,255,0.1);border-radius:999px;height:4px;overflow:hidden;">' +
-                        '<div style="height:100%;width:' + b.interesse + '%;background:linear-gradient(90deg,var(--bad),var(--warn),var(--good));transition:width 0.5s;"></div>' +
+                    '<div class="kanban-column">' +
+                        '<div class="kanban-header">Exclusivity (Phase 7+)</div>' +
+                        cardsOrEmpty(col3, dropped3) +
                     '</div>' +
                 '</div>';
-            }
             el.innerHTML = html;
         }
 
@@ -3044,6 +3160,7 @@
                 cliente:       cfg.start.cliente,
                 teamMorale:        startTeamMorale,
                 bidders:       [],
+                droppedBidders: [],
                 bidderExclusivo: null,
                 initialExpectedValue: null,
                 signedValue: null,
