@@ -1338,9 +1338,27 @@
             var shuffPE  = peNames.slice().sort(function() { return Math.random() - 0.5; });
             var shuffInd = indNames.slice().sort(function() { return Math.random() - 0.5; });
             var bidders  = [];
+
+            function assignFogData(bidder) {
+                var trueOffer = bidderOfferEUR(bidder);
+                var centerSkew = (Math.random() * 0.12) - 0.06;
+                var minFactor = 0.85 + centerSkew - (Math.random() * 0.03);
+                var maxFactor = 1.15 + centerSkew + (Math.random() * 0.03);
+                minFactor = clamp(minFactor, 0.7, 0.95);
+                maxFactor = clamp(maxFactor, 1.05, 1.35);
+                if (maxFactor <= minFactor) maxFactor = minFactor + 0.12;
+
+                bidder.offerKnown = false;
+                bidder.perceivedMin = parseFloat((trueOffer * minFactor).toFixed(1));
+                bidder.perceivedMax = parseFloat((trueOffer * maxFactor).toFixed(1));
+                if (bidder.perceivedMax <= bidder.perceivedMin) {
+                    bidder.perceivedMax = parseFloat((bidder.perceivedMin + 0.8).toFixed(1));
+                }
+            }
+
             for (var i = 0; i < numPE; i++) {
                 var peCash = parseFloat((0.5 + Math.random() * 0.2).toFixed(2));
-                bidders.push({
+                var peBidder = {
                     nome: shuffPE[i],
                     tipo: "Private Equity",
                     interesse: clamp(50 + Math.floor(Math.random() * 25), 45, 80),
@@ -1348,7 +1366,9 @@
                     dropRate: 0.8,
                     cashPercentage: peCash,
                     earnoutPercentage: parseFloat((1 - peCash).toFixed(2))
-                });
+                };
+                assignFogData(peBidder);
+                bidders.push(peBidder);
             }
             for (var j = 0; j < numInd; j++) {
                 var proposedMultiple = parseFloat((state.multiplo + 0.5 + Math.random() * 1.0).toFixed(1));
@@ -1357,7 +1377,7 @@
                     industrialCash = clamp(industrialCash - (0.1 + Math.random() * 0.2), 0.55, 0.9);
                 }
                 industrialCash = parseFloat(industrialCash.toFixed(2));
-                bidders.push({
+                var indBidder = {
                     nome: shuffInd[j],
                     tipo: "Industrial",
                     isPhisher: Math.random() < 0.3,
@@ -1366,7 +1386,9 @@
                     dropRate: 1.5,
                     cashPercentage: industrialCash,
                     earnoutPercentage: parseFloat((1 - industrialCash).toFixed(2))
-                });
+                };
+                assignFogData(indBidder);
+                bidders.push(indBidder);
             }
             return bidders;
         }
@@ -1464,6 +1486,23 @@
                     };
                 },
                 log: "Management presentation concluida com " + bidder.nome + "."
+            };
+        }
+
+        function buildProbeActionForBidder(bidder) {
+            return {
+                type: "probe_bidder",
+                bidderName: bidder.nome,
+                text: "Probe Advisor of " + bidder.nome,
+                hint: "Custa 1 AP. Tenta revelar oferta exacta e estrutura Cash/Earn-out deste comprador.",
+                getEffects: function() {
+                    var moraleMod = (state.teamMorale - 50) / 250;
+                    var successProb = clamp(0.75 + moraleMod, 0.45, 0.93);
+                    return {
+                        success: { prob: successProb, effects: { progressoFase: 5 } },
+                        failure: { prob: 1 - successProb, effects: { progressoFase: 2 } }
+                    };
+                }
             };
         }
 
@@ -1587,6 +1626,11 @@
             if (phase.id === "MGMT PRES" && state.bidders && state.bidders.length > 0) {
                 for (var i = 0; i < state.bidders.length; i++) {
                     actions.push(buildMpActionForBidder(state.bidders[i]));
+                }
+            }
+            if (phase.id === "OFFERS" && state.bidders && state.bidders.length > 0) {
+                for (var k = 0; k < state.bidders.length; k++) {
+                    actions.push(buildProbeActionForBidder(state.bidders[k]));
                 }
             }
             if (phase.id === "BINDING OFFERS" && !state.bidderExclusivo && state.bidders && state.bidders.length > 0) {
@@ -1907,13 +1951,30 @@
                 return;
             }
             var keepCount = state.bidders.length >= 5 ? 3 : 2;
-            state.bidders.sort(function(a, b) { return bidderOfferEUR(b) - bidderOfferEUR(a); });
+            var hasUnknown = false;
+            state.bidders.sort(function(a, b) {
+                var aScore = bidderOfferEUR(a);
+                var bScore = bidderOfferEUR(b);
+
+                if (!a.offerKnown) {
+                    hasUnknown = true;
+                    aScore = ((a.perceivedMin || (aScore * 0.85)) + (a.perceivedMax || (aScore * 1.15))) / 2;
+                }
+                if (!b.offerKnown) {
+                    hasUnknown = true;
+                    bScore = ((b.perceivedMin || (bScore * 0.85)) + (b.perceivedMax || (bScore * 1.15))) / 2;
+                }
+                return bScore - aScore;
+            });
             var kept = state.bidders.slice(0, keepCount);
             var dropped = state.bidders.slice(keepCount);
             for (var i = 0; i < kept.length; i++) kept[i].shortlisted = true;
             state.bidders = kept;
             var droppedNames = [];
             for (var j = 0; j < dropped.length; j++) droppedNames.push(dropped[j].nome);
+            if (hasUnknown) {
+                addLog("You filtered the shortlist with incomplete information. Your team guessed the valuations based on averages; you might have dropped a top bidder.", "warn");
+            }
             addLog("Shortlist concluida: passam " + keepCount + " bidders. Eliminados: " + droppedNames.join(", ") + ".", "warn");
         }
 
@@ -1931,6 +1992,7 @@
                 var offer  = bidderOfferEUR(b);
                 var cashOffer = bidderCashOfferEUR(b);
                 var earnoutOffer = bidderEarnoutOfferEUR(b);
+                var perceivedMid = (((b.perceivedMin || (offer * 0.85)) + (b.perceivedMax || (offer * 1.15))) / 2);
                 var isPE   = b.tipo === "Private Equity";
                 var bgCol  = isPE ? "rgba(134,215,255,0.12)" : "rgba(255,201,112,0.12)";
                 var tcCol  = isPE ? "var(--accent)" : "var(--warn)";
@@ -1941,15 +2003,20 @@
                         '<div style="display:flex;gap:5px;align-items:center;">' +
                             '<span class="bidder-badge" style="background:' + bgCol + ';color:' + tcCol + ';">' + b.tipo + '</span>' +
                             (b.shortlisted ? '<span class="bidder-badge shortlist">Shortlist</span>' : '') +
+                            (!b.offerKnown ? '<span class="bidder-badge" style="background:rgba(255,201,112,0.18);color:var(--warn);">Fog of War ?</span>' : '') +
                             (state.bidderExclusivo === b.nome ? '<span class="bidder-badge" style="background:rgba(255,123,145,0.16);color:var(--bad);">Exclusivo</span>' : '') +
                         '</div>' +
                     '</div>' +
                     '<div style="display:flex;justify-content:space-between;margin-top:5px;font-size:0.77rem;">' +
                         '<span>Interesse: <strong style="color:' + iColor + ';">' + b.interesse + '%</strong></span>' +
-                        '<span>Total Offer: <strong style="color:var(--accent);">' + offer.toFixed(1) + ' M\u20AC</strong></span>' +
+                        (b.offerKnown
+                            ? '<span>Total Offer: <strong style="color:var(--accent);">' + offer.toFixed(1) + ' M\u20AC</strong></span>'
+                            : '<span>Indicative Avg: <strong style="color:var(--warn);">' + perceivedMid.toFixed(1) + ' M\u20AC</strong></span>') +
                     '</div>' +
                     '<div style="margin-top:3px;font-size:0.74rem;color:var(--muted);">' +
-                        '(Cash: ' + cashOffer.toFixed(1) + ' M\u20AC | Earn-out: ' + earnoutOffer.toFixed(1) + ' M\u20AC)' +
+                        (b.offerKnown
+                            ? '(Cash: ' + cashOffer.toFixed(1) + ' M\u20AC | Earn-out: ' + earnoutOffer.toFixed(1) + ' M\u20AC)'
+                            : 'Indicative Range: ' + (b.perceivedMin || (offer * 0.85)).toFixed(1) + ' M\u20AC - ' + (b.perceivedMax || (offer * 1.15)).toFixed(1) + ' M\u20AC | Structure: Unknown') +
                     '</div>' +
                     '<div style="margin-top:5px;background:rgba(255,255,255,0.1);border-radius:999px;height:4px;overflow:hidden;">' +
                         '<div style="height:100%;width:' + b.interesse + '%;background:linear-gradient(90deg,var(--bad),var(--warn),var(--good));transition:width 0.5s;"></div>' +
@@ -2465,6 +2532,25 @@
                 filterTopBidders();
             } else if (act.type === "mp_bidder") {
                 applyMpBidderOutcome(act, actionResult.outcome);
+            } else if (act.type === "probe_bidder") {
+                var probeBidder = null;
+                if (state.bidders && state.bidders.length > 0) {
+                    for (var pb = 0; pb < state.bidders.length; pb++) {
+                        if (state.bidders[pb].nome === act.bidderName) {
+                            probeBidder = state.bidders[pb];
+                            break;
+                        }
+                    }
+                }
+                if (probeBidder) {
+                    if (actionResult.outcome === "success") {
+                        probeBidder.offerKnown = true;
+                        addLog("You successfully probed the advisor. The exact offer and structure for " + probeBidder.nome + " are now clear.", "good");
+                    } else {
+                        probeBidder.interesse = clamp(probeBidder.interesse - 3, 0, 100);
+                        addLog("The advisor was evasive. You wasted time and slightly annoyed the buyer.", "warn");
+                    }
+                }
             } else if (act.type === "bind_exclusive") {
                 selectExclusiveBidder(act.bidderName);
             } else if (act.type === "preemptive_exclusivity") {
