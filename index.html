@@ -950,105 +950,36 @@
 
         // ---- RANDOM EVENTS ----
         var EVENTS = [
-            {
-                title: "Data Room Leak",
-                desc: "Um ficheiro confidencial foi partilhado por engano. O founder perde confianca no processo.",
-                effects: { cliente: -15, teamMorale: -6, interesseBidders: -10, fecho: -8 },
-                good: false,
-                type: "negative",
-                mitigation: {
-                    prompt: "Leak detectado. Gastar 2 PA e 0.1M€ para activar forense digital e plano de remediacao antes dos compradores verem o impacto?",
-                    apCost: 2,
-                    cashCost: 0.1,
-                    successEffects: { cliente: 8, interesseBidders: 6, fecho: 4 }
-                }
-            },
-            {
-                title: "Key Man Risk",
-                desc: "Um membro senior sinaliza saida e o ritmo de execucao cai abruptamente.",
-                effects: { cliente: -5, teamMorale: -12, interesseBidders: -4, fecho: -6 },
-                good: false,
-                type: "negative",
-                requires: function() { return state.teamMorale < 30; }
-            },
-            {
-                title: "EBITDA Surprise Positivo",
-                desc: "Durante a DD, surgem sinergias e normalizacoes que elevam o EBITDA ajustado.",
-                effects: { ebitda: 0.4, multiplo: 0.2, interesseBidders: 5, fecho: 6 },
-                good: true,
-                type: "positive"
-            },
-            {
-                title: "EBITDA Surprise Negativo",
-                desc: "A DD detecta custos nao recorrentes mal classificados e corrige o EBITDA para baixo.",
-                effects: { ebitda: -0.4, multiplo: -0.2, interesseBidders: -6, fecho: -7 },
-                good: false,
-                type: "negative",
-                mitigation: {
-                    prompt: "Finding de auditoria detectado. Gastar 2 PA e 0.1M€ em execution costs para corrigir antes do buyer ver?",
-                    apCost: 2,
-                    cashCost: 0.1,
-                    successEffects: { ebitda: 0.2, cliente: 3, fecho: 3 }
-                }
-            },
-            {
-                title: "Outbound Interest inesperado",
-                desc: "Novo contacto internacional entra no processo apos teaser bem recebido.",
-                effects: { cliente: 4, teamMorale: 3, interesseBidders: 8, multiplo: 0.2, fecho: 4 },
-                good: true,
-                type: "positive"
-            },
-            {
-                title: "Data Room acelera",
-                desc: "A equipa de DD do bidder fecha pedidos criticos mais cedo do que planeado.",
-                effects: { teamMorale: 4, interesseBidders: 3, fecho: 5, progressoFase: 8 },
-                good: true,
-                type: "positive"
-            }
+            { title: "Competitor Pitch", desc: "Um concorrente entra no mandato no último minuto e semeia dúvidas sobre a tua credibilidade.", effects: { cliente: -14, teamMorale: -5, fecho: -7 }, good: false, type: "negative", requires: { phase: 0, moraleMin: 35 }, mitigation: { prompt: "Queres activar roadshow de credibilidade para blindar o cliente contra o pitch concorrente?", apCost: 2, cashCost: 0.1, successEffects: { cliente: 10, fecho: 5 } } },
+            { title: "Kick-off Vision Alignment", desc: "O accionista valida a tua tese e acelera decisões críticas logo no início.", effects: { cliente: 7, teamMorale: 3, progressoFase: 10 }, good: true, type: "positive", requires: { phase: 0 } },
+            { title: "Teaser Draft Rework", desc: "O teaser inicial foi considerado fraco e exige reescrita com impacto no ritmo da equipa.", effects: { teamMorale: -6, cliente: -4, progressoFase: -6 }, good: false, type: "negative", requires: { phase: 1, moraleMin: 30 }, mitigation: { prompt: "Queres chamar senior advisor para reforçar a narrativa do teaser?", apCost: 2, cashCost: 0.1, successEffects: { teamMorale: 4, cliente: 3, progressoFase: 4 } } },
+            { title: "Data Room Leak", desc: "Um ficheiro confidencial foi partilhado por engano. A confiança no processo cai de imediato.", effects: { cliente: -15, teamMorale: -6, interesseBidders: -10, fecho: -8 }, good: false, type: "negative", requires: { phase: 2 }, mitigation: { prompt: "Leak detectado. Activar forense digital e plano de remediação já?", apCost: 2, cashCost: 0.1, successEffects: { cliente: 9, interesseBidders: 6, fecho: 5 } } },
+            { title: "Unsolicited Strategic Approach", desc: "Um comprador estratégico não contactado envia interesse firme e cria tensão competitiva.", effects: { interesseBiddersIndustrial: 14, multiplo: 0.6, fecho: 5, cliente: 4 }, good: true, type: "positive", requires: { phase: 3 } },
+            { title: "Buyer Churn", desc: "Dois compradores reduzem prioridade ao dossier devido a capacidade interna limitada.", effects: { interesseBidders: -10, fecho: -6, teamMorale: -3 }, good: false, type: "negative", requires: { phase: 3, moraleMin: 25 }, mitigation: { prompt: "Fazes re-engagement sprint com CFO calls para recuperar atenção dos bidders?", apCost: 2, cashCost: 0.1, successEffects: { interesseBidders: 7, fecho: 4 } } },
+            { title: "Management Dry-Run Exemplar", desc: "A apresentação de gestão corre acima das expectativas e melhora a leitura de execução.", effects: { cliente: 5, interesseBidders: 6, fecho: 5 }, good: true, type: "positive", requires: { phase: 4 } },
+            { title: "Q&A Desalinhado", desc: "Respostas contraditórias no Q&A levantam dúvidas de governance.", effects: { cliente: -8, interesseBidders: -9, fecho: -7 }, good: false, type: "negative", requires: { phase: 4 }, mitigation: { prompt: "Queres montar war-room para alinhar mensagens e publicar errata controlada?", apCost: 2, cashCost: 0.1, successEffects: { cliente: 6, interesseBidders: 6, fecho: 4 } } },
+            { title: "Indicative Bids Above Plan", desc: "As NBOs chegam acima do intervalo-base e reforçam a tua narrativa de valor.", effects: { multiplo: 0.5, interesseBidders: 7, fecho: 6 }, good: true, type: "positive", requires: { phase: 5 } },
+            { title: "Skeleton in the Closet", desc: "Na due diligence surge um passivo oculto não mapeado no IM.", effects: { ebitda: -0.6, cliente: -10, interesseBidders: -8, fecho: -9 }, good: false, type: "negative", requires: { phase: 6 }, mitigation: { prompt: "Activar pacote de indemnização e carve-out técnico para conter dano?", apCost: 2, cashCost: 0.1, successEffects: { ebitda: 0.4, cliente: 7, fecho: 6 } } },
+            { title: "DD Streamlined", desc: "A diligence avança com menos pedidos do que o esperado devido à qualidade do VDR.", effects: { teamMorale: 4, progressoFase: 8, fecho: 4 }, good: true, type: "positive", requires: { phase: 6 } },
+            { title: "Exclusivity Fatigue", desc: "A exclusividade prolongada sem milestones reduz a pressão competitiva.", effects: { interesseBidders: -7, fecho: -8, cliente: -4 }, good: false, type: "negative", requires: { phase: 7 }, mitigation: { prompt: "Queres impor data certa com reverse break e comité semanal de decisão?", apCost: 2, cashCost: 0.1, successEffects: { fecho: 6, cliente: 5 } } },
+            { title: "Seller-Friendly Draft", desc: "Primeiro draft do SPA fica surpreendentemente favorável ao vendedor.", effects: { fecho: 7, cliente: 4, teamMorale: 2 }, good: true, type: "positive", requires: { phase: 8 } },
+            { title: "Warranty Creep", desc: "O comprador exige warranties amplas e aumenta risco de litígio pós-closing.", effects: { cliente: -7, fecho: -8, teamMorale: -4 }, good: false, type: "negative", requires: { phase: 8 }, mitigation: { prompt: "Aceitas pagar counsel adicional para limitar o pacote de warranties?", apCost: 2, cashCost: 0.1, successEffects: { fecho: 5, cliente: 5 } } },
+            { title: "Regulatory Surprise", desc: "Em Signing surge objecção preliminar de concorrência e o calendário derrapa.", effects: { fecho: -14, interesseBiddersIndustrial: -8, cliente: -6 }, good: false, type: "negative", requires: { phase: 9 }, mitigation: { prompt: "Ativar equipa de antitrust para fast-track de remédios comportamentais?", apCost: 2, cashCost: 0.1, successEffects: { fecho: 10, interesseBiddersIndustrial: 5 } } },
+            { title: "Lenders Reconfirm", desc: "Os bancos reconfirmam compromisso final e removem incerteza na reta final.", effects: { fecho: 10, interesseBiddersPE: 6, teamMorale: 3 }, good: true, type: "positive", requires: { phase: 9 } },
+            { title: "Funds Flow Delay", desc: "Problemas operacionais de tesouraria atrasam o funds flow de closing.", effects: { fecho: -10, teamMorale: -4, cliente: -5 }, good: false, type: "negative", requires: { phase: 10 }, mitigation: { prompt: "Queres contratar agente de pagamento dedicado para desbloquear o funds flow?", apCost: 2, cashCost: 0.1, successEffects: { fecho: 7, cliente: 4 } } },
+            { title: "Closing Day Momentum", desc: "Todos os CPs foram cumpridos com antecedência e o closing fica altamente provável.", effects: { fecho: 9, teamMorale: 4, cliente: 5 }, good: true, type: "positive", requires: { phase: 10 } }
         ];
 
         var eventosMacro = [
-            {
-                title: "Subida de taxas ECB",
-                desc: "O BCE sobe taxas e o custo de financiamento dispara: multiplos comprimem e sponsors de PE recuam.",
-                effects: { multiplo: -0.5, interesseBiddersPE: -10, fecho: -5 },
-                tone: "bad",
-                sentimentLabel: "Mercado: Bearish | Multiplos comprimidos",
-                marketState: { multipleShift: -0.5, peCooling: true, creditFreeze: false, closingPenalty: 0 }
-            },
-            {
-                title: "Sector Rally",
-                desc: "Comparables saem acima do esperado e o apetite por M&A sobe em toda a linha.",
-                effects: { multiplo: 1.0, interesseBidders: 8, fecho: 6 },
-                tone: "good",
-                sentimentLabel: "Mercado: Bullish | Re-rating sectorial",
-                marketState: { multipleShift: 1.0, peCooling: false, creditFreeze: false, closingPenalty: 0 }
-            },
-            {
-                title: "Credit Freeze",
-                desc: "Mercado de divida fecha quase por completo; financiamentos LBO ficam pendurados.",
-                effects: { multiplo: -0.6, interesseBiddersPE: -14, fecho: -8 },
-                tone: "bad",
-                sentimentLabel: "Mercado: Risk-Off | Liquidez congelada",
-                marketState: { multipleShift: -0.6, peCooling: true, creditFreeze: true, closingPenalty: 15 },
-                creditFreeze: true
-            },
-            {
-                title: "Euro em enfraquecimento",
-                desc: "Ativos europeus ficam mais baratos em USD, elevando interesse de estrategicos/industriais internacionais.",
-                effects: { multiplo: 0.3, interesseBiddersIndustrial: 9, fecho: 3 },
-                tone: "good",
-                sentimentLabel: "Mercado: Competitivo | Compradores internacionais activos",
-                marketState: { multipleShift: 0.3, peCooling: false, creditFreeze: false, closingPenalty: 0 }
-            },
-            {
-                title: "Normalizacao energetica",
-                desc: "Precos de energia aliviam e a visibilidade de cash-flow melhora em varios sectores.",
-                effects: { ebitda: 0.3, multiplo: 0.2, interesseBidders: 3, fecho: 2 },
-                tone: "good",
-                sentimentLabel: "Mercado: Estavel | Volatilidade em queda",
-                marketState: { multipleShift: 0.2, peCooling: false, creditFreeze: false, closingPenalty: 0 }
-            }
+            { title: "BCE sobe taxas", desc: "Subida de taxas em 50 bps pressiona dívida e reduz apetite por processos alavancados.", effects: { multiplo: -0.5, interesseBiddersPE: -10, fecho: -4 }, tone: "bad", sentimentLabel: "Bearish · funding mais caro", marketState: { multipleShift: -0.5, peCooling: true, creditFreeze: false, closingPenalty: 6 } },
+            { title: "Setor em Alta", desc: "Resultados setoriais acima do consenso suportam re-rating e maior agressividade estratégica.", effects: { multiplo: 1.0, interesseBiddersIndustrial: 10, fecho: 5 }, tone: "good", sentimentLabel: "Bullish · múltiplos em expansão", marketState: { multipleShift: 1.0, peCooling: false, creditFreeze: false, closingPenalty: 0 } },
+            { title: "Crise de Supply Chain", desc: "Disrupções logísticas elevam custos e afetam previsibilidade operacional.", effects: { ebitda: -0.4, cliente: -5, fecho: -3 }, tone: "bad", sentimentLabel: "Bearish · execução operacional pressionada", marketState: { multipleShift: -0.2, peCooling: false, creditFreeze: false, closingPenalty: 4 } },
+            { title: "Janela de IPO fecha", desc: "Mercado de capitais perde tração e pressiona alternativas de saída para compradores financeiros.", effects: { interesseBiddersPE: -8, fecho: -3 }, tone: "bad", sentimentLabel: "Bearish · alternativas de liquidez limitadas", marketState: { multipleShift: -0.3, peCooling: true, creditFreeze: false, closingPenalty: 5 } },
+            { title: "Euro em enfraquecimento", desc: "Compradores internacionais com USD ganham poder de compra relativo em ativos europeus.", effects: { multiplo: 0.4, interesseBiddersIndustrial: 8, fecho: 2 }, tone: "good", sentimentLabel: "Bullish · inbound estratégico reforçado", marketState: { multipleShift: 0.4, peCooling: false, creditFreeze: false, closingPenalty: 0 } },
+            { title: "Aperto no mercado de dívida", desc: "Sindicados pedem covenants mais duros e adiam comités de crédito.", effects: { interesseBiddersPE: -12, multiplo: -0.4, fecho: -6 }, tone: "bad", sentimentLabel: "Bearish · crédito restritivo", marketState: { multipleShift: -0.4, peCooling: true, creditFreeze: true, closingPenalty: 10 }, creditFreeze: true },
+            { title: "Consolidação setorial", desc: "Transações comparáveis fecham acima do esperado e reacendem competição estratégica.", effects: { multiplo: 0.6, interesseBiddersIndustrial: 9, fecho: 4 }, tone: "good", sentimentLabel: "Bullish · pressão competitiva", marketState: { multipleShift: 0.6, peCooling: false, creditFreeze: false, closingPenalty: 0 } },
+            { title: "Choque regulatório ESG", desc: "Novas exigências de compliance geram custos imediatos e prudência nas ofertas.", effects: { ebitda: -0.2, multiplo: -0.3, interesseBidders: -4 }, tone: "bad", sentimentLabel: "Bearish · risco de conformidade", marketState: { multipleShift: -0.3, peCooling: false, creditFreeze: false, closingPenalty: 4 } },
+            { title: "Normalização energética", desc: "Alívio no preço de energia melhora confiança em cash-flow para os próximos trimestres.", effects: { ebitda: 0.3, multiplo: 0.2, fecho: 2 }, tone: "good", sentimentLabel: "Bullish · volatilidade em queda", marketState: { multipleShift: 0.2, peCooling: false, creditFreeze: false, closingPenalty: 0 } }
         ];
 
         var RED_FLAG_EVENTS = [
@@ -3049,15 +2980,25 @@
         function renderMarketNews() {
             var sentiment = (state.macroState && state.macroState.sentimentLabel)
                 ? state.macroState.sentimentLabel
-                : "Mercado: Neutro | Sem choque macro activo";
-            var html = '<h3>Macro Engine</h3><div class="market-news-sentiment">' + sentiment + '</div>';
+                : "Neutro";
+            var sentimentTone = "Neutro";
+            if ((state.marketNews || []).length > 0) {
+                var bullish = 0;
+                var bearish = 0;
+                for (var si = 0; si < state.marketNews.length; si++) {
+                    if (state.marketNews[si].tone === "good") bullish++;
+                    if (state.marketNews[si].tone === "bad") bearish++;
+                }
+                sentimentTone = bullish > bearish ? "Bullish" : (bearish > bullish ? "Bearish" : "Neutro");
+            }
+            var html = '<h3>Macro Engine</h3><div class="market-news-sentiment">Market Sentiment: <strong>' + sentimentTone + '</strong> · ' + sentiment + '</div>';
             if (!state.marketNews || state.marketNews.length === 0) {
                 html += '<div class="market-news-empty">Sem novidades macroeconomicas esta semana.</div>';
                 R.marketNews.innerHTML = html;
                 return;
             }
-            html += '<div class="market-news-ticker">Ticker (ultimos 5):</div>';
-            for (var i = 0; i < state.marketNews.length; i++) {
+            html += '<div class="market-news-ticker">Ticker (ultimos 3):</div>';
+            for (var i = 0; i < Math.min(3, state.marketNews.length); i++) {
                 var n = state.marketNews[i];
                 html += '<div class="market-news-entry ' + n.tone + '">[S' + n.week + '] ' + n.title + ' — ' + n.desc + '</div>';
             }
@@ -3240,21 +3181,15 @@
                 grid.appendChild(box);
             }
 
-            var narrative = "";
-            if (tone === "good" && financials.netMargin < 0) {
-                narrative = "You closed the deal, but endless document revisions and team exhaustion consumed the entire fee. The firm lost money (Negative Net Margin).";
-            } else if (hiddenFlawsHit && ev < expectedEV) {
-                narrative = "Your sloppy deliverables early on led to massive price chipping by the auditors. The valuation crashed, and the client walked away.";
-            } else if (tone === "good" && !hiddenFlawsHit && financials.netMargin > 0.3) {
-                narrative = "Premium execution. You managed expectations, kept the team efficient, and secured a highly profitable margin.";
-            } else if (tone === "good" && (state.liabilityRisk || state.liabilityRiskActive)) {
-                narrative = "The deal closed, but warranty concessions triggered post-closing liabilities and legal backlash, materially reducing net margin.";
-            } else if (tone === "good") {
-                narrative = "The deal closed, but margin discipline and stakeholder management left room for improvement.";
-            } else {
-                narrative = "The mandate ended before closing due to a breakdown in trust, team stamina, bidder appetite, or valuation support.";
-            }
-            R.postmortemNarrative.innerHTML = '<div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent);margin-bottom:6px;">Narrative</div>' +
+            var eventHistory = gameHistory.filter(function(h) { return h.type === "event" || h.type === "red_flag"; });
+            var topEvents = eventHistory.slice(-3).map(function(h) { return h.label; });
+            while (topEvents.length < 3) topEvents.push("sem evento crítico relevante");
+            var finalResult = tone === "good" ? "sucesso premium" : (msg.toLowerCase().indexOf("sign") !== -1 ? "falhou em Signing" : "não chegou a Closing");
+            var mandateDuration = state.semanaAtual;
+            var sectorNarr = state.sectorLabel || "setor não identificado";
+            var clientType = state.personaLabel || "cliente";
+            var narrative = "O seu mandato de " + mandateDuration + " semanas no setor " + sectorNarr + " para um cliente " + clientType + " terminou em " + finalResult + ", apesar de " + topEvents[0] + ", " + topEvents[1] + " e " + topEvents[2] + ".";
+            R.postmortemNarrative.innerHTML = '<div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent);margin-bottom:6px;">Narrativa Dinâmica</div>' +
                 '<div style="font-size:0.86rem;line-height:1.45;color:var(--text);">' + narrative + '</div>';
 
             var cmp = document.getElementById("closing-comparison");
@@ -3312,6 +3247,10 @@
                 var candidate = EVENTS[e];
                 if (candidate.type !== targetType) continue;
                 if (typeof candidate.requires === "function" && !candidate.requires()) continue;
+                if (candidate.requires && typeof candidate.requires === "object") {
+                    if (typeof candidate.requires.phase === "number" && state.currentPhaseIndex !== candidate.requires.phase) continue;
+                    if (typeof candidate.requires.moraleMin === "number" && state.teamMorale < candidate.requires.moraleMin) continue;
+                }
                 pool.push(candidate);
             }
             if (pool.length === 0) return;
@@ -3329,7 +3268,7 @@
             }
 
             var mitigated = false;
-            if (ev.mitigation && state.pontosAcao >= ev.mitigation.apCost) {
+            if (ev.mitigation && ev.type === "negative" && state.pontosAcao >= ev.mitigation.apCost) {
                 var wantsMitigation = await showModal("Mitigação de Evento", ev.mitigation.prompt + " (Disponível: " + state.pontosAcao + " PA)", [{ label: "Mitigar", value: true }, { label: "Não mitigar", value: false, tone: "danger" }]);
                 if (wantsMitigation) {
                     state.pontosAcao -= ev.mitigation.apCost;
@@ -3431,7 +3370,7 @@
             state.lastMacroTone = ev.tone || "warn";
             state.lastMacroWeek = state.semanaAtual;
             state.lastMacroTitle = ev.title;
-            if (state.marketNews.length > 5) state.marketNews.length = 5;
+            if (state.marketNews.length > 3) state.marketNews.length = 3;
             state.macroState = {
                 sentimentLabel: ev.sentimentLabel || "Mercado: Neutro | Sem choque macro activo",
                 creditFreeze: !!(ev.marketState && ev.marketState.creditFreeze),
@@ -3876,20 +3815,11 @@
             if (state.peFinancingRiskActive) {
                 state.peFinancingRiskWeeks = (state.peFinancingRiskWeeks || 0) + 1;
                 if (state.peFinancingRiskWeeks >= 3) {
-                    var exclusive = resolveExclusiveBidder();
-                    if (exclusive && exclusive.tipo === "Private Equity") {
-                        if (exclusive.interesse >= 45) {
-                            state.peFinancingRiskActive = false;
-                            state.peFinancingRiskWeeks = 0;
-                            addLog("Risco de financiamento PE resolveu-se naturalmente após 3 semanas sem nova pressão.", "good");
-                        } else {
-                            state.peFinancingRiskActive = false;
-                            state.peFinancingRiskWeeks = 0;
-                            addLog("Risco de financiamento PE escalou após 3 semanas sem mitigação.", "bad");
-                            endGame("Market Rejection: exclusividade colapsou por risco de financiamento não mitigado.", "bad");
-                            return false;
-                        }
-                    }
+                    state.peFinancingRiskActive = false;
+                    state.peFinancingRiskWeeks = 0;
+                    state.fecho = clamp(Math.round(state.fecho * 0.5), 0, 100);
+                    addLog("Risco de financiamento PE não mitigado por 3 semanas: probabilidade de closing cortada em 50%.", "bad");
+                    gameHistory.push({ type: "event", label: "Financing Decay", text: "Risco de financiamento não resolvido por 3 semanas, com corte automático de 50% na probabilidade de closing." });
                 }
             }
 
