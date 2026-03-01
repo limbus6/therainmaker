@@ -1252,21 +1252,32 @@
             var shuffInd = indNames.slice().sort(function() { return Math.random() - 0.5; });
             var bidders  = [];
             for (var i = 0; i < numPE; i++) {
+                var peCash = parseFloat((0.5 + Math.random() * 0.2).toFixed(2));
                 bidders.push({
                     nome: shuffPE[i],
                     tipo: "Private Equity",
                     interesse: clamp(50 + Math.floor(Math.random() * 25), 45, 80),
                     multiploProposto: parseFloat((state.multiplo - 0.5 - Math.random() * 0.5).toFixed(1)),
-                    dropRate: 0.8
+                    dropRate: 0.8,
+                    cashPercentage: peCash,
+                    earnoutPercentage: parseFloat((1 - peCash).toFixed(2))
                 });
             }
             for (var j = 0; j < numInd; j++) {
+                var proposedMultiple = parseFloat((state.multiplo + 0.5 + Math.random() * 1.0).toFixed(1));
+                var industrialCash = 0.7 + Math.random() * 0.3;
+                if (proposedMultiple >= state.multiplo + 1.1) {
+                    industrialCash = clamp(industrialCash - (0.1 + Math.random() * 0.2), 0.55, 0.9);
+                }
+                industrialCash = parseFloat(industrialCash.toFixed(2));
                 bidders.push({
                     nome: shuffInd[j],
                     tipo: "Industrial",
                     interesse: clamp(45 + Math.floor(Math.random() * 25), 40, 75),
-                    multiploProposto: parseFloat((state.multiplo + 0.5 + Math.random() * 1.0).toFixed(1)),
-                    dropRate: 1.5
+                    multiploProposto: proposedMultiple,
+                    dropRate: 1.5,
+                    cashPercentage: industrialCash,
+                    earnoutPercentage: parseFloat((1 - industrialCash).toFixed(2))
                 });
             }
             return bidders;
@@ -1293,6 +1304,21 @@
 
         function bidderOfferEUR(bidder) {
             return parseFloat((state.ebitda * bidder.multiploProposto).toFixed(1));
+        }
+
+        function bidderCashOfferEUR(bidder) {
+            return parseFloat((bidderOfferEUR(bidder) * (bidder.cashPercentage || 0)).toFixed(1));
+        }
+
+        function bidderEarnoutOfferEUR(bidder) {
+            return parseFloat((bidderOfferEUR(bidder) * (bidder.earnoutPercentage || 0)).toFixed(1));
+        }
+
+        function weightedOfferForExpectation(bidder) {
+            if (!bidder) return 0;
+            var cash = bidderCashOfferEUR(bidder);
+            var earnout = bidderEarnoutOfferEUR(bidder);
+            return parseFloat((cash + (earnout * 0.6)).toFixed(1));
         }
 
         function isBadMarket() {
@@ -1354,11 +1380,14 @@
         }
 
         function buildBindingActionForBidder(bidder) {
+            var totalOffer = bidderOfferEUR(bidder);
+            var cashOffer = bidderCashOfferEUR(bidder);
+            var earnoutOffer = bidderEarnoutOfferEUR(bidder);
             return {
                 type: "bind_exclusive",
                 bidderName: bidder.nome,
-                text: "Entrar em exclusividade com " + bidder.nome,
-                hint: "Fecha o mercado e avanca com um unico comprador ate ao signing.",
+                text: "Entrar em exclusividade com " + bidder.nome + " (Total " + totalOffer.toFixed(1) + " M€)",
+                hint: "Estrutura da oferta: Cash " + cashOffer.toFixed(1) + " M€ | Earn-out/Rollover " + earnoutOffer.toFixed(1) + " M€. Fecha o mercado e avanca com um unico comprador ate ao signing.",
                 effects: {
                     success: {
                         prob: 1,
@@ -1382,8 +1411,22 @@
             if (!exclusive) return;
             state.bidderExclusivo = exclusive.nome;
             state.initialExpectedValue = bidderOfferEUR(exclusive);
+            var weightedOffer = weightedOfferForExpectation(exclusive);
+            var expectationGap = parseFloat((state.clientExpectationEV - weightedOffer).toFixed(1));
+            var totalExpectationHit = state.initialExpectedValue >= state.clientExpectationEV;
             exclusive.shortlisted = true;
             state.bidders = [exclusive];
+
+            if (totalExpectationHit && (exclusive.earnoutPercentage || 0) >= 0.5) {
+                state.cliente = clamp(state.cliente - 4, 0, 100);
+                addLog("Cliente desapontado com a estrutura: apesar do total cumprir a expectativa, o earn-out/rollover elevado reduziu a confianca.", "warn");
+                updateStats({ cliente: -4 });
+            } else if (expectationGap > 0.2) {
+                var trustPenalty = clamp(Math.round(expectationGap / 3), 2, 9);
+                state.cliente = clamp(state.cliente - trustPenalty, 0, 100);
+                addLog("A estrutura economica em caixa ficou abaixo da expectativa do cliente em " + expectationGap.toFixed(1) + " M€ equivalentes; confianca em queda.", "warn");
+                updateStats({ cliente: -trustPenalty });
+            }
 
             if (state.expectationTrapActive && state.initialExpectedValue < state.clientExpectationEV) {
                 state.cliente = clamp(state.cliente - 16, 0, 100);
@@ -1773,7 +1816,9 @@
             var html = '<div style="font-size:0.67rem;text-transform:uppercase;letter-spacing:0.08em;color:#95a1d7;margin:12px 0 6px;font-weight:700;">Compradores</div>';
             for (var i = 0; i < state.bidders.length; i++) {
                 var b      = state.bidders[i];
-                var offer  = parseFloat((state.ebitda * b.multiploProposto).toFixed(1));
+                var offer  = bidderOfferEUR(b);
+                var cashOffer = bidderCashOfferEUR(b);
+                var earnoutOffer = bidderEarnoutOfferEUR(b);
                 var isPE   = b.tipo === "Private Equity";
                 var bgCol  = isPE ? "rgba(134,215,255,0.12)" : "rgba(255,201,112,0.12)";
                 var tcCol  = isPE ? "var(--accent)" : "var(--warn)";
@@ -1789,7 +1834,10 @@
                     '</div>' +
                     '<div style="display:flex;justify-content:space-between;margin-top:5px;font-size:0.77rem;">' +
                         '<span>Interesse: <strong style="color:' + iColor + ';">' + b.interesse + '%</strong></span>' +
-                        '<span>Oferta: <strong style="color:var(--accent);">' + offer.toFixed(1) + ' M\u20AC</strong></span>' +
+                        '<span>Total Offer: <strong style="color:var(--accent);">' + offer.toFixed(1) + ' M\u20AC</strong></span>' +
+                    '</div>' +
+                    '<div style="margin-top:3px;font-size:0.74rem;color:var(--muted);">' +
+                        '(Cash: ' + cashOffer.toFixed(1) + ' M\u20AC | Earn-out: ' + earnoutOffer.toFixed(1) + ' M\u20AC)' +
                     '</div>' +
                     '<div style="margin-top:5px;background:rgba(255,255,255,0.1);border-radius:999px;height:4px;overflow:hidden;">' +
                         '<div style="height:100%;width:' + b.interesse + '%;background:linear-gradient(90deg,var(--bad),var(--warn),var(--good));transition:width 0.5s;"></div>' +
