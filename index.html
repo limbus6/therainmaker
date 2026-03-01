@@ -817,99 +817,103 @@
         // ---- RANDOM EVENTS ----
         var EVENTS = [
             {
-                title: "Noticia negativa do sector",
-                desc: "Um artigo de imprensa levanta questoes sobre valuations do sector e comprime multiplos de referencia.",
-                effects: { cliente: -4, teamMorale: 0, interesseBidders: -8, multiplo: -0.5, fecho: -7 },
-                good: false
+                title: "Data Room Leak",
+                desc: "Um ficheiro confidencial foi partilhado por engano. O founder perde confianca no processo.",
+                effects: { cliente: -15, teamMorale: -6, interesseBidders: -10, fecho: -8 },
+                good: false,
+                type: "negative",
+                mitigation: {
+                    prompt: "Leak detectado. Gastar 2 PA e 0.1M€ para activar forense digital e plano de remediacao antes dos compradores verem o impacto?",
+                    apCost: 2,
+                    cashCost: 0.1,
+                    successEffects: { cliente: 8, interesseBidders: 6, fecho: 4 }
+                }
             },
             {
-                title: "Membro chave da equipa sai",
-                desc: "O associate senior que conduzia o data room recebe uma oferta competitiva e sai esta semana.",
-                effects: { cliente: -3, teamMorale: -10, interesseBidders: -2, fecho: -4 },
-                good: false
+                title: "Key Man Risk",
+                desc: "Um membro senior sinaliza saida e o ritmo de execucao cai abruptamente.",
+                effects: { cliente: -5, teamMorale: -12, interesseBidders: -4, fecho: -6 },
+                good: false,
+                type: "negative",
+                requires: function() { return state.teamMorale < 30; }
             },
             {
-                title: "Regulador solicita esclarecimentos",
-                desc: "A autoridade de supervisao pede documentacao adicional de compliance, atrasando o cronograma.",
-                effects: { cliente: -5, teamMorale: -4, interesseBidders: -5, fecho: -6 },
-                good: false
+                title: "EBITDA Surprise Positivo",
+                desc: "Durante a DD, surgem sinergias e normalizacoes que elevam o EBITDA ajustado.",
+                effects: { ebitda: 0.4, multiplo: 0.2, interesseBidders: 5, fecho: 6 },
+                good: true,
+                type: "positive"
             },
             {
-                title: "Comprador principal hesita",
-                desc: "O bidder preferencial pede uma semana adicional para aprovacao interna do Investment Committee.",
-                effects: { cliente: -6, teamMorale: -2, interesseBidders: -8, multiplo: -0.3, fecho: -8 },
-                good: false
+                title: "EBITDA Surprise Negativo",
+                desc: "A DD detecta custos nao recorrentes mal classificados e corrige o EBITDA para baixo.",
+                effects: { ebitda: -0.4, multiplo: -0.2, interesseBidders: -6, fecho: -7 },
+                good: false,
+                type: "negative",
+                mitigation: {
+                    prompt: "Finding de auditoria detectado. Gastar 2 PA e 0.1M€ em execution costs para corrigir antes do buyer ver?",
+                    apCost: 2,
+                    cashCost: 0.1,
+                    successEffects: { ebitda: 0.2, cliente: 3, fecho: 3 }
+                }
             },
             {
-                title: "Vaga de transaccoes no sector",
-                desc: "Multiplas transaccoes comparaveis sao anunciadas com premios acima das expectativas do mercado.",
-                effects: { cliente: 5, teamMorale: 3, interesseBidders: 6, multiplo: 0.5, fecho: 6 },
-                good: true
+                title: "Outbound Interest inesperado",
+                desc: "Novo contacto internacional entra no processo apos teaser bem recebido.",
+                effects: { cliente: 4, teamMorale: 3, interesseBidders: 8, multiplo: 0.2, fecho: 4 },
+                good: true,
+                type: "positive"
             },
             {
-                title: "Novo comprador estrategico surge",
-                desc: "Um grupo estrangeiro contacta directamente o cliente, criando pressao competitiva inesperada.",
-                effects: { cliente: 4, teamMorale: -3, interesseBidders: 5, ebitda: 0.3, fecho: 3 },
-                good: true
-            },
-            {
-                title: "Mercado de credito deteriora",
-                desc: "Subida inesperada de spreads afecta a capacidade de financiamento dos compradores financeiros.",
-                effects: { cliente: -3, teamMorale: 0, interesseBidders: -10, multiplo: -0.8, fecho: -9 },
-                good: false
-            },
-            {
-                title: "Resultados trimestrais surpreendem",
-                desc: "O target divulga numeros acima de guidance, reforcando significativamente a narrativa de crescimento.",
-                effects: { cliente: 6, teamMorale: 4, interesseBidders: 7, ebitda: 0.5, fecho: 7 },
-                good: true
-            },
-            {
-                title: "Rumores de processo vazam",
-                desc: "Uma nota num blog de M&A menciona o nome do target. O cliente esta furioso com a quebra de confidencialidade.",
-                effects: { cliente: -10, teamMorale: -5, interesseBidders: 2, multiplo: -0.4, fecho: -5 },
-                good: false
-            },
-            {
-                title: "Concorrente lanca processo rival",
-                desc: "Um competitor do target anuncia venda, capturando a atencao dos mesmos compradores estrategicos.",
-                effects: { cliente: -2, teamMorale: 0, interesseBidders: -8, multiplo: -0.3, fecho: -5 },
-                good: false
+                title: "Data Room acelera",
+                desc: "A equipa de DD do bidder fecha pedidos criticos mais cedo do que planeado.",
+                effects: { teamMorale: 4, interesseBidders: 3, fecho: 5, progressoFase: 8 },
+                good: true,
+                type: "positive"
             }
         ];
 
         var eventosMacro = [
             {
-                title: "ECB raises rates",
-                desc: "Custo de capital sobe no mercado europeu e os compradores revem disciplina de valuation.",
-                effects: { multiplo: -0.5, fecho: -4, interesseBidders: -6 },
-                creditFreeze: true,
-                tone: "bad"
+                title: "Subida de taxas ECB",
+                desc: "O BCE sobe taxas e o custo de financiamento dispara: multiplos comprimem e sponsors de PE recuam.",
+                effects: { multiplo: -0.5, interesseBiddersPE: -10, fecho: -5 },
+                tone: "bad",
+                sentimentLabel: "Mercado: Bearish | Multiplos comprimidos",
+                marketState: { multipleShift: -0.5, peCooling: true, creditFreeze: false, closingPenalty: 0 }
             },
             {
-                title: "Mercado de credito deteriora",
-                desc: "Bancos recuam em underwriting e varios processos alavancados entram em stress de financiamento.",
-                effects: { multiplo: -0.4, fecho: -6, interesseBiddersPE: -10 },
-                creditFreeze: true,
-                tone: "bad"
+                title: "Sector Rally",
+                desc: "Comparables saem acima do esperado e o apetite por M&A sobe em toda a linha.",
+                effects: { multiplo: 1.0, interesseBidders: 8, fecho: 6 },
+                tone: "good",
+                sentimentLabel: "Mercado: Bullish | Re-rating sectorial",
+                marketState: { multipleShift: 1.0, peCooling: false, creditFreeze: false, closingPenalty: 0 }
             },
             {
-                title: "Supply chain crisis",
-                desc: "Nova ruptura logistica afecta visibilidade operacional e pressiona expectativas de margem.",
-                effects: { ebitda: -0.4, fecho: -3, cliente: -2 },
-                tone: "bad"
+                title: "Credit Freeze",
+                desc: "Mercado de divida fecha quase por completo; financiamentos LBO ficam pendurados.",
+                effects: { multiplo: -0.6, interesseBiddersPE: -14, fecho: -8 },
+                tone: "bad",
+                sentimentLabel: "Mercado: Risk-Off | Liquidez congelada",
+                marketState: { multipleShift: -0.6, peCooling: true, creditFreeze: true, closingPenalty: 15 },
+                creditFreeze: true
             },
             {
-                title: "Euro weakens vs USD",
-                desc: "Activos europeus ficam relativamente mais atractivos para compradores estrategicos internacionais.",
-                effects: { multiplo: 0.3, interesseBiddersIndustrial: 5, fecho: 2 },
-                tone: "good"
+                title: "Euro em enfraquecimento",
+                desc: "Ativos europeus ficam mais baratos em USD, elevando interesse de estrategicos/industriais internacionais.",
+                effects: { multiplo: 0.3, interesseBiddersIndustrial: 9, fecho: 3 },
+                tone: "good",
+                sentimentLabel: "Mercado: Competitivo | Compradores internacionais activos",
+                marketState: { multipleShift: 0.3, peCooling: false, creditFreeze: false, closingPenalty: 0 }
             },
             {
-                title: "Energy prices normalize",
-                desc: "Custos de producao aliviam e previsibilidade de cash-flow melhora para investidores.",
-                effects: { ebitda: 0.3, multiplo: 0.2, fecho: 2 },
-                tone: "good"
+                title: "Normalizacao energetica",
+                desc: "Precos de energia aliviam e a visibilidade de cash-flow melhora em varios sectores.",
+                effects: { ebitda: 0.3, multiplo: 0.2, interesseBidders: 3, fecho: 2 },
+                tone: "good",
+                sentimentLabel: "Mercado: Estavel | Volatilidade em queda",
+                marketState: { multipleShift: 0.2, peCooling: false, creditFreeze: false, closingPenalty: 0 }
             }
         ];
 
@@ -1648,10 +1652,11 @@
             var trustModifier = Math.round((clamp(input.clientTrust || 0, 0, 100) - 50) * 0.35);
             var moraleModifier = Math.round((clamp(input.teamMorale || 0, 0, 100) - 50) * 0.25);
             var macroPenalty = (input.macroTone === "bad" || input.isMacroNegative) ? 12 : 0;
+            var creditFreezePenalty = input.creditFreezeActive ? 15 : 0;
             var phaseModifier = Math.round(phaseProgressFactor * 18);
             var bidderInterestBonus = Math.round((clamp(input.bidderInterest || 0, 0, 100) - 50) * 0.22);
 
-            var probability = 38 + phaseModifier + trustModifier + moraleModifier + bidderInterestBonus - macroPenalty;
+            var probability = 38 + phaseModifier + trustModifier + moraleModifier + bidderInterestBonus - macroPenalty - creditFreezePenalty;
             return Math.round(clamp(probability, 0, 100));
         }
 
@@ -1667,7 +1672,8 @@
                 clientTrust: state.cliente,
                 bidderInterest: exclusive.interesse,
                 macroTone: state.lastMacroTone,
-                isMacroNegative: isMacroMarketNegative()
+                isMacroNegative: isMacroMarketNegative(),
+                creditFreezeActive: !!state.macroState.creditFreeze
             });
             return clamp(baseProbability - burnoutPenalty, 0, 100);
         }
@@ -2545,11 +2551,16 @@
         }
 
         function renderMarketNews() {
+            var sentiment = (state.macroState && state.macroState.sentimentLabel)
+                ? state.macroState.sentimentLabel
+                : "Mercado: Neutro | Sem choque macro activo";
+            var html = '<h3>Macro Engine</h3><div class="market-news-sentiment">' + sentiment + '</div>';
             if (!state.marketNews || state.marketNews.length === 0) {
-                R.marketNews.innerHTML = '<h3>Market News</h3><div class="market-news-empty">Sem novidades macroeconomicas esta semana.</div>';
+                html += '<div class="market-news-empty">Sem novidades macroeconomicas esta semana.</div>';
+                R.marketNews.innerHTML = html;
                 return;
             }
-            var html = '<h3>Market News</h3>';
+            html += '<div class="market-news-ticker">Ticker (ultimos 5):</div>';
             for (var i = 0; i < state.marketNews.length; i++) {
                 var n = state.marketNews[i];
                 html += '<div class="market-news-entry ' + n.tone + '">[S' + n.week + '] ' + n.title + ' — ' + n.desc + '</div>';
@@ -2791,12 +2802,27 @@
         // ---- RANDOM EVENT (non-blocking) ----
         function maybeEvent() {
             if (state.ended) return;
-            var cfg = DIFF[diff];
-            if (Math.random() >= cfg.eventChance) return;
-            var ev = EVENTS[Math.floor(Math.random() * EVENTS.length)];
-            var labelNames = { cliente: "Cliente", teamMorale: "Equipa", interesseBidders: "Compradores", interesseBiddersIndustrial: "Industriais", interesseBiddersPE: "Private Equity", ebitda: "EBITDA", multiplo: "Multiplo", fecho: "Fecho" };
+
+            var pressure = getWorkloadPressure();
+            var negativeChance = 0.20 + (pressure.understaffed ? 0.15 : 0);
+            var positiveChance = 0.20 + (state.teamMorale > 80 ? 0.20 : 0);
+            var roll = Math.random();
+            var targetType = roll < negativeChance ? "negative" : (roll < (negativeChance + positiveChance) ? "positive" : null);
+            if (!targetType) return;
+
+            var pool = [];
+            for (var e = 0; e < EVENTS.length; e++) {
+                var candidate = EVENTS[e];
+                if (candidate.type !== targetType) continue;
+                if (typeof candidate.requires === "function" && !candidate.requires()) continue;
+                pool.push(candidate);
+            }
+            if (pool.length === 0) return;
+
+            var ev = pool[Math.floor(Math.random() * pool.length)];
+            var labelNames = { cliente: "Cliente", teamMorale: "Equipa", interesseBidders: "Compradores", interesseBiddersIndustrial: "Industriais", interesseBiddersPE: "Private Equity", ebitda: "EBITDA", multiplo: "Multiplo", fecho: "Fecho", progressoFase: "Progresso" };
             var tagsHtml = "";
-            var ekeys = Object.keys(ev.effects);
+            var ekeys = Object.keys(ev.effects || {});
             for (var i = 0; i < ekeys.length; i++) {
                 var k = ekeys[i];
                 var v = ev.effects[k];
@@ -2804,16 +2830,34 @@
                 var sign = v > 0 ? "+" : "";
                 tagsHtml += '<span class="eff-tag ' + (v > 0 ? "eff-pos" : "eff-neg") + '">' + (labelNames[k] || k) + " " + sign + v + '</span>';
             }
+
+            var mitigated = false;
+            if (ev.mitigation && state.pontosAcao >= ev.mitigation.apCost) {
+                var wantsMitigation = window.confirm(ev.mitigation.prompt + "\n\n(Disponivel: " + state.pontosAcao + " PA)");
+                if (wantsMitigation) {
+                    state.pontosAcao -= ev.mitigation.apCost;
+                    state.extraExecutionCosts = parseFloat((state.extraExecutionCosts + ev.mitigation.cashCost).toFixed(3));
+                    var mitResult = applyEffects(ev.mitigation.successEffects || {}, false);
+                    updateStats(mitResult.deltas);
+                    addLog("Mitigacao activada para '" + ev.title + "': -" + ev.mitigation.apCost + " PA e -" + ev.mitigation.cashCost.toFixed(1) + "M€ em custos de execucao.", "warn");
+                    gameHistory.push({ type: "event", label: ev.title + " (Mitigado)", text: "Evento mitigado com custo de equipa e caixa." });
+                    mitigated = true;
+                    tagsHtml += '<span class="eff-tag eff-neg">PA -' + ev.mitigation.apCost + '</span><span class="eff-tag eff-neg">Custo -' + ev.mitigation.cashCost.toFixed(1) + 'M€</span>';
+                }
+            }
+
             R.eventArea.innerHTML = '<div class="event-card' + (ev.good ? " ev-good" : "") + '">' +
-                '<div class="event-label">Evento inesperado</div>' +
+                '<div class="event-label">Evento de execucao</div>' +
                 '<div class="event-title-text">' + ev.title + '</div>' +
                 '<p style="margin:0 0 6px;font-size:0.86rem;">' + ev.desc + '</p>' +
                 '<div class="event-effects">' + tagsHtml + '</div>' +
                 '</div>';
-            var evResult = applyEffects(ev.effects, false);
+
+            var baseEffects = (mitigated && !ev.good) ? {} : ev.effects;
+            var evResult = applyEffects(baseEffects, false);
             updateStats(evResult.deltas);
-            gameHistory.push({ type: "event", label: ev.title, text: ev.desc });
-            addLog("Evento [S" + state.semanaAtual + "]: " + ev.title + " \u2014 " + ev.desc, ev.good ? "good" : "bad");
+            gameHistory.push({ type: "event", label: ev.title, text: ev.desc + (mitigated ? " (mitigacao accionada)" : "") });
+            addLog("Evento [S" + state.semanaAtual + "]: " + ev.title + " — " + ev.desc, ev.good ? "good" : "bad");
             checkLose();
         }
 
@@ -2866,7 +2910,14 @@
             state.lastMacroTone = ev.tone || "warn";
             state.lastMacroWeek = state.semanaAtual;
             state.lastMacroTitle = ev.title;
-            if (state.marketNews.length > 6) state.marketNews.length = 6;
+            if (state.marketNews.length > 5) state.marketNews.length = 5;
+            state.macroState = {
+                sentimentLabel: ev.sentimentLabel || "Mercado: Neutro | Sem choque macro activo",
+                creditFreeze: !!(ev.marketState && ev.marketState.creditFreeze),
+                closingPenalty: (ev.marketState && ev.marketState.closingPenalty) || 0,
+                multipleShift: (ev.marketState && ev.marketState.multipleShift) || 0,
+                peCooling: !!(ev.marketState && ev.marketState.peCooling)
+            };
             renderMarketNews();
             updateStats(evResult.deltas);
             addLog("Macro [S" + state.semanaAtual + "]: " + ev.title + " \u2014 " + ev.desc, ev.tone || "warn");
@@ -3416,6 +3467,13 @@
                 expectationAnchored: false,
                 expectationTrapActive: false,
                 marketNews:    [],
+                macroState: {
+                    sentimentLabel: "Mercado: Neutro | Sem choque macro activo",
+                    creditFreeze: false,
+                    closingPenalty: 0,
+                    multipleShift: 0,
+                    peCooling: false
+                },
                 lastMacroTone: null,
                 lastMacroWeek: 0,
                 lastMacroTitle: "mercado sem choque macro recente",
