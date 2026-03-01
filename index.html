@@ -2086,6 +2086,27 @@
                     hint: "Team Morale -20 e o proximo deliverable recebe +25 de qualidade base. Risco de colapso da equipa se moral < 15.",
                     apCost: 1,
                     weekCost: 0
+                },
+                {
+                    id: "day_off",
+                    text: "Day-Off da Equipa",
+                    hint: "A equipa tira 1 dia de pausa: Team Morale +12, mas o foco no processo baixa ligeiramente (Fecho -3).",
+                    apCost: 1,
+                    weekCost: 0
+                },
+                {
+                    id: "team_building",
+                    text: "Team Building (Offsite)",
+                    hint: "Investe em coesao da equipa: Team Morale +18 e Cliente +4, com custo extra de execucao de 0.02 M€.",
+                    apCost: 1,
+                    weekCost: 0
+                },
+                {
+                    id: "performance_bonus",
+                    text: "Bónus de Performance",
+                    hint: "Premia a equipa por performance: Team Morale +15 e +10 de qualidade no proximo deliverable, com custo de 0.03 M€.",
+                    apCost: 1,
+                    weekCost: 0
                 }
             ];
             if (state.exclusivityUnlocked && state.bidders && state.bidders.length > 0 && !state.bidderExclusivo) {
@@ -2147,6 +2168,42 @@
                 }
                 if (checkLose()) return;
                 renderPhase();
+                return;
+            }
+
+            if (actionId === "day_off") {
+                state.pontosAcao -= 1;
+                state.teamMorale = clamp(state.teamMorale + 12, 0, 100);
+                state.fecho = clamp(state.fecho - 3, 0, 100);
+                addLog("Day-off concedido: equipa recupera energia, com ligeira perda de velocidade no processo.", "warn");
+                updateStats({ teamMorale: 12, fecho: -3 });
+                if (checkLose()) return;
+                renderPhase();
+                return;
+            }
+
+            if (actionId === "team_building") {
+                state.pontosAcao -= 1;
+                state.teamMorale = clamp(state.teamMorale + 18, 0, 100);
+                state.cliente = clamp(state.cliente + 4, 0, 100);
+                state.extraExecutionCosts = parseFloat(((state.extraExecutionCosts || 0) + 0.02).toFixed(3));
+                addLog("Team building realizado: coesao e motivacao em alta, com impacto positivo na percepcao do cliente.", "good");
+                updateStats({ teamMorale: 18, cliente: 4 });
+                if (checkLose()) return;
+                renderPhase();
+                return;
+            }
+
+            if (actionId === "performance_bonus") {
+                state.pontosAcao -= 1;
+                state.teamMorale = clamp(state.teamMorale + 15, 0, 100);
+                state.nextDeliverableBonus = true;
+                state.extraExecutionCosts = parseFloat(((state.extraExecutionCosts || 0) + 0.03).toFixed(3));
+                addLog("Bónus de performance pago: moral reforcada e proximo deliverable com bónus de qualidade.", "good");
+                updateStats({ teamMorale: 15 });
+                if (checkLose()) return;
+                renderPhase();
+                return;
             }
 
 
