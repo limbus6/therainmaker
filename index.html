@@ -705,14 +705,22 @@
             </div>
             <div class="config-row">
                 <span class="config-label" data-i18n="start.clientProfile">Perfil do Cliente</span>
-                <div class="config-grid">
+                <div class="config-grid" style="grid-template-columns:repeat(2, minmax(0, 1fr));">
                     <div class="diff-opt sel" id="persona-founder">
-                        <span class="diff-opt-name" data-i18n="start.personaFounder" style="font-size:0.9rem;color:var(--good)">Founder / Empreendedor</span>
-                        <span class="diff-opt-desc" data-i18n="start.personaFounderDesc">Emocional, forte sensibilidade a confianca</span>
+                        <span class="diff-opt-name" style="font-size:0.9rem;color:var(--good)">Founder-Led <span class="diff-badge diff-dificil" style="margin-left:0;">Difícil</span></span>
+                        <span class="diff-opt-desc">Confiança ×1.7 · Reações emocionais extremas · penalização de earn-out agravada</span>
                     </div>
                     <div class="diff-opt" id="persona-pe">
-                        <span class="diff-opt-name" data-i18n="start.personaPE" style="font-size:0.9rem;color:var(--bad)">PE Sponsor / Fundo</span>
-                        <span class="diff-opt-desc" data-i18n="start.personaPEDesc">Racional, foco agressivo em economics</span>
+                        <span class="diff-opt-name" style="font-size:0.9rem;color:var(--accent)">PE Seller <span class="diff-badge diff-normal" style="margin-left:0;">Normal</span></span>
+                        <span class="diff-opt-desc">Confiança ×0.7 · foco total em economics · tolerância elevada a caps</span>
+                    </div>
+                    <div class="diff-opt" id="persona-corporate">
+                        <span class="diff-opt-name" style="font-size:0.9rem;color:var(--warn)">Corporate <span class="diff-badge diff-dificil" style="margin-left:0;">Difícil</span></span>
+                        <span class="diff-opt-desc">Burocrático · penaliza documentação incompleta · timeline muito rígida</span>
+                    </div>
+                    <div class="diff-opt" id="persona-family">
+                        <span class="diff-opt-name" style="font-size:0.9rem;color:#ffb3d8">Family Business <span class="diff-badge diff-dificil" style="margin-left:0;">Muito Difícil</span></span>
+                        <span class="diff-opt-desc">Sensibilidade máxima · eventos emocionais aleatórios · bónus em Mgmt Pres</span>
                     </div>
                 </div>
             </div>
@@ -755,7 +763,7 @@
     <!-- Game -->
     <main class="layout" id="game-layout">
         <aside class="panel">
-            <h1>M&A Dealmaker <span class="diff-badge diff-normal" id="diff-badge">Normal</span><span class="context-badge" id="mandate-sector">Technology / Software</span><span class="context-badge" id="mandate-persona">Founder / Empreendedor</span></h1>
+            <h1>M&A Dealmaker <span class="diff-badge diff-normal" id="diff-badge">Normal</span><span class="context-badge" id="mandate-sector">Technology / Software</span><span class="context-badge" id="mandate-persona">Founder-Led</span></h1>
             <p data-i18n="sidebar.subtitle" style="margin-bottom:10px;">Mandato de sell-side: do pitch ao closing, gerindo cliente, equipa e compradores.</p>
             <div class="stats">
                 <div class="stat">
@@ -882,6 +890,45 @@
 
     <script>
         // ---- DIFFICULTY CONFIG ----
+        var CLIENT_TYPES = {
+            founder: {
+                key: "founder",
+                label: "Founder-Led",
+                trustMultiplier: 1.7,
+                teamCapacityInitialMod: -0.10,
+                negativeEventRiskMod: 1.25,
+                earnoutPenaltyExtra: 8,
+                emotionalExtremes: true
+            },
+            pe: {
+                key: "pe",
+                label: "PE Seller",
+                trustMultiplier: 0.7,
+                teamCapacityInitialMod: 0,
+                negativeEventRiskMod: 0.8,
+                timelineStrictWeeks: 999,
+                capsToleranceBonus: 0.30
+            },
+            corporate: {
+                key: "corporate",
+                label: "Corporate",
+                trustMultiplier: 0.9,
+                teamCapacityInitialMod: -0.15,
+                negativeEventRiskMod: 1.1,
+                docPenalty: 10,
+                timelineStrictWeeks: 30
+            },
+            family: {
+                key: "family",
+                label: "Family Business",
+                trustMultiplier: 2.0,
+                teamCapacityInitialMod: -0.05,
+                negativeEventRiskMod: 1.2,
+                mgmtPresentationBonus: 15,
+                emotionalExtremes: true
+            }
+        };
+
         var DIFF = {
             facil: {
                 label: "Facil", badgeClass: "diff-facil",
@@ -1683,7 +1730,9 @@
         function getCurrentWorkload() {
             if (!PHASES || state.currentPhaseIndex >= PHASES.length) return 0;
             var phaseId = PHASES[state.currentPhaseIndex].id;
-            return PHASE_WORKLOAD[phaseId] || 0;
+            var baseWorkload = PHASE_WORKLOAD[phaseId] || 0;
+            var outsourceReduction = (state.outsourceWorkstreamWeeks || 0) > 0 ? 15 : 0;
+            return Math.max(0, baseWorkload - outsourceReduction);
         }
 
         function getNextWorkload() {
@@ -1766,12 +1815,12 @@
 
             function assignFogData(bidder) {
                 var trueOffer = bidderOfferEUR(bidder);
-                var centerSkew = (Math.random() * 0.12) - 0.06;
-                var minFactor = 0.85 + centerSkew - (Math.random() * 0.03);
-                var maxFactor = 1.15 + centerSkew + (Math.random() * 0.03);
-                minFactor = clamp(minFactor, 0.7, 0.95);
-                maxFactor = clamp(maxFactor, 1.05, 1.35);
-                if (maxFactor <= minFactor) maxFactor = minFactor + 0.12;
+                var centerSkew = (Math.random() * 0.06) - 0.03;
+                var minFactor = 0.85 + centerSkew - (Math.random() * 0.02);
+                var maxFactor = 1.15 + centerSkew + (Math.random() * 0.02);
+                minFactor = clamp(minFactor, 0.80, 0.90);
+                maxFactor = clamp(maxFactor, 1.10, 1.20);
+                if (maxFactor <= minFactor) maxFactor = minFactor + 0.15;
 
                 bidder.offerKnown = false;
                 bidder.perceivedMin = parseFloat((trueOffer * minFactor).toFixed(1));
@@ -1991,7 +2040,7 @@
             var bidderInterestPenalty = 0;
 
             if (totalExpectationHit && (exclusive.earnoutPercentage || 0) >= 0.5) {
-                clientePenalty += (state.persona === "founder" ? 8 : 4);
+                clientePenalty += ((state.persona === "founder") ? (CLIENT_TYPES.founder.earnoutPenaltyExtra || 8) : 4);
                 addLog("Cliente desapontado com a estrutura: apesar do total cumprir a expectativa, o earn-out/rollover elevado reduziu a confianca.", "warn");
                 if (state.persona === "founder") {
                     addLog("Founder Persona: resistencia elevada a earn-out agravou o impacto de confianca.", "bad");
@@ -2245,6 +2294,10 @@
                 } else {
                     addLog("Documento aprovado no Partner Review Board sem findings imediatos.", "good");
                 }
+                if (state.persona === "corporate" && doc.quality < 60) {
+                    state.cliente = clamp(state.cliente - (CLIENT_TYPES.corporate.docPenalty || 10), 0, 100);
+                    addLog("Corporate Persona: documentação incompleta penalizada com -10 de confiança.", "bad");
+                }
                 state.currentDeliverable = null;
                 renderPhase();
                 return;
@@ -2339,6 +2392,13 @@
                     hint: "Premia a equipa por performance: Team Morale +15 e +10 de qualidade no proximo deliverable, com custo de 0.03 M€.",
                     apCost: 1,
                     weekCost: 0
+                },
+                {
+                    id: "outsource_workstream",
+                    text: "Outsource Workstream",
+                    hint: "Custo de 2 PA + 0.2 M€. Reduz o workload da fase atual em 15 unidades durante 3 semanas.",
+                    apCost: 2,
+                    weekCost: 0
                 }
             ];
             if (state.exclusivityUnlocked && state.bidders && state.bidders.length > 0 && !state.bidderExclusivo) {
@@ -2356,7 +2416,7 @@
             return actions;
         }
 
-        function doGlobalAction(actionId, bidderName) {
+        async function doGlobalAction(actionId, bidderName) {
             if (state.ended || state.pontosAcao <= 0) return;
 
             if (actionId === "hire_analyst_associate") {
@@ -2382,6 +2442,8 @@
             }
 
             if (actionId === "demand_results") {
+                var confirmDemand = await showModal("Confirmar ação crítica", "Demand Results pode provocar colapso da equipa. Confirmas que queres avançar?", [{ label: "Avançar", value: true, tone: "danger" }, { label: "Cancelar", value: false }]);
+                if (!confirmDemand) { renderPhase(); return; }
                 if (state.teamMorale < 35) {
                     addLog("Reunião bloqueada: Team Morale demasiado baixa para evitar resignação em massa.", "bad");
                     renderPhase();
@@ -2405,6 +2467,11 @@
                 state.pontosAcao -= 1;
                 state.teamMorale = clamp(state.teamMorale + 12, 0, 100);
                 state.fecho = clamp(state.fecho - 3, 0, 100);
+                if (state.persona === "family" && state.familyEmotionalEventActive) {
+                    state.familyEmotionalEventActive = false;
+                    state.familyEmotionalEventAge = 0;
+                    addLog("Evento emocional mitigado com abordagem de descanso e mediação familiar.", "good");
+                }
                 addLog("Day-off concedido: equipa recupera energia, com ligeira perda de velocidade no processo.", "warn");
                 updateStats({ teamMorale: 12, fecho: -3 });
                 if (checkLose()) return;
@@ -2417,6 +2484,11 @@
                 state.teamMorale = clamp(state.teamMorale + 18, 0, 100);
                 state.cliente = clamp(state.cliente + 4, 0, 100);
                 state.extraExecutionCosts = parseFloat(((state.extraExecutionCosts || 0) + 0.02).toFixed(3));
+                if (state.persona === "family" && state.familyEmotionalEventActive) {
+                    state.familyEmotionalEventActive = false;
+                    state.familyEmotionalEventAge = 0;
+                    addLog("Evento emocional mitigado através de alinhamento familiar e team building.", "good");
+                }
                 addLog("Team building realizado: coesao e motivacao em alta, com impacto positivo na percepcao do cliente.", "good");
                 updateStats({ teamMorale: 18, cliente: 4 });
                 if (checkLose()) return;
@@ -2437,7 +2509,20 @@
             }
 
 
+
+            if (actionId === "outsource_workstream") {
+                state.pontosAcao -= 2;
+                state.extraExecutionCosts = parseFloat(((state.extraExecutionCosts || 0) + 0.2).toFixed(3));
+                state.outsourceWorkstreamWeeks = 3;
+                addLog("Outsource activado: workload reduzido em 15 durante 3 semanas. Custo adicional de 0.2 M€.", "warn");
+                updateStats({ teamMorale: 0 });
+                renderPhase();
+                return;
+            }
+
             if (actionId === "enter_exclusivity") {
+                var confirmExcl = await showModal("Confirmar exclusividade", "Entrar em exclusividade fecha o mercado e concentra todo o risco num único comprador. Confirmar?", [{ label: "Entrar em exclusividade", value: true, tone: "danger" }, { label: "Cancelar", value: false }]);
+                if (!confirmExcl) { renderPhase(); return; }
                 state.pontosAcao -= 1;
                 if (!bidderName) {
                     addLog("Exclusividade abortada: nome do comprador em falta.", "bad");
@@ -2516,6 +2601,7 @@
 
             if (outcome === "success") {
                 var interesseUp = 7 + Math.floor(Math.random() * 5);
+                if (state.persona === "family") interesseUp += (CLIENT_TYPES.family.mgmtPresentationBonus || 15);
                 var multipleUp = parseFloat((0.15 + Math.random() * 0.3).toFixed(2));
                 bidder.interesse = clamp(bidder.interesse + interesseUp, 0, 100);
                 bidder.multiploProposto = clamp(parseFloat((bidder.multiploProposto + multipleUp).toFixed(2)), 4.0, 20.0);
@@ -2857,6 +2943,7 @@
             var rawFx = resolved.effects;
             var cfg = DIFF[diff];
             var fx = {};
+            var personaCfg = CLIENT_TYPES[state.persona] || CLIENT_TYPES.founder;
             var keys = Object.keys(rawFx);
             for (var i = 0; i < keys.length; i++) {
                 var k = keys[i];
@@ -2865,6 +2952,9 @@
                     fx[k] = Math.round(v * cfg.negScale);
                 } else {
                     fx[k] = v;
+                }
+                if (k === "cliente" && typeof fx[k] === "number") {
+                    fx[k] = Math.round(fx[k] * (personaCfg.trustMultiplier || 1));
                 }
             }
             var before = {
@@ -3218,7 +3308,30 @@
                 '</div>';
 
             var baseEffects = (mitigated && !ev.good) ? {} : ev.effects;
+            var personaCfg = CLIENT_TYPES[state.persona] || CLIENT_TYPES.founder;
+            if (!ev.good && baseEffects) {
+                var scaled = {};
+                var ekeys = Object.keys(baseEffects);
+                for (var ei = 0; ei < ekeys.length; ei++) {
+                    var ek = ekeys[ei];
+                    var evv = baseEffects[ek];
+                    if (typeof evv === "number" && evv < 0) scaled[ek] = Math.round(evv * (personaCfg.negativeEventRiskMod || 1));
+                    else scaled[ek] = evv;
+                }
+                baseEffects = scaled;
+            }
             var evResult = applyEffects(baseEffects, false);
+            if ((state.persona === "founder" || state.persona === "family") && !ev.good) {
+                var emotionalSwing = Math.random() < 0.35 ? -8 : 6;
+                state.cliente = clamp(state.cliente + emotionalSwing, 0, 100);
+                updateStats({ cliente: emotionalSwing });
+                addLog("Reação emocional extrema do cliente: confiança " + (emotionalSwing > 0 ? "+" : "") + emotionalSwing + ".", emotionalSwing > 0 ? "good" : "bad");
+            }
+            if (state.persona === "family" && Math.random() < 0.22) {
+                state.familyEmotionalEventActive = true;
+                state.familyEmotionalEventAge = 0;
+                addLog("Family Business: evento emocional crítico ativo. Mitiga nas próximas 2 semanas para evitar término do mandato.", "bad");
+            }
             updateStats(evResult.deltas);
             gameHistory.push({ type: "event", label: ev.title, text: ev.desc + (mitigated ? " (mitigacao accionada)" : "") });
             addLog("Evento [S" + state.semanaAtual + "]: " + ev.title + " — " + ev.desc, ev.good ? "good" : "bad");
@@ -3248,6 +3361,7 @@
 
             state.peFinancingRiskActive = true;
             state.peFinancingRiskLastWeek = state.semanaAtual;
+            state.peFinancingRiskWeeks = 0;
             var before = exclusive.interesse;
             exclusive.interesse = clamp(exclusive.interesse - 40, 0, 100);
             var drop = before - exclusive.interesse;
@@ -3293,6 +3407,10 @@
         async function doAction(act) {
             var actionCost = act.apCost || 1;
             if (state.ended || state.pontosAcao < actionCost) return;
+            if (act.type === "spa_concede_warranties") {
+                var confirmWarranties = await showModal("Confirmar concessão de warranties", "Conceder warranties aumenta a probabilidade de closing mas ativa liability risk pós-closing. Confirmar?", [{ label: "Conceder warranties", value: true, tone: "danger" }, { label: "Cancelar", value: false }]);
+                if (!confirmWarranties) { renderPhase(); return; }
+            }
 
             state.pontosAcao -= actionCost;
             var previousProgress = state.progressoFase;
@@ -3453,7 +3571,11 @@
                 }
             } else if (act.type === "spa_escrow_caps") {
                 if (state.bidders && state.bidders.length > 0) {
-                    state.bidders[0].interesse = clamp(state.bidders[0].interesse - 12, 0, 100);
+                    var capPenalty = 12;
+                    if (state.persona === "pe") {
+                        capPenalty = Math.round(capPenalty * (1 - (CLIENT_TYPES.pe.capsToleranceBonus || 0.3)));
+                    }
+                    state.bidders[0].interesse = clamp(state.bidders[0].interesse - capPenalty, 0, 100);
                     addLog("Escrow/Caps agressivos reduziram o interesse do bidder exclusivo.", "warn");
                 }
                 if (state.liabilityRisk || state.liabilityRiskActive) {
@@ -3473,6 +3595,7 @@
                         var recovered = state.peFinancingRiskActive ? 40 : 18;
                         exclusiveBidder.interesse = clamp(exclusiveBidder.interesse + recovered, 0, 100);
                         state.peFinancingRiskActive = false;
+                        state.peFinancingRiskWeeks = 0;
                         addLog("Financiamento alternativo assegurado: interesse do comprador PE recuperou e o risco de financiamento foi removido.", "good");
                         updateStats({ interesseBiddersPE: recovered });
                     } else {
@@ -3657,6 +3780,39 @@
             state.pontosAcao = calcPA(state.teamMorale);
             addLog("Semana " + state.semanaAtual + " iniciada. " + state.pontosAcao + " pontos de acao disponiveis.", "warn");
 
+                        if ((state.outsourceWorkstreamWeeks || 0) > 0) {
+                state.outsourceWorkstreamWeeks -= 1;
+            }
+
+            if (state.peFinancingRiskActive) {
+                state.peFinancingRiskWeeks = (state.peFinancingRiskWeeks || 0) + 1;
+                if (state.peFinancingRiskWeeks >= 3) {
+                    var exclusive = resolveExclusiveBidder();
+                    if (exclusive && exclusive.tipo === "Private Equity") {
+                        if (exclusive.interesse >= 45) {
+                            state.peFinancingRiskActive = false;
+                            state.peFinancingRiskWeeks = 0;
+                            addLog("Risco de financiamento PE resolveu-se naturalmente após 3 semanas sem nova pressão.", "good");
+                        } else {
+                            state.peFinancingRiskActive = false;
+                            state.peFinancingRiskWeeks = 0;
+                            addLog("Risco de financiamento PE escalou após 3 semanas sem mitigação.", "bad");
+                            endGame("Market Rejection: exclusividade colapsou por risco de financiamento não mitigado.", "bad");
+                            return false;
+                        }
+                    }
+                }
+            }
+
+            if (state.persona === "founder") {
+                if (state.cliente < 30) state.founderLowTrustWeeks = (state.founderLowTrustWeeks || 0) + 1;
+                else state.founderLowTrustWeeks = 0;
+            }
+
+            if (state.persona === "family" && state.familyEmotionalEventActive) {
+                state.familyEmotionalEventAge = (state.familyEmotionalEventAge || 0) + 1;
+            }
+
             // 7) Risco PE e condições de derrota
             if (checkPersonaTerminationRisk()) return false;
             if (checkLose()) return false;
@@ -3813,10 +3969,7 @@
         }
 
         function getPersonaConfig() {
-            if (selectedPersona === "pe") {
-                return { key: "pe", label: "PE Sponsor / Fundo" };
-            }
-            return { key: "founder", label: "Founder / Empreendedor" };
+            return CLIENT_TYPES[selectedPersona] || CLIENT_TYPES.founder;
         }
 
         function applyPersonaTrustModifiers(phaseId, deltas) {
@@ -3843,19 +3996,37 @@
         }
 
         function checkPersonaTerminationRisk(finalEV) {
-            if (state.persona !== "pe" || state.ended) return false;
-            var pnl = calculateAdvisorMargin();
+            if (state.ended) return false;
             var effectiveEV = typeof finalEV === "number" ? finalEV : calcularEV();
-            var valueGenerated = Math.max(0, effectiveEV - state.clientExpectationEV);
-            var tolerance = 1.4 + valueGenerated * 0.08;
-            if (pnl.netMargin > tolerance) {
-                endGame("PE Sponsor interrompeu o mandato: fee economics considerados excessivos face ao valor criado.", "bad");
+
+            if (state.persona === "pe") {
+                var pnl = calculateAdvisorMargin();
+                var valueGenerated = Math.max(0, effectiveEV - state.clientExpectationEV);
+                var tolerance = 1.4 + valueGenerated * 0.08;
+                if (pnl.netMargin > tolerance) {
+                    endGame("PE Seller interrompeu o mandato: fee economics considerados excessivos face ao valor criado.", "bad");
+                    return true;
+                }
+            }
+
+            if (state.persona === "corporate" && state.semanaAtual > 30) {
+                endGame("Corporate client terminou o mandato: timeline excedeu 30 semanas.", "bad");
+                return true;
+            }
+
+            if (state.persona === "family" && state.familyEmotionalEventActive && (state.familyEmotionalEventAge || 0) > 2) {
+                endGame("Family Business terminou o mandato: evento emocional não foi mitigado em 2 semanas.", "bad");
+                return true;
+            }
+
+            if (state.persona === "founder" && (state.founderLowTrustWeeks || 0) >= 4) {
+                endGame("Founder-Led client terminou o mandato após 4 semanas consecutivas com confiança abaixo de 30.", "bad");
                 return true;
             }
             return false;
         }
 
-        function selectSector(sectorKey) {
+                function selectSector(sectorKey) {
             selectedSector = sectorKey;
             document.getElementById("sector-technology").className = "diff-opt" + (sectorKey === "technology" ? " sel" : "");
             document.getElementById("sector-industrial").className = "diff-opt" + (sectorKey === "industrial" ? " sel" : "");
@@ -3864,8 +4035,11 @@
 
         function selectPersona(personaKey) {
             selectedPersona = personaKey;
-            document.getElementById("persona-founder").className = "diff-opt" + (personaKey === "founder" ? " sel" : "");
-            document.getElementById("persona-pe").className = "diff-opt" + (personaKey === "pe" ? " sel" : "");
+            var personaKeys = ["founder", "pe", "corporate", "family"];
+            for (var i = 0; i < personaKeys.length; i++) {
+                var el = document.getElementById("persona-" + personaKeys[i]);
+                if (el) el.className = "diff-opt" + (personaKey === personaKeys[i] ? " sel" : "");
+            }
         }
 
         // ---- DIFFICULTY SELECT ----
@@ -3900,7 +4074,7 @@
                 incentiveFee: 0,
                 extraExecutionCosts: 0,
                 teamHeadcount: 3,
-                activeHeadcount: 3,
+                activeHeadcount: Math.max(1, Math.floor(3 * (1 + (personaCfg.teamCapacityInitialMod || 0)))),
                 onboardingQueue: [],
                 teamHeadcountFatigue: 0,
                 weeklyCostPerHead: 0.005,
@@ -3943,7 +4117,12 @@
                 lastMacroTitle: "mercado sem choque macro recente",
                 peFinancingRiskActive: false,
                 peFinancingRiskLastWeek: 0,
-                exclusivityUnlocked: false
+                peFinancingRiskWeeks: 0,
+                exclusivityUnlocked: false,
+                outsourceWorkstreamWeeks: 0,
+                founderLowTrustWeeks: 0,
+                familyEmotionalEventActive: false,
+                familyEmotionalEventAge: 0
             };
             gameHistory = [];
             R.log.innerHTML       = "";
@@ -3982,6 +4161,8 @@
         document.getElementById("sector-industrial").addEventListener("click", function() { selectSector("industrial"); });
         document.getElementById("persona-founder").addEventListener("click", function() { selectPersona("founder"); });
         document.getElementById("persona-pe").addEventListener("click", function() { selectPersona("pe"); });
+        document.getElementById("persona-corporate").addEventListener("click", function() { selectPersona("corporate"); });
+        document.getElementById("persona-family").addEventListener("click", function() { selectPersona("family"); });
         R.btnReviewApprove.addEventListener("click", function() { processReviewBoard("approve"); });
         R.btnReviewCorrect.addEventListener("click", function() { processReviewBoard("correct"); });
         R.btnReviewImprove.addEventListener("click", function() { processReviewBoard("improve"); });
