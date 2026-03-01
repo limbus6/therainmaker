@@ -1381,8 +1381,7 @@
             }
 
             var weeklyBurn = (state.teamHeadcount || 0) * (state.weeklyCostPerHead || 0);
-            var totalCosts = weeklyBurn * (state.semanaAtual || 0);
-            totalCosts += state.extraExecutionCosts || 0;
+            var totalCosts = state.extraExecutionCosts || 0;
             var netMargin = grossFee - totalCosts;
             if ((state.liabilityRisk || state.liabilityRiskActive) && state.ended && state.endTone === "good") {
                 netMargin -= state.liabilityPenaltyEUR || 0;
@@ -1515,20 +1514,18 @@
         }
 
         function calculateClosingProbability() {
-            if (!state.bidderExclusivo || !state.bidders || state.bidders.length === 0) {
-                return clamp(state.fecho, 0, 100);
-            }
-            var bidderExclusivo = state.bidders[0];
-            var offer = bidderOfferEUR(bidderExclusivo);
+            var exclusive = resolveExclusiveBidder();
+            if (!exclusive) return 0;
+
+            var baseProbability = 62;
+            var weightedOffer = weightedOfferForExpectation(exclusive);
             var expectation = Math.max(0.1, state.clientExpectationEV || 0.1);
-            var ratio = offer / expectation;
-            var interestFactor = clamp((bidderExclusivo.interesse || 0) / 100, 0, 1);
-            var probability = ratio * interestFactor * 100;
+            var offerGapRatio = (weightedOffer - expectation) / expectation;
+            var gapModifier = clamp(Math.round(offerGapRatio * 55), -30, 25);
+            var moraleModifier = Math.round((clamp(state.teamMorale, 0, 100) - 50) * 0.35);
+            var macroPenalty = isMacroMarketNegative() ? 12 : 0;
 
-            if ((bidderExclusivo.tipo === "Private Equity" || bidderExclusivo.tipo === "Opportunistic/PE") && isMacroMarketNegative()) {
-                probability -= 15;
-            }
-
+            var probability = baseProbability + gapModifier + moraleModifier - macroPenalty;
             return Math.round(clamp(probability, 0, 100));
         }
 
@@ -1602,7 +1599,7 @@
         }
 
         function selectExclusiveBidder(bidderName) {
-            if (!state.bidders || state.bidders.length === 0) return;
+            if (!state.bidders || state.bidders.length === 0) return false;
             var exclusive = null;
             for (var i = 0; i < state.bidders.length; i++) {
                 if (state.bidders[i].nome === bidderName) {
@@ -1610,12 +1607,38 @@
                     break;
                 }
             }
-            if (!exclusive) return;
-            state.bidderExclusivo = exclusive.nome;
-            state.initialExpectedValue = bidderOfferEUR(exclusive);
+
+            if (!exclusive) {
+                console.warn("[Exclusivity] Invalid bidder selection:", bidderName);
+                addLog("Transicao para exclusividade abortada: comprador seleccionado e invalido.", "bad");
+                return false;
+            }
+
             var weightedOffer = weightedOfferForExpectation(exclusive);
             var expectationGap = parseFloat((state.clientExpectationEV - weightedOffer).toFixed(1));
-            var totalExpectationHit = state.initialExpectedValue >= state.clientExpectationEV;
+            var totalExpectationHit = bidderOfferEUR(exclusive) >= state.clientExpectationEV;
+            var clientePenalty = 0;
+            var bidderInterestPenalty = 0;
+
+            if (totalExpectationHit && (exclusive.earnoutPercentage || 0) >= 0.5) {
+                clientePenalty += (state.persona === "founder" ? 8 : 4);
+                addLog("Cliente desapontado com a estrutura: apesar do total cumprir a expectativa, o earn-out/rollover elevado reduziu a confianca.", "warn");
+                if (state.persona === "founder") {
+                    addLog("Founder Persona: resistencia elevada a earn-out agravou o impacto de confianca.", "bad");
+                }
+            } else if (expectationGap > 0.2) {
+                clientePenalty += clamp(Math.round(expectationGap / 3), 2, 9);
+                addLog("A estrutura economica em caixa ficou abaixo da expectativa do cliente em " + expectationGap.toFixed(1) + " M€ equivalentes; confianca em queda.", "warn");
+            }
+
+            if (state.expectationTrapActive && bidderOfferEUR(exclusive) < state.clientExpectationEV) {
+                clientePenalty += 16;
+                bidderInterestPenalty += 10;
+                addLog("Armadilha da ancora agressiva: a oferta exclusiva ficou abaixo da expectativa inicial e a confianca do cliente desabou.", "bad");
+            }
+
+            state.bidderExclusivo = exclusive.nome;
+            state.initialExpectedValue = bidderOfferEUR(exclusive);
             exclusive.shortlisted = true;
             if (!state.droppedBidders) state.droppedBidders = [];
             for (var x = 0; x < state.bidders.length; x++) {
@@ -1627,30 +1650,19 @@
             }
             state.bidders = [exclusive];
 
-            if (totalExpectationHit && (exclusive.earnoutPercentage || 0) >= 0.5) {
-                var earnoutTrustPenalty = state.persona === "founder" ? 8 : 4;
-                state.cliente = clamp(state.cliente - earnoutTrustPenalty, 0, 100);
-                addLog("Cliente desapontado com a estrutura: apesar do total cumprir a expectativa, o earn-out/rollover elevado reduziu a confianca.", "warn");
-                if (state.persona === "founder") {
-                    addLog("Founder Persona: resistencia elevada a earn-out agravou o impacto de confianca.", "bad");
-                }
-                updateStats({ cliente: -earnoutTrustPenalty });
-            } else if (expectationGap > 0.2) {
-                var trustPenalty = clamp(Math.round(expectationGap / 3), 2, 9);
-                state.cliente = clamp(state.cliente - trustPenalty, 0, 100);
-                addLog("A estrutura economica em caixa ficou abaixo da expectativa do cliente em " + expectationGap.toFixed(1) + " M€ equivalentes; confianca em queda.", "warn");
-                updateStats({ cliente: -trustPenalty });
+            if (clientePenalty > 0) {
+                state.cliente = clamp(state.cliente - clientePenalty, 0, 100);
             }
-
-            if (state.expectationTrapActive && state.initialExpectedValue < state.clientExpectationEV) {
-                state.cliente = clamp(state.cliente - 16, 0, 100);
-                state.bidders[0].interesse = clamp(state.bidders[0].interesse - 10, 0, 100);
-                addLog("Armadilha da ancora agressiva: a oferta exclusiva ficou abaixo da expectativa inicial e a confianca do cliente desabou.", "bad");
-                updateStats({ cliente: -16 });
+            if (bidderInterestPenalty > 0) {
+                state.bidders[0].interesse = clamp(state.bidders[0].interesse - bidderInterestPenalty, 0, 100);
+            }
+            if (clientePenalty > 0 || bidderInterestPenalty > 0) {
+                updateStats({ cliente: -clientePenalty, interesseBidders: -bidderInterestPenalty });
             }
 
             state.fecho = clamp(calculateClosingProbability() + (state.closingProbBonus || 0), 0, 100);
             addLog("ALERTA: Mercado fechado em exclusividade com " + exclusive.nome + ". Todo o risco de execucao passa a depender de um unico buyer.", "bad");
+            return true;
         }
 
         function applyPreemptiveExclusivity(outcome) {
@@ -1661,7 +1673,7 @@
             }
 
             if (outcome === "success") {
-                selectExclusiveBidder(topBidder.nome);
+                if (!selectExclusiveBidder(topBidder.nome)) return;
                 state.phaseIndex = 5; // Jump directly to Due Diligence
                 state.skipBindingOffers = true;
                 state.progressoFase = 0;
@@ -2614,10 +2626,14 @@
             checkLose();
         }
 
-        function resolveExclusiveBidder() {
+        function resolveExclusiveBidder(opts) {
             if (!state.bidderExclusivo || !state.bidders || state.bidders.length === 0) return null;
             for (var i = 0; i < state.bidders.length; i++) {
                 if (state.bidders[i].nome === state.bidderExclusivo) return state.bidders[i];
+            }
+            if (opts && opts.strict) {
+                console.warn("[Exclusivity] bidderExclusivo does not match active bidders.", state.bidderExclusivo, state.bidders);
+                return null;
             }
             return state.bidders[0] || null;
         }
@@ -2683,7 +2699,7 @@
                     state.cliente = clamp(state.cliente - 8, 0, 100);
                     addLog("Propose Tiered Fee Structure falhou: confianca insuficiente (Cliente < 75). O cliente recuou e a semana foi desperdicada.", "bad");
                     updateStats({ cliente: -8 });
-                    endWeek();
+                    advanceOneWeek();
                     return;
                 }
 
@@ -2742,7 +2758,7 @@
                     }
                 }
             } else if (act.type === "bind_exclusive") {
-                selectExclusiveBidder(act.bidderName);
+                if (!selectExclusiveBidder(act.bidderName)) return;
             } else if (act.type === "preemptive_exclusivity") {
                 applyPreemptiveExclusivity(actionResult.outcome);
                 if (actionResult.outcome === "success") {
@@ -2934,9 +2950,10 @@
         }
 
         // ---- END WEEK — resets PA, advances calendar, applies slow-phase penalty ----
-        function endWeek() {
+        function advanceOneWeek() {
             if (state.ended) return;
 
+            // 1. Increment week and phase weeks
             state.semanaAtual++;
             state.semanasNaFase++;
 
@@ -2963,6 +2980,10 @@
             var effectiveMorale = clamp(state.teamMorale - Math.round(state.teamHeadcountFatigue * 0.35), 0, 100);
             state.pontosAcao = calcPA(effectiveMorale);
 
+            // 2. Apply weekly execution costs (in EUR) to Net Margin
+            var weeklyBurn = (state.teamHeadcount || 0) * (state.weeklyCostPerHead || 0);
+            state.extraExecutionCosts = parseFloat(((state.extraExecutionCosts || 0) + weeklyBurn).toFixed(3));
+
             // Weak team erodes bidder confidence — Industrials more affected (higher dropRate)
             if (state.bidders && state.bidders.length > 0 && state.teamMorale < 40) {
                 for (var i = 0; i < state.bidders.length; i++) {
@@ -2975,17 +2996,29 @@
 
             addLog("Semana " + state.semanaAtual + " iniciada. " + state.pontosAcao + " pontos de acao disponiveis.", "warn");
 
+            // 3. Trigger Macro Events (maybeMacroEvent)
             maybeMacroEvent();
             if (state.ended) return;
 
+            // 4. Trigger Random/Conditional Events (maybeEvent, triggerPriceChipping)
             maybeEvent();
             if (state.ended) return;
 
             triggerPriceChipping();
-            if (!state.ended) {
-                updateStats();
-                renderPhase();
-            }
+            if (state.ended) return;
+
+            // 5. Recompute derived metrics
+            updateStats();
+
+            // 6. Validate state integrity (checkLose)
+            if (checkLose()) return;
+
+            // 7. Render UI (renderPhase)
+            renderPhase();
+        }
+
+        function endWeek() {
+            advanceOneWeek();
         }
 
         // ---- RENDER PHASE ----
@@ -2995,15 +3028,15 @@
             if (checkLose()) return;
             if (state.phaseIndex >= PHASES.length) { finishCampaign(); return; }
 
-            var ph    = PHASES[state.phaseIndex];
-            var phaseActions = getPhaseActions(ph);
+            var ph = PHASES[state.phaseIndex] || { id: "Unknown", title: "", desc: "", actions: [] };
+            var phaseActions = getPhaseActions(ph) || [];
             var total = PHASES.length;
             var pct   = (state.phaseIndex / total) * 100;
 
             R.progress.style.width   = pct + "%";
             R.phaseLabel.textContent = "Fase " + (state.phaseIndex + 1) + " de " + total + " \u00B7 " + ph.id;
-            R.phaseTitle.textContent = ph.title;
-            R.phaseDesc.textContent  = ph.desc;
+            if (R.phaseTitle) R.phaseTitle.textContent = ph.title || "";
+            if (R.phaseDesc) R.phaseDesc.textContent  = ph.desc || "";
             R.choices.innerHTML      = "";
             R.globalChoices.innerHTML = "";
             // eventArea is NOT cleared here — event notifications persist until next endWeek
@@ -3024,8 +3057,9 @@
                 (function(act, idx) {
                     var btn = document.createElement("button");
                     var effectSpec = typeof act.getEffects === "function" ? act.getEffects() : act.effects;
+                    effectSpec = effectSpec || { success: { prob: 1, effects: {} } };
                     var successProb = effectSpec.success ? effectSpec.success.prob : 1;
-                    var progressFx = effectSpec.success ? effectSpec.success.effects : effectSpec;
+                    var progressFx = effectSpec.success ? (effectSpec.success.effects || {}) : (effectSpec || {});
                     var progressLabel = progressFx.progressoFase
                         ? " \u00B7 +" + progressFx.progressoFase + "% fase"
                         : "";
@@ -3049,16 +3083,17 @@
                 R.choices.appendChild(hint);
             }
 
-            var globalActions = getGlobalActions();
+            var globalActions = getGlobalActions() || [];
             for (var g = 0; g < globalActions.length; g++) {
                 (function(act) {
                     var btn = document.createElement("button");
+                    var actionCost = act.apCost || 1;
                     btn.innerHTML =
                         "<strong>" + act.text + "</strong>" +
                         '<span class="choice-hint">' + act.hint + '</span>' +
                         '<span class="choice-hint" style="color:var(--accent);font-size:0.72rem;margin-top:3px;">' +
-                        "▸ " + act.apCost + " Ponto de Acao" + (act.weekCost ? " · " + act.weekCost + " semana" : "") + "</span>";
-                    btn.disabled = noPA || boardLocked;
+                        "▸ " + actionCost + " Ponto" + (actionCost > 1 ? "s" : "") + " de Acao" + (act.weekCost ? " · " + act.weekCost + " semana" : "") + "</span>";
+                    btn.disabled = noPA || boardLocked || state.pontosAcao < actionCost;
                     btn.addEventListener("click", function() { doGlobalAction(act.id); });
                     R.globalChoices.appendChild(btn);
                 })(globalActions[g]);
@@ -3232,7 +3267,7 @@
 
         // ---- WIRE UP ----
         R.restart.addEventListener("click", backToMenu);
-        R.endWeekBtn.addEventListener("click", endWeek);
+        R.endWeekBtn.addEventListener("click", advanceOneWeek);
 
         document.getElementById("btn-start").addEventListener("click", startGame);
         document.getElementById("btn-play-again").addEventListener("click", backToMenu);
