@@ -69,7 +69,7 @@
     .branch-row button { padding:8px; font-size:.78rem; text-align:center; }
     .hint { font-size:.8rem; color:var(--muted); }
     .start-overlay, .between-overlay, .tutorial-overlay {
-      position: fixed; inset: 0; background: rgba(2,6,18,.86); display:flex; align-items:center; justify-content:center; z-index:100;
+      position: fixed; inset: 0; background: rgba(2,6,18,.86); display:flex; align-items:center; justify-content:center; z-index:300;
       padding: 14px;
     }
     .start-overlay.hidden, .between-overlay.hidden, .tutorial-overlay.hidden { display:none; }
@@ -311,8 +311,15 @@
 
     function saveMeta() { writeJSON(STORAGE_META, meta); }
 
+    function makeId() {
+      if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+        return window.crypto.randomUUID();
+      }
+      return `id-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+    }
+
     function member(name, role='Analyst') {
-      return { id: crypto.randomUUID(), name, role, xp: 0, skill: { financial: false, legal: false, commercial: false } };
+      return { id: makeId(), name, role, xp: 0, skill: { financial: false, legal: false, commercial: false } };
     }
 
     function makeDeal(sectorKey, officeLevel=0) {
@@ -675,10 +682,14 @@
       el('tutorialTitle').textContent = t.tutorialTitle;
       el('tutorial-next').textContent = t.next;
       el('tutorial-skip').textContent = t.skip;
-      document.querySelector('[data-tip="workload"]').textContent = t.tips.workload;
-      document.querySelector('[data-tip="fee"]').textContent = t.tips.fee;
-      document.querySelector('[data-tip="ap"]').textContent = t.tips.ap;
-      document.querySelector('[data-tip="workloadMath"]').textContent = t.tips.workloadMath;
+      const setTip = (key, value) => {
+        const node = document.querySelector(`[data-tip="${key}"]`);
+        if (node) node.textContent = value;
+      };
+      setTip('workload', t.tips.workload);
+      setTip('fee', t.tips.fee);
+      setTip('ap', t.tips.ap);
+      setTip('workloadMath', t.tips.workloadMath);
     }
 
 
