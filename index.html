@@ -113,7 +113,7 @@
       <button id="drawer-toggle" class="drawer-handle">Stats & P&L</button>
       <h3 id="careerTitle">Carreira de Advisor</h3>
       <div class="stats">
-        <div class="stat"><span class="label" id="lblDeal">Mandato</span><span id="s-deal" class="value">1/3</span></div>
+        <div class="stat"><span class="label" id="lblDeal">Mandato</span><span id="s-deal" class="value">1/5</span></div>
         <div class="stat"><span class="label" id="lblWeek">Semana</span><span id="s-week" class="value">1</span></div>
         <div class="stat" id="stat-cash"><span class="label" id="lblCash">Career Cash</span><span id="s-cash" class="value">€0.0M</span></div>
         <div class="stat" id="stat-ap"><span class="label" id="lblAp">AP <span class="tooltip-anchor info-icon" id="ap-info">i<div class="tooltip hide" data-tip="ap"></div></span></span><span id="s-ap" class="value">3</span></div>
@@ -168,7 +168,7 @@
   <div id="start-overlay" class="start-overlay">
     <div class="modal card">
       <h2 id="startTitle">Novo Mandato</h2>
-      <p id="startDesc">Escolhe sector para iniciar a tua carreira de 3 mandatos.</p>
+      <p id="startDesc">Escolhe sector para iniciar a tua carreira de 5 mandatos.</p>
       <div class="sector-grid" id="sector-grid"></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button id="start-career" class="primary">Iniciar Carreira</button>
@@ -215,7 +215,7 @@
         title: 'M&A Dealmaker Pro', careerTitle: 'Carreira de Advisor', deal: 'Mandato', week: 'Semana', cash: 'Career Cash', ap: 'AP', net: 'Net Margin', score: 'Career Score',
         endWeek: 'Terminar Semana', newCareer: 'Nova Carreira', teamHeader: 'Gestão de Talentos', teamDesc: 'Gasta XP para desbloquear especializações (+10% por membro especializado).',
         settingsHeader: 'Save Slots', settingsDesc: 'Guardar/Carregar carreira manualmente.', dealRoom: 'Deal Room', teamTab: 'Gestão de Talentos', settingsTab: 'Settings',
-        startTitle: 'Novo Mandato', startDesc: 'Escolhe sector para iniciar a tua carreira de 3 mandatos.', startCareer: 'Iniciar Carreira',
+        startTitle: 'Novo Mandato', startDesc: 'Escolhe sector para iniciar a tua carreira de 5 mandatos.', startCareer: 'Iniciar Carreira',
         betweenTitle: 'Drafting entre mandatos', continueNext: 'Avançar para próximo mandato',
         tutorialTitle: 'Tutorial', next: 'Seguinte', skip: 'Saltar',
         tips: {
@@ -230,7 +230,7 @@
         title: 'M&A Dealmaker Pro', careerTitle: 'Advisor Career', deal: 'Mandate', week: 'Week', cash: 'Career Cash', ap: 'AP', net: 'Net Margin', score: 'Career Score',
         endWeek: 'End Week', newCareer: 'New Career', teamHeader: 'Talent Management', teamDesc: 'Spend XP to unlock specialisations (+10% per specialised member).',
         settingsHeader: 'Save Slots', settingsDesc: 'Manually save/load career.', dealRoom: 'Deal Room', teamTab: 'Talent Management', settingsTab: 'Settings',
-        startTitle: 'New Mandate', startDesc: 'Pick a sector and start your 3-mandate advisor career.', startCareer: 'Start Career',
+        startTitle: 'New Mandate', startDesc: 'Pick a sector and start your 5-mandate advisor career.', startCareer: 'Start Career',
         betweenTitle: 'Between-deal Drafting', continueNext: 'Proceed to next mandate',
         tutorialTitle: 'Tutorial', next: 'Next', skip: 'Skip',
         tips: {
@@ -255,16 +255,68 @@
     let state = null;
     let selectedSector = sectors[0].key;
     let tutorialStep = 0;
-    const PHASES_PRO = [{
-      key: 'mandate',
-      microPhases: [
-        { key: 'prep', label: { pt: 'Preparação', en: 'Preparation' } },
-        { key: 'marketing', label: { pt: 'Marketing', en: 'Marketing' } },
-        { key: 'diligence', label: { pt: 'Diligência', en: 'Due Diligence' } },
-        { key: 'negotiation', label: { pt: 'Negociação', en: 'Negotiation' } },
+    const PHASES_PRO = [
+      { key: 'origination', label: { pt: 'Origination', en: 'Origination' }, microPhases: [
+        { key: 'teaser-screen', label: { pt: 'Triagem inicial', en: 'Initial screening' } },
+        { key: 'mandate-pitch', label: { pt: 'Pitch de mandato', en: 'Mandate pitch' } },
+        { key: 'engagement-letter', label: { pt: 'Engagement letter', en: 'Engagement letter' } }
+      ] },
+      { key: 'kickoff', label: { pt: 'Kickoff', en: 'Kickoff' }, microPhases: [
+        { key: 'client-kickoff', label: { pt: 'Kickoff com cliente', en: 'Client kickoff' } },
+        { key: 'data-room-plan', label: { pt: 'Plano de data room', en: 'Data room planning' } },
+        { key: 'equity-story', label: { pt: 'Equity story', en: 'Equity story' } }
+      ] },
+      { key: 'materials', label: { pt: 'Materiais', en: 'Marketing materials' }, microPhases: [
+        { key: 'long-list', label: { pt: 'Long list compradores', en: 'Buyer long list' } },
+        { key: 'teaser-cim', label: { pt: 'Teaser e CIM', en: 'Teaser and CIM' } },
+        { key: 'management-presentation', label: { pt: 'Management presentation', en: 'Management presentation' } }
+      ] },
+      { key: 'market-sounding', label: { pt: 'Go-to-market', en: 'Go-to-market' }, microPhases: [
+        { key: 'teaser-outreach', label: { pt: 'Outreach teaser', en: 'Teaser outreach' } },
+        { key: 'nda-management', label: { pt: 'Gestão de NDAs', en: 'NDA management' } },
+        { key: 'ioi-round', label: { pt: 'Ronda IOI', en: 'IOI round' } }
+      ] },
+      { key: 'phase-two', label: { pt: 'Fase II', en: 'Phase II' }, microPhases: [
+        { key: 'shortlist', label: { pt: 'Shortlist bidders', en: 'Bidder shortlist' } },
+        { key: 'vdr-launch', label: { pt: 'Abertura VDR', en: 'VDR launch' } },
+        { key: 'qna-round', label: { pt: 'Q&A round', en: 'Q&A round' } }
+      ] },
+      { key: 'due-diligence', label: { pt: 'Due Diligence', en: 'Due Diligence' }, microPhases: [
+        { key: 'financial-dd', label: { pt: 'Financial DD', en: 'Financial DD' } },
+        { key: 'legal-dd', label: { pt: 'Legal DD', en: 'Legal DD' } },
+        { key: 'commercial-dd', label: { pt: 'Commercial DD', en: 'Commercial DD' } }
+      ] },
+      { key: 'indicative-bids', label: { pt: 'Ofertas indicativas', en: 'Indicative bids' }, microPhases: [
+        { key: 'ioi-evaluation', label: { pt: 'Avaliar IOIs', en: 'IOI evaluation' } },
+        { key: 'management-meetings', label: { pt: 'Management meetings', en: 'Management meetings' } },
+        { key: 'bid-tension', label: { pt: 'Criar tensão competitiva', en: 'Competitive tension' } }
+      ] },
+      { key: 'binding-offers', label: { pt: 'Ofertas vinculativas', en: 'Binding offers' }, microPhases: [
+        { key: 'spa-draft', label: { pt: 'Draft SPA', en: 'SPA draft' } },
+        { key: 'vendor-dd', label: { pt: 'Vendor DD', en: 'Vendor DD' } },
+        { key: 'bo-round', label: { pt: 'Ronda BO', en: 'Binding offer round' } }
+      ] },
+      { key: 'negotiation', label: { pt: 'Negociação', en: 'Negotiation' }, microPhases: [
+        { key: 'price-negotiation', label: { pt: 'Negociar preço', en: 'Price negotiation' } },
+        { key: 'terms-negotiation', label: { pt: 'Negociar termos', en: 'Terms negotiation' } },
+        { key: 'signing-readiness', label: { pt: 'Readiness para signing', en: 'Signing readiness' } }
+      ] },
+      { key: 'signing-closing', label: { pt: 'Signing & Closing', en: 'Signing & Closing' }, microPhases: [
+        { key: 'signing', label: { pt: 'Signing', en: 'Signing' } },
+        { key: 'regulatory', label: { pt: 'Aprovações regulatórias', en: 'Regulatory approvals' } },
         { key: 'closing', label: { pt: 'Closing', en: 'Closing' } }
-      ]
-    }];
+      ] },
+      { key: 'post-close', label: { pt: 'Pós-closing', en: 'Post-close' }, microPhases: [
+        { key: 'earnout-plan', label: { pt: 'Plano de earnout', en: 'Earnout plan' } },
+        { key: 'handover', label: { pt: 'Handover', en: 'Handover' } }
+      ] }
+    ];
+    const CLIENT_TYPES = {
+      founder: { label: { pt: 'Founder-led', en: 'Founder-led' }, relationshipDrift: 1.4, feeSensitivity: 0.12, boardTolerance: -0.05, bidderAttraction: { strategic: 0.06 } },
+      pe: { label: { pt: 'PE-owned', en: 'PE-owned' }, relationshipDrift: 0.5, feeSensitivity: -0.06, boardTolerance: 0.08, bidderAttraction: { pe: 0.08 } },
+      carveout: { label: { pt: 'Corporate carve-out', en: 'Corporate carve-out' }, relationshipDrift: -0.5, feeSensitivity: 0.02, boardTolerance: 0.02, bidderAttraction: { industrial: 0.06 } },
+      family: { label: { pt: 'Family business', en: 'Family business' }, relationshipDrift: 1.8, feeSensitivity: 0.16, boardTolerance: -0.08, bidderAttraction: { strategic: 0.03, industrial: 0.03 } }
+    };
     const R = { get choices(){ return el('action-list'); } };
 
     const el = (id) => document.getElementById(id);
@@ -318,14 +370,32 @@
       return { id: makeId(), name, role, xp: 0, skill: { financial: false, legal: false, commercial: false } };
     }
 
+    function makeBidders(clientTypeKey) {
+      const types = ['pe','strategic','industrial'];
+      return types.map(type => {
+        const attraction = CLIENT_TYPES[clientTypeKey].bidderAttraction[type] || 0;
+        const hidden = Math.round(35 + Math.random() * 35 + attraction * 100);
+        return {
+          id: makeId(),
+          type,
+          confidence: 28 + Math.random() * 22,
+          synergy: 30 + Math.random() * 30,
+          valuationView: hidden,
+          intelligence: 8,
+          active: true
+        };
+      });
+    }
+
     function makeDeal(sectorKey, officeLevel=0) {
       const sector = sectors.find(s => s.key === sectorKey) || sectors[0];
       const baseEbitda = 6 + Math.random() * 8;
+      const clientTypeKey = Object.keys(CLIENT_TYPES)[Math.floor(Math.random()*Object.keys(CLIENT_TYPES).length)];
       return {
         sector: sector.key,
         sectorName: sector.name,
         week: 1,
-        maxWeeks: 12,
+        maxWeeks: 32,
         relationship: 60,
         morale: Math.min(100, 68 + officeLevel * 2),
         workload: 35,
@@ -334,7 +404,7 @@
         feeAgreed: false,
         ebitda: baseEbitda,
         multiple: randBetween(sector.multiple[0], sector.multiple[1]),
-        closeProbability: 30,
+        closeProbability: 28,
         netMargin: 0,
         score: 0,
         completed: false,
@@ -342,7 +412,13 @@
         negativeRiskMod: sector.risk,
         macroSensitive: sector.key === 'consumer',
         baseFeePct: +(1.2 + Math.random() * 0.9).toFixed(2),
-        clientType: ['Founder-led', 'PE-owned', 'Corporate carve-out'][Math.floor(Math.random()*3)]
+        clientTypeKey,
+        clientType: label(CLIENT_TYPES[clientTypeKey].label),
+        phaseProgress: {},
+        mitigations: { regulatory: 0, leak: 0, financing: 0 },
+        boardHeat: 0,
+        bidders: makeBidders(clientTypeKey),
+        fogOfWar: 68
       };
     }
 
@@ -387,20 +463,92 @@
       return Math.max(1, Math.min(6, 3 + Math.floor((d.morale - 50) / 20) + state.officeLevel));
     }
 
-    const actions = [
-      { key:'model', branch:'financial', ap:1, load:12, base:0.62, phases:['prep','diligence'], label:{pt:'Financial Modelling',en:'Financial Modelling'}, effect:(ok,d)=>{ if(ok){d.closeProbability += 8; d.netMargin += 1.1; xp('financial');} else d.relationship -= 4; } },
-      { key:'spa', branch:'legal', ap:1, load:11, base:0.58, phases:['diligence','negotiation'], label:{pt:'SPA / Liability Review',en:'SPA / Liability Review'}, effect:(ok,d)=>{ if(ok){d.closeProbability += 9; d.netMargin += 0.9; xp('legal');} else d.relationship -= 5; } },
-      { key:'pitch', branch:'commercial', ap:1, load:10, base:0.64, phases:['marketing','negotiation'], label:{pt:'Pitch & Buyer Outreach',en:'Pitch & Buyer Outreach'}, effect:(ok,d)=>{ if(ok){d.closeProbability += 7; d.relationship += 4; xp('commercial');} else d.closeProbability -= 3; } },
-      { key:'fee', branch:'commercial', ap:1, load:8, base:0.55, phases:['negotiation'], label:{pt:'Fee Negotiation',en:'Fee Negotiation'}, effect:(ok,d)=>{ if(ok){d.feeAgreed=true; d.relationship +=6; d.netMargin += 1.6; xp('commercial');} else d.relationship -= 8; } },
-      { key:'close', branch:'legal', ap:2, load:14, base:0.45, phases:['closing'], label:{pt:'Attempt Closing',en:'Attempt Closing'}, gated:true, effect:(ok,d)=>{ if(ok){d.completed=true; d.closeProbability += 15;} else {d.relationship -= 10; d.closeProbability -= 8;} } }
-    ];
+    function currentPhase() {
+      const safeIndex = Math.max(0, Math.min(PHASES_PRO.length - 1, state.currentPhaseIndex || 0));
+      return PHASES_PRO[safeIndex];
+    }
 
-    const phaseTransitions = {
-      prep: { trigger: ['model'], next: 'marketing' },
-      marketing: { trigger: ['pitch'], next: 'diligence' },
-      diligence: { trigger: ['spa'], next: 'negotiation' },
-      negotiation: { trigger: ['fee'], next: 'closing' }
+    function flattenMicroPhases() {
+      return PHASES_PRO.flatMap((phase, phaseIndex) => phase.microPhases.map((micro, microIndex) => ({ ...micro, phaseKey: phase.key, phaseIndex, microIndex })));
+    }
+
+    const MICRO_PHASES = flattenMicroPhases();
+
+    function getCurrentMicroEntry() {
+      const phase = currentPhase();
+      const micro = phase.microPhases[state.currentMicroPhaseIndex] || phase.microPhases[0];
+      const phaseIndex = PHASES_PRO.findIndex(p => p.key === phase.key);
+      const microIndex = phase.microPhases.findIndex(m => m.key === micro.key);
+      return { ...micro, phaseKey: phase.key, phaseIndex, microIndex };
+    }
+
+    function clampDealState(d) {
+      d.closeProbability = Math.max(0, Math.min(97, d.closeProbability));
+      d.relationship = Math.max(0, Math.min(100, d.relationship));
+      d.morale = Math.max(0, Math.min(100, d.morale));
+      d.fogOfWar = Math.max(10, Math.min(90, d.fogOfWar));
+    }
+
+    function advanceMicroPhase() {
+      const phase = currentPhase();
+      if (state.currentMicroPhaseIndex < phase.microPhases.length - 1) {
+        state.currentMicroPhaseIndex += 1;
+        return;
+      }
+      if (state.currentPhaseIndex < PHASES_PRO.length - 1) {
+        state.currentPhaseIndex += 1;
+        state.currentMicroPhaseIndex = 0;
+      }
+    }
+
+    function makeAction(key, branch, ap, load, base, targets, labels, effect, gated=false) {
+      return { key, branch, ap, load, base, targets, label: labels, effect, gated };
+    }
+
+    const ACTION_LIBRARY = {
+      financial: [
+        ['build-lbo','Build LBO', (ok,d)=>{ if(ok){ d.closeProbability += 3; d.netMargin += 0.5; d.bidders.forEach(b=>b.confidence += 3);} else d.relationship -= 2; }],
+        ['qoe-analysis','QoE Analysis', (ok,d)=>{ if(ok){ d.closeProbability += 2; d.mitigations.financing += 1; } else d.boardHeat += 1; }],
+        ['wc-bridge','Working Capital Bridge', (ok,d)=>{ if(ok){ d.netMargin += 0.4; d.relationship += 2;} else d.closeProbability -= 2; }],
+        ['valuation-pack','Valuation Pack', (ok,d)=>{ if(ok){ d.closeProbability += 2; d.bidders.forEach(b=>b.valuationView += 4);} else d.boardHeat += 1; }],
+        ['financing-map','Financing Map', (ok,d)=>{ if(ok){ d.mitigations.financing += 2; d.closeProbability += 1;} else d.relationship -= 2; }]
+      ],
+      legal: [
+        ['nda-pack','NDA Pack', (ok,d)=>{ if(ok){ d.mitigations.leak += 2; d.closeProbability += 1;} else d.relationship -= 2; }],
+        ['spa-markup','SPA Markup', (ok,d)=>{ if(ok){ d.closeProbability += 3; d.netMargin += 0.4;} else d.boardHeat += 1; }],
+        ['clean-team','Clean Team Protocol', (ok,d)=>{ if(ok){ d.mitigations.regulatory += 2; } else d.closeProbability -= 2; }],
+        ['cp-checklist','CP Checklist', (ok,d)=>{ if(ok){ d.closeProbability += 2; d.completed = d.completed || false;} else d.relationship -= 1; }],
+        ['warranty-scope','Warranty Scope', (ok,d)=>{ if(ok){ d.netMargin += 0.5; } else d.relationship -= 3; }]
+      ],
+      commercial: [
+        ['buyer-outreach','Buyer Outreach', (ok,d)=>{ if(ok){ d.closeProbability += 2; d.bidders.forEach(b=>b.confidence += 4);} else d.relationship -= 2; }],
+        ['mgmt-coaching','Mgmt Coaching', (ok,d)=>{ if(ok){ d.relationship += 3; d.boardHeat = Math.max(0,d.boardHeat-1);} else d.relationship -= 3; }],
+        ['tension-plan','Tension Plan', (ok,d)=>{ if(ok){ d.netMargin += 0.6; d.closeProbability += 2;} else d.closeProbability -= 3; }],
+        ['fee-negotiation','Fee Negotiation', (ok,d)=>{ if(ok){ d.feeAgreed = true; d.netMargin += 1.2; d.relationship += 4;} else d.relationship -= 6; }],
+        ['prb-brief','Partner Board Brief', (ok,d)=>{ if(ok){ d.boardHeat = Math.max(0,d.boardHeat-2); d.closeProbability += 1;} else d.boardHeat += 2; }]
+      ]
     };
+
+    const actions = MICRO_PHASES.flatMap((micro, index) => {
+      const branchOrder = ['financial','legal','commercial','financial','commercial'];
+      return branchOrder.map((branch, branchIdx) => {
+        const pack = ACTION_LIBRARY[branch][(index + branchIdx) % ACTION_LIBRARY[branch].length];
+        const key = `${pack[0]}-${micro.key}`;
+        return makeAction(
+          key,
+          branch,
+          1 + ((index + branchIdx) % 3 === 0 ? 1 : 0),
+          7 + ((index + branchIdx) % 8),
+          0.5 + ((index + branchIdx) % 5) * 0.05,
+          [micro.key],
+          { pt: `${pack[1]} · ${label(micro.label)}`, en: `${pack[1]} · ${label(micro.label)}` },
+          pack[2],
+          micro.key === 'closing' && pack[0].includes('fee')
+        );
+      });
+    }).concat([
+      makeAction('attempt-closing','legal',2,14,0.45,['closing'],{pt:'Attempt Closing',en:'Attempt Closing'},(ok,d)=>{ if(ok){ d.completed=true; d.closeProbability += 10; } else { d.closeProbability -= 8; d.relationship -= 8; } }, true)
+    ]);
 
     function xp(branch) {
       const target = state.team.reduce((a,b)=> a.xp <= b.xp ? a : b, state.team[0]);
@@ -411,32 +559,43 @@
       const d = state.current;
       const a = actions.find(x=>x.key===key);
       if (!a || d.completed) return;
-      const currentMicro = ensureValidMicroPhase();
-      if (a.phases && !a.phases.includes(currentMicro.key)) {
+      const currentMicro = getCurrentMicroEntry();
+      if (a.targets && !a.targets.includes(currentMicro.key)) {
         log(`Ação indisponível na fase ${label(currentMicro.label)}.`, 'bad');
         return;
       }
       if (a.gated && !d.feeAgreed) { log('Fee gate bloqueia closing.', 'bad'); return; }
       if (d.ap < a.ap) { log('Sem AP suficiente.', 'bad'); return; }
+
       d.ap -= a.ap;
-      d.workload = Math.min(130, d.workload + a.load);
+      d.workload = Math.min(140, d.workload + a.load);
+      const clientMod = CLIENT_TYPES[d.clientTypeKey];
       let p = a.base + teamSkillBonus(a.branch);
       if (d.workload > d.capacity) p -= 0.12;
       p += (d.morale - 50) / 250;
+      p += clientMod.boardTolerance;
+      p += (d.mitigations.regulatory + d.mitigations.financing + d.mitigations.leak) / 200;
+      p -= d.boardHeat * 0.03;
       const ok = Math.random() < p;
-      if (a.key === 'pitch' && d.baseFeePct > 1.7 && Math.random() < 0.30) {
-        d.netMargin = Math.max(-8, d.netMargin - 1.3);
-        log('Advisor Rival undercut na fase de Pitch (-1.3pp margin).', 'bad');
-      }
+
       a.effect(ok,d);
-      d.closeProbability = Math.max(0, Math.min(95, d.closeProbability));
-      d.relationship = Math.max(0, Math.min(100, d.relationship));
-      d.morale = Math.max(0, Math.min(100, d.morale));
-      const transition = phaseTransitions[currentMicro.key];
-      if (transition && ok && transition.trigger.includes(a.key)) {
-        const nextIndex = PHASES_PRO[0].microPhases.findIndex(m => m.key === transition.next);
-        if (nextIndex >= 0) state.currentMicroPhaseIndex = nextIndex;
+      if (ok) {
+        d.phaseProgress[currentMicro.key] = (d.phaseProgress[currentMicro.key] || 0) + 1;
+        d.fogOfWar = Math.max(10, d.fogOfWar - 2);
+        d.bidders.forEach(b => {
+          b.intelligence = Math.min(100, b.intelligence + 8);
+          if (Math.random() < 0.6) b.valuationView += 3;
+        });
+      } else {
+        d.boardHeat += 1;
+        d.fogOfWar = Math.min(90, d.fogOfWar + 2);
       }
+
+      if ((d.phaseProgress[currentMicro.key] || 0) >= 2) {
+        advanceMicroPhase();
+      }
+
+      clampDealState(d);
       closeDrawer();
       log(`${label(a.label)}: ${ok ? '✓' : '✗'} (${Math.round(p*100)}%)`, ok ? 'good' : 'bad');
       renderPhase();
@@ -452,21 +611,34 @@
         log('Burnout penalty aplicado (1.3x custo implícito).', 'bad');
       }
       d.morale = Math.max(10, d.morale - Math.round(overload / 8));
+      d.relationship = Math.max(0, Math.min(100, d.relationship + CLIENT_TYPES[d.clientTypeKey].relationshipDrift - 0.6));
       d.workload = Math.max(0, d.workload - 22);
       d.ap = calculateInitialPA();
 
       const eventRoll = Math.random();
-      const risk = 0.16 * d.negativeRiskMod;
+      const risk = 0.16 * d.negativeRiskMod * (1 - d.mitigations.regulatory * 0.06);
       if (eventRoll < risk) {
         d.relationship = Math.max(0, d.relationship - 7);
         d.closeProbability = Math.max(0, d.closeProbability - 5);
+        d.boardHeat += 1;
         log('Evento negativo de mercado/regulação.', 'bad');
+      }
+      if (Math.random() < 0.18 && d.mitigations.leak < 2) {
+        d.relationship = Math.max(0, d.relationship - 4);
+        d.fogOfWar = Math.min(90, d.fogOfWar + 6);
+        log('Leak risk materializado: rumor de mercado.', 'bad');
+      }
+      if (Math.random() < 0.15 + d.boardHeat * 0.03) {
+        d.closeProbability = Math.max(0, d.closeProbability - 4);
+        log('Partner Review Board pediu rework.', 'bad');
       }
       if (d.macroSensitive && Math.random() < 0.25) {
         d.ebitda = +(d.ebitda * 0.96).toFixed(2);
         log('ECB rate hike: EBITDA reduzida no Consumer.', 'bad');
       }
 
+      const visibleBidderScore = d.bidders.reduce((acc,b)=> acc + (b.active ? (b.confidence + b.intelligence*0.3) : 0), 0) / Math.max(1, d.bidders.length);
+      d.closeProbability = Math.max(0, Math.min(97, d.closeProbability + (visibleBidderScore - 45) * 0.06));
       if (d.week > d.maxWeeks || d.relationship <= 10) {
         finishDeal(false);
       }
@@ -595,14 +767,14 @@
     function renderActions() {
       const box = el('action-list');
       box.innerHTML = '';
-      const currentMicro = ensureValidMicroPhase();
+      const currentMicro = getCurrentMicroEntry();
       actions.forEach(a => {
         const b = document.createElement('button');
         b.className = 'action';
-        const isUnlocked = !a.phases || a.phases.includes(currentMicro.key);
+        const isUnlocked = !a.targets || a.targets.includes(currentMicro.key);
         b.disabled = state.current.completed || !isUnlocked;
-        b.innerHTML = `<strong>${label(a.label)}</strong><small>AP ${a.ap} · ${a.branch} · +load ${a.load}</small>${!isUnlocked ? `<small>${meta.language === 'pt' ? 'Disponível em:' : 'Available in:'} ${a.phases.map(k => {
-          const phase = PHASES_PRO[0].microPhases.find(m => m.key === k);
+        b.innerHTML = `<strong>${label(a.label)}</strong><small>AP ${a.ap} · ${a.branch} · +load ${a.load}</small>${!isUnlocked ? `<small>${meta.language === 'pt' ? 'Disponível em:' : 'Available in:'} ${a.targets.map(k => {
+          const phase = MICRO_PHASES.find(m => m.key === k);
           return phase ? label(phase.label) : k;
         }).join(', ')}</small>` : ''}`;
         b.onclick = ()=>doAction(a.key);
@@ -647,7 +819,7 @@
         div.className = 'slot';
         let subtitle = 'Empty';
         if (parsed && parsed.career) {
-          subtitle = `${new Date(parsed.savedAt).toLocaleString()} · D${parsed.career.currentDeal}/3 · ${Math.round(parsed.career.careerScore)} pts`;
+          subtitle = `${new Date(parsed.savedAt).toLocaleString()} · D${parsed.career.currentDeal}/5 · ${Math.round(parsed.career.careerScore)} pts`;
         }
         div.innerHTML = `<strong>Slot ${slot}</strong><p>${subtitle}</p>`;
         const row = document.createElement('div');
@@ -717,15 +889,14 @@
       if (!phase) {
         state.currentPhaseIndex = 0;
         state.currentMicroPhaseIndex = 0;
-        return PHASES_PRO[0].microPhases[0];
+        return getCurrentMicroEntry();
       }
       let micro = phase.microPhases[state.currentMicroPhaseIndex];
       if (!micro) {
         state.currentPhaseIndex = 0;
         state.currentMicroPhaseIndex = 0;
-        micro = PHASES_PRO[0].microPhases[0];
       }
-      return micro;
+      return getCurrentMicroEntry();
     }
 
     function renderPhase() {
@@ -747,7 +918,7 @@
       renderSectorGrid();
       if (!state) return;
       const d = state.current;
-      const currentMicro = ensureValidMicroPhase();
+      const currentMicro = getCurrentMicroEntry();
       el('s-deal').textContent = `${state.currentDeal}/${state.totalDeals}`;
       el('s-week').textContent = `${d.week}`;
       el('s-cash').textContent = `€${state.careerCash.toFixed(1)}M`;
@@ -756,7 +927,7 @@
       el('s-score').textContent = `${Math.round(state.careerScore)}`;
       el('workload-fill').style.width = `${Math.min(100, (d.workload / Math.max(1,d.capacity))*100)}%`;
       el('dealHeader').textContent = `${d.sectorName} · EV ≈ €${(d.ebitda*d.multiple).toFixed(1)}M`;
-      el('dealContext').textContent = `Fase ${label(currentMicro.label)} · Rel ${d.relationship} · Morale ${d.morale} · Close Prob ${d.closeProbability}% · Fee ${d.feeAgreed ? '✓' : '✗'}`;
+      el('dealContext').textContent = `Fase ${label(currentPhase().label)} / ${label(currentMicro.label)} · Rel ${d.relationship} · Morale ${d.morale} · Close Prob ${d.closeProbability}% · Fee ${d.feeAgreed ? '✓' : '✗'} · Fog ${d.fogOfWar}%`;
       el('betweenDesc').textContent = `Career Cash: €${state.careerCash.toFixed(1)}M | Office Lv.${state.officeLevel}`;
 
       const logBox = el('log');
