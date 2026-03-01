@@ -601,7 +601,7 @@
             <div class="stat" style="margin:6px 0 12px;">
                 <span class="label">Advisor P&amp;L</span>
                 <div style="display:grid;grid-template-columns:1fr auto;gap:4px 8px;font-size:0.78rem;line-height:1.4;">
-                    <span>Success Fee (%)</span><strong id="s-fee-percentage" style="color:var(--accent);">0.00%</strong>
+                    <span>Fee (Base / Upside)</span><strong id="s-fee-percentage" style="color:var(--accent);">0.00% / 0.00%</strong>
                     <span>Projected Weekly Burn (M€)</span><strong id="s-weekly-burn" style="color:var(--warn);">0.000 M€</strong>
                     <span>Execution Costs (M€)</span><strong id="s-execution-costs" style="color:var(--warn);">0.0 M€</strong>
                     <span>Expected Net Margin (M€)</span><strong id="s-net-margin" style="color:var(--good);">0.0 M€</strong>
@@ -848,11 +848,11 @@
                         log: "Promessa de market mapping detalhado feita ao cliente; execucao entrou em revisao imediata do Board."
                     },
                     {
-                        text: "Force Mandate Signature",
-                        hint: "So funciona com Cliente >= 75. Em caso de sucesso, defines o success fee final e fechas a fase imediatamente.",
-                        type: "force_mandate_signature",
+                        text: "Propose Tiered Fee Structure",
+                        hint: "So funciona com Cliente >= 75. Negocia base fee ate a expectativa do cliente e incentivo para upside acima da ancora.",
+                        type: "propose_tiered_fee_structure",
                         effects: {},
-                        log: "Tentativa de assinatura forcada do mandato apresentada ao cliente."
+                        log: "Estrutura de fee ratchet (base + upside) apresentada ao cliente."
                     }
                 ]
             },
@@ -1217,7 +1217,18 @@
         }
 
         function calculateAdvisorMargin() {
-            var grossFee = calcularEV() * (state.feePercentage || 0);
+            var finalEV = calcularEV();
+            var expectationEV = Math.max(0, state.clientExpectationEV || 0);
+            var baseFee = state.baseFee || 0;
+            var incentiveFee = state.incentiveFee || 0;
+            var grossFee = 0;
+
+            if (finalEV <= expectationEV) {
+                grossFee = finalEV * baseFee;
+            } else {
+                grossFee = (expectationEV * baseFee) + ((finalEV - expectationEV) * incentiveFee);
+            }
+
             var weeklyBurn = (state.teamHeadcount || 0) * (state.weeklyCostPerHead || 0);
             var totalCosts = weeklyBurn * (state.semanaAtual || 0);
             totalCosts += state.extraExecutionCosts || 0;
@@ -1882,7 +1893,9 @@
             }
 
             var pnl = calculateAdvisorMargin();
-            R.sFeePercentage.textContent = (state.feePercentage * 100).toFixed(2) + "%";
+            R.sFeePercentage.textContent =
+                (state.baseFee * 100).toFixed(2) + "% Base / " +
+                (state.incentiveFee * 100).toFixed(2) + "% Upside";
             R.sWeeklyBurn.textContent = pnl.weeklyBurn.toFixed(3) + " M€";
             R.sExecutionCosts.textContent = pnl.totalCosts.toFixed(3) + " M€";
             R.sNetMargin.textContent = pnl.netMargin.toFixed(3) + " M€";
@@ -1930,7 +1943,15 @@
         }
 
         // Financial keys are never integer-scaled — they use decimal precision
-        var FINANCIAL_KEYS = { ebitda: true, multiplo: true, progressoFase: true, feePercentage: true, weeklyCostPerHead: true };
+        var FINANCIAL_KEYS = {
+            ebitda: true,
+            multiplo: true,
+            progressoFase: true,
+            feePercentage: true,
+            baseFee: true,
+            incentiveFee: true,
+            weeklyCostPerHead: true
+        };
 
         function resolveActionOutcome(effectSpec) {
             if (!effectSpec || !effectSpec.success || !effectSpec.failure) {
@@ -1974,7 +1995,7 @@
                 if (BIDDER_FX_KEYS[key]) {
                     applyBidderEffects(fx[key], BIDDER_FX_KEYS[key]);
                 } else if (state[key] !== undefined) {
-                    if (key === "feePercentage") {
+                    if (key === "feePercentage" || key === "baseFee" || key === "incentiveFee") {
                         state[key] = fx[key];
                     } else {
                         state[key] += fx[key];
@@ -2295,27 +2316,37 @@
             state.pontosAcao--;
             var previousProgress = state.progressoFase;
 
-            if (act.type === "force_mandate_signature") {
+            if (act.type === "propose_tiered_fee_structure") {
                 if (state.cliente < 75) {
                     state.cliente = clamp(state.cliente - 8, 0, 100);
-                    addLog("Force Mandate Signature falhou: confianca insuficiente (Cliente < 75). O cliente recuou e a semana foi desperdicada.", "bad");
+                    addLog("Propose Tiered Fee Structure falhou: confianca insuficiente (Cliente < 75). O cliente recuou e a semana foi desperdicada.", "bad");
                     updateStats({ cliente: -8 });
                     endWeek();
                     return;
                 }
 
-                var input = window.prompt("The client agrees to sign. Enter your final success fee percentage (e.g., 1.5 to 5.0):", ((state.feePercentage || 0.02) * 100).toFixed(2));
-                var feePct = parseFloat(input);
-                if (!isNaN(feePct) && feePct > 0) {
-                    state.feePercentage = feePct / 100;
+                var baseInput = window.prompt(
+                    "Enter base fee % applied up to client expectation EV (e.g., 1.5):",
+                    ((state.baseFee || 0.015) * 100).toFixed(2)
+                );
+                var incentiveInput = window.prompt(
+                    "Enter incentive fee % applied only above client expectation EV (e.g., 5.0):",
+                    ((state.incentiveFee || 0.05) * 100).toFixed(2)
+                );
+                var basePct = parseFloat(baseInput);
+                var incentivePct = parseFloat(incentiveInput);
+
+                if (!isNaN(basePct) && basePct > 0 && !isNaN(incentivePct) && incentivePct > 0) {
+                    state.baseFee = basePct / 100;
+                    state.incentiveFee = incentivePct / 100;
                     state.progressoFase = 100;
-                    addLog("Mandato assinado com success fee final de " + feePct.toFixed(2) + "%.", "good");
+                    addLog("Mandato assinado com fee ratchet: " + basePct.toFixed(2) + "% base / " + incentivePct.toFixed(2) + "% upside.", "good");
                     updateStats({ progressoFase: 100 - previousProgress });
                     advancePhase();
                     return;
                 }
 
-                addLog("Assinatura interrompida: fee invalido. A tentativa consumiu 1 PA.", "warn");
+                addLog("Assinatura interrompida: fee ratchet invalido. A tentativa consumiu 1 PA.", "warn");
                 renderPhase();
                 return;
             }
@@ -2625,6 +2656,8 @@
                 hasVDD:       false,
                 skipBindingOffers: false,
                 feePercentage: 0,
+                baseFee: 0,
+                incentiveFee: 0,
                 extraExecutionCosts: 0,
                 teamHeadcount: 3,
                 teamHeadcountFatigue: 0,
