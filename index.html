@@ -689,7 +689,7 @@
             </div>
             <h1 class="start-title" data-i18n="start.title">M&A Dealmaker</h1>
             <p class="start-sub" data-i18n="start.subtitle">Simulacao interactiva de mandato de venda &mdash; do pitch ao closing.</p>
-            <p data-i18n="start.description" style="font-size:0.88rem;color:var(--muted);margin-bottom:10px;">Gere o cliente, a equipa e os compradores em 10 fases criticas. Usa Pontos de Acao por semana com sabedoria. Eventos aleatorios testam a tua resiliencia.</p>
+            <p data-i18n="start.description" style="font-size:0.88rem;color:var(--muted);margin-bottom:10px;">Gere o cliente, a equipa e os compradores em 11 fases criticas. Usa Pontos de Acao por semana com sabedoria. Eventos aleatorios testam a tua resiliencia.</p>
             <div class="config-row">
                 <span class="config-label" data-i18n="start.sector">Setor de Atividade</span>
                 <div class="config-grid">
@@ -849,6 +849,7 @@
 
             <h2 id="phase-title"></h2>
             <p id="phase-desc"></p>
+            <div id="microphase-breadcrumbs" class="small" style="margin:0 0 10px;color:var(--muted);"></div>
             <div id="event-area"></div>
             <div class="review-board" id="review-board" style="display:none;">
                 <h3>Partner Review Board</h3>
@@ -1029,7 +1030,7 @@
         // Each action costs 1 PA. progressoFase drives phase completion (0→100).
         // BUYERS phase (index 3) generates state.bidders; later phases route compradores
         // effects to interesseBidders / interesseBiddersIndustrial / interesseBiddersPE.
-        var PHASES = [
+        var PHASES_V4 = [
             {
                 id: "PITCH",
                 title: "Pitch inicial ao accionista",
@@ -1382,10 +1383,92 @@
             }
         ];
 
+        function findLegacyPhaseById(id) {
+            for (var i = 0; i < PHASES_V4.length; i++) {
+                if (PHASES_V4[i].id === id) return PHASES_V4[i];
+            }
+            return null;
+        }
+
+        function pickLegacyActions(phaseId, actionTexts) {
+            var phase = findLegacyPhaseById(phaseId);
+            if (!phase || !phase.actions) return [];
+            var selected = [];
+            for (var i = 0; i < actionTexts.length; i++) {
+                for (var j = 0; j < phase.actions.length; j++) {
+                    if (phase.actions[j].text === actionTexts[i]) {
+                        selected.push(phase.actions[j]);
+                        break;
+                    }
+                }
+            }
+            return selected;
+        }
+
+        var PHASES_PRO = [
+            { id: "PITCH", title: "Pitch inicial ao accionista", desc: "Ganha o mandato com credibilidade comercial e alinhamento de expectativas.", microPhases: [
+                { id: "equity-story", name: "Equity Story", progressTarget: 100, actions: pickLegacyActions("PITCH", ["Develop Go-to-Market Narrative"]) },
+                { id: "valuation", name: "Valuation Expectations", progressTarget: 100, actions: pickLegacyActions("PITCH", ["Definir expectativa inicial de valuation (M€)", "Review Market Comparables"]) },
+                { id: "mapping", name: "Market Mapping", progressTarget: 100, actions: pickLegacyActions("PITCH", ["Promise Detailed Market Mapping"]) },
+                { id: "fees", name: "Fee Structure", progressTarget: 100, actions: pickLegacyActions("PITCH", ["Propose Tiered Fee Structure"]) }
+            ]},
+            { id: "MANDATO ASSINADO", title: "Mandato Assinado", desc: "Formaliza o mandato e as regras de trabalho com o cliente.", microPhases: [
+                { id: "mandate-confirm", name: "Confirmação do mandato", progressTarget: 100, actions: [{ text: "Formalizar mandato e governance", hint: "Acorda escopo, calendário e responsáveis.", effects: { cliente: 5, fecho: 2, progressoFase: 50 }, log: "Mandato formalizado com governance clara entre advisor e cliente." }] },
+                { id: "team-kickoff", name: "Kick-off interno", progressTarget: 100, actions: [{ text: "Kick-off com equipa alargada", hint: "Alinha equipa, responsabilidades e ritmo semanal.", effects: { teamMorale: 4, progressoFase: 50 }, log: "Kick-off operacional concluído com plano de execução validado." }] }
+            ]},
+            { id: "PREPARACAO", title: "Preparação", desc: "Constrói materiais de venda robustos e prepara a tese financeira.", microPhases: [
+                { id: "teaser", name: "Teaser Struct", progressTarget: 100, actions: [{ text: "Estruturar teaser para mercado", hint: "Define narrativa curta e critérios de confidencialidade.", effects: { fecho: 2, progressoFase: 50 }, log: "Estrutura do teaser consolidada para outreach." }] },
+                { id: "teaser-im", name: "Teaser/IM Writing", progressTarget: 100, actions: pickLegacyActions("TEASER / IM", ["Redigir e finalizar Information Memorandum"]) },
+                { id: "growth", name: "Growth Narrative", progressTarget: 100, actions: pickLegacyActions("TEASER / IM", ["Afinar narrativa de crescimento e projecoes financeiras", "Validar IM e financials com o cliente"]) },
+                { id: "vdd", name: "VDD Decision", progressTarget: 100, actions: pickLegacyActions("TEASER / IM", ["Decidir Vendor Due Diligence (VDD)"]) }
+            ]},
+            { id: "MARKET OUTREACH", title: "Market Outreach", desc: "Activa o mercado e posiciona management e materiais junto dos compradores.", microPhases: [
+                { id: "coaching", name: "Management Coaching", progressTarget: 100, actions: pickLegacyActions("MGMT PRES", ["Treinar management para apresentacoes com compradores", "Simular Q&A e antecipar questoes criticas"]) },
+                { id: "materials", name: "Materials Prep", progressTarget: 100, actions: pickLegacyActions("MGMT PRES", ["Preparar materiais de suporte e data pack"]) },
+                { id: "strategics", name: "Contact Strategics", progressTarget: 100, actions: pickLegacyActions("BUYERS", ["Contactar e qualificar estrategicos industriais"]) },
+                { id: "pe", name: "Contact PE", progressTarget: 100, actions: pickLegacyActions("BUYERS", ["Reunioes bilaterais com fundos de Private Equity", "Sessao colectiva de Q&A com todos os compradores"]) }
+            ]},
+            { id: "SHORTLIST", title: "Shortlist", desc: "Filtra compradores e mantém pressão competitiva saudável.", microPhases: [
+                { id: "score", name: "Scoring de compradores", progressTarget: 100, actions: [{ text: "Scorecard de compradores", hint: "Classifica fit estratégico, preço e executabilidade.", effects: { cliente: 2, fecho: 2, progressoFase: 50 }, log: "Scorecard de compradores finalizado com critérios objetivos." }] },
+                { id: "shortlist-build", name: "Construir shortlist", progressTarget: 100, actions: pickLegacyActions("BUYERS", ["Filter Bidders"]) }
+            ]},
+            { id: "NBOS", title: "NBOs", desc: "Analisa ofertas não vinculativas e gere alinhamento com o cliente.", microPhases: [
+                { id: "ioi", name: "IOI Analysis", progressTarget: 100, actions: pickLegacyActions("OFFERS", ["Solicitar e analisar IOIs dos compradores"]) },
+                { id: "terms", name: "Negotiate Terms", progressTarget: 100, actions: pickLegacyActions("OFFERS", ["Negociar termos e maximizar valor na shortlist"]) },
+                { id: "expectation", name: "Expectation Management", progressTarget: 100, actions: pickLegacyActions("OFFERS", ["Gerir expectativas do cliente sobre as ofertas"]) }
+            ]},
+            { id: "DUE DILIGENCE", title: "Due Diligence", desc: "Valida riscos e protege valor na fase mais exigente.", microPhases: [
+                { id: "dd-room", name: "Data Room", progressTarget: 100, actions: [{ text: "Organizar data room e trackers", hint: "Estrutura Q&A e responsabilidades por stream.", effects: { teamMorale: -2, progressoFase: 50 }, log: "Data room estruturado com governance operacional." }] },
+                { id: "dd-risk", name: "Risk Streams", progressTarget: 100, actions: [{ text: "Priorizar streams de risco", hint: "Foca fiscal, legal e comercial nos temas críticos.", effects: { fecho: 3, progressoFase: 50 }, log: "Riscos prioritários mapeados e tratados em primeiro lugar." }] },
+                { id: "dd-core", name: "DD Core", progressTarget: 100, actions: pickLegacyActions("DUE DILIGENCE", ["Conduzir Q&A tecnico e responder pedidos de DD", "Negociar temas criticos emergentes da DD"]) },
+                { id: "dd-close", name: "DD Wrap-up", progressTarget: 100, actions: pickLegacyActions("DUE DILIGENCE", ["Preparar red flags summary e plano de mitigacao"]) }
+            ]},
+            { id: "FINAL OFFERS", title: "Final Offers", desc: "Consolida ofertas finais e define exclusividade.", microPhases: [
+                { id: "binding-prep", name: "Preparar ronda final", progressTarget: 100, actions: [{ text: "Preparar ronda de final offers", hint: "Define instruções finais e calendário vinculativo.", effects: { cliente: 2, progressoFase: 50 }, log: "Ronda final de ofertas preparada com clareza." }] },
+                { id: "binding", name: "Exclusivity Binding", progressTarget: 100, actions: findLegacyPhaseById("BINDING OFFERS").actions.slice() },
+                { id: "binding-commit", name: "Commit de exclusividade", progressTarget: 100, actions: [{ text: "Formalizar compromisso de exclusividade", hint: "Confirma alinhamento final para SPA.", effects: { fecho: 3, progressoFase: 50 }, log: "Compromisso de exclusividade alinhado com as partes." }] }
+            ]},
+            { id: "SPA NEGOTIATION", title: "SPA Negotiation", desc: "Negocia termos jurídicos e económicos finais do SPA.", microPhases: [
+                { id: "spa-escrow", name: "Escrow/Caps", progressTarget: 100, actions: pickLegacyActions("SPA", ["Negociar escrow e caps de responsabilidade"]) },
+                { id: "spa-warranties", name: "Warranties", progressTarget: 100, actions: pickLegacyActions("SPA", ["Conceder warranties para acelerar assinatura", "Negociar clausulas criticas do SPA com advisors"]) },
+                { id: "spa-earnout", name: "Earn-out alignment", progressTarget: 100, actions: pickLegacyActions("SPA", ["Alinhar earn-out e mecanismos de ajuste de preco", "Briefing ao cliente sobre o progresso do SPA"]) }
+            ]},
+            { id: "SIGNING", title: "Signing", desc: "Coordena assinatura e resolução de pendências finais.", microPhases: [
+                { id: "signing-docs", name: "Documentação", progressTarget: 100, actions: pickLegacyActions("SIGNING", ["Preparar e rever documentos finais de assinatura", "Resolver pendencias de ultima hora das partes"]) },
+                { id: "signing-event", name: "Coordenação de assinatura", progressTarget: 100, actions: pickLegacyActions("SIGNING", ["Coordenar equipa e logistica da assinatura"]) }
+            ]},
+            { id: "CLOSING", title: "Closing", desc: "Executa waivers, registos e fecho financeiro do processo.", microPhases: [
+                { id: "closing-bank", name: "Waivers e fecho", progressTarget: 100, actions: pickLegacyActions("CLOSING", ["Coordenar waivers bancarios e consentimentos", "Acompanhar registos notariais e documentacao legal", "Comunicar progresso ao cliente na reta final"]) }
+            ]}
+        ];
+
+        var PHASES = PHASES_PRO;
+
         function injectActionRNG() {
             for (var p = 0; p < PHASES.length; p++) {
-                for (var a = 0; a < PHASES[p].actions.length; a++) {
-                    var act = PHASES[p].actions[a];
+                for (var m = 0; m < PHASES[p].microPhases.length; m++) {
+                    for (var a = 0; a < PHASES[p].microPhases[m].actions.length; a++) {
+                        var act = PHASES[p].microPhases[m].actions[a];
                     if (act.effects && !act.effects.success && !act.effects.failure) {
                         var successFx = act.effects;
                         act.effects = {
@@ -1393,6 +1476,7 @@
                             failure: { prob: 0.3, effects: { teamMorale: -2, cliente: -1 } }
                         };
                     }
+                }
                 }
             }
         }
@@ -1411,7 +1495,7 @@
                 "start.title": "M&A Dealmaker",
                 "start.subtitle": "Simulacao interactiva de mandato de venda — do pitch ao closing.",
                 "start.begin": "Iniciar Mandato",
-                "start.description": "Gere o cliente, a equipa e os compradores em 10 fases criticas. Usa Pontos de Acao por semana com sabedoria. Eventos aleatorios testam a tua resiliencia.",
+                "start.description": "Gere o cliente, a equipa e os compradores em 11 fases criticas. Usa Pontos de Acao por semana com sabedoria. Eventos aleatorios testam a tua resiliencia.",
                 "start.sector": "Setor de Atividade",
                 "start.sectorTechnology": "Technology / Software",
                 "start.sectorTechnologyDesc": "Multiplo alto · EBITDA mais leve",
@@ -1523,6 +1607,7 @@
             phaseLabel:         document.getElementById("phase-label"),
             phaseTitle:         document.getElementById("phase-title"),
             phaseDesc:          document.getElementById("phase-desc"),
+            microBreadcrumbs:   document.getElementById("microphase-breadcrumbs"),
             globalChoices:      document.getElementById("global-actions"),
             choices:            document.getElementById("choices"),
             eventArea:          document.getElementById("event-area"),
@@ -1583,26 +1668,27 @@
 
         var PHASE_WORKLOAD = {
             "PITCH": 10,
-            "TEASER / IM": 30,
-            "MGMT PRES": 25,
-            "BUYERS": 20,
-            "OFFERS": 25,
-            "DUE DILIGENCE": 50,
-            "BINDING OFFERS": 35,
-            "SPA": 35,
-            "SIGNING": 15,
+            "MANDATO ASSINADO": 15,
+            "PREPARACAO": 40,
+            "MARKET OUTREACH": 30,
+            "SHORTLIST": 20,
+            "NBOS": 25,
+            "DUE DILIGENCE": 55,
+            "FINAL OFFERS": 35,
+            "SPA NEGOTIATION": 40,
+            "SIGNING": 25,
             "CLOSING": 15
         };
 
         function getCurrentWorkload() {
-            if (!PHASES || state.phaseIndex >= PHASES.length) return 0;
-            var phaseId = PHASES[state.phaseIndex].id;
+            if (!PHASES || state.currentPhaseIndex >= PHASES.length) return 0;
+            var phaseId = PHASES[state.currentPhaseIndex].id;
             return PHASE_WORKLOAD[phaseId] || 0;
         }
 
         function getNextWorkload() {
-            if (!PHASES || (state.phaseIndex + 1) >= PHASES.length) return 0;
-            var nextId = PHASES[state.phaseIndex + 1].id;
+            if (!PHASES || (state.currentPhaseIndex + 1) >= PHASES.length) return 0;
+            var nextId = PHASES[state.currentPhaseIndex + 1].id;
             return PHASE_WORKLOAD[nextId] || 0;
         }
 
@@ -1801,7 +1887,7 @@
             var pressure = getWorkloadPressure();
             var burnoutPenalty = pressure.understaffed ? 10 : 0;
             var baseProbability = calculateClosingProbability({
-                phaseIndex: state.phaseIndex,
+                phaseIndex: state.currentPhaseIndex,
                 totalPhases: PHASES.length,
                 teamMorale: state.teamMorale,
                 clientTrust: state.cliente,
@@ -1962,9 +2048,11 @@
 
             if (outcome === "success") {
                 if (!selectExclusiveBidder(topBidder.nome)) return;
-                state.phaseIndex = 5; // Jump directly to Due Diligence
+                state.currentPhaseIndex = 6; // Jump directly to Due Diligence in PRO model
+                state.currentMicroPhaseIndex = 0;
                 state.skipBindingOffers = true;
                 state.progressoFase = 0;
+                state.progressoMicroFase = 0;
                 state.semanasNaFase = 0;
                 addLog("Pre-emptive strike bem-sucedido: fases de shortlist e binding offers foram contornadas.", "good");
                 gameHistory.push({ type: "phase_skip", label: "Pre-emptive Exclusivity", text: "Jump directo para Due Diligence" });
@@ -2006,21 +2094,24 @@
         }
 
         function getPhaseActions(phase) {
-            var actions = phase.actions.slice();
-            if (phase.id === "TEASER / IM" && state.hasVDD) {
+            var micro = phase.microPhases && phase.microPhases[state.currentMicroPhaseIndex]
+                ? phase.microPhases[state.currentMicroPhaseIndex]
+                : null;
+            var actions = micro && micro.actions ? micro.actions.slice() : [];
+            if (phase.id === "PREPARACAO" && micro && micro.id === "vdd" && state.hasVDD) {
                 actions = actions.filter(function(act) { return act.type !== "vdd_decision"; });
             }
-            if (phase.id === "MGMT PRES" && state.bidders && state.bidders.length > 0) {
+            if (phase.id === "MARKET OUTREACH" && micro && (micro.id === "strategics" || micro.id === "pe") && state.bidders && state.bidders.length > 0) {
                 for (var i = 0; i < state.bidders.length; i++) {
                     actions.push(buildMpActionForBidder(state.bidders[i]));
                 }
             }
-            if (phase.id === "OFFERS" && state.bidders && state.bidders.length > 0) {
+            if (phase.id === "NBOS" && micro && micro.id === "ioi" && state.bidders && state.bidders.length > 0) {
                 for (var k = 0; k < state.bidders.length; k++) {
                     actions.push(buildProbeActionForBidder(state.bidders[k]));
                 }
             }
-            if (phase.id === "BINDING OFFERS" && !state.bidderExclusivo && state.bidders && state.bidders.length > 0) {
+            if (phase.id === "FINAL OFFERS" && !state.bidderExclusivo && state.bidders && state.bidders.length > 0) {
                 actions = [];
                 for (var j = 0; j < state.bidders.length; j++) {
                     actions.push(buildBindingActionForBidder(state.bidders[j]));
@@ -2030,26 +2121,32 @@
         }
 
         function getPhaseProgressTarget(phaseId) {
-            var currentPhaseId = phaseId;
-            if (!currentPhaseId && state.phaseIndex < PHASES.length) {
-                currentPhaseId = PHASES[state.phaseIndex].id;
+            var phase = PHASES[state.currentPhaseIndex];
+            if (!phase || !phase.microPhases || !phase.microPhases[state.currentMicroPhaseIndex]) return 100;
+            return phase.microPhases[state.currentMicroPhaseIndex].progressTarget || 100;
+        }
+
+        function getCurrentPhaseAggregateTarget() {
+            var phase = PHASES[state.currentPhaseIndex];
+            if (!phase || !phase.microPhases) return 100;
+            var total = 0;
+            for (var i = 0; i < phase.microPhases.length; i++) {
+                total += (phase.microPhases[i].progressTarget || 100);
             }
-            if (!currentPhaseId) return 100;
-            if (currentPhaseId === "TEASER / IM" && state.hasVDD) return 150;
-            if (currentPhaseId === "DUE DILIGENCE" && state.hasVDD) return 50;
-            return 100;
+            return total || 100;
         }
 
         function getDeliverableNameForPhase(phaseId) {
             var names = {
                 "PITCH": "Equity Story Draft",
-                "TEASER / IM": "Draft Teaser",
-                "MGMT PRES": "Management Presentation",
-                "BUYERS": "Buyer Long List",
-                "OFFERS": "Indicative Offers Matrix",
+                "MANDATO ASSINADO": "Mandate Confirmation Pack",
+                "PREPARACAO": "Draft Teaser",
+                "MARKET OUTREACH": "Management Presentation",
+                "SHORTLIST": "Buyer Long List",
+                "NBOS": "Indicative Offers Matrix",
                 "DUE DILIGENCE": "Financial Model",
-                "BINDING OFFERS": "Binding Offer Comparison",
-                "SPA": "SPA Mark-up",
+                "FINAL OFFERS": "Binding Offer Comparison",
+                "SPA NEGOTIATION": "SPA Mark-up",
                 "SIGNING": "Signing Checklist",
                 "CLOSING": "Closing Memorandum"
             };
@@ -2057,8 +2154,8 @@
         }
 
         function createImmediateDeliverable(name, qualityBoost) {
-            if (state.currentDeliverable || state.phaseIndex >= PHASES.length) return false;
-            var phaseId = PHASES[state.phaseIndex].id;
+            if (state.currentDeliverable || state.currentPhaseIndex >= PHASES.length) return false;
+            var phaseId = PHASES[state.currentPhaseIndex].id;
             var baseRoll = 45 + Math.floor(Math.random() * 41);
             var usedBonus = !!state.nextDeliverableBonus;
             var quality = clamp(baseRoll + (qualityBoost || 0) + (usedBonus ? 25 : 0), 0, 120);
@@ -2087,9 +2184,9 @@
         }
 
         function maybeGenerateDeliverable(prevProgress, nextProgress) {
-            if (state.currentDeliverable || state.phaseIndex >= PHASES.length) return;
+            if (state.currentDeliverable || state.currentPhaseIndex >= PHASES.length) return;
             if (prevProgress < 50 && nextProgress >= 50) {
-                var phaseId = PHASES[state.phaseIndex].id;
+                var phaseId = PHASES[state.currentPhaseIndex].id;
                 if (state.generatedDeliverables[phaseId]) return;
                 var baseRoll = 35 + Math.floor(Math.random() * 71);
                 var moralePenalty = Math.max(0, 55 - state.teamMorale) * 1.2 + Math.max(0, 25 - state.teamMorale) * 1.4;
@@ -2140,7 +2237,7 @@
             if (action === "approve") {
                 if (doc.quality < 50) {
                     state.hiddenFlaws.push({
-                        phase: PHASES[state.phaseIndex] ? PHASES[state.phaseIndex].id : "UNKNOWN",
+                        phase: PHASES[state.currentPhaseIndex] ? PHASES[state.currentPhaseIndex].id : "UNKNOWN",
                         document: doc.name,
                         quality: doc.quality
                     });
@@ -2684,8 +2781,8 @@
             R.sSemana.textContent    = state.semanaAtual;
             var pressure = getWorkloadPressure();
             var nextWorkload = getNextWorkload();
-            var currentPhaseId = (PHASES[state.phaseIndex] && PHASES[state.phaseIndex].id) ? PHASES[state.phaseIndex].id : "-";
-            var nextPhaseId = (PHASES[state.phaseIndex + 1] && PHASES[state.phaseIndex + 1].id) ? PHASES[state.phaseIndex + 1].id : "-";
+            var currentPhaseId = (PHASES[state.currentPhaseIndex] && PHASES[state.currentPhaseIndex].id) ? PHASES[state.currentPhaseIndex].id : "-";
+            var nextPhaseId = (PHASES[state.currentPhaseIndex + 1] && PHASES[state.currentPhaseIndex + 1].id) ? PHASES[state.currentPhaseIndex + 1].id : "-";
             if (R.sTeamLoad) R.sTeamLoad.textContent = (currentLang === "pt" ? "Equipa" : "Team") + ": " + state.teamHeadcount + " | Cap: " + pressure.capacity + " | " + (currentLang === "pt" ? "Carga" : "Load") + ": " + currentPhaseId + " (" + pressure.workload + ") -> " + (currentLang === "pt" ? "Próxima" : "Next") + ": " + nextPhaseId + " (" + nextWorkload + ")";
             if (R.onboardingStatus) R.onboardingStatus.textContent = getOnboardingStatusText();
             R.sRestantes.textContent = (state.semanasTotais - state.semanaAtual) + " " + t("labels.remainingWeeks");
@@ -2703,10 +2800,12 @@
             R.endWeekBtn.className = (state.pontosAcao === 0) ? "" : "secondary";
 
             // Phase progress bar
-            var phaseTarget = getPhaseProgressTarget();
+            var phaseTarget = getCurrentPhaseAggregateTarget();
+            var microTarget = getPhaseProgressTarget();
+            var microPct = Math.round(clamp((state.progressoMicroFase / microTarget) * 100, 0, 100));
             var phasePct = Math.round(clamp((state.progressoFase / phaseTarget) * 100, 0, 100));
             R.progressoFaseBar.style.width   = phasePct + "%";
-            R.progressoFaseLabel.textContent = phasePct + "% (" + state.progressoFase + "/" + phaseTarget + ")";
+            R.progressoFaseLabel.textContent = phasePct + "% (" + state.progressoFase + "/" + phaseTarget + ") · Micro: " + microPct + "%";
 
             R.vddBadge.textContent = state.hasVDD ? "VDD: Active" : "VDD: Inactive";
             R.vddBadge.className = "vdd-badge" + (state.hasVDD ? " active" : "");
@@ -2772,13 +2871,16 @@
                 cliente: state.cliente, teamMorale: state.teamMorale,
                 avgInteresse: avgInteresse(),
                 ebitda: state.ebitda, multiplo: state.multiplo,
-                fecho: state.fecho, progressoFase: state.progressoFase
+                fecho: state.fecho, progressoFase: state.progressoFase, progressoMicroFase: state.progressoMicroFase
             };
             var skeys = Object.keys(fx);
             for (var j = 0; j < skeys.length; j++) {
                 var key = skeys[j];
                 if (BIDDER_FX_KEYS[key]) {
                     applyBidderEffects(fx[key], BIDDER_FX_KEYS[key]);
+                } else if (key === "progressoFase") {
+                    state.progressoFase += fx[key];
+                    state.progressoMicroFase += fx[key];
                 } else if (state[key] !== undefined) {
                     if (key === "feePercentage" || key === "baseFee" || key === "incentiveFee") {
                         state[key] = fx[key];
@@ -2793,6 +2895,7 @@
             state.multiplo      = clamp(parseFloat(state.multiplo.toFixed(2)), 4.0, 15.0);
             state.fecho         = clamp(state.fecho, 0, 100);
             state.progressoFase = clamp(state.progressoFase, 0, 150);
+            state.progressoMicroFase = clamp(state.progressoMicroFase, 0, 150);
             return {
                 deltas: {
                     cliente:      state.cliente      - before.cliente,
@@ -2801,7 +2904,8 @@
                     ebitda:       parseFloat((state.ebitda   - before.ebitda).toFixed(2)),
                     multiplo:     parseFloat((state.multiplo - before.multiplo).toFixed(2)),
                     fecho:        state.fecho        - before.fecho,
-                    progressoFase: state.progressoFase - before.progressoFase
+                    progressoFase: state.progressoFase - before.progressoFase,
+                    progressoMicroFase: state.progressoMicroFase - before.progressoMicroFase
                 },
                 outcome: resolved.outcome,
                 prob: resolved.prob,
@@ -2828,9 +2932,9 @@
         }
 
         function isPriceChippingPhase() {
-            if (state.phaseIndex >= PHASES.length) return false;
-            var phaseId = PHASES[state.phaseIndex].id;
-            return phaseId === "SPA" || phaseId === "SIGNING" || phaseId === "CLOSING";
+            if (state.currentPhaseIndex >= PHASES.length) return false;
+            var phaseId = PHASES[state.currentPhaseIndex].id;
+            return phaseId === "SPA NEGOTIATION" || phaseId === "SIGNING" || phaseId === "CLOSING";
         }
 
         function triggerPriceChipping() {
@@ -2940,7 +3044,7 @@
                 endGame("Deal leak/client walkout: final valuation fell more than 10% below client expectations.", "bad");
                 return;
             }
-            if (state.phaseIndex >= PHASES.length && finalEV > 0 && finalInterest > 0) {
+            if (state.currentPhaseIndex >= PHASES.length && finalEV > 0 && finalInterest > 0) {
                 endGame("Deal Closed Successfully: enterprise value and buyer engagement remained positive through closing.", "good");
                 return;
             }
@@ -3239,9 +3343,10 @@
                 if (!isNaN(basePct) && basePct > 0 && !isNaN(incentivePct) && incentivePct > 0) {
                     state.baseFee = basePct / 100;
                     state.incentiveFee = incentivePct / 100;
-                    state.progressoFase = 100;
+                    state.progressoFase = getCurrentPhaseAggregateTarget();
+                    state.progressoMicroFase = getPhaseProgressTarget();
                     addLog("Mandato assinado com fee ratchet: " + basePct.toFixed(2) + "% base / " + incentivePct.toFixed(2) + "% upside.", "good");
-                    updateStats({ progressoFase: 100 - previousProgress });
+                    updateStats({ progressoFase: state.progressoFase - previousProgress });
                     advancePhase();
                     return;
                 }
@@ -3254,8 +3359,8 @@
             var effectSpec = typeof act.getEffects === "function" ? act.getEffects() : act.effects;
             var actionResult = applyEffects(effectSpec, false);
             var deltas = actionResult.deltas;
-            gameHistory.push({ type: "choice", phase: PHASES[state.phaseIndex].id, text: act.text });
-            if (PHASES[state.phaseIndex] && PHASES[state.phaseIndex].id === "OFFERS") {
+            gameHistory.push({ type: "choice", phase: PHASES[state.currentPhaseIndex].id, text: act.text });
+            if (PHASES[state.currentPhaseIndex] && PHASES[state.currentPhaseIndex].id === "NBOS") {
                 state.exclusivityUnlocked = true;
             }
 
@@ -3287,7 +3392,7 @@
             } else if (act.type === "preemptive_exclusivity") {
                 applyPreemptiveExclusivity(actionResult.outcome);
                 if (actionResult.outcome === "success") {
-                    if (PHASES[state.phaseIndex] && PHASES[state.phaseIndex].id === "DUE DILIGENCE") {
+                    if (PHASES[state.currentPhaseIndex] && PHASES[state.currentPhaseIndex].id === "DUE DILIGENCE") {
                         runFatalDueDiligenceMassacre();
                         if (state.ended) return;
                     }
@@ -3329,6 +3434,7 @@
                 var targetEV = await showModal("Definir expectativa do cliente", "Negocia e fixa a expectativa inicial do cliente (M€).", expectedChoices);
                 if (targetEV === null || isNaN(targetEV) || targetEV <= 0) {
                     state.progressoFase = Math.max(0, state.progressoFase - 10);
+                    state.progressoMicroFase = Math.max(0, state.progressoMicroFase - 10);
                     addLog("Expectativa invalida. A ancora inicial continua pendente e o progresso desta accao foi anulado.", "warn");
                 } else {
                     state.clientExpectationEV = parseFloat(targetEV.toFixed(1));
@@ -3403,7 +3509,7 @@
                 }
             }
 
-            var currentPhaseId = PHASES[state.phaseIndex] ? PHASES[state.phaseIndex].id : null;
+            var currentPhaseId = PHASES[state.currentPhaseIndex] ? PHASES[state.currentPhaseIndex].id : null;
             applyPersonaTrustModifiers(currentPhaseId, deltas);
 
             if (deltas.teamMorale < 0) {
@@ -3427,12 +3533,20 @@
 
             maybeGenerateDeliverable(previousProgress, state.progressoFase);
 
-            // Phase completes when progressoFase reaches target for the current phase
-            if (!state.currentDeliverable && state.progressoFase >= getPhaseProgressTarget()) {
-                if (PHASES[state.phaseIndex].id === "PITCH" && !state.expectationAnchored) {
+            // Micro-phase completes when progressoMicroFase reaches target.
+            if (!state.currentDeliverable && state.progressoMicroFase >= getPhaseProgressTarget()) {
+                var currentPhase = PHASES[state.currentPhaseIndex];
+                if (currentPhase.id === "PITCH" && !state.expectationAnchored) {
                     addLog("Antes de fechar o Pitch, tens de negociar e fixar a expectativa inicial de valuation em M€.", "warn");
                 } else {
-                    advancePhase();
+                    state.currentMicroPhaseIndex++;
+                    state.progressoMicroFase = 0;
+                    if (state.currentMicroPhaseIndex >= currentPhase.microPhases.length) {
+                        advancePhase();
+                    } else {
+                        addLog("Micro-fase concluída: " + currentPhase.microPhases[state.currentMicroPhaseIndex - 1].name + ".", "good");
+                        renderPhase();
+                    }
                     return;
                 }
             }
@@ -3442,34 +3556,41 @@
 
         // ---- ADVANCE PHASE ----
         function advancePhase() {
-            var completed = PHASES[state.phaseIndex];
-            state.phaseIndex++;
+            var completed = PHASES[state.currentPhaseIndex];
+            state.currentPhaseIndex++;
+            state.currentMicroPhaseIndex = 0;
             state.progressoFase = 0;
+            state.progressoMicroFase = 0;
             state.semanasNaFase = 0;
             addLog("Fase " + completed.id + " concluida com sucesso!", "good");
             gameHistory.push({ type: "phase_complete", label: completed.id, text: "Fase concluida" });
 
-            if (state.phaseIndex >= PHASES.length) {
+            if (completed.id === "PITCH" && state.cliente < 70) {
+                endGame("Mandate Denied: o cliente terminou o Pitch com confiança insuficiente (<70).", "bad");
+                return;
+            }
+
+            if (state.currentPhaseIndex >= PHASES.length) {
                 finishCampaign();
                 return;
             }
 
-            if (state.skipBindingOffers && PHASES[state.phaseIndex].id === "BINDING OFFERS") {
-                addLog("Binding Offers contornada pela exclusividade pre-emptiva. Processo segue para SPA.", "warn");
-                state.phaseIndex++;
-                if (state.phaseIndex >= PHASES.length) {
+            if (state.skipBindingOffers && PHASES[state.currentPhaseIndex].id === "FINAL OFFERS") {
+                addLog("Final Offers contornada pela exclusividade pre-emptiva. Processo segue para SPA Negotiation.", "warn");
+                state.currentPhaseIndex++;
+                if (state.currentPhaseIndex >= PHASES.length) {
                     finishCampaign();
                     return;
                 }
             }
 
-            // Generate bidders when entering MGMT PRES (index 2), fallback on BUYERS (index 3)
-            if ((state.phaseIndex === 2 || state.phaseIndex === 3) && state.bidders.length === 0) {
+            // Generate bidders when entering market outreach / shortlist if absent.
+            if ((state.currentPhaseIndex === 3 || state.currentPhaseIndex === 4) && state.bidders.length === 0) {
                 state.bidders = gerarBidders();
                 addLog(state.bidders.length + " compradores identificados e qualificados para o processo.", "good");
             }
 
-            if (PHASES[state.phaseIndex] && PHASES[state.phaseIndex].id === "DUE DILIGENCE") {
+            if (PHASES[state.currentPhaseIndex] && PHASES[state.currentPhaseIndex].id === "DUE DILIGENCE") {
                 runFatalDueDiligenceMassacre();
                 if (state.ended) return;
             }
@@ -3568,16 +3689,31 @@
             updateStats();
             if (state.ended) return;
             if (checkLose()) return;
-            if (state.phaseIndex >= PHASES.length) { finishCampaign(); return; }
+            if (state.currentPhaseIndex >= PHASES.length) { finishCampaign(); return; }
 
-            var ph = PHASES[state.phaseIndex] || { id: "Unknown", title: "", desc: "", actions: [] };
+            var ph = PHASES[state.currentPhaseIndex] || { id: "Unknown", title: "", desc: "", microPhases: [] };
             var phaseActions = getPhaseActions(ph) || [];
             var total = PHASES.length;
-            var pct   = (state.phaseIndex / total) * 100;
+            var pct   = (state.currentPhaseIndex / total) * 100;
             if (R.progress) R.progress.style.width = pct + "%";
-            if (R.phaseLabel) R.phaseLabel.textContent = t("phase.prefix") + " " + (state.phaseIndex + 1) + " " + t("phase.of") + " " + total + " · " + ph.id;
+            var micro = ph.microPhases && ph.microPhases[state.currentMicroPhaseIndex] ? ph.microPhases[state.currentMicroPhaseIndex] : null;
+            if (R.phaseLabel) {
+                var microInfo = micro ? (" · Micro " + (state.currentMicroPhaseIndex + 1) + "/" + ph.microPhases.length) : "";
+                R.phaseLabel.textContent = t("phase.prefix") + " " + (state.currentPhaseIndex + 1) + " " + t("phase.of") + " " + total + " · " + ph.id + microInfo;
+            }
             if (R.phaseTitle) R.phaseTitle.textContent = ph.title || "";
             if (R.phaseDesc) R.phaseDesc.textContent = ph.desc || "";
+            if (R.microBreadcrumbs) {
+                var parts = [];
+                for (var b = 0; b < (ph.microPhases || []).length; b++) {
+                    var mp = ph.microPhases[b];
+                    var done = b < state.currentMicroPhaseIndex;
+                    var active = b === state.currentMicroPhaseIndex;
+                    var marker = done ? "●" : (active ? "◉" : "○");
+                    parts.push(marker + " " + mp.name);
+                }
+                R.microBreadcrumbs.textContent = parts.join("  ·  ");
+            }
             if (!R.choices) R.choices = document.getElementById("choices");
             if (!R.globalChoices) R.globalChoices = document.getElementById("global-actions");
             if (!R.choices || !R.globalChoices) {
@@ -3747,7 +3883,8 @@
             var personaCfg = getPersonaConfig();
             var startTeamMorale = cfg.start.teamMorale;
             state = {
-                phaseIndex:    0,
+                currentPhaseIndex:    0,
+                currentMicroPhaseIndex: 0,
                 ended:         false,
                 cliente:       cfg.start.cliente,
                 teamMorale:        startTeamMorale,
@@ -3780,6 +3917,7 @@
                 semanasTotais: 34,
                 pontosAcao:    calcPA(startTeamMorale),
                 progressoFase: 0,
+                progressoMicroFase: 0,
                 semanasNaFase: 0,
                 currentDeliverable: null,
                 hiddenFlaws: [],
