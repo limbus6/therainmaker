@@ -255,7 +255,16 @@
     let state = null;
     let selectedSector = sectors[0].key;
     let tutorialStep = 0;
-    const PHASES_PRO = [{ key: 'mandate', microPhases: [{ key: 'prep' }, { key: 'pitch' }, { key: 'close' }] }];
+    const PHASES_PRO = [{
+      key: 'mandate',
+      microPhases: [
+        { key: 'prep', label: { pt: 'Preparação', en: 'Preparation' } },
+        { key: 'marketing', label: { pt: 'Marketing', en: 'Marketing' } },
+        { key: 'diligence', label: { pt: 'Diligência', en: 'Due Diligence' } },
+        { key: 'negotiation', label: { pt: 'Negociação', en: 'Negotiation' } },
+        { key: 'closing', label: { pt: 'Closing', en: 'Closing' } }
+      ]
+    }];
     const R = { get choices(){ return el('action-list'); } };
 
     const el = (id) => document.getElementById(id);
@@ -341,7 +350,7 @@
       state = {
         activeSlot: slot,
         currentDeal: 1,
-        totalDeals: 3,
+        totalDeals: 5,
         careerCash: 2.5,
         officeLevel: 0,
         team: [member('Inês', 'Analyst'), member('Tomás', 'Associate')],
@@ -379,12 +388,19 @@
     }
 
     const actions = [
-      { key:'model', branch:'financial', ap:1, load:12, base:0.62, label:{pt:'Financial Modelling',en:'Financial Modelling'}, effect:(ok,d)=>{ if(ok){d.closeProbability += 8; d.netMargin += 1.1; xp('financial');} else d.relationship -= 4; } },
-      { key:'spa', branch:'legal', ap:1, load:11, base:0.58, label:{pt:'SPA / Liability Review',en:'SPA / Liability Review'}, effect:(ok,d)=>{ if(ok){d.closeProbability += 9; d.netMargin += 0.9; xp('legal');} else d.relationship -= 5; } },
-      { key:'pitch', branch:'commercial', ap:1, load:10, base:0.64, label:{pt:'Pitch & Buyer Outreach',en:'Pitch & Buyer Outreach'}, effect:(ok,d)=>{ if(ok){d.closeProbability += 7; d.relationship += 4; xp('commercial');} else d.closeProbability -= 3; } },
-      { key:'fee', branch:'commercial', ap:1, load:8, base:0.55, label:{pt:'Fee Negotiation',en:'Fee Negotiation'}, effect:(ok,d)=>{ if(ok){d.feeAgreed=true; d.relationship +=6; d.netMargin += 1.6; xp('commercial');} else d.relationship -= 8; } },
-      { key:'close', branch:'legal', ap:2, load:14, base:0.45, label:{pt:'Attempt Closing',en:'Attempt Closing'}, gated:true, effect:(ok,d)=>{ if(ok){d.completed=true; d.closeProbability += 15;} else {d.relationship -= 10; d.closeProbability -= 8;} } }
+      { key:'model', branch:'financial', ap:1, load:12, base:0.62, phases:['prep','diligence'], label:{pt:'Financial Modelling',en:'Financial Modelling'}, effect:(ok,d)=>{ if(ok){d.closeProbability += 8; d.netMargin += 1.1; xp('financial');} else d.relationship -= 4; } },
+      { key:'spa', branch:'legal', ap:1, load:11, base:0.58, phases:['diligence','negotiation'], label:{pt:'SPA / Liability Review',en:'SPA / Liability Review'}, effect:(ok,d)=>{ if(ok){d.closeProbability += 9; d.netMargin += 0.9; xp('legal');} else d.relationship -= 5; } },
+      { key:'pitch', branch:'commercial', ap:1, load:10, base:0.64, phases:['marketing','negotiation'], label:{pt:'Pitch & Buyer Outreach',en:'Pitch & Buyer Outreach'}, effect:(ok,d)=>{ if(ok){d.closeProbability += 7; d.relationship += 4; xp('commercial');} else d.closeProbability -= 3; } },
+      { key:'fee', branch:'commercial', ap:1, load:8, base:0.55, phases:['negotiation'], label:{pt:'Fee Negotiation',en:'Fee Negotiation'}, effect:(ok,d)=>{ if(ok){d.feeAgreed=true; d.relationship +=6; d.netMargin += 1.6; xp('commercial');} else d.relationship -= 8; } },
+      { key:'close', branch:'legal', ap:2, load:14, base:0.45, phases:['closing'], label:{pt:'Attempt Closing',en:'Attempt Closing'}, gated:true, effect:(ok,d)=>{ if(ok){d.completed=true; d.closeProbability += 15;} else {d.relationship -= 10; d.closeProbability -= 8;} } }
     ];
+
+    const phaseTransitions = {
+      prep: { trigger: ['model'], next: 'marketing' },
+      marketing: { trigger: ['pitch'], next: 'diligence' },
+      diligence: { trigger: ['spa'], next: 'negotiation' },
+      negotiation: { trigger: ['fee'], next: 'closing' }
+    };
 
     function xp(branch) {
       const target = state.team.reduce((a,b)=> a.xp <= b.xp ? a : b, state.team[0]);
@@ -395,6 +411,11 @@
       const d = state.current;
       const a = actions.find(x=>x.key===key);
       if (!a || d.completed) return;
+      const currentMicro = ensureValidMicroPhase();
+      if (a.phases && !a.phases.includes(currentMicro.key)) {
+        log(`Ação indisponível na fase ${label(currentMicro.label)}.`, 'bad');
+        return;
+      }
       if (a.gated && !d.feeAgreed) { log('Fee gate bloqueia closing.', 'bad'); return; }
       if (d.ap < a.ap) { log('Sem AP suficiente.', 'bad'); return; }
       d.ap -= a.ap;
@@ -411,8 +432,11 @@
       d.closeProbability = Math.max(0, Math.min(95, d.closeProbability));
       d.relationship = Math.max(0, Math.min(100, d.relationship));
       d.morale = Math.max(0, Math.min(100, d.morale));
-      if (a.key === 'pitch') state.currentMicroPhaseIndex = 1;
-      if (a.key === 'close') state.currentMicroPhaseIndex = 2;
+      const transition = phaseTransitions[currentMicro.key];
+      if (transition && ok && transition.trigger.includes(a.key)) {
+        const nextIndex = PHASES_PRO[0].microPhases.findIndex(m => m.key === transition.next);
+        if (nextIndex >= 0) state.currentMicroPhaseIndex = nextIndex;
+      }
       closeDrawer();
       log(`${label(a.label)}: ${ok ? '✓' : '✗'} (${Math.round(p*100)}%)`, ok ? 'good' : 'bad');
       renderPhase();
@@ -487,6 +511,8 @@
     function startNextDeal(sectorKey) {
       state.currentDeal += 1;
       state.current = makeDeal(sectorKey, state.officeLevel);
+      state.currentPhaseIndex = 0;
+      state.currentMicroPhaseIndex = 0;
       state.current.logs.push('Novo mandato iniciado com recursos da carreira anterior.');
       el('between-overlay').classList.add('hidden');
       autoSave();
@@ -569,17 +595,23 @@
     function renderActions() {
       const box = el('action-list');
       box.innerHTML = '';
+      const currentMicro = ensureValidMicroPhase();
       actions.forEach(a => {
         const b = document.createElement('button');
         b.className = 'action';
-        b.disabled = state.current.completed;
-        b.innerHTML = `<strong>${label(a.label)}</strong><small>AP ${a.ap} · ${a.branch} · +load ${a.load}</small>`;
+        const isUnlocked = !a.phases || a.phases.includes(currentMicro.key);
+        b.disabled = state.current.completed || !isUnlocked;
+        b.innerHTML = `<strong>${label(a.label)}</strong><small>AP ${a.ap} · ${a.branch} · +load ${a.load}</small>${!isUnlocked ? `<small>${meta.language === 'pt' ? 'Disponível em:' : 'Available in:'} ${a.phases.map(k => {
+          const phase = PHASES_PRO[0].microPhases.find(m => m.key === k);
+          return phase ? label(phase.label) : k;
+        }).join(', ')}</small>` : ''}`;
         b.onclick = ()=>doAction(a.key);
         box.appendChild(b);
       });
       const closeButton = document.createElement('button');
       closeButton.className = 'primary';
-      closeButton.textContent = meta.language === 'pt' ? 'Fechar mandato agora' : 'Close mandate now';
+      closeButton.disabled = !state.current.completed;
+      closeButton.textContent = meta.language === 'pt' ? 'Concluir mandato (após closing)' : 'Close mandate (after closing)';
       closeButton.onclick = ()=>finishDeal(null);
       box.appendChild(closeButton);
     }
@@ -715,6 +747,7 @@
       renderSectorGrid();
       if (!state) return;
       const d = state.current;
+      const currentMicro = ensureValidMicroPhase();
       el('s-deal').textContent = `${state.currentDeal}/${state.totalDeals}`;
       el('s-week').textContent = `${d.week}`;
       el('s-cash').textContent = `€${state.careerCash.toFixed(1)}M`;
@@ -723,7 +756,7 @@
       el('s-score').textContent = `${Math.round(state.careerScore)}`;
       el('workload-fill').style.width = `${Math.min(100, (d.workload / Math.max(1,d.capacity))*100)}%`;
       el('dealHeader').textContent = `${d.sectorName} · EV ≈ €${(d.ebitda*d.multiple).toFixed(1)}M`;
-      el('dealContext').textContent = `Rel ${d.relationship} · Morale ${d.morale} · Close Prob ${d.closeProbability}% · Fee ${d.feeAgreed ? '✓' : '✗'}`;
+      el('dealContext').textContent = `Fase ${label(currentMicro.label)} · Rel ${d.relationship} · Morale ${d.morale} · Close Prob ${d.closeProbability}% · Fee ${d.feeAgreed ? '✓' : '✗'}`;
       el('betweenDesc').textContent = `Career Cash: €${state.careerCash.toFixed(1)}M | Office Lv.${state.officeLevel}`;
 
       const logBox = el('log');
