@@ -709,6 +709,8 @@
                 </div>
             </div>
 
+            <div class="small" id="s-team-load" style="margin:0 0 12px;">Equipa: 3 | Cap: 45 | Carga: 10</div>
+
             <div id="bidder-list"></div>
 
             <!-- Pontos de Acao display -->
@@ -1345,19 +1347,47 @@
             gameLayout:         document.getElementById("game-layout"),
             postmortemNarrative:document.getElementById("postmortem-narrative"),
             mandateSector:      document.getElementById("mandate-sector"),
-            mandatePersona:     document.getElementById("mandate-persona")
+            mandatePersona:     document.getElementById("mandate-persona"),
+            sTeamLoad:          document.getElementById("s-team-load")
         };
 
         // ---- HELPERS ----
         function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
+        var PHASE_WORKLOAD = {
+            "PITCH": 10,
+            "TEASER / IM": 30,
+            "MGMT PRES": 25,
+            "BUYERS": 20,
+            "OFFERS": 25,
+            "DUE DILIGENCE": 50,
+            "BINDING OFFERS": 35,
+            "SPA": 35,
+            "SIGNING": 15,
+            "CLOSING": 15
+        };
+
+        function getCurrentWorkload() {
+            if (!PHASES || state.phaseIndex >= PHASES.length) return 0;
+            var phaseId = PHASES[state.phaseIndex].id;
+            return PHASE_WORKLOAD[phaseId] || 0;
+        }
+
+        function getTeamCapacity() {
+            return (state.teamHeadcount || 0) * 15;
+        }
+
+        function getWorkloadPressure() {
+            var workload = getCurrentWorkload();
+            var capacity = getTeamCapacity();
+            return { workload: workload, capacity: capacity, understaffed: workload > capacity, oversized: capacity > (workload + 20) };
+        }
+
         // Calculate Action Points from team strength
         function calcPA(teamMorale) {
-            var baseCap = 0;
-            if (teamMorale > 60) baseCap = 3;
-            else if (teamMorale >= 30) baseCap = 2;
-            else baseCap = 1;
-            return baseCap + (state.hiredHeadcountBoost || 0);
+            if (teamMorale > 60) return 3;
+            if (teamMorale >= 30) return 2;
+            return 1;
         }
 
         // Enterprise Value = EBITDA x Multiple (M€), floored by minimums
@@ -1535,7 +1565,13 @@
 
         function calculateClosingProbability() {
             var exclusive = resolveExclusiveBidder({ strict: true });
-            return computeClosingProbability({
+            if (!exclusive) return 0;
+            var pressure = getWorkloadPressure();
+            var burnoutPenalty = pressure.understaffed ? 10 : 0;
+            var phaseProgressFactor = clamp(state.phaseIndex / Math.max(1, PHASES.length - 1), 0, 1);
+            var maturityBonus = Math.round(phaseProgressFactor * 12);
+            var bidderInterestBonus = Math.round((clamp(exclusive.interesse || 0, 0, 100) - 50) * 0.22);
+            var baseProbability = computeClosingProbability({
                 phaseIndex: state.phaseIndex,
                 teamMorale: state.teamMorale,
                 clientTrust: state.cliente,
@@ -1543,6 +1579,7 @@
                 isMacroNegative: isMacroMarketNegative(),
                 exclusiveBidder: exclusive
             });
+            return clamp(Math.round(baseProbability + maturityBonus + bidderInterestBonus - burnoutPenalty), 0, 100);
         }
 
         function getTopBidderByOffer() {
@@ -1653,10 +1690,11 @@
                 addLog("Armadilha da ancora agressiva: a oferta exclusiva ficou abaixo da expectativa inicial e a confianca do cliente desabou.", "bad");
             }
 
-            // Founder cascade hotfix: cap cumulative trust hit in this event
-            clientePenalty = clamp(clientePenalty, 0, 22);
+            // Founder trust cap per event
+            if (state.persona === "founder") clientePenalty = clamp(clientePenalty, 0, 22);
 
             state.bidderExclusivo = exclusive.nome;
+            state.exclusivityUnlocked = true;
             state.initialExpectedValue = bidderOfferEUR(exclusive);
             exclusive.shortlisted = true;
             if (!state.droppedBidders) state.droppedBidders = [];
@@ -1931,11 +1969,11 @@
         }
 
         function getGlobalActions() {
-            return [
+            var actions = [
                 {
                     id: "hire_analyst_associate",
                     text: "Hire Analyst/Associate (Contratar)",
-                    hint: "+1 headcount permanente, Team Morale -10, e +1 ao cap de Pontos de Acao em todas as semanas futuras.",
+                    hint: "+1 headcount permanente. Moral ajustada pela carga real da equipa (bónus em burnout, penalização em sobredimensão).",
                     apCost: 1,
                     weekCost: 0
                 },
@@ -1954,18 +1992,38 @@
                     weekCost: 0
                 }
             ];
+            if (state.exclusivityUnlocked && state.bidders && state.bidders.length > 0 && !state.bidderExclusivo) {
+                for (var i = 0; i < state.bidders.length; i++) {
+                    actions.push({
+                        id: "enter_exclusivity",
+                        bidderName: state.bidders[i].nome,
+                        text: "Enter Exclusivity (Entrar em Exclusividade) — " + state.bidders[i].nome,
+                        hint: "Acao global persistente: fecha o mercado e avanca com um comprador activo.",
+                        apCost: 1,
+                        weekCost: 0
+                    });
+                }
+            }
+            return actions;
         }
 
-        function doGlobalAction(actionId) {
+        function doGlobalAction(actionId, bidderName) {
             if (state.ended || state.pontosAcao <= 0) return;
 
             if (actionId === "hire_analyst_associate") {
                 state.pontosAcao -= 1;
                 state.teamHeadcount += 1;
                 state.hiredHeadcountBoost += 1;
-                state.teamMorale = clamp(state.teamMorale - 10, 0, 100);
-                addLog("Novo Analyst/Associate contratado: headcount +1, Team Morale -10 e cap de PA semanal +1 permanente.", "warn");
-                updateStats({ teamMorale: -10 });
+                var pressureBeforeHire = getWorkloadPressure();
+                var moraleDelta = 0;
+                if (pressureBeforeHire.understaffed) {
+                    moraleDelta = 10;
+                } else if (pressureBeforeHire.oversized) {
+                    moraleDelta = -10;
+                }
+                state.teamMorale = clamp(state.teamMorale + moraleDelta, 0, 100);
+                addLog("Novo Analyst/Associate contratado: headcount +1. Impacto na moral pela carga da equipa: " + (moraleDelta > 0 ? "+" : "") + moraleDelta + ".", moraleDelta >= 0 ? "good" : "bad");
+                updateStats({ teamMorale: moraleDelta });
                 if (checkLose()) return;
                 renderPhase();
                 return;
@@ -1992,6 +2050,23 @@
                     return;
                 }
                 if (checkLose()) return;
+                renderPhase();
+            }
+
+
+            if (actionId === "enter_exclusivity") {
+                state.pontosAcao -= 1;
+                if (!bidderName) {
+                    addLog("Exclusividade abortada: nome do comprador em falta.", "bad");
+                    renderPhase();
+                    return;
+                }
+                if (!selectExclusiveBidder(bidderName)) {
+                    renderPhase();
+                    return;
+                }
+                addLog("Exclusividade activada por acao global persistente.", "warn");
+                updateStats({ cliente: 0, teamMorale: 0 });
                 renderPhase();
             }
         }
@@ -2256,6 +2331,8 @@
 
             // Turn-based displays
             R.sSemana.textContent    = state.semanaAtual;
+            var pressure = getWorkloadPressure();
+            if (R.sTeamLoad) R.sTeamLoad.textContent = "Equipa: " + state.teamHeadcount + " | Cap: " + pressure.capacity + " | Carga: " + pressure.workload;
             R.sRestantes.textContent = (state.semanasTotais - state.semanaAtual) + " restantes";
             R.sPA.textContent        = state.pontosAcao;
 
@@ -2754,6 +2831,9 @@
             var actionResult = applyEffects(effectSpec, false);
             var deltas = actionResult.deltas;
             gameHistory.push({ type: "choice", phase: PHASES[state.phaseIndex].id, text: act.text });
+            if (PHASES[state.phaseIndex] && PHASES[state.phaseIndex].id === "OFFERS") {
+                state.exclusivityUnlocked = true;
+            }
 
             if (act.type === "filter_bidders") {
                 filterTopBidders();
@@ -2978,10 +3058,8 @@
             var triggerRandom = opts.triggerRandom !== false;
             var triggerPriceChipping = opts.triggerPriceChipping !== false;
 
-            // 1. Increment week and phase weeks
             state.semanaAtual++;
             state.semanasNaFase++;
-
             if (opts.clearEventArea !== false) {
                 R.eventArea.innerHTML = "";
             }
@@ -2991,38 +3069,21 @@
                 return false;
             }
 
-            // 2. Patience penalty for slow execution
-            var patienceThreshold = Math.round(getPhaseProgressTarget() * 0.8);
-            if (state.semanasNaFase > 5 && state.progressoFase < patienceThreshold) {
-                var penalty = -2;
-                state.cliente = clamp(state.cliente + penalty, 0, 100);
-                addLog("O cliente esta a perder paciencia — a fase actual esta a demorar demasiado.", "bad");
-                showDelta(R.dCliente, penalty);
-                if (checkLose()) return false;
-            }
-
-            // 3. Weekly burn (EUR) into advisor net margin proxy (execution costs)
-            var weeklyBurn = (state.teamHeadcount || 0) * (state.weeklyCostPerHead || 0);
+            var weeklyBurn = (state.teamHeadcount || 0) * 0.005;
             state.extraExecutionCosts = parseFloat(((state.extraExecutionCosts || 0) + weeklyBurn).toFixed(3));
 
-            // 4. AP restoration from morale-adjusted capacity
-            state.teamHeadcountFatigue = clamp(state.teamHeadcountFatigue + (state.teamMorale >= 55 ? 2 : 4), 0, 100);
-            var effectiveMorale = clamp(state.teamMorale - Math.round(state.teamHeadcountFatigue * 0.35), 0, 100);
-            state.pontosAcao = calcPA(effectiveMorale);
-
-            // 5. Conditional confidence decay when team morale is too low
-            if (state.bidders && state.bidders.length > 0 && state.teamMorale < 40) {
-                for (var i = 0; i < state.bidders.length; i++) {
-                    var decay = Math.round(2 * state.bidders[i].dropRate);
-                    state.bidders[i].interesse = clamp(state.bidders[i].interesse - decay, 0, 100);
-                }
-                addLog("Equipa fraca — compradores a perder confianca no processo.", "bad");
-                if (checkLose()) return false;
+            var pressure = getWorkloadPressure();
+            if (pressure.understaffed) {
+                state.teamMorale = clamp(state.teamMorale - 5, 0, 100);
+                addLog("Carga superior à capacidade: burnout semanal na equipa (-5 moral).", "bad");
+            } else if (pressure.oversized) {
+                state.teamMorale = clamp(state.teamMorale - 2, 0, 100);
+                addLog("Equipa sobredimensionada para a carga actual: ineficiência semanal (-2 moral).", "warn");
             }
 
+            state.pontosAcao = calcPA(state.teamMorale);
             addLog("Semana " + state.semanaAtual + " iniciada. " + state.pontosAcao + " pontos de acao disponiveis.", "warn");
 
-            // 6. Macro and random events
             if (triggerMacro) {
                 maybeMacroEvent();
                 if (state.ended) return false;
@@ -3036,7 +3097,6 @@
                 if (state.ended) return false;
             }
 
-            // 7. Lose-condition validation and full rerender
             if (checkLose()) return false;
             renderPhase();
             return true;
@@ -3122,7 +3182,7 @@
                         '<span class="choice-hint" style="color:var(--accent);font-size:0.72rem;margin-top:3px;">' +
                         "▸ " + actionCost + " Ponto" + (actionCost > 1 ? "s" : "") + " de Acao" + (act.weekCost ? " · " + act.weekCost + " semana" : "") + "</span>";
                     btn.disabled = noPA || boardLocked || state.pontosAcao < actionCost;
-                    btn.addEventListener("click", function() { doGlobalAction(act.id); });
+                    btn.addEventListener("click", function() { doGlobalAction(act.id, act.bidderName); });
                     R.globalChoices.appendChild(btn);
                 })(globalActions[g]);
             }
@@ -3268,7 +3328,8 @@
                 lastMacroWeek: 0,
                 lastMacroTitle: "mercado sem choque macro recente",
                 peFinancingRiskActive: false,
-                peFinancingRiskLastWeek: 0
+                peFinancingRiskLastWeek: 0,
+                exclusivityUnlocked: false
             };
             gameHistory = [];
             R.log.innerHTML       = "";
