@@ -1453,85 +1453,112 @@
             return selected;
         }
 
+        
+        var ACTION_I18N = { pt: {}, en: {} };
+
+        function registerActionI18n(id, name, hint) {
+            ACTION_I18N.pt["action." + id + ".name"] = name;
+            ACTION_I18N.pt["action." + id + ".hint"] = hint;
+            ACTION_I18N.en["action." + id + ".name"] = name;
+            ACTION_I18N.en["action." + id + ".hint"] = hint;
+        }
+
+        function buildAction(id, cfg) {
+            registerActionI18n(id, cfg.name, cfg.hint);
+            var successFx = cfg.success || cfg.effects || { progressoFase: 8, cliente: 1 };
+            var failureFx = cfg.failure || { progressoFase: 3, teamMorale: -2 };
+            return {
+                id: id,
+                type: cfg.type,
+                textKey: "action." + id + ".name",
+                hintKey: "action." + id + ".hint",
+                baseProb: cfg.baseProb || 68,
+                clientTypeMod: cfg.clientTypeMod || 0,
+                workloadPenaltyEligible: cfg.workloadPenaltyEligible !== false,
+                effects: { success: { prob: 0.7, effects: successFx }, failure: { prob: 0.3, effects: failureFx } },
+                log: cfg.log || cfg.name,
+                apCost: cfg.apCost || 1
+            };
+        }
+
+        function generateMicroActions(prefix, names, baseProb, fxTemplate) {
+            var out = [];
+            for (var i = 0; i < names.length; i++) {
+                out.push(buildAction(prefix + '-' + (i + 1), {
+                    name: names[i],
+                    hint: "Executa " + names[i].toLowerCase() + " com disciplina e ritmo semanal.",
+                    baseProb: baseProb,
+                    effects: { cliente: fxTemplate.cliente || 2, teamMorale: fxTemplate.teamMorale || -1, fecho: fxTemplate.fecho || 2, progressoFase: fxTemplate.progressoFase || 12 },
+                    failure: { cliente: -2, teamMorale: -2, progressoFase: 4 },
+                    log: names[i] + " concluído."
+                }));
+            }
+            return out;
+        }
+
         var PHASES_PRO = [
-            { id: "PITCH", title: "Pitch inicial ao accionista", desc: "Ganha o mandato com credibilidade comercial e alinhamento de expectativas.", microPhases: [
-                { id: "equity-story", name: "Equity Story", progressTarget: 100, actions: pickLegacyActions("PITCH", ["Develop Go-to-Market Narrative"]) },
-                { id: "valuation-anchor", name: "Valuation Anchor", progressTarget: 100, actions: pickLegacyActions("PITCH", ["Definir expectativa inicial de valuation (M€)"]) },
-                { id: "comparables", name: "Market Comparables", progressTarget: 100, actions: pickLegacyActions("PITCH", ["Review Market Comparables"]) },
-                { id: "mapping", name: "Market Mapping", progressTarget: 100, actions: pickLegacyActions("PITCH", ["Promise Detailed Market Mapping"]) },
-                { id: "alignment", name: "Client Alignment", progressTarget: 100, actions: [{ text: "Alinhar mandato, governance e calendário", hint: "Consolida compromisso do cliente para a execução do processo.", effects: { cliente: 6, fecho: 2, progressoFase: 20, progressoMicroFase: 100 }, log: "Cliente alinhado com governance e calendário do mandato." }] },
-                { id: "fee-negotiation", name: "Negociação de Fees", progressTarget: 100, actions: pickLegacyActions("PITCH", ["Negotiate Fee Ratchet"]) }
+            { id: "PITCH", title: "Pitch inicial ao accionista", desc: "Fase comercial crítica para conquistar o mandato.", microPhases: [
+                { id: "p0-1", name: "0.1 Diagnóstico inicial", progressTarget: 100, actions: generateMicroActions("p01", ["Kick-off com acionistas", "Mapeamento de objetivos", "Análise de posicionamento", "Plano de comunicação"], 70, { cliente: 3, fecho: 1, progressoFase: 10 }) },
+                { id: "p0-2", name: "0.2 Equity Story", progressTarget: 100, actions: generateMicroActions("p02", ["Narrativa equity story", "Mensagens para investidores", "Tese de crescimento", "Validação com CFO"], 68, { cliente: 2, fecho: 2, progressoFase: 10 }) },
+                { id: "p0-3", name: "0.3 Valuation Anchor", progressTarget: 100, actions: [buildAction("set-expectation", { type: "set_client_expectation", name: "Definir expectativa EV do cliente", hint: "Formaliza a âncora de valuation em M€.", baseProb: 75, effects: { cliente: 4, fecho: 2, progressoFase: 20 }, failure: { cliente: -5, progressoFase: 5 }, log: "Expectativa de EV discutida com cliente." })].concat(generateMicroActions("p03", ["Revisão de comparáveis", "Sensibilidade de múltiplos", "Alinhamento de downside"], 66, { fecho: 2, progressoFase: 10 })) },
+                { id: "p0-4", name: "0.4 Roadmap de processo", progressTarget: 100, actions: generateMicroActions("p04", ["Roadmap de marcos", "Calendário macro", "Plano de governance", "Matriz de riscos"], 67, { teamMorale: 1, fecho: 1, progressoFase: 10 }) },
+                { id: "p0-5", name: "0.5 Ensaios de pitch", progressTarget: 100, actions: generateMicroActions("p05", ["Ensaio interno", "Q&A desafiante", "Refino visual", "Storyline final"], 69, { cliente: 2, teamMorale: 1, progressoFase: 10 }) },
+                { id: "p0-6", name: "0.6 Negociação de Fees", progressTarget: 100, actions: [buildAction("fee-negotiation", { type: "negotiate_fee_ratchet", name: "Negociação de Fees", hint: "Define base fee e incentive fee no mandato.", baseProb: 72, effects: { cliente: 5, progressoFase: 20 }, failure: { cliente: -10, progressoFase: 0 }, log: "Negociação de fees executada." })] },
+                { id: "p0-8", name: "0.8 Final Pitch Presentation", progressTarget: 100, actions: generateMicroActions("p08", ["Apresentação final", "Gestão de objeções", "Negociação de scope", "Confirmação de mandato"], 70, { cliente: 4, fecho: 2, progressoFase: 10 }) }
             ]},
-            { id: "MANDATO ASSINADO", title: "Mandato Assinado", desc: "Formaliza o mandato e as regras de trabalho com o cliente.", microPhases: [
-                { id: "mandate-confirm", name: "Confirmação do mandato", progressTarget: 100, actions: [{ text: "Formalizar mandato e governance", hint: "Acorda escopo, calendário e responsáveis.", effects: { cliente: 5, fecho: 2, progressoFase: 50 }, log: "Mandato formalizado com governance clara entre advisor e cliente." }] },
-                { id: "team-kickoff", name: "Kick-off interno", progressTarget: 100, actions: [{ text: "Kick-off com equipa alargada", hint: "Alinha equipa, responsabilidades e ritmo semanal.", effects: { teamMorale: 4, progressoFase: 50 }, log: "Kick-off operacional concluído com plano de execução validado." }] }
+            { id: "MANDATO ASSINADO", title: "Mandato assinado", desc: "Arranque operacional do projeto com governance robusta.", microPhases: [
+                { id: "p1-1", name: "1.1 Kick-off do mandato", progressTarget: 100, actions: generateMicroActions("p11", ["Kick-off formal", "RACI do projeto", "Plano de weekly steering", "Protocolos de decisão"], 71, { cliente: 2, teamMorale: 2, progressoFase: 12 }) },
+                { id: "p1-2", name: "1.2 Definir Governance", progressTarget: 100, actions: [buildAction("governance", { name: "Definir Governance", hint: "Clarifica fórum de decisão e escalonamento.", baseProb: 78, success: { risk: -6, teamMorale: 4, progressoFase: 24, cliente: 3 }, failure: { cliente: -3, progressoFase: 6 }, log: "Governance do mandato definida." })].concat(generateMicroActions("p12", ["Agenda de comités", "Fluxo de approvals", "Regras de confidencialidade"], 70, { progressoFase: 10 })) }
             ]},
-            { id: "PREPARACAO", title: "Preparação", desc: "Constrói materiais de venda robustos e prepara a tese financeira.", microPhases: [
-                { id: "teaser", name: "Teaser Struct", progressTarget: 100, actions: [{ text: "Estruturar teaser para mercado", hint: "Define narrativa curta e critérios de confidencialidade.", effects: { fecho: 2, progressoFase: 50 }, log: "Estrutura do teaser consolidada para outreach." }] },
-                { id: "teaser-im", name: "Teaser/IM Writing", progressTarget: 100, actions: pickLegacyActions("TEASER / IM", ["Redigir e finalizar Information Memorandum"]) },
-                { id: "growth", name: "Growth Narrative", progressTarget: 100, actions: pickLegacyActions("TEASER / IM", ["Afinar narrativa de crescimento e projecoes financeiras", "Validar IM e financials com o cliente"]) },
-                { id: "vdd", name: "VDD Decision", progressTarget: 100, actions: pickLegacyActions("TEASER / IM", ["Decidir Vendor Due Diligence (VDD)"]) }
+            { id: "PREPARACAO", title: "Preparação", desc: "Construção de materiais e readiness do data room.", microPhases: [
+                { id: "p2-1", name: "2.1 Recolha documental", progressTarget: 100, actions: [buildAction("doc-collection", { name: "Recolha Documental", hint: "Compila documentação financeira, legal e operacional.", baseProb: 73, success: { teamMorale: -6, risk: -5, progressoFase: 28 }, failure: { teamMorale: -4, progressoFase: 8 }, log: "Recolha documental concluída." })].concat(generateMicroActions("p21", ["Data request list", "Reconciliação financeira", "Inventário de contratos"], 66, { progressoFase: 9 })) },
+                { id: "p2-2", name: "2.2 Teaser", progressTarget: 100, actions: generateMicroActions("p22", ["Teaser estrutura", "Teaser redação", "Compliance teaser", "Aprovação teaser", "Refino da mensagem teaser"], 69, { fecho: 2, progressoFase: 11 }) },
+                { id: "p2-3", name: "2.3 Information Memorandum", progressTarget: 100, actions: generateMicroActions("p23", ["IM outline", "IM financial case", "IM draft completo", "IM validação final", "Stress test do IM"], 68, { fecho: 2, teamMorale: -1, progressoFase: 11 }) },
+                { id: "p2-4", name: "2.4 VDR Setup", progressTarget: 100, actions: [buildAction("vdr-setup", { name: "VDR Setup", hint: "Configura o data room com permissões e trilhos de auditoria.", baseProb: 65, success: { currentPhaseWorkload: 10, teamMorale: -3, progressoFase: 20, fecho: 2 }, failure: { teamMorale: -4, progressoFase: 6 }, log: "VDR configurado." })].concat(generateMicroActions("p24", ["Índice de pastas", "Permissões por bidder", "Q&A tracker"], 66, { progressoFase: 9 })) }
             ]},
-            { id: "MARKET OUTREACH", title: "Market Outreach", desc: "Activa o mercado e posiciona management e materiais junto dos compradores.", microPhases: [
-                { id: "coaching", name: "Management Coaching", progressTarget: 100, actions: pickLegacyActions("MGMT PRES", ["Treinar management para apresentacoes com compradores", "Simular Q&A e antecipar questoes criticas"]) },
-                { id: "materials", name: "Materials Prep", progressTarget: 100, actions: pickLegacyActions("MGMT PRES", ["Preparar materiais de suporte e data pack"]) },
-                { id: "strategics", name: "Contact Strategics", progressTarget: 100, actions: pickLegacyActions("BUYERS", ["Contactar e qualificar estrategicos industriais"]) },
-                { id: "pe", name: "Contact PE", progressTarget: 100, actions: pickLegacyActions("BUYERS", ["Reunioes bilaterais com fundos de Private Equity", "Sessao colectiva de Q&A com todos os compradores"]) }
+            { id: "MARKET OUTREACH", title: "Market Outreach", desc: "Lançamento de mercado e interação com buyers.", microPhases: [
+                { id: "p3-1", name: "3.1 Buyer Universe Definition", progressTarget: 100, actions: generateMicroActions("p31", ["Buyer Universe Definition", "Priorização por fit", "Mapa de decisão", "Aprovação universo", "Calibração de tiering"], 68, { fecho: 2, progressoFase: 10 }) },
+                { id: "p3-2", name: "3.2 Teaser Outreach", progressTarget: 100, actions: generateMicroActions("p32", ["Teaser Outreach", "Follow-up targets", "NDA management", "Pipeline tracking", "Escalonamento de resposta"], 67, { fecho: 2, progressoFase: 10 }) },
+                { id: "p3-3", name: "3.3 Management Presentation", progressTarget: 100, actions: generateMicroActions("p33", ["Management Presentation", "Q&A com buyers", "Debrief interno", "Ajustes narrativos", "Refuerzo de mensagem CEO"], 66, { teamMorale: -2, fecho: 3, progressoFase: 10 }) },
+                { id: "p4-4", name: "4.4 Process Letter II", progressTarget: 100, actions: generateMicroActions("p44", ["Process Letter II", "Deadline final NBO", "Critérios de avaliação", "Confirmação de receção", "Round-up de instruções"], 68, { fecho: 2, progressoFase: 10 }) }
             ]},
-            { id: "SHORTLIST", title: "Shortlist", desc: "Filtra compradores e mantém pressão competitiva saudável.", microPhases: [
-                { id: "score", name: "Scoring de compradores", progressTarget: 100, actions: [{ text: "Scorecard de compradores", hint: "Classifica fit estratégico, preço e executabilidade.", effects: { cliente: 2, fecho: 2, progressoFase: 50 }, log: "Scorecard de compradores finalizado com critérios objetivos." }] },
-                { id: "shortlist-build", name: "Construir shortlist", progressTarget: 100, actions: pickLegacyActions("BUYERS", ["Filter Bidders"]) }
+            { id: "SHORTLIST", title: "Shortlist", desc: "Seleção competitiva para ronda NBO.", microPhases: [
+                { id: "p4-2", name: "4.2 Filtragem de compradores", progressTarget: 100, actions: [buildAction("filter-bidders", { type: "filter_bidders", name: "Filter Bidders", hint: "Mantém os compradores mais sólidos para a ronda seguinte.", baseProb: 72, effects: { fecho: 4, progressoFase: 20 }, failure: { cliente: -3, progressoFase: 7 }, log: "Compradores filtrados." })].concat(generateMicroActions("p42", ["Discussão interna shortlist", "Validação legal de shortlist", "Comunicação aos excluídos", "Preparar instruções NBO"], 68, { progressoFase: 8 })) }
             ]},
-            { id: "NBOS", title: "NBOs", desc: "Analisa ofertas não vinculativas e gere alinhamento com o cliente.", microPhases: [
-                { id: "ioi", name: "IOI Analysis", progressTarget: 100, actions: pickLegacyActions("OFFERS", ["Solicitar e analisar IOIs dos compradores"]) },
-                { id: "terms", name: "Negotiate Terms", progressTarget: 100, actions: pickLegacyActions("OFFERS", ["Negociar termos e maximizar valor na shortlist"]) },
-                { id: "expectation", name: "Expectation Management", progressTarget: 100, actions: pickLegacyActions("OFFERS", ["Gerir expectativas do cliente sobre as ofertas"]) }
+            { id: "NBOS", title: "NBOs", desc: "Receção, leitura e negociação de ofertas não vinculativas.", microPhases: [
+                { id: "p5-1", name: "5.1 Receção de NBO e Fog of War", progressTarget: 100, actions: [buildAction("nbo-fog", { name: "Revelar Fog of War dos NBO", hint: "Coleta sinais de preço antes da análise completa.", type: "nbo_fog_reveal", baseProb: 71, effects: { fecho: 3, progressoFase: 12 }, failure: { progressoFase: 5, teamMorale: -2 }, log: "NBO analisado sob fog of war." })].concat(generateMicroActions("p51", ["Matriz NBO", "Comparação de termos", "Teste de executabilidade", "Preparar steering"], 68, { progressoFase: 8 })) },
+                { id: "p5-3", name: "5.3 Recomendação ao cliente", progressTarget: 100, actions: generateMicroActions("p53", ["Memo de recomendação", "Steering com acionistas", "Mandato para next round", "Briefing advisors"], 70, { cliente: 3, progressoFase: 10 }) }
             ]},
-            { id: "DUE DILIGENCE", title: "Due Diligence", desc: "Valida riscos e protege valor na fase mais exigente.", microPhases: [
-                { id: "dd-room", name: "Data Room", progressTarget: 100, actions: [{ text: "Organizar data room e trackers", hint: "Estrutura Q&A e responsabilidades por stream.", effects: { teamMorale: -2, progressoFase: 50 }, log: "Data room estruturado com governance operacional." }] },
-                { id: "dd-risk", name: "Risk Streams", progressTarget: 100, actions: [{ text: "Priorizar streams de risco", hint: "Foca fiscal, legal e comercial nos temas críticos.", effects: { fecho: 3, progressoFase: 50 }, log: "Riscos prioritários mapeados e tratados em primeiro lugar." }] },
-                { id: "dd-core", name: "DD Core", progressTarget: 100, actions: pickLegacyActions("DUE DILIGENCE", ["Conduzir Q&A tecnico e responder pedidos de DD", "Negociar temas criticos emergentes da DD"]) },
-                { id: "dd-close", name: "DD Wrap-up", progressTarget: 100, actions: pickLegacyActions("DUE DILIGENCE", ["Preparar red flags summary e plano de mitigacao"]) }
+            { id: "DUE DILIGENCE", title: "Due Diligence", desc: "Fase de validação profunda por workstream.", microPhases: [
+                { id: "p6-1", name: "6.1 DD Launch", progressTarget: 100, actions: generateMicroActions("p61", ["Kick-off DD", "Plano de requests", "Governance de Q&A", "SLA de respostas", "War room setup"], 66, { teamMorale: -2, progressoFase: 8 }) },
+                { id: "p6-2", name: "6.2 Financial Q&A", progressTarget: 100, actions: generateMicroActions("p62", ["Financial Q&A batch 1", "Financial Q&A batch 2", "Bridge EBITDA", "Normalizações", "Capex debate"], 65, { teamMorale: -2, fecho: 2, progressoFase: 8 }) },
+                { id: "p6-3", name: "6.3 Tax Q&A", progressTarget: 100, actions: generateMicroActions("p63", ["Tax Q&A batch 1", "Tax Q&A batch 2", "Posições fiscais", "Contingências", "Mitigação fiscal"], 64, { teamMorale: -2, fecho: 1, progressoFase: 8 }) },
+                { id: "p6-4", name: "6.4 Legal Q&A", progressTarget: 100, actions: generateMicroActions("p64", ["Legal Q&A contratos", "Legal Q&A laboral", "Legal Q&A regulatório", "Litigation review", "Legal close memo"], 64, { teamMorale: -2, fecho: 2, progressoFase: 8 }) }
             ]},
-            { id: "FINAL OFFERS", title: "Final Offers", desc: "Consolida ofertas finais e define exclusividade.", microPhases: [
-                { id: "binding-prep", name: "Preparar ronda final", progressTarget: 100, actions: [{ text: "Preparar ronda de final offers", hint: "Define instruções finais e calendário vinculativo.", effects: { cliente: 2, progressoFase: 50 }, log: "Ronda final de ofertas preparada com clareza." }] },
-                { id: "binding", name: "Exclusivity Binding", progressTarget: 100, actions: findLegacyPhaseById("BINDING OFFERS").actions.slice() },
-                { id: "binding-commit", name: "Commit de exclusividade", progressTarget: 100, actions: [{ text: "Formalizar compromisso de exclusividade", hint: "Confirma alinhamento final para SPA.", effects: { fecho: 3, progressoFase: 50 }, log: "Compromisso de exclusividade alinhado com as partes." }] }
+            { id: "FINAL OFFERS", title: "Final Offers", desc: "Estruturação da ronda vinculativa e exclusividade.", microPhases: [
+                { id: "p7-1", name: "7.1 BAFO Negotiation", progressTarget: 100, actions: generateMicroActions("p71", ["BAFO Negotiation", "Comparação final de preço", "Negociação de condições", "Ajustes de drafts", "Confirmação de binding"], 67, { fecho: 3, progressoFase: 9 }) },
+                { id: "p7-2", name: "7.2 Binding Selection", progressTarget: 100, actions: generateMicroActions("p72", ["Seleção de bidder preferido", "Recomendação de exclusividade", "Aprovação do cliente", "Comunicação de resultado"], 69, { cliente: 2, fecho: 3, progressoFase: 10 }) },
+                { id: "p7-3", name: "7.3 Enter Exclusivity", progressTarget: 100, actions: generateMicroActions("p73", ["Confirmar exclusividade", "Plano de exclusividade", "Governance de exclusividade", "Kick-off SPA"], 70, { fecho: 4, progressoFase: 10 }) }
             ]},
-            { id: "SPA NEGOTIATION", title: "SPA Negotiation", desc: "Negocia termos jurídicos e económicos finais do SPA.", microPhases: [
-                { id: "spa-escrow", name: "Escrow/Caps", progressTarget: 100, actions: pickLegacyActions("SPA", ["Negociar escrow e caps de responsabilidade"]) },
-                { id: "spa-warranties", name: "Warranties", progressTarget: 100, actions: pickLegacyActions("SPA", ["Conceder warranties para acelerar assinatura", "Negociar clausulas criticas do SPA com advisors"]) },
-                { id: "spa-earnout", name: "Earn-out alignment", progressTarget: 100, actions: pickLegacyActions("SPA", ["Alinhar earn-out e mecanismos de ajuste de preco", "Briefing ao cliente sobre o progresso do SPA"]) }
+            { id: "SPA NEGOTIATION", title: "SPA Negotiation", desc: "Negociação jurídica e comercial de signing.", microPhases: [
+                { id: "p8-1", name: "8.1 SPA Draft", progressTarget: 100, actions: generateMicroActions("p81", ["SPA Draft Review", "Ronda de markups", "Posições de risco", "Aprovação draft"], 66, { fecho: 2, progressoFase: 10 }) },
+                { id: "p8-2", name: "8.2 Warranties & Liability", progressTarget: 100, actions: [buildAction("spa-warranties", { type: "spa_concede_warranties", name: "Negociar Warranties", hint: "Ajusta warranties e limites de responsabilidade.", baseProb: 65, effects: { fecho: 5, progressoFase: 18 }, failure: { cliente: -4, progressoFase: 6 }, log: "Warranties negociadas." })].concat(generateMicroActions("p82", ["Cap table legal", "Disclosure letter", "Escrow mechanics"], 65, { progressoFase: 8 })) },
+                { id: "p8-3", name: "8.3 Economics e ajustes", progressTarget: 100, actions: generateMicroActions("p83", ["Working capital peg", "Net debt adjustment", "Earnout terms", "Leakage clauses", "Mecanismo locked-box"], 66, { fecho: 2, progressoFase: 9 }) }
             ]},
-            { id: "SIGNING", title: "Signing", desc: "Coordena assinatura e resolução de pendências finais.", microPhases: [
-                { id: "signing-docs", name: "Documentação", progressTarget: 100, actions: pickLegacyActions("SIGNING", ["Preparar e rever documentos finais de assinatura", "Resolver pendencias de ultima hora das partes"]) },
-                { id: "signing-event", name: "Coordenação de assinatura", progressTarget: 100, actions: pickLegacyActions("SIGNING", ["Coordenar equipa e logistica da assinatura"]) }
+            { id: "SIGNING", title: "Signing", desc: "Preparação final para assinatura e transição para closing.", microPhases: [
+                { id: "p9-1", name: "9.1 Signing Readiness", progressTarget: 100, actions: generateMicroActions("p91", ["Checklist signing", "Coordenação notarial", "Validation pack", "Alinhamento final", "Dry-run de assinatura"], 68, { teamMorale: -1, progressoFase: 10 }) }
             ]},
-            { id: "CLOSING", title: "Closing", desc: "Executa waivers, registos e fecho financeiro do processo.", microPhases: [
-                { id: "closing-bank", name: "Waivers e fecho", progressTarget: 100, actions: pickLegacyActions("CLOSING", ["Coordenar waivers bancarios e consentimentos", "Acompanhar registos notariais e documentacao legal", "Comunicar progresso ao cliente na reta final"]) }
+            { id: "CLOSING", title: "Closing", desc: "Execução de CPs e financiamento até ao fecho.", microPhases: [
+                { id: "p10-1", name: "10.1 CPs/Funding Monitoring", progressTarget: 100, actions: generateMicroActions("p101", ["CPs/Funding Monitoring", "Waivers bancários", "Fluxo de fundos", "Conferência final", "Confirmação de closing"], 69, { fecho: 4, progressoFase: 10 }) }
             ]}
         ];
 
-        var PHASES = PHASES_PRO;
-
         function injectActionRNG() {
-            for (var p = 0; p < PHASES.length; p++) {
-                for (var m = 0; m < PHASES[p].microPhases.length; m++) {
-                    for (var a = 0; a < PHASES[p].microPhases[m].actions.length; a++) {
-                        var act = PHASES[p].microPhases[m].actions[a];
-                    if (act.effects && !act.effects.success && !act.effects.failure) {
-                        var successFx = act.effects;
-                        act.effects = {
-                            success: { prob: 0.7, effects: successFx },
-                            failure: { prob: 0.3, effects: { teamMorale: -2, cliente: -1 } }
-                        };
-                    }
-                }
-                }
-            }
+            return true;
         }
 
         injectActionRNG();
+
 
         // ---- STATE ----
         var diff = "normal";
@@ -1634,7 +1661,8 @@
 
         function t(key) {
             var langTable = i18n[currentLang] || i18n.pt;
-            return langTable[key] || i18n.pt[key] || key;
+            var actionTable = (ACTION_I18N[currentLang] || ACTION_I18N.pt || {});
+            return langTable[key] || actionTable[key] || i18n.pt[key] || (ACTION_I18N.pt && ACTION_I18N.pt[key]) || key;
         }
 
         function applyI18nToStaticNodes() {
@@ -1716,6 +1744,18 @@
         // ---- HELPERS ----
         function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
+        function calculateActionSuccess(action, st) {
+            var stateRef = st || state;
+            var baseProb = action.baseProb || 68;
+            var personaModMap = { founder: 2, pe: -3, corporate: 1, family: -1 };
+            var clientTypeMod = typeof action.clientTypeMod === "number" ? action.clientTypeMod : (personaModMap[stateRef.persona] || 0);
+            stateRef.teamCapacity = getTeamCapacity();
+            stateRef.currentPhaseWorkload = getCurrentWorkload();
+            var workloadPenalty = (stateRef.teamCapacity < stateRef.currentPhaseWorkload) ? -15 : 0;
+            var pct = baseProb + (stateRef.cliente - 70) * 0.2 + (stateRef.teamMorale - 65) * 0.15 + clientTypeMod + workloadPenalty;
+            return clamp(pct, 5, 95) / 100;
+        }
+
         var PHASE_WORKLOAD = {
             "PITCH": 10,
             "MANDATO ASSINADO": 15,
@@ -1735,7 +1775,7 @@
             var phaseId = PHASES[state.currentPhaseIndex].id;
             var baseWorkload = PHASE_WORKLOAD[phaseId] || 0;
             var outsourceReduction = (state.outsourceWorkstreamWeeks || 0) > 0 ? 15 : 0;
-            return Math.max(0, baseWorkload - outsourceReduction);
+            return Math.max(0, baseWorkload - outsourceReduction + (state.workloadSpike || 0));
         }
 
         function getNextWorkload() {
@@ -2404,7 +2444,7 @@
                     weekCost: 0
                 }
             ];
-            if (state.exclusivityUnlocked && state.bidders && state.bidders.length > 0 && !state.bidderExclusivo) {
+            if (state.exclusivityUnlocked && state.bidders && state.bidders.length > 0) {
                 for (var i = 0; i < state.bidders.length; i++) {
                     actions.push({
                         id: "enter_exclusivity",
@@ -3487,6 +3527,9 @@
             }
 
             var effectSpec = typeof act.getEffects === "function" ? act.getEffects() : act.effects;
+            if (effectSpec && effectSpec.success && effectSpec.failure && typeof act.baseProb === "number") {
+                effectSpec = { success: { prob: calculateActionSuccess(act, state), effects: effectSpec.success.effects || {} }, failure: { prob: 1, effects: effectSpec.failure.effects || {} } };
+            }
             var actionResult = applyEffects(effectSpec, false);
             var deltas = actionResult.deltas;
             gameHistory.push({ type: "choice", phase: PHASES[state.currentPhaseIndex].id, text: act.text });
@@ -3517,6 +3560,14 @@
                         addLog("The advisor was evasive. You wasted time and slightly annoyed the buyer.", "warn");
                     }
                 }
+            } else if (act.type === "nbo_fog_reveal") {
+                if (state.bidders && state.bidders.length > 0) {
+                    for (var r = 0; r < state.bidders.length; r++) state.bidders[r].offerKnown = true;
+                    addLog("Fog of War removido: NBOs totalmente visíveis para comparação.", "good");
+                }
+            } else if (act.type === "vdr-setup") {
+                state.workloadSpike = (state.workloadSpike || 0) + 10;
+                addLog("VDR Setup gerou pico de workload (+10) nesta fase.", "warn");
             } else if (act.type === "bind_exclusive") {
                 if (!selectExclusiveBidder(act.bidderName)) return;
             } else if (act.type === "preemptive_exclusivity") {
@@ -3676,6 +3727,13 @@
                 } else if (currentPhase.id === "PITCH" && state.currentMicroPhaseIndex === 5 && !state.feeNegotiated) {
                     addLog("Micro-fase obrigatória em falta: completa a Negociação de Fees antes de concluir o Pitch.", "warn");
                 } else {
+                    var completedMicro = currentPhase.microPhases[state.currentMicroPhaseIndex];
+                    if (completedMicro && (completedMicro.id === "p2-2" || completedMicro.id === "p2-3" || completedMicro.id === "p4-4" || completedMicro.id === "p8-1")) {
+                        showModal("PRB Review", "Partner Review Board: deliverable crítico concluído e validado.", [{ label: "Continuar", value: true }]);
+                    }
+                    if (completedMicro && completedMicro.id === "p7-3") {
+                        state.exclusivityUnlocked = true;
+                    }
                     state.currentMicroPhaseIndex++;
                     state.progressoMicroFase = 0;
                     if (state.currentMicroPhaseIndex >= currentPhase.microPhases.length) {
@@ -3813,6 +3871,7 @@
             if ((state.outsourceWorkstreamWeeks || 0) > 0) {
                 state.outsourceWorkstreamWeeks -= 1;
             }
+            if ((state.workloadSpike || 0) > 0) state.workloadSpike = Math.max(0, state.workloadSpike - 2);
 
             if (state.peFinancingRiskActive) {
                 state.peFinancingRiskWeeks = (state.peFinancingRiskWeeks || 0) + 1;
@@ -3927,6 +3986,9 @@
                 (function(act, idx) {
                     var btn = document.createElement("button");
                     var effectSpec = typeof act.getEffects === "function" ? act.getEffects() : act.effects;
+            if (effectSpec && effectSpec.success && effectSpec.failure && typeof act.baseProb === "number") {
+                effectSpec = { success: { prob: calculateActionSuccess(act, state), effects: effectSpec.success.effects || {} }, failure: { prob: 1, effects: effectSpec.failure.effects || {} } };
+            }
                     effectSpec = effectSpec || { success: { prob: 1, effects: {} } };
                     var successProb = effectSpec.success ? effectSpec.success.prob : 1;
                     var progressFx = effectSpec.success ? (effectSpec.success.effects || {}) : (effectSpec || {});
@@ -3934,8 +3996,8 @@
                         ? " \u00B7 +" + progressFx.progressoFase + "% fase"
                         : "";
                     btn.innerHTML =
-                        "<strong>" + (idx + 1) + ". " + act.text + "</strong>" +
-                        '<span class="choice-hint">' + act.hint + '</span>' +
+                        "<strong>" + (idx + 1) + ". " + (act.textKey ? t(act.textKey) : act.text) + "</strong>" +
+                        '<span class="choice-hint">' + (act.hintKey ? t(act.hintKey) : act.hint) + '</span>' +
                         '<span class="choice-hint" style="color:var(--accent);font-size:0.72rem;margin-top:3px;">' +
                         "\u25B8 " + (act.apCost || 1) + " Ponto" + ((act.apCost || 1) > 1 ? "s" : "") + " de Acao" + progressLabel + " \u00B7 " + Math.round(successProb * 100) + "% sucesso</span>";
                     btn.disabled = (state.pontosAcao <= 0) || boardLocked || (state.pontosAcao < (act.apCost || 1));
@@ -3960,7 +4022,7 @@
                     var actionCost = act.apCost || 1;
                     btn.innerHTML =
                         "<strong>" + act.text + "</strong>" +
-                        '<span class="choice-hint">' + act.hint + '</span>' +
+                        '<span class="choice-hint">' + (act.hintKey ? t(act.hintKey) : act.hint) + '</span>' +
                         '<span class="choice-hint" style="color:var(--accent);font-size:0.72rem;margin-top:3px;">' +
                         "▸ " + actionCost + " " + (actionCost > 1 ? t("ui.points") : t("ui.point")) + (act.weekCost ? " · " + act.weekCost + " semana" : "") + "</span>";
                     var blockedByMorale = act.id === "demand_results" && state.teamMorale < 35;
@@ -4167,7 +4229,9 @@
                 outsourceWorkstreamWeeks: 0,
                 founderLowTrustWeeks: 0,
                 familyEmotionalEventActive: false,
-                familyEmotionalEventAge: 0
+                familyEmotionalEventAge: 0,
+                risk: 35,
+                workloadSpike: 0
             };
             gameHistory = [];
             R.log.innerHTML       = "";
