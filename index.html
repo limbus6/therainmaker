@@ -1023,6 +1023,21 @@
                         hint: "Controla o impacto de achados negativos e mantem o cliente informado.",
                         effects: { cliente: 5, interesseBidders: 4, teamMorale: -2, progressoFase: 5 },
                         log: "Riscos mitigados proactivamente — cliente e compradores mais confortaveis."
+                    },
+                    {
+                        text: "Grant Full Data Room Access to Industrial Bidders",
+                        hint: "Atalho agressivo: aumenta muito interesse e multiplo dos Industriais, mas pode activar um risco catastrofico oculto.",
+                        type: "grant_full_data_room_access",
+                        effects: { interesseBiddersIndustrial: 16, multiplo: 0.8, progressoFase: 16, teamMorale: -2 },
+                        log: "Acesso total concedido aos Industriais para acelerar a DD e puxar valoracao."
+                    },
+                    {
+                        text: "Sanitize Data & Phased Disclosure",
+                        hint: "Defesa prudente: custa 2 PA e +1 semana (comprime Net Margin). Evita danos de fishing, mas reduz ligeiramente o interesse de compradores legitimos.",
+                        type: "sanitize_data_phased_disclosure",
+                        apCost: 2,
+                        effects: { interesseBiddersIndustrial: -4, interesseBiddersPE: -2, progressoFase: 10, teamMorale: -3 },
+                        log: "Data room sanitizado com divulgacao faseada para proteger informacao sensivel."
                     }
                 ]
             },
@@ -1284,6 +1299,7 @@
                 bidders.push({
                     nome: shuffInd[j],
                     tipo: "Industrial",
+                    isPhisher: Math.random() < 0.3,
                     interesse: clamp(45 + Math.floor(Math.random() * 25), 40, 75),
                     multiploProposto: proposedMultiple,
                     dropRate: 1.5,
@@ -1476,6 +1492,26 @@
                 state.bidders = remaining;
                 addLog("Falha no pre-emptive strike: " + topBidder.nome + " perdeu interesse e saiu do processo.", "bad");
             }
+        }
+
+        function triggerCompetitorPhishingDisaster() {
+            var exclusive = state.bidders && state.bidders.length > 0 ? state.bidders[0] : null;
+            if (!exclusive || !exclusive.isPhisher) return false;
+
+            state.ebitda = clamp(parseFloat((state.ebitda - 2.0).toFixed(2)), 1.0, 20.0);
+            state.bidders = [];
+            state.bidderExclusivo = null;
+            state.initialExpectedValue = null;
+            state.fecho = clamp(state.fecho - 40, 0, 100);
+            state.cliente = clamp(state.cliente - 18, 0, 100);
+
+            addLog("The buyer was fishing for trade secrets! They withdrew their offer and leaked your client list.", "bad");
+            gameHistory.push({ type: "event", label: "Competitor Phishing Risk", text: "Bidder exclusivo revelou-se phisher. EBITDA -2.0M€, oferta retirada e processo em risco." });
+            updateStats({ ebitda: -2.0, fecho: -40, cliente: -18 });
+
+            if (checkLose()) return true;
+            endGame("Deal collapsed: exclusive industrial bidder used DD to extract secrets and walked away.", "bad");
+            return true;
         }
 
         function getPhaseActions(phase) {
@@ -2309,11 +2345,12 @@
             checkLose();
         }
 
-        // ---- CORE ACTION — costs 1 PA, applies effects, checks phase completion ----
+        // ---- CORE ACTION — default 1 PA, supports custom AP/week costs ----
         function doAction(act) {
-            if (state.ended || state.pontosAcao <= 0) return;
+            var actionCost = act.apCost || 1;
+            if (state.ended || state.pontosAcao < actionCost) return;
 
-            state.pontosAcao--;
+            state.pontosAcao -= actionCost;
             var previousProgress = state.progressoFase;
 
             if (act.type === "propose_tiered_fee_structure") {
@@ -2372,6 +2409,29 @@
                     updateStats(deltas);
                     renderPhase();
                     return;
+                }
+            } else if (act.type === "grant_full_data_room_access") {
+                if (state.bidders && state.bidders.length > 0) {
+                    for (var g = 0; g < state.bidders.length; g++) {
+                        if (state.bidders[g].tipo === "Industrial") {
+                            state.bidders[g].interesse = clamp(state.bidders[g].interesse + 14, 0, 100);
+                            state.bidders[g].multiploProposto = parseFloat((state.bidders[g].multiploProposto + 0.9).toFixed(1));
+                        }
+                    }
+                }
+                if (triggerCompetitorPhishingDisaster()) return;
+            } else if (act.type === "sanitize_data_phased_disclosure") {
+                if (!applyReviewWeekCost(1)) return;
+                if (state.bidders && state.bidders.length > 0) {
+                    for (var s = 0; s < state.bidders.length; s++) {
+                        if (state.bidders[s].tipo === "Industrial" && state.bidders[s].isPhisher) {
+                            addLog("Um Industrial retirou-se educadamente apos o protocolo faseado limitar acesso a dados sensiveis.", "warn");
+                            state.bidders.splice(s, 1);
+                            s--;
+                            continue;
+                        }
+                        state.bidders[s].interesse = clamp(state.bidders[s].interesse - 3, 0, 100);
+                    }
                 }
             } else if (act.type === "set_client_expectation") {
                 var marketEV = calcularEV();
@@ -2600,8 +2660,8 @@
                         "<strong>" + (idx + 1) + ". " + act.text + "</strong>" +
                         '<span class="choice-hint">' + act.hint + '</span>' +
                         '<span class="choice-hint" style="color:var(--accent);font-size:0.72rem;margin-top:3px;">' +
-                        "\u25B8 1 Ponto de Acao" + progressLabel + " \u00B7 " + Math.round(successProb * 100) + "% sucesso</span>";
-                    btn.disabled = noPA || boardLocked;
+                        "\u25B8 " + (act.apCost || 1) + " Ponto" + ((act.apCost || 1) > 1 ? "s" : "") + " de Acao" + progressLabel + " \u00B7 " + Math.round(successProb * 100) + "% sucesso</span>";
+                    btn.disabled = noPA || boardLocked || state.pontosAcao < (act.apCost || 1);
                     btn.addEventListener("click", function() { doAction(act); });
                     R.choices.appendChild(btn);
                 })(phaseActions[i], i);
