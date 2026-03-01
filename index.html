@@ -68,11 +68,11 @@
     .branch-row { display:grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap:6px; margin-top:8px; }
     .branch-row button { padding:8px; font-size:.78rem; text-align:center; }
     .hint { font-size:.8rem; color:var(--muted); }
-    .start-overlay, .between-overlay, .tutorial-overlay {
+    .start-overlay, .between-overlay, .tutorial-overlay, .end-career-overlay {
       position: fixed; inset: 0; background: rgba(2,6,18,.86); display:flex; align-items:center; justify-content:center; z-index:300;
       padding: 14px;
     }
-    .start-overlay.hidden, .between-overlay.hidden, .tutorial-overlay.hidden { display:none; }
+    .start-overlay.hidden, .between-overlay.hidden, .tutorial-overlay.hidden, .end-career-overlay.hidden { display:none; }
     .modal { width:min(860px,100%); max-height:92vh; overflow:auto; }
     .sector-grid { display:grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap:8px; margin:10px 0; }
     .sector { border:1px solid #2d4377; border-radius:10px; padding:10px; background:#0f1c3d; cursor:pointer; }
@@ -88,6 +88,17 @@
     .hide { display:none; }
     .info-icon { display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:999px; border:1px solid #5a79ad; font-size:.72rem; margin-left:4px; color:var(--accent); }
     .tutorial-focus { box-shadow: 0 0 0 2px #7fd3ffcc, 0 0 22px #7fd3ff66; border-radius:10px; }
+    .progress-stack { margin: 8px 0; display:grid; gap:6px; }
+    .progress-line { font-size:.82rem; color:var(--muted); display:flex; justify-content:space-between; }
+    .grade-pill { display:inline-block; font-size:1.15rem; font-weight:700; padding:6px 12px; border-radius:999px; margin:8px 0; }
+    .grade-a { background:#113f30; color:#74f0b7; }
+    .grade-b { background:#2b355d; color:#b4c9ff; }
+    .grade-c { background:#4a3a1d; color:#ffd27a; }
+    .grade-d { background:#572d1f; color:#ffb187; }
+    .grade-f { background:#5c1f33; color:#ff8ea0; }
+    .end-table { width:100%; border-collapse:collapse; font-size:.85rem; margin:10px 0; }
+    .end-table th, .end-table td { border:1px solid #2d4377; padding:6px; text-align:left; }
+    .end-table th { background:#122247; }
 
     .hidden { display:none !important; }
     #modal-overlay { position:fixed; inset:0; background:transparent; z-index:140; display:none; pointer-events:none; }
@@ -124,7 +135,7 @@
         <div class="hint"><span id="workload-label" class="tooltip-anchor">Workload vs Capacity</span><span class="tooltip-anchor info-icon" id="workload-info">i<div class="tooltip hide" data-tip="workloadMath"></div></span>
           <div class="tooltip hide" data-tip="workload"></div>
         </div>
-        <div class="bar"><span id="workload-fill" style="width:0%"></span></div>
+        <div id="workload-text" class="hint"></div><div class="bar"><span id="workload-fill" style="width:0%"></span></div>
       </div>
       <p style="margin-top:10px"><span id="fee-label" class="tooltip-anchor">Fee Negotiation Gate</span>
         <div class="tooltip hide" data-tip="fee"></div>
@@ -145,6 +156,13 @@
 
       <section id="panel-deal" class="tab-panel active">
         <h3 id="dealHeader">Mandato</h3>
+        <p id="phase-header"></p>
+        <div class="progress-stack">
+          <div class="progress-line"><span id="phase-progress-label"></span><span id="phase-progress-value"></span></div>
+          <div class="bar"><span id="phase-progress-fill" style="width:0%"></span></div>
+          <div class="progress-line"><span id="micro-progress-label"></span><span id="micro-progress-value"></span></div>
+          <div class="bar"><span id="micro-progress-fill" style="width:0%"></span></div>
+        </div>
         <p id="dealContext"></p>
         <div class="actions" id="action-list"></div>
         <h4 id="logTitle" style="margin-top:12px">Deal Log</h4>
@@ -203,6 +221,29 @@
   </div>
 
 
+
+
+  <div id="end-career-overlay" class="end-career-overlay hidden">
+    <div class="modal card">
+      <h2 id="endCareerTitle">Career Completed</h2>
+      <div id="end-grade" class="grade-pill grade-b">B</div>
+      <p id="end-score"></p>
+      <p id="end-narrative"></p>
+      <table class="end-table">
+        <thead>
+          <tr>
+            <th>Sector</th><th>Client</th><th>EV (€M)</th><th>Net Margin</th><th>Weeks</th><th>Result</th>
+          </tr>
+        </thead>
+        <tbody id="end-mandates-body"></tbody>
+      </table>
+      <div style="display:flex;gap:8px;">
+        <button id="end-new-career" class="primary">Nova Carreira</button>
+      </div>
+    </div>
+  </div>
+
+
   <div id="modal-overlay"></div>
 
   <script>
@@ -218,11 +259,16 @@
         startTitle: 'Novo Mandato', startDesc: 'Escolhe sector para iniciar a tua carreira de 5 mandatos.', startCareer: 'Iniciar Carreira',
         betweenTitle: 'Drafting entre mandatos', continueNext: 'Avançar para próximo mandato',
         tutorialTitle: 'Tutorial', next: 'Seguinte', skip: 'Saltar',
+        phaseHeader: 'Fase {phase}/{total} · {phaseLabel} · {microLabel}',
+        phaseProgress: 'Progresso da fase', microProgress: 'Progresso da micro-fase',
+        workloadValue: 'Carga: {workload}/{capacity}', endCareerTitle: 'Carreira Concluída',
+        totalScore: 'Career Score total', mandateHistory: 'Histórico de Mandatos',
+        careerNarrative: 'Narrativa de Carreira', newCareerBtn: 'Nova Carreira',
         tips: {
           workload: 'Se workload > capacidade, a moral cai e a probabilidade de sucesso reduz.',
           ap: 'Action Points (AP) = 3 base + bonus de moral + office upgrade.',
           fee: 'Sem fee negotiation acordada, fechar o deal é impossível.',
-          workloadMath: 'Capacidade = 50 base + moral indireta via AP. Se workload > capacidade: penalização de sucesso (-12pp) e queda de moral semanal = (workload-capacidade)/8.',
+          workloadMath: 'Capacidade = 50 base + moral indireta via AP. Se workload > capacidade: penalização de sucesso (-12pp) e queda de moral semanal = (workload-capacidade)/8 e decay de carga = -15/semana.',
           tutorialFocus: ['Este indicador mede Workload vs Capacity. Acima de 100% tens penalização imediata.', 'Aqui vês o teu P&L da carreira (Net Margin acumulada).', 'Este bloco mostra AP disponíveis para executar ações esta semana.']
         }
       },
@@ -233,11 +279,16 @@
         startTitle: 'New Mandate', startDesc: 'Pick a sector and start your 5-mandate advisor career.', startCareer: 'Start Career',
         betweenTitle: 'Between-deal Drafting', continueNext: 'Proceed to next mandate',
         tutorialTitle: 'Tutorial', next: 'Next', skip: 'Skip',
+        phaseHeader: 'Phase {phase}/{total} · {phaseLabel} · {microLabel}',
+        phaseProgress: 'Phase progress', microProgress: 'Micro-phase progress',
+        workloadValue: 'Load: {workload}/{capacity}', endCareerTitle: 'Career Completed',
+        totalScore: 'Total Career Score', mandateHistory: 'Mandate History',
+        careerNarrative: 'Career Narrative', newCareerBtn: 'New Career',
         tips: {
           workload: 'If workload > capacity, morale drops and success probability falls.',
           ap: 'Action Points (AP) = 3 base + morale bonus + office upgrades.',
           fee: 'Without fee negotiation agreed, deal closing cannot happen.',
-          workloadMath: 'Capacity starts at 50. If workload exceeds capacity: immediate success penalty (-12pp) and weekly morale drop = (workload-capacity)/8.',
+          workloadMath: 'Capacity starts at 50. If workload exceeds capacity: immediate success penalty (-12pp) and weekly morale drop = (workload-capacity)/8 and load decay = -15/week.',
           tutorialFocus: ['This gauge tracks Workload vs Capacity. Above 100% you take an immediate execution penalty.', 'This is your career P&L tracker (cumulative Net Margin).', 'This block shows available AP for this week\'s actions.']
         }
       }
@@ -256,62 +307,135 @@
     let selectedSector = sectors[0].key;
     let tutorialStep = 0;
     const PHASES_PRO = [
-      { key: 'origination', label: { pt: 'Origination', en: 'Origination' }, microPhases: [
-        { key: 'teaser-screen', label: { pt: 'Triagem inicial', en: 'Initial screening' } },
-        { key: 'mandate-pitch', label: { pt: 'Pitch de mandato', en: 'Mandate pitch' } },
-        { key: 'engagement-letter', label: { pt: 'Engagement letter', en: 'Engagement letter' } }
-      ] },
-      { key: 'kickoff', label: { pt: 'Kickoff', en: 'Kickoff' }, microPhases: [
-        { key: 'client-kickoff', label: { pt: 'Kickoff com cliente', en: 'Client kickoff' } },
-        { key: 'data-room-plan', label: { pt: 'Plano de data room', en: 'Data room planning' } },
-        { key: 'equity-story', label: { pt: 'Equity story', en: 'Equity story' } }
-      ] },
-      { key: 'materials', label: { pt: 'Materiais', en: 'Marketing materials' }, microPhases: [
-        { key: 'long-list', label: { pt: 'Long list compradores', en: 'Buyer long list' } },
-        { key: 'teaser-cim', label: { pt: 'Teaser e CIM', en: 'Teaser and CIM' } },
-        { key: 'management-presentation', label: { pt: 'Management presentation', en: 'Management presentation' } }
-      ] },
-      { key: 'market-sounding', label: { pt: 'Go-to-market', en: 'Go-to-market' }, microPhases: [
-        { key: 'teaser-outreach', label: { pt: 'Outreach teaser', en: 'Teaser outreach' } },
-        { key: 'nda-management', label: { pt: 'Gestão de NDAs', en: 'NDA management' } },
-        { key: 'ioi-round', label: { pt: 'Ronda IOI', en: 'IOI round' } }
-      ] },
-      { key: 'phase-two', label: { pt: 'Fase II', en: 'Phase II' }, microPhases: [
-        { key: 'shortlist', label: { pt: 'Shortlist bidders', en: 'Bidder shortlist' } },
-        { key: 'vdr-launch', label: { pt: 'Abertura VDR', en: 'VDR launch' } },
-        { key: 'qna-round', label: { pt: 'Q&A round', en: 'Q&A round' } }
-      ] },
-      { key: 'due-diligence', label: { pt: 'Due Diligence', en: 'Due Diligence' }, microPhases: [
-        { key: 'financial-dd', label: { pt: 'Financial DD', en: 'Financial DD' } },
-        { key: 'legal-dd', label: { pt: 'Legal DD', en: 'Legal DD' } },
-        { key: 'commercial-dd', label: { pt: 'Commercial DD', en: 'Commercial DD' } }
-      ] },
-      { key: 'indicative-bids', label: { pt: 'Ofertas indicativas', en: 'Indicative bids' }, microPhases: [
-        { key: 'ioi-evaluation', label: { pt: 'Avaliar IOIs', en: 'IOI evaluation' } },
-        { key: 'management-meetings', label: { pt: 'Management meetings', en: 'Management meetings' } },
-        { key: 'bid-tension', label: { pt: 'Criar tensão competitiva', en: 'Competitive tension' } }
-      ] },
-      { key: 'binding-offers', label: { pt: 'Ofertas vinculativas', en: 'Binding offers' }, microPhases: [
-        { key: 'spa-draft', label: { pt: 'Draft SPA', en: 'SPA draft' } },
-        { key: 'vendor-dd', label: { pt: 'Vendor DD', en: 'Vendor DD' } },
-        { key: 'bo-round', label: { pt: 'Ronda BO', en: 'Binding offer round' } }
-      ] },
-      { key: 'negotiation', label: { pt: 'Negociação', en: 'Negotiation' }, microPhases: [
-        { key: 'price-negotiation', label: { pt: 'Negociar preço', en: 'Price negotiation' } },
-        { key: 'terms-negotiation', label: { pt: 'Negociar termos', en: 'Terms negotiation' } },
-        { key: 'signing-readiness', label: { pt: 'Readiness para signing', en: 'Signing readiness' } }
-      ] },
-      { key: 'signing-closing', label: { pt: 'Signing & Closing', en: 'Signing & Closing' }, microPhases: [
-        { key: 'signing', label: { pt: 'Signing', en: 'Signing' } },
-        { key: 'regulatory', label: { pt: 'Aprovações regulatórias', en: 'Regulatory approvals' } },
-        { key: 'closing', label: { pt: 'Closing', en: 'Closing' } }
-      ] },
-      { key: 'post-close', label: { pt: 'Pós-closing', en: 'Post-close' }, microPhases: [
-        { key: 'earnout-plan', label: { pt: 'Plano de earnout', en: 'Earnout plan' } },
-        { key: 'handover', label: { pt: 'Handover', en: 'Handover' } }
-      ] }
+      {
+        key: 'pitch',
+        label: { pt: 'Pitch (Pré-Mandato)', en: 'Pitch (Pre-Mandate)' },
+        workload: 10,
+        microPhases: [
+          { key: 'agenda', label: { pt: 'Construir Agenda', en: 'Build Agenda' }, progressTarget: 100 },
+          { key: 'key_messages', label: { pt: 'Key Messages', en: 'Key Messages' }, progressTarget: 100 },
+          { key: 'investment_case', label: { pt: 'Investment Case', en: 'Investment Case' }, progressTarget: 100 },
+          { key: 'buyer_universe', label: { pt: 'Buyer Universe', en: 'Buyer Universe' }, progressTarget: 100 },
+          { key: 'process_considerations', label: { pt: 'Process Considerations', en: 'Process Considerations' }, progressTarget: 100 },
+          { key: 'fee_negotiation', label: { pt: 'Negociação de Fees', en: 'Fee Negotiation' }, progressTarget: 100 },
+          { key: 'team_presentation', label: { pt: 'Apresentação da Equipa', en: 'Team Presentation' }, progressTarget: 100 },
+          { key: 'final_pitch', label: { pt: 'Reunião Final de Pitch', en: 'Final Pitch Meeting' }, progressTarget: 100 }
+        ],
+        gate: { stat: 'relationship', min: 70, failMsg: { pt: 'Cliente não assinou mandato. Confiança insuficiente.', en: 'Client did not sign mandate. Insufficient trust.' } }
+      },
+      {
+        key: 'mandate_signed',
+        label: { pt: 'Mandato Assinado', en: 'Mandate Signed' },
+        workload: 15,
+        microPhases: [
+          { key: 'kickoff', label: { pt: 'Kickoff', en: 'Kickoff' }, progressTarget: 100 },
+          { key: 'governance', label: { pt: 'Governance', en: 'Governance' }, progressTarget: 100 },
+          { key: 'workflows', label: { pt: 'Fluxos e Responsabilidades', en: 'Workflows & Responsibilities' }, progressTarget: 100 }
+        ]
+      },
+      {
+        key: 'preparation',
+        label: { pt: 'Preparação', en: 'Preparation' },
+        workload: 40,
+        microPhases: [
+          { key: 'doc_collection', label: { pt: 'Recolha Documental', en: 'Document Collection' }, progressTarget: 100 },
+          { key: 'teaser', label: { pt: 'Teaser', en: 'Teaser' }, progressTarget: 100 },
+          { key: 'im', label: { pt: 'Information Memorandum', en: 'Information Memorandum' }, progressTarget: 100 },
+          { key: 'vdr_setup', label: { pt: 'VDR Setup', en: 'VDR Setup' }, progressTarget: 100 },
+          { key: 'buyer_list', label: { pt: 'Lista Final de Buyers', en: 'Final Buyer List' }, progressTarget: 100 },
+          { key: 'timeline', label: { pt: 'Timeline', en: 'Timeline' }, progressTarget: 100 }
+        ]
+      },
+      {
+        key: 'outreach',
+        label: { pt: 'Market Outreach', en: 'Market Outreach' },
+        workload: 30,
+        microPhases: [
+          { key: 'send_teaser', label: { pt: 'Envio de Teaser', en: 'Send Teaser' }, progressTarget: 100 },
+          { key: 'send_im', label: { pt: 'Envio de IM', en: 'Send IM' }, progressTarget: 100 },
+          { key: 'mgmt_presentation', label: { pt: 'Management Presentation', en: 'Management Presentation' }, progressTarget: 100 },
+          { key: 'initial_qa', label: { pt: 'Q&A Inicial', en: 'Initial Q&A' }, progressTarget: 100 },
+          { key: 'tracking', label: { pt: 'Tracking de Interesse', en: 'Interest Tracking' }, progressTarget: 100 }
+        ]
+      },
+      {
+        key: 'shortlist',
+        label: { pt: 'Shortlist', en: 'Shortlist' },
+        workload: 20,
+        microPhases: [
+          { key: 'analyse_interest', label: { pt: 'Análise de Interesse', en: 'Interest Analysis' }, progressTarget: 100 },
+          { key: 'additional_meetings', label: { pt: 'Reuniões Adicionais', en: 'Additional Meetings' }, progressTarget: 100 },
+          { key: 'final_shortlist', label: { pt: 'Shortlist Final', en: 'Final Shortlist' }, progressTarget: 100 },
+          { key: 'process_letter', label: { pt: 'Process Letter II', en: 'Process Letter II' }, progressTarget: 100 }
+        ]
+      },
+      {
+        key: 'nbo',
+        label: { pt: 'NBOs (Non-Binding Offers)', en: 'NBOs (Non-Binding Offers)' },
+        workload: 25,
+        microPhases: [
+          { key: 'receive_nbo', label: { pt: 'Receber NBO', en: 'Receive NBO' }, progressTarget: 100 },
+          { key: 'analyse_nbo', label: { pt: 'Analisar NBO', en: 'Analyse NBO' }, progressTarget: 100 },
+          { key: 'improve_nbo', label: { pt: 'Pedir Melhoria', en: 'Request Improvement' }, progressTarget: 100 },
+          { key: 'align_expectations', label: { pt: 'Alinhar Expectativas', en: 'Align Expectations' }, progressTarget: 100 }
+        ]
+      },
+      {
+        key: 'due_diligence',
+        label: { pt: 'Due Diligence', en: 'Due Diligence' },
+        workload: 55,
+        microPhases: [
+          { key: 'open_vdr', label: { pt: 'Abrir VDR', en: 'Open VDR' }, progressTarget: 100 },
+          { key: 'qa_financial', label: { pt: 'Q&A Financeiro', en: 'Financial Q&A' }, progressTarget: 100 },
+          { key: 'qa_tax', label: { pt: 'Q&A Fiscal', en: 'Tax Q&A' }, progressTarget: 100 },
+          { key: 'qa_legal', label: { pt: 'Q&A Legal', en: 'Legal Q&A' }, progressTarget: 100 },
+          { key: 'site_visits', label: { pt: 'Site Visits', en: 'Site Visits' }, progressTarget: 100 },
+          { key: 'trading_update', label: { pt: 'Trading Update', en: 'Trading Update' }, progressTarget: 100 }
+        ]
+      },
+      {
+        key: 'final_offers',
+        label: { pt: 'Final Offers (BO/BAFO)', en: 'Final Offers (BO/BAFO)' },
+        workload: 35,
+        microPhases: [
+          { key: 'receive_bo', label: { pt: 'Receber Binding Offer', en: 'Receive Binding Offer' }, progressTarget: 100 },
+          { key: 'negotiate_structure', label: { pt: 'Negociar Estrutura', en: 'Negotiate Structure' }, progressTarget: 100 },
+          { key: 'choose_winner', label: { pt: 'Escolher Vencedor', en: 'Choose Winner' }, progressTarget: 100 }
+        ]
+      },
+      {
+        key: 'spa_negotiation',
+        label: { pt: 'SPA Negotiation', en: 'SPA Negotiation' },
+        workload: 40,
+        microPhases: [
+          { key: 'draft_review', label: { pt: 'Revisão de Minuta', en: 'Draft Review' }, progressTarget: 100 },
+          { key: 'caps_baskets', label: { pt: 'Caps & Baskets', en: 'Caps & Baskets' }, progressTarget: 100 },
+          { key: 'schedules', label: { pt: 'Schedules Finais', en: 'Final Schedules' }, progressTarget: 100 },
+          { key: 'internal_approval', label: { pt: 'Aprovação Interna', en: 'Internal Approval' }, progressTarget: 100 }
+        ]
+      },
+      {
+        key: 'signing',
+        label: { pt: 'Signing (CPs)', en: 'Signing (CPs)' },
+        workload: 25,
+        microPhases: [
+          { key: 'conditions_precedent', label: { pt: 'Conditions Precedent', en: 'Conditions Precedent' }, progressTarget: 100 },
+          { key: 'funding', label: { pt: 'Funding', en: 'Funding' }, progressTarget: 100 },
+          { key: 'final_audits', label: { pt: 'Auditorias Finais', en: 'Final Audits' }, progressTarget: 100 }
+        ]
+      },
+      {
+        key: 'closing',
+        label: { pt: 'Closing', en: 'Closing' },
+        workload: 15,
+        microPhases: [
+          { key: 'waivers', label: { pt: 'Waivers', en: 'Waivers' }, progressTarget: 100 },
+          { key: 'registrations', label: { pt: 'Registos', en: 'Registrations' }, progressTarget: 100 },
+          { key: 'wire_transfer', label: { pt: 'Wire Transfer', en: 'Wire Transfer' }, progressTarget: 100 }
+        ]
+      }
     ];
-    const CLIENT_TYPES = {
+        const CLIENT_TYPES = {
       founder: { label: { pt: 'Founder-led', en: 'Founder-led' }, relationshipDrift: 1.4, feeSensitivity: 0.12, boardTolerance: -0.05, bidderAttraction: { strategic: 0.06 } },
       pe: { label: { pt: 'PE-owned', en: 'PE-owned' }, relationshipDrift: 0.5, feeSensitivity: -0.06, boardTolerance: 0.08, bidderAttraction: { pe: 0.08 } },
       carveout: { label: { pt: 'Corporate carve-out', en: 'Corporate carve-out' }, relationshipDrift: -0.5, feeSensitivity: 0.02, boardTolerance: 0.02, bidderAttraction: { industrial: 0.06 } },
@@ -395,10 +519,10 @@
         sector: sector.key,
         sectorName: sector.name,
         week: 1,
-        maxWeeks: 32,
+        maxWeeks: 34,
         relationship: 60,
         morale: Math.min(100, 68 + officeLevel * 2),
-        workload: 35,
+        workload: PHASES_PRO[0].workload,
         capacity: 50,
         ap: 3,
         feeAgreed: false,
@@ -414,7 +538,6 @@
         baseFeePct: +(1.2 + Math.random() * 0.9).toFixed(2),
         clientTypeKey,
         clientType: label(CLIENT_TYPES[clientTypeKey].label),
-        phaseProgress: {},
         mitigations: { regulatory: 0, leak: 0, financing: 0 },
         boardHeat: 0,
         bidders: makeBidders(clientTypeKey),
@@ -439,14 +562,17 @@
       state.current.logs.push('Mandato iniciado. Negociar fee é prioridade.');
       state.currentPhaseIndex = 0;
       state.currentMicroPhaseIndex = 0;
+      state.microPhaseProgress = 0;
       state.current.ap = calculateInitialPA();
       const blocker = el('modal-overlay');
       if (blocker) blocker.style.display = 'none';
       hideStart();
       state.currentPhaseIndex = state.currentPhaseIndex ?? 0;
       state.currentMicroPhaseIndex = state.currentMicroPhaseIndex ?? 0;
+      state.microPhaseProgress = state.microPhaseProgress ?? 0;
       el('between-overlay').classList.add('hidden');
       el('tutorial-overlay').classList.add('hidden');
+      el('end-career-overlay').classList.add('hidden');
       maybeShowTutorial(true);
       renderPhase();
     }
@@ -489,16 +615,33 @@
       d.fogOfWar = Math.max(10, Math.min(90, d.fogOfWar));
     }
 
-    function advanceMicroPhase() {
+    function microPhaseTarget() {
+      const micro = getCurrentMicroEntry();
+      return micro.progressTarget || 100;
+    }
+
+    function advancePhase() {
       const phase = currentPhase();
+      const gate = phase.gate;
+      if (gate && state.current[gate.stat] < gate.min) {
+        log(label(gate.failMsg), 'bad');
+        finishDeal(false);
+        return false;
+      }
       if (state.currentMicroPhaseIndex < phase.microPhases.length - 1) {
         state.currentMicroPhaseIndex += 1;
-        return;
+        state.microPhaseProgress = 0;
+        return true;
       }
       if (state.currentPhaseIndex < PHASES_PRO.length - 1) {
         state.currentPhaseIndex += 1;
         state.currentMicroPhaseIndex = 0;
+        state.microPhaseProgress = 0;
+        state.current.workload = PHASES_PRO[state.currentPhaseIndex].workload;
+        return true;
       }
+      state.current.completed = true;
+      return true;
     }
 
     function makeAction(key, branch, ap, load, base, targets, labels, effect, gated=false) {
@@ -547,7 +690,7 @@
         );
       });
     }).concat([
-      makeAction('attempt-closing','legal',2,14,0.45,['closing'],{pt:'Attempt Closing',en:'Attempt Closing'},(ok,d)=>{ if(ok){ d.completed=true; d.closeProbability += 10; } else { d.closeProbability -= 8; d.relationship -= 8; } }, true)
+      makeAction('attempt-closing','legal',2,14,0.45,['wire_transfer'],{pt:'Attempt Closing',en:'Attempt Closing'},(ok,d)=>{ if(ok){ d.completed=true; d.closeProbability += 10; } else { d.closeProbability -= 8; d.relationship -= 8; } }, true)
     ]);
 
     function xp(branch) {
@@ -579,8 +722,9 @@
       const ok = Math.random() < p;
 
       a.effect(ok,d);
+      const progressGain = ok ? [25, 30, 40][Math.floor(Math.random() * 3)] : 10;
+      state.microPhaseProgress = Math.min(microPhaseTarget(), (state.microPhaseProgress || 0) + progressGain);
       if (ok) {
-        d.phaseProgress[currentMicro.key] = (d.phaseProgress[currentMicro.key] || 0) + 1;
         d.fogOfWar = Math.max(10, d.fogOfWar - 2);
         d.bidders.forEach(b => {
           b.intelligence = Math.min(100, b.intelligence + 8);
@@ -591,8 +735,8 @@
         d.fogOfWar = Math.min(90, d.fogOfWar + 2);
       }
 
-      if ((d.phaseProgress[currentMicro.key] || 0) >= 2) {
-        advanceMicroPhase();
+      if (state.microPhaseProgress >= microPhaseTarget()) {
+        advancePhase();
       }
 
       clampDealState(d);
@@ -612,7 +756,7 @@
       }
       d.morale = Math.max(10, d.morale - Math.round(overload / 8));
       d.relationship = Math.max(0, Math.min(100, d.relationship + CLIENT_TYPES[d.clientTypeKey].relationshipDrift - 0.6));
-      d.workload = Math.max(0, d.workload - 22);
+      d.workload = Math.max(0, d.workload - 15);
       d.ap = calculateInitialPA();
 
       const eventRoll = Math.random();
@@ -623,16 +767,16 @@
         d.boardHeat += 1;
         log('Evento negativo de mercado/regulação.', 'bad');
       }
-      if (Math.random() < 0.18 && d.mitigations.leak < 2) {
+      if (Math.random() < 0.1 && d.mitigations.leak < 2) {
         d.relationship = Math.max(0, d.relationship - 4);
         d.fogOfWar = Math.min(90, d.fogOfWar + 6);
         log('Leak risk materializado: rumor de mercado.', 'bad');
       }
-      if (Math.random() < 0.15 + d.boardHeat * 0.03) {
+      if (Math.random() < 0.09 + d.boardHeat * 0.02) {
         d.closeProbability = Math.max(0, d.closeProbability - 4);
         log('Partner Review Board pediu rework.', 'bad');
       }
-      if (d.macroSensitive && Math.random() < 0.25) {
+      if (d.macroSensitive && Math.random() < 0.14) {
         d.ebitda = +(d.ebitda * 0.96).toFixed(2);
         log('ECB rate hike: EBITDA reduzida no Consumer.', 'bad');
       }
@@ -644,6 +788,40 @@
       }
       autoSave();
       renderPhase();
+    }
+
+    function careerGrade(score) {
+      if (score >= 950) return 'A+';
+      if (score >= 780) return 'A';
+      if (score >= 620) return 'B';
+      if (score >= 480) return 'C';
+      if (score >= 320) return 'D';
+      return 'F';
+    }
+
+    function gradeClass(grade) {
+      if (grade.startsWith('A')) return 'grade-a';
+      if (grade === 'B') return 'grade-b';
+      if (grade === 'C') return 'grade-c';
+      if (grade === 'D') return 'grade-d';
+      return 'grade-f';
+    }
+
+    function showCareerEndOverlay() {
+      const t = i18n[meta.language];
+      const best = state.deals.reduce((a, b) => b.netMargin > a.netMargin ? b : a, state.deals[0]);
+      const worst = state.deals.reduce((a, b) => b.netMargin < a.netMargin ? b : a, state.deals[0]);
+      const grade = careerGrade(state.careerScore);
+      const gradeNode = el('end-grade');
+      gradeNode.className = `grade-pill ${gradeClass(grade)}`;
+      gradeNode.textContent = grade;
+      el('end-score').textContent = `${t.totalScore}: ${Math.round(state.careerScore)}`;
+      const narrative = meta.language === 'pt'
+        ? `Melhor mandato: ${best.sector} (${best.clientType}) com ${best.netMargin.toFixed(1)}% margem. Pior mandato: ${worst.sector} em ${worst.weeks} semanas (${worst.won ? 'won' : 'lost'}).`
+        : `Best mandate: ${best.sector} (${best.clientType}) with ${best.netMargin.toFixed(1)}% margin. Toughest mandate: ${worst.sector} in ${worst.weeks} weeks (${worst.won ? 'won' : 'lost'}).`;
+      el('end-narrative').textContent = `${t.careerNarrative}: ${narrative}`;
+      el('end-mandates-body').innerHTML = state.deals.map(d => `<tr><td>${d.sector}</td><td>${d.clientType}</td><td>${d.ev.toFixed(1)}</td><td>${d.netMargin.toFixed(1)}%</td><td>${d.weeks}</td><td>${d.won ? 'Won' : 'Lost'}</td></tr>`).join('');
+      el('end-career-overlay').classList.remove('hidden');
     }
 
     function finishDeal(successOverride = null) {
@@ -668,11 +846,7 @@
       saveMeta();
 
       if (state.currentDeal >= state.totalDeals) {
-        const maxMargin = Math.max(...state.deals.map(x => x.netMargin));
-        const bestDeal = state.deals.find(x => x.netMargin === maxMargin) || state.deals[0];
-        const grade = state.deals.some(x => x.netMargin > 1.2 && x.weeks < 22) ? 'A+' : (state.careerScore > 620 ? 'A' : 'B');
-        alert(`${label({pt:'Carreira concluída!',en:'Career completed!'})}\n${label({pt:'Score total',en:'Total score'})}: ${state.careerScore}\nGrade: ${grade}\nPost-mortem: ${bestDeal.clientType} mandate delivered peak net margin of ${maxMargin.toFixed(1)}%.`);
-        showStart();
+        showCareerEndOverlay();
       } else {
         el('between-overlay').classList.remove('hidden');
       }
@@ -685,8 +859,10 @@
       state.current = makeDeal(sectorKey, state.officeLevel);
       state.currentPhaseIndex = 0;
       state.currentMicroPhaseIndex = 0;
+      state.microPhaseProgress = 0;
       state.current.logs.push('Novo mandato iniciado com recursos da carreira anterior.');
       el('between-overlay').classList.add('hidden');
+      el('end-career-overlay').classList.add('hidden');
       autoSave();
       renderPhase();
     }
@@ -720,6 +896,7 @@
       hideStart();
       state.currentPhaseIndex = state.currentPhaseIndex ?? 0;
       state.currentMicroPhaseIndex = state.currentMicroPhaseIndex ?? 0;
+      state.microPhaseProgress = state.microPhaseProgress ?? 0;
       renderPhase();
     }
 
@@ -881,6 +1058,10 @@
       setTip('fee', t.tips.fee);
       setTip('ap', t.tips.ap);
       setTip('workloadMath', t.tips.workloadMath);
+      el('phase-progress-label').textContent = t.phaseProgress;
+      el('micro-progress-label').textContent = t.microProgress;
+      el('endCareerTitle').textContent = t.endCareerTitle;
+      el('end-new-career').textContent = t.newCareerBtn;
     }
 
 
@@ -924,10 +1105,24 @@
       el('s-cash').textContent = `€${state.careerCash.toFixed(1)}M`;
       el('s-ap').textContent = `${d.ap}`;
       el('s-net').textContent = `${state.totalNetMargin.toFixed(1)}%`;
+      const t = i18n[meta.language];
       el('s-score').textContent = `${Math.round(state.careerScore)}`;
-      el('workload-fill').style.width = `${Math.min(100, (d.workload / Math.max(1,d.capacity))*100)}%`;
+      const workloadRatio = d.workload / Math.max(1,d.capacity);
+      el('workload-fill').style.width = `${Math.min(100, workloadRatio*100)}%`;
+      el('workload-fill').style.background = workloadRatio > 1 ? 'var(--bad)' : (workloadRatio >= 0.8 ? 'var(--warn)' : 'var(--good)');
+      el('workload-text').textContent = t.workloadValue.replace('{workload}', Math.round(d.workload)).replace('{capacity}', d.capacity);
+      const phase = currentPhase();
+      const completedMicro = state.currentPhaseIndex === PHASES_PRO.length - 1 && state.current.completed ? phase.microPhases.length : state.currentMicroPhaseIndex;
+      const phasePct = Math.round((completedMicro / Math.max(1, phase.microPhases.length)) * 100);
+      const microTarget = microPhaseTarget();
+      const microPct = Math.round(((state.microPhaseProgress || 0) / Math.max(1, microTarget)) * 100);
+      el('phase-progress-value').textContent = `${phasePct}%`;
+      el('phase-progress-fill').style.width = `${phasePct}%`;
+      el('micro-progress-value').textContent = `${Math.min(100,microPct)}%`;
+      el('micro-progress-fill').style.width = `${Math.min(100,microPct)}%`;
+      el('phase-header').textContent = t.phaseHeader.replace('{phase}', state.currentPhaseIndex + 1).replace('{total}', PHASES_PRO.length).replace('{phaseLabel}', label(phase.label)).replace('{microLabel}', label(currentMicro.label));
       el('dealHeader').textContent = `${d.sectorName} · EV ≈ €${(d.ebitda*d.multiple).toFixed(1)}M`;
-      el('dealContext').textContent = `Fase ${label(currentPhase().label)} / ${label(currentMicro.label)} · Rel ${d.relationship} · Morale ${d.morale} · Close Prob ${d.closeProbability}% · Fee ${d.feeAgreed ? '✓' : '✗'} · Fog ${d.fogOfWar}%`;
+      el('dealContext').textContent = `Rel ${d.relationship} · Morale ${d.morale} · Close Prob ${d.closeProbability}% · Fee ${d.feeAgreed ? '✓' : '✗'} · Fog ${d.fogOfWar}%`;
       el('betweenDesc').textContent = `Career Cash: €${state.careerCash.toFixed(1)}M | Office Lv.${state.officeLevel}`;
 
       const logBox = el('log');
@@ -962,6 +1157,11 @@
         setTimeout(()=>{ btn.disabled = false; }, 500);
       };
       el('new-career').onclick = ()=>{ showStart(); };
+
+      el('end-new-career').onclick = ()=>{
+        el('end-career-overlay').classList.add('hidden');
+        showStart();
+      };
       el('drawer-toggle').onclick = ()=>el('stats-drawer').classList.toggle('open');
       el('continue-next').onclick = ()=>startNextDeal(selectedSector);
 
@@ -990,6 +1190,7 @@
         tutorialStep += 1;
         if (tutorialStep > 2) {
           el('tutorial-overlay').classList.add('hidden');
+      el('end-career-overlay').classList.add('hidden');
           clearTutorialFocus();
           if (!meta.achievements.includes('tutorial-done')) meta.achievements.push('tutorial-done');
           saveMeta();
@@ -999,6 +1200,7 @@
       };
       el('tutorial-skip').onclick = ()=>{
         el('tutorial-overlay').classList.add('hidden');
+      el('end-career-overlay').classList.add('hidden');
         clearTutorialFocus();
         if (!meta.achievements.includes('tutorial-done')) meta.achievements.push('tutorial-done');
         saveMeta();
@@ -1018,6 +1220,7 @@
       hideStart();
       state.currentPhaseIndex = state.currentPhaseIndex ?? 0;
       state.currentMicroPhaseIndex = state.currentMicroPhaseIndex ?? 0;
+      state.microPhaseProgress = state.microPhaseProgress ?? 0;
     }
 
     renderI18n();
