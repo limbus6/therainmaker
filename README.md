@@ -35,4 +35,4 @@ Foram removidas APIs menos compatíveis (`prepend` e `Object.entries`) para evit
 
 ## Version Control Reminder
 
-`git pull`, `git add .`, `git commit -m "feat: tiered fee ratchets and advanced advisor P&L in EUR"`, `git push`.
+`git pull`, `git add .`, `git commit -m "feat: competitor phishing risk and data room management actions"`, `git push`.
