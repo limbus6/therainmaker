@@ -304,6 +304,20 @@
 
         .small { font-size: 0.82rem; color: #9ea9dd; }
 
+        .lang-switch {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 10px;
+        }
+
+        .lang-switch select {
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.14);
+            background: rgba(21, 31, 71, 0.95);
+            color: var(--text);
+            padding: 6px 10px;
+        }
+
         /* ---- Event card ---- */
         .event-card {
             background: rgba(255, 180, 50, 0.07);
@@ -588,14 +602,14 @@
 </head>
 <body>
     <noscript>
-        <p style="max-width:1100px;margin:0 auto 12px;background:#2b1430;color:#ffd3dd;border:1px solid #ff7b91;padding:10px 12px;border-radius:10px;">Este jogo requer JavaScript activo para funcionar.</p>
+        <p data-i18n="noscript" style="max-width:1100px;margin:0 auto 12px;background:#2b1430;color:#ffd3dd;border:1px solid #ff7b91;padding:10px 12px;border-radius:10px;">Este jogo requer JavaScript activo para funcionar.</p>
     </noscript>
 
     <!-- Start overlay -->
     <div class="overlay" id="start-overlay">
         <div class="ov-card">
-            <h1 class="start-title">M&A Dealmaker</h1>
-            <p class="start-sub">Simulacao interactiva de mandato de venda &mdash; do pitch ao closing.</p>
+            <h1 class="start-title" data-i18n="start.title">M&A Dealmaker</h1>
+            <p class="start-sub" data-i18n="start.subtitle">Simulacao interactiva de mandato de venda &mdash; do pitch ao closing.</p>
             <p style="font-size:0.88rem;color:var(--muted);margin-bottom:10px;">Gere o cliente, a equipa e os compradores em 10 fases criticas. Usa Pontos de Acao por semana com sabedoria. Eventos aleatorios testam a tua resiliencia.</p>
             <div class="config-row">
                 <span class="config-label">Setor de Atividade</span>
@@ -638,7 +652,7 @@
                     <span class="diff-opt-desc">Stats apertadas, eventos frequentes e mais severos</span>
                 </div>
             </div>
-            <button class="start-btn" id="btn-start">Iniciar Mandato</button>
+            <button class="start-btn" id="btn-start" data-i18n="start.begin">Iniciar Mandato</button>
         </div>
     </div>
 
@@ -652,31 +666,38 @@
             <div class="closing-compare" id="postmortem-narrative"></div>
             <div class="closing-compare" id="closing-comparison"></div>
             <div class="history-box" id="end-history"></div>
-            <button class="start-btn" id="btn-play-again">Novo Mandato</button>
+            <button class="start-btn" id="btn-play-again" data-i18n="end.newMandate">Novo Mandato</button>
         </div>
     </div>
 
     <!-- Game -->
     <main class="layout" id="game-layout">
         <aside class="panel">
+            <div class="lang-switch">
+                <label for="lang-select" data-i18n="lang.label" style="margin-right:8px;font-size:0.8rem;color:var(--muted)">Idioma</label>
+                <select id="lang-select" aria-label="Language selector">
+                    <option value="pt">PT-PT</option>
+                    <option value="en">ENG-UK</option>
+                </select>
+            </div>
             <h1>M&A Dealmaker <span class="diff-badge diff-normal" id="diff-badge">Normal</span><span class="context-badge" id="mandate-sector">Technology / Software</span><span class="context-badge" id="mandate-persona">Founder / Empreendedor</span></h1>
-            <p style="margin-bottom:10px;">Mandato de sell-side: do pitch ao closing, gerindo cliente, equipa e compradores.</p>
+            <p data-i18n="sidebar.subtitle" style="margin-bottom:10px;">Mandato de sell-side: do pitch ao closing, gerindo cliente, equipa e compradores.</p>
             <div class="stats">
                 <div class="stat">
-                    <span class="label">Cliente</span>
+                    <span class="label" data-i18n="labels.client">Cliente</span>
                     <strong id="s-cliente">70</strong>
                     <span class="stat-delta" id="d-cliente"></span>
                     <div class="meter"><span id="m-cliente"></span></div>
                 </div>
                 <div class="stat">
-                    <span class="label">Team Morale</span>
+                    <span class="label" data-i18n="labels.teamMorale">Team Morale</span>
                     <strong id="s-equipa">65</strong>
                     <span class="stat-delta" id="d-equipa"></span>
                     <div class="meter"><span id="m-equipa"></span></div>
                 </div>
                 <!-- Financial valuation: EBITDA x Multiple = EV -->
                 <div class="stat">
-                    <span class="label">Valor (EV)</span>
+                    <span class="label" data-i18n="labels.ev">Valor (EV)</span>
                     <strong id="s-ev" style="color:var(--accent);">44.0 M€</strong>
                     <span class="stat-delta" id="d-ev"></span>
                     <div style="font-size:0.69rem;color:var(--muted);margin-top:5px;">
@@ -684,14 +705,14 @@
                     </div>
                 </div>
                 <div class="stat">
-                    <span class="label">Prob. Closing</span>
+                    <span class="label" data-i18n="labels.closingProb">Prob. Closing</span>
                     <strong id="s-fecho">35%</strong>
                     <span class="stat-delta" id="d-fecho"></span>
-                    <div id="s-fecho-note" style="font-size:0.69rem;color:var(--muted);margin-top:5px;">Sem exclusividade formalizada.</div>
+                    <div id="s-fecho-note" data-i18n="labels.closingNoExclusive" style="font-size:0.69rem;color:var(--muted);margin-top:5px;">Sem exclusividade formalizada.</div>
                 </div>
                 <!-- Replaces "Dias para closing" -->
                 <div class="stat">
-                    <span class="label">Semana Atual</span>
+                    <span class="label" data-i18n="labels.currentWeek">Semana Atual</span>
                     <strong id="s-semana">1</strong>
                     <div style="font-size:0.7rem;color:var(--muted);margin-top:4px;">
                         de 34 &nbsp;<span id="s-restantes" style="color:var(--warn);">33 restantes</span>
@@ -700,7 +721,7 @@
             </div>
 
             <div class="stat" style="margin:6px 0 12px;">
-                <span class="label">Advisor P&amp;L</span>
+                <span class="label" data-i18n="labels.pnl">Advisor P&amp;L</span>
                 <div style="display:grid;grid-template-columns:1fr auto;gap:4px 8px;font-size:0.78rem;line-height:1.4;">
                     <span>Fee (Base / Upside)</span><strong id="s-fee-percentage" style="color:var(--accent);">0.00% / 0.00%</strong>
                     <span>Projected Weekly Burn (M€)</span><strong id="s-weekly-burn" style="color:var(--warn);">0.000 M€</strong>
@@ -715,7 +736,7 @@
 
             <!-- Pontos de Acao display -->
             <div class="stat" style="margin:0 0 10px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
-                <span class="label" style="margin-bottom:0;white-space:nowrap;">Pontos de Acao</span>
+                <span class="label" data-i18n="ui.points" style="margin-bottom:0;white-space:nowrap;">Pontos de Acao</span>
                 <div style="display:flex;align-items:center;gap:6px;">
                     <strong id="s-pa" style="color:var(--accent);font-size:1.15rem;">3</strong>
                     <span id="pa-pips" style="color:var(--accent);font-size:1rem;letter-spacing:3px;">&#9679;&#9679;&#9679;</span>
@@ -725,7 +746,7 @@
             <p class="small">Relacao abaixo de 20 = mandato perdido. Vitoria premium: EV &gt; 60 M€ e prob. &gt; 70%.</p>
             <div class="footer-actions">
                 <button id="btn-restart">Novo Mandato</button>
-                <button class="secondary" id="btn-end-week">Terminar Semana</button>
+                <button class="secondary" id="btn-end-week" data-i18n="actions.endWeek">Terminar Semana</button>
             </div>
         </aside>
 
@@ -1293,6 +1314,79 @@
         var diff = "normal";
         var selectedSector = "technology";
         var selectedPersona = "founder";
+
+        var i18n = {
+            pt: {
+                "lang.label": "Idioma",
+                "noscript": "Este jogo requer JavaScript activo para funcionar.",
+                "start.title": "M&A Dealmaker",
+                "start.subtitle": "Simulacao interactiva de mandato de venda — do pitch ao closing.",
+                "start.begin": "Iniciar Mandato",
+                "end.newMandate": "Novo Mandato",
+                "sidebar.subtitle": "Mandato de sell-side: do pitch ao closing, gerindo cliente, equipa e compradores.",
+                "labels.client": "Cliente",
+                "labels.teamMorale": "Moral da Equipa",
+                "labels.ev": "Valor (EV)",
+                "labels.closingProb": "Prob. Closing",
+                "labels.currentWeek": "Semana Atual",
+                "labels.pnl": "Advisor P&L",
+                "actions.endWeek": "Terminar Semana",
+                "phase.prefix": "Fase",
+                "phase.of": "de",
+                "ui.actions": "Ações",
+                "ui.points": "Pontos de Ação",
+                "ui.point": "Ponto de Ação",
+                "ui.success": "sucesso",
+                "ui.phaseProgress": "fase",
+                "ui.exhausted": "Pontos de Acao esgotados — clica em \"Terminar Semana\" para continuar.",
+                "ui.missingChoices": "Containers de escolhas não encontrados no DOM.",
+                "labels.closingNoExclusive": "Sem exclusividade formalizada.",
+                "labels.remainingWeeks": "restantes"
+            },
+            en: {
+                "lang.label": "Language",
+                "noscript": "This game requires JavaScript to run.",
+                "start.title": "M&A Dealmaker",
+                "start.subtitle": "Interactive sell-side mandate simulation — from pitch to closing.",
+                "start.begin": "Start Mandate",
+                "end.newMandate": "New Mandate",
+                "sidebar.subtitle": "Sell-side mandate: from pitch to closing, managing client, team and bidders.",
+                "labels.client": "Client",
+                "labels.teamMorale": "Team Morale",
+                "labels.ev": "Value (EV)",
+                "labels.closingProb": "Closing Prob.",
+                "labels.currentWeek": "Current Week",
+                "labels.pnl": "Advisor P&L",
+                "actions.endWeek": "End Week",
+                "phase.prefix": "Phase",
+                "phase.of": "of",
+                "ui.actions": "Actions",
+                "ui.points": "Action Points",
+                "ui.point": "Action Point",
+                "ui.success": "success",
+                "ui.phaseProgress": "phase",
+                "ui.exhausted": "Action points exhausted — click \"End Week\" to continue.",
+                "ui.missingChoices": "Choice containers not found in DOM.",
+                "labels.closingNoExclusive": "No exclusivity formalized.",
+                "labels.remainingWeeks": "remaining"
+            }
+        };
+        var currentLang = "pt";
+
+        function t(key) {
+            var langTable = i18n[currentLang] || i18n.pt;
+            return langTable[key] || i18n.pt[key] || key;
+        }
+
+        function applyI18nToStaticNodes() {
+            var nodes = document.querySelectorAll("[data-i18n]");
+            for (var i = 0; i < nodes.length; i++) {
+                var key = nodes[i].getAttribute("data-i18n");
+                nodes[i].textContent = t(key);
+            }
+            document.documentElement.lang = currentLang === "pt" ? "pt-PT" : "en-GB";
+        }
+
         var state = {};
         var gameHistory = [];
         var deltaTimers = {};
@@ -1545,41 +1639,37 @@
             return state.lastMacroTone === "bad" || isBadMarket();
         }
 
-        function computeClosingProbability(input) {
-            if (!input || !input.exclusiveBidder) return 0;
+        function calculateClosingProbability(input) {
+            if (!input) return 0;
 
-            var phaseProgressFactor = clamp((input.phaseIndex || 0) / Math.max(1, PHASES.length - 1), 0, 1);
+            var phaseIndex = input.phaseIndex || 0;
+            var totalPhases = Math.max(1, (input.totalPhases || PHASES.length || 1) - 1);
+            var phaseProgressFactor = clamp(phaseIndex / totalPhases, 0, 1);
             var trustModifier = Math.round((clamp(input.clientTrust || 0, 0, 100) - 50) * 0.35);
             var moraleModifier = Math.round((clamp(input.teamMorale || 0, 0, 100) - 50) * 0.25);
+            var macroPenalty = (input.macroTone === "bad" || input.isMacroNegative) ? 12 : 0;
+            var phaseModifier = Math.round(phaseProgressFactor * 18);
+            var bidderInterestBonus = Math.round((clamp(input.bidderInterest || 0, 0, 100) - 50) * 0.22);
 
-            var weightedOffer = weightedOfferForExpectation(input.exclusiveBidder);
-            var expectation = Math.max(0.1, input.clientExpectationEV || 0.1);
-            var offerGapRatio = (weightedOffer - expectation) / expectation;
-            var gapModifier = clamp(Math.round(offerGapRatio * 55), -30, 25);
-
-            var macroPenalty = input.isMacroNegative ? 12 : 0;
-            var phaseModifier = Math.round(phaseProgressFactor * 12);
-            var probability = 48 + phaseModifier + trustModifier + moraleModifier + gapModifier - macroPenalty;
+            var probability = 38 + phaseModifier + trustModifier + moraleModifier + bidderInterestBonus - macroPenalty;
             return Math.round(clamp(probability, 0, 100));
         }
 
-        function calculateClosingProbability() {
+        function getLiveClosingProbability() {
             var exclusive = resolveExclusiveBidder({ strict: true });
             if (!exclusive) return 0;
             var pressure = getWorkloadPressure();
             var burnoutPenalty = pressure.understaffed ? 10 : 0;
-            var phaseProgressFactor = clamp(state.phaseIndex / Math.max(1, PHASES.length - 1), 0, 1);
-            var maturityBonus = Math.round(phaseProgressFactor * 12);
-            var bidderInterestBonus = Math.round((clamp(exclusive.interesse || 0, 0, 100) - 50) * 0.22);
-            var baseProbability = computeClosingProbability({
+            var baseProbability = calculateClosingProbability({
                 phaseIndex: state.phaseIndex,
+                totalPhases: PHASES.length,
                 teamMorale: state.teamMorale,
                 clientTrust: state.cliente,
-                clientExpectationEV: state.clientExpectationEV,
-                isMacroNegative: isMacroMarketNegative(),
-                exclusiveBidder: exclusive
+                bidderInterest: exclusive.interesse,
+                macroTone: state.lastMacroTone,
+                isMacroNegative: isMacroMarketNegative()
             });
-            return clamp(Math.round(baseProbability + maturityBonus + bidderInterestBonus - burnoutPenalty), 0, 100);
+            return clamp(baseProbability - burnoutPenalty, 0, 100);
         }
 
         function getTopBidderByOffer() {
@@ -1717,7 +1807,7 @@
                 updateStats({ cliente: -clientePenalty, interesseBidders: -bidderInterestPenalty });
             }
 
-            state.fecho = clamp(calculateClosingProbability() + (state.closingProbBonus || 0), 0, 100);
+            state.fecho = clamp(getLiveClosingProbability() + (state.closingProbBonus || 0), 0, 100);
             addLog("ALERTA: Mercado fechado em exclusividade com " + exclusive.nome + ". Todo o risco de execucao passa a depender de um unico buyer.", "bad");
             return true;
         }
@@ -2309,14 +2399,14 @@
             R.sEbitda.textContent   = state.ebitda.toFixed(1);
             R.sMultiplo.textContent = state.multiplo.toFixed(1);
             R.sEV.textContent       = calcularEV().toFixed(1) + " M€";
-            state.fecho = clamp(calculateClosingProbability() + (state.closingProbBonus || 0), 0, 100);
+            state.fecho = clamp(getLiveClosingProbability() + (state.closingProbBonus || 0), 0, 100);
             R.sFecho.textContent    = state.fecho + "%";
             if (state.bidderExclusivo) {
                 var critical = state.fecho < 30;
-                R.sFechoNote.textContent = critical ? "Perigo critico na exclusividade (<30%)." : "Probabilidade dinamica em exclusividade.";
+                R.sFechoNote.textContent = critical ? (currentLang === "pt" ? "Perigo critico na exclusividade (<30%)." : "Critical exclusivity risk (<30%).") : (currentLang === "pt" ? "Probabilidade dinamica em exclusividade." : "Dynamic exclusivity probability.");
                 R.sFechoNote.style.color = critical ? "var(--bad)" : "var(--muted)";
             } else {
-                R.sFechoNote.textContent = "Sem exclusividade formalizada.";
+                R.sFechoNote.textContent = t("labels.closingNoExclusive");
                 R.sFechoNote.style.color = "var(--muted)";
             }
 
@@ -2332,8 +2422,8 @@
             // Turn-based displays
             R.sSemana.textContent    = state.semanaAtual;
             var pressure = getWorkloadPressure();
-            if (R.sTeamLoad) R.sTeamLoad.textContent = "Equipa: " + state.teamHeadcount + " | Cap: " + pressure.capacity + " | Carga: " + pressure.workload;
-            R.sRestantes.textContent = (state.semanasTotais - state.semanaAtual) + " restantes";
+            if (R.sTeamLoad) R.sTeamLoad.textContent = (currentLang === "pt" ? "Equipa" : "Team") + ": " + state.teamHeadcount + " | Cap: " + pressure.capacity + " | " + (currentLang === "pt" ? "Carga" : "Load") + ": " + pressure.workload;
+            R.sRestantes.textContent = (state.semanasTotais - state.semanaAtual) + " " + t("labels.remainingWeeks");
             R.sPA.textContent        = state.pontosAcao;
 
             // PA pips: filled vs empty circles
@@ -2763,7 +2853,7 @@
 
             gameHistory.push({ type: "event", label: "Credit Freeze", text: "Credit Freeze: Your PE buyer lost their bank financing! Interesse do exclusivo caiu " + drop + " pontos." });
             addLog("Critical Event: Credit Freeze: Your PE buyer lost their bank financing! Interesse do exclusivo caiu " + drop + " pontos.", "bad");
-            state.fecho = clamp(calculateClosingProbability() + (state.closingProbBonus || 0), 0, 100);
+            state.fecho = clamp(getLiveClosingProbability() + (state.closingProbBonus || 0), 0, 100);
             updateStats({ fecho: 0 });
             checkLose();
         }
@@ -3118,11 +3208,13 @@
             var total = PHASES.length;
             var pct   = (state.phaseIndex / total) * 100;
             if (R.progress) R.progress.style.width = pct + "%";
-            if (R.phaseLabel) R.phaseLabel.textContent = "Fase " + (state.phaseIndex + 1) + " de " + total + " · " + ph.id;
+            if (R.phaseLabel) R.phaseLabel.textContent = t("phase.prefix") + " " + (state.phaseIndex + 1) + " " + t("phase.of") + " " + total + " · " + ph.id;
             if (R.phaseTitle) R.phaseTitle.textContent = ph.title || "";
             if (R.phaseDesc) R.phaseDesc.textContent = ph.desc || "";
+            if (!R.choices) R.choices = document.getElementById("choices");
+            if (!R.globalChoices) R.globalChoices = document.getElementById("global-actions");
             if (!R.choices || !R.globalChoices) {
-                console.error("Containers de escolhas nao encontrados no DOM.");
+                console.error(t("ui.missingChoices"));
                 return;
             }
             R.choices.innerHTML = "";
@@ -3180,7 +3272,7 @@
                         "<strong>" + act.text + "</strong>" +
                         '<span class="choice-hint">' + act.hint + '</span>' +
                         '<span class="choice-hint" style="color:var(--accent);font-size:0.72rem;margin-top:3px;">' +
-                        "▸ " + actionCost + " Ponto" + (actionCost > 1 ? "s" : "") + " de Acao" + (act.weekCost ? " · " + act.weekCost + " semana" : "") + "</span>";
+                        "▸ " + actionCost + " " + (actionCost > 1 ? t("ui.points") : t("ui.point")) + (act.weekCost ? " · " + act.weekCost + " semana" : "") + "</span>";
                     btn.disabled = noPA || boardLocked || state.pontosAcao < actionCost;
                     btn.addEventListener("click", function() { doGlobalAction(act.id, act.bidderName); });
                     R.globalChoices.appendChild(btn);
@@ -3334,6 +3426,7 @@
             gameHistory = [];
             R.log.innerHTML       = "";
             R.eventArea.innerHTML = "";
+            applyI18nToStaticNodes();
             R.startOv.className   = "overlay hidden";
             R.gameLayout.classList.remove("hidden");
             R.badge.textContent   = cfg.label;
@@ -3371,6 +3464,20 @@
         R.btnReviewCorrect.addEventListener("click", function() { processReviewBoard("correct"); });
         R.btnReviewImprove.addEventListener("click", function() { processReviewBoard("improve"); });
         R.btnReviewRedo.addEventListener("click", function() { processReviewBoard("redo"); });
+
+        var langSelect = document.getElementById("lang-select");
+        if (langSelect) {
+            langSelect.value = currentLang;
+            langSelect.addEventListener("change", function(e) {
+                currentLang = e.target.value === "en" ? "en" : "pt";
+                applyI18nToStaticNodes();
+                if (!state.ended && Object.keys(state).length > 0) {
+                    renderPhase();
+                }
+            });
+        }
+
+        applyI18nToStaticNodes();
     </script>
 </body>
 </html>
