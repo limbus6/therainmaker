@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>M&A Dealmaker Pro - Sprint 7</title>
+  <title>M&A Dealmaker Pro - Sprint 8</title>
   <style>
     :root {
       color-scheme: dark;
@@ -88,6 +88,16 @@
     .hide { display:none; }
     .info-icon { display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:999px; border:1px solid #5a79ad; font-size:.72rem; margin-left:4px; color:var(--accent); }
     .tutorial-focus { box-shadow: 0 0 0 2px #7fd3ffcc, 0 0 22px #7fd3ff66; border-radius:10px; }
+
+    .debug-fab { border-radius:999px; width:36px; height:36px; padding:0; font-weight:700; }
+    .debug-panel { position:fixed; right:16px; bottom:16px; width:min(420px,calc(100vw - 24px)); max-height:70vh; overflow:auto; z-index:180; }
+    .debug-panel pre { background:#061126; border:1px solid #2d4a7c; border-radius:8px; padding:8px; white-space:pre-wrap; word-break:break-word; }
+    #modal-overlay { position:fixed; inset:0; background:transparent; z-index:140; display:none; pointer-events:none; }
+    @media (max-width: 980px) {
+      .mobile-drawer { position:fixed; left:0; right:0; bottom:0; z-index:130; transform:translateY(calc(100% - 46px)); transition:transform .25s ease; }
+      .mobile-drawer.open { transform:translateY(0); }
+      .drawer-handle { width:100%; margin-bottom:8px; }
+    }
     @media (max-width: 980px) {
       .app { grid-template-columns: 1fr; }
       .sector-grid { grid-template-columns: 1fr 1fr; }
@@ -101,7 +111,8 @@
   </div>
 
   <div class="app">
-    <aside class="card">
+    <aside class="card mobile-drawer" id="stats-drawer">
+      <button id="drawer-toggle" class="drawer-handle">Stats & P&L</button>
       <h3 id="careerTitle">Carreira de Advisor</h3>
       <div class="stats">
         <div class="stat"><span class="label" id="lblDeal">Mandato</span><span id="s-deal" class="value">1/3</span></div>
@@ -129,6 +140,7 @@
 
     <main class="card">
       <div class="tabs">
+        <button id="debug-open" class="debug-fab" title="Debug Hub">?</button>
         <button class="tab-btn active" data-tab="deal" id="tab-deal">Deal Room</button>
         <button class="tab-btn" data-tab="team" id="tab-team">Team Management</button>
         <button class="tab-btn" data-tab="settings" id="tab-settings">Settings</button>
@@ -193,6 +205,19 @@
     </div>
   </div>
 
+
+  <div id="modal-overlay"></div>
+
+  <div id="debug-panel" class="card debug-panel hidden">
+    <h3>Debug Hub</h3>
+    <p class="hint">Key: D</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+      <button id="hard-refresh-ui" class="primary">Hard Refresh UI</button>
+      <button id="debug-close">Close</button>
+    </div>
+    <pre id="debug-trace"></pre>
+  </div>
+
   <script>
     const STORAGE_META = 'ma.meta.v2';
     const STORAGE_SLOT_PREFIX = 'ma.slot.v2.';
@@ -243,6 +268,8 @@
     let state = null;
     let selectedSector = sectors[0].key;
     let tutorialStep = 0;
+    const PHASES_PRO = [{ key: 'mandate', microPhases: [{ key: 'prep' }, { key: 'pitch' }, { key: 'close' }] }];
+    const R = { get choices(){ return el('action-list'); } };
 
     const el = (id) => document.getElementById(id);
 
@@ -311,10 +338,12 @@
         logs: [],
         negativeRiskMod: sector.risk,
         macroSensitive: sector.key === 'consumer',
+        baseFeePct: +(1.2 + Math.random() * 0.9).toFixed(2),
+        clientType: ['Founder-led', 'PE-owned', 'Corporate carve-out'][Math.floor(Math.random()*3)]
       };
     }
 
-    function newCareer(slot = null) {
+    function initCareer(slot = null) {
       state = {
         activeSlot: slot,
         currentDeal: 1,
@@ -325,11 +354,22 @@
         deals: [],
         totalNetMargin: 0,
         careerScore: 0,
+        career: { achievements: [...(meta.achievements || [])], unlockedSectors: [selectedSector], largestNetMargin: 0 },
         current: makeDeal(selectedSector, 0)
       };
       state.current.logs.push('Mandato iniciado. Negociar fee é prioridade.');
+      state.currentPhaseIndex = 0;
+      state.currentMicroPhaseIndex = 0;
+      state.current.ap = calculateInitialPA();
+      const blocker = el('modal-overlay');
+      if (blocker) blocker.style.display = 'none';
+      hideStart();
+      state.currentPhaseIndex = state.currentPhaseIndex ?? 0;
+      state.currentMicroPhaseIndex = state.currentMicroPhaseIndex ?? 0;
+      el('between-overlay').classList.add('hidden');
+      el('tutorial-overlay').classList.add('hidden');
       maybeShowTutorial(true);
-      renderAll();
+      renderPhase();
     }
 
     function randBetween(a,b){ return +(a + Math.random()*(b-a)).toFixed(1); }
@@ -337,6 +377,11 @@
     function teamSkillBonus(branch) {
       const specialists = state.team.filter(m => m.skill[branch]).length;
       return Math.min(0.3, specialists * 0.1);
+    }
+
+    function calculateInitialPA() {
+      const d = state.current;
+      return Math.max(1, Math.min(6, 3 + Math.floor((d.morale - 50) / 20) + state.officeLevel));
     }
 
     const actions = [
@@ -364,12 +409,19 @@
       if (d.workload > d.capacity) p -= 0.12;
       p += (d.morale - 50) / 250;
       const ok = Math.random() < p;
+      if (a.key === 'pitch' && d.baseFeePct > 1.7 && Math.random() < 0.30) {
+        d.netMargin = Math.max(-8, d.netMargin - 1.3);
+        log('Advisor Rival undercut na fase de Pitch (-1.3pp margin).', 'bad');
+      }
       a.effect(ok,d);
       d.closeProbability = Math.max(0, Math.min(95, d.closeProbability));
       d.relationship = Math.max(0, Math.min(100, d.relationship));
       d.morale = Math.max(0, Math.min(100, d.morale));
+      if (a.key === 'pitch') state.currentMicroPhaseIndex = 1;
+      if (a.key === 'close') state.currentMicroPhaseIndex = 2;
+      closeDrawer();
       log(`${label(a.label)}: ${ok ? '✓' : '✗'} (${Math.round(p*100)}%)`, ok ? 'good' : 'bad');
-      renderAll();
+      renderPhase();
     }
 
     function advanceOneWeek() {
@@ -377,10 +429,13 @@
       if (d.completed) return;
       d.week += 1;
       const overload = Math.max(0, d.workload - d.capacity);
+      if (overload > 0) {
+        d.netMargin = Math.max(-8, d.netMargin - 1.3);
+        log('Burnout penalty aplicado (1.3x custo implícito).', 'bad');
+      }
       d.morale = Math.max(10, d.morale - Math.round(overload / 8));
       d.workload = Math.max(0, d.workload - 22);
-      let apBase = 3 + Math.floor((d.morale - 50) / 20) + state.officeLevel;
-      d.ap = Math.max(1, Math.min(6, apBase));
+      d.ap = calculateInitialPA();
 
       const eventRoll = Math.random();
       const risk = 0.16 * d.negativeRiskMod;
@@ -398,7 +453,7 @@
         finishDeal(false);
       }
       autoSave();
-      renderAll();
+      renderPhase();
     }
 
     function finishDeal(successOverride = null) {
@@ -406,27 +461,33 @@
       const won = successOverride !== null ? successOverride : (d.completed && d.feeAgreed && d.closeProbability >= 45);
       let ev = d.ebitda * d.multiple;
       if (!won) ev *= 0.5;
-      const fee = won ? ev * (0.02 + (d.netMargin/100)) : ev * 0.006;
+      const fee = won ? ev * ((d.baseFeePct/100) + (d.netMargin/100)) : ev * 0.006;
       const netMargin = Math.max(-8, Math.min(35, d.netMargin + (won ? 8 : -4)));
       const dealScore = Math.max(0, Math.round((won ? 150 : 40) + d.closeProbability + netMargin * 4 + d.relationship));
 
       state.careerCash += fee / 10;
       state.totalNetMargin += netMargin;
       state.careerScore += dealScore;
-      state.deals.push({ sector: d.sectorName, won, ev: +ev.toFixed(1), netMargin: +netMargin.toFixed(1), score: dealScore });
+      state.deals.push({ sector: d.sectorName, clientType: d.clientType, won, ev: +ev.toFixed(1), netMargin: +netMargin.toFixed(1), score: dealScore, weeks: d.week });
+      state.career.largestNetMargin = Math.max(state.career.largestNetMargin, netMargin);
+      if (!state.career.unlockedSectors.includes(d.sector)) state.career.unlockedSectors.push(d.sector);
 
       if (won && !meta.achievements.includes('closer')) meta.achievements.push('closer');
       if (state.deals.length === 3 && state.careerScore > 700 && !meta.achievements.includes('rainmaker')) meta.achievements.push('rainmaker');
+      state.career.achievements = [...meta.achievements];
       saveMeta();
 
       if (state.currentDeal >= state.totalDeals) {
-        alert(`${label({pt:'Carreira concluída!',en:'Career completed!'})}\n${label({pt:'Score total',en:'Total score'})}: ${state.careerScore}`);
+        const maxMargin = Math.max(...state.deals.map(x => x.netMargin));
+        const bestDeal = state.deals.find(x => x.netMargin === maxMargin) || state.deals[0];
+        const grade = state.deals.some(x => x.netMargin > 1.2 && x.weeks < 22) ? 'A+' : (state.careerScore > 620 ? 'A' : 'B');
+        alert(`${label({pt:'Carreira concluída!',en:'Career completed!'})}\n${label({pt:'Score total',en:'Total score'})}: ${state.careerScore}\nGrade: ${grade}\nPost-mortem: ${bestDeal.clientType} mandate delivered peak net margin of ${maxMargin.toFixed(1)}%.`);
         showStart();
       } else {
         el('between-overlay').classList.remove('hidden');
       }
       autoSave();
-      renderAll();
+      renderPhase();
     }
 
     function startNextDeal(sectorKey) {
@@ -435,7 +496,7 @@
       state.current.logs.push('Novo mandato iniciado com recursos da carreira anterior.');
       el('between-overlay').classList.add('hidden');
       autoSave();
-      renderAll();
+      renderPhase();
     }
 
     function unlockSkill(memberId, branch) {
@@ -445,7 +506,7 @@
       m.skill[branch] = true;
       log(`${m.name} desbloqueou ${branch}.`, 'good');
       autoSave();
-      renderAll();
+      renderPhase();
     }
 
     function getCareerPayload() {
@@ -465,7 +526,9 @@
       state = parsed.career;
       state.activeSlot = slot;
       hideStart();
-      renderAll();
+      state.currentPhaseIndex = state.currentPhaseIndex ?? 0;
+      state.currentMicroPhaseIndex = state.currentMicroPhaseIndex ?? 0;
+      renderPhase();
     }
 
     function clearSlot(slot) {
@@ -476,11 +539,12 @@
     function autoSave() {
       if (!state) return;
       writeJSON(STORAGE_AUTOSAVE, { savedAt: Date.now(), career: getCareerPayload() });
+      localStorage.setItem('ma_dealmaker_career', JSON.stringify(state.career));
       if (state.activeSlot) saveSlot(state.activeSlot);
     }
 
-    function showStart(){ el('start-overlay').classList.remove('hidden'); }
-    function hideStart(){ el('start-overlay').classList.add('hidden'); }
+    function showStart(){ el('start-overlay').classList.remove('hidden'); const blocker = el('modal-overlay'); if (blocker) blocker.style.display = 'none'; }
+    function hideStart(){ el('start-overlay').classList.add('hidden'); const blocker = el('modal-overlay'); if (blocker) blocker.style.display = 'none'; }
 
     function maybeShowTutorial(isNewCareer=false) {
       if (!isNewCareer && meta.achievements.includes('tutorial-done')) return;
@@ -617,6 +681,64 @@
       document.querySelector('[data-tip="workloadMath"]').textContent = t.tips.workloadMath;
     }
 
+
+    function ensureValidMicroPhase() {
+      const phase = PHASES_PRO[state.currentPhaseIndex];
+      if (!phase) {
+        state.currentPhaseIndex = 0;
+        state.currentMicroPhaseIndex = 0;
+        return PHASES_PRO[0].microPhases[0];
+      }
+      let micro = phase.microPhases[state.currentMicroPhaseIndex];
+      if (!micro) {
+        state.currentPhaseIndex = 0;
+        state.currentMicroPhaseIndex = 0;
+        micro = PHASES_PRO[0].microPhases[0];
+      }
+      return micro;
+    }
+
+    function renderPhase() {
+      if (!state) {
+        renderAll();
+        return;
+      }
+      ensureValidMicroPhase();
+      renderAll();
+      updateDebugTrace();
+    }
+
+    function hardRefreshUI() {
+      if (!state) return;
+      state.current.ap = calculateInitialPA();
+      state.currentPhaseIndex = 0;
+      state.currentMicroPhaseIndex = 0;
+      R.choices.innerHTML = '';
+      renderPhase();
+    }
+
+    function updateDebugTrace() {
+      if (!state) return;
+      const micro = ensureValidMicroPhase();
+      el('debug-trace').textContent = JSON.stringify({
+        phaseIndex: state.currentPhaseIndex,
+        microPhaseIndex: state.currentMicroPhaseIndex,
+        microPhase: micro,
+        currentAP: state.current.ap
+      }, null, 2);
+    }
+
+    function toggleDebugPanel(forceOpen = null) {
+      const panel = el('debug-panel');
+      const shouldOpen = forceOpen === null ? panel.classList.contains('hidden') : forceOpen;
+      panel.classList.toggle('hidden', !shouldOpen);
+      if (shouldOpen) updateDebugTrace();
+    }
+
+    function closeDrawer() {
+      el('stats-drawer').classList.remove('open');
+    }
+
     function renderAll() {
       renderI18n();
       renderSlots();
@@ -646,7 +768,7 @@
 
     function initEvents() {
       el('language-select').value = meta.language;
-      el('language-select').onchange = (e)=>{ meta.language = e.target.value; saveMeta(); renderAll(); };
+      el('language-select').onchange = (e)=>{ meta.language = e.target.value; saveMeta(); renderPhase(); };
 
       document.querySelectorAll('.tab-btn').forEach(b => {
         b.onclick = () => {
@@ -657,16 +779,29 @@
         };
       });
 
-      el('start-career').onclick = ()=>{ hideStart(); newCareer(); };
-      el('advance-week').onclick = ()=>advanceOneWeek();
+      el('start-career').onclick = ()=>initCareer();
+      el('advance-week').onclick = ()=>{
+        const btn = el('advance-week');
+        if (btn.disabled) return;
+        btn.disabled = true;
+        advanceOneWeek();
+        setTimeout(()=>{ btn.disabled = false; }, 500);
+      };
       el('new-career').onclick = ()=>{ showStart(); };
+      el('drawer-toggle').onclick = ()=>el('stats-drawer').classList.toggle('open');
+      el('debug-open').onclick = ()=>toggleDebugPanel();
+      el('debug-close').onclick = ()=>toggleDebugPanel(false);
+      el('hard-refresh-ui').onclick = ()=>hardRefreshUI();
+      document.addEventListener('keydown', (event)=>{
+        if (event.key.toLowerCase() === 'd') toggleDebugPanel();
+      });
       el('continue-next').onclick = ()=>startNextDeal(selectedSector);
 
       el('buy-analyst').onclick = ()=>{
         if (state.careerCash < 1.0) return;
         state.careerCash -= 1.0;
         state.team.push(member(`Analyst ${state.team.length+1}`, 'Analyst'));
-        renderAll();
+        renderPhase();
       };
       el('buy-specialist').onclick = ()=>{
         if (state.careerCash < 1.8) return;
@@ -674,13 +809,13 @@
         const m = member(`Specialist ${state.team.length+1}`, 'Associate');
         m.skill[['financial','legal','commercial'][Math.floor(Math.random()*3)]] = true;
         state.team.push(m);
-        renderAll();
+        renderPhase();
       };
       el('buy-office').onclick = ()=>{
         if (state.careerCash < 1.2) return;
         state.careerCash -= 1.2;
         state.officeLevel += 1;
-        renderAll();
+        renderPhase();
       };
 
       el('tutorial-next').onclick = ()=>{
@@ -713,11 +848,13 @@
     if (auto && auto.career) {
       state = auto.career;
       hideStart();
+      state.currentPhaseIndex = state.currentPhaseIndex ?? 0;
+      state.currentMicroPhaseIndex = state.currentMicroPhaseIndex ?? 0;
     }
 
     renderI18n();
     initEvents();
-    renderAll();
+    renderPhase();
   </script>
 </body>
 </html>
