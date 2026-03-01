@@ -307,6 +307,8 @@
         .lang-switch {
             display: flex;
             justify-content: flex-end;
+            align-items: center;
+            gap: 8px;
             margin-bottom: 10px;
         }
 
@@ -316,6 +318,38 @@
             background: rgba(21, 31, 71, 0.95);
             color: var(--text);
             padding: 6px 10px;
+        }
+
+        .warning-label {
+            margin-top: 6px;
+            color: var(--bad);
+            font-size: 0.76rem;
+            font-weight: 700;
+        }
+
+        .pnl-warning {
+            color: var(--bad);
+            font-size: 0.72rem;
+            font-weight: 700;
+            margin-top: 6px;
+            display: none;
+        }
+
+        .pnl-warning.active {
+            display: block;
+            animation: pulse-warning 1.2s infinite;
+        }
+
+        .stat.pnl-alert {
+            border-color: rgba(255, 123, 145, 0.75);
+            box-shadow: 0 0 0 2px rgba(255, 123, 145, 0.18);
+            animation: pulse-warning 1.2s infinite;
+        }
+
+        @keyframes pulse-warning {
+            0% { opacity: 1; }
+            50% { opacity: 0.55; }
+            100% { opacity: 1; }
         }
 
         /* ---- Event card ---- */
@@ -380,6 +414,42 @@
         }
         .overlay.hidden { display: none; }
         .hidden { display: none !important; }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(2, 4, 20, 0.88);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            padding: 20px;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-overlay.hidden { display: none; }
+
+        .modal-card {
+            background: rgba(12, 18, 50, 0.99);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.7);
+            padding: 20px;
+            max-width: 520px;
+            width: 100%;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 14px;
+        }
+
+        .modal-actions button {
+            flex: 1 1 140px;
+            text-align: center;
+        }
 
         .ov-card {
             background: rgba(12, 18, 50, 0.99);
@@ -637,6 +707,15 @@
                     </div>
                 </div>
             </div>
+            <div class="config-row">
+                <div class="lang-switch" style="justify-content:flex-start;margin-bottom:0;">
+                    <label for="lang-select" data-i18n="lang.label" style="font-size:0.8rem;color:var(--muted)">Idioma</label>
+                    <select id="lang-select" aria-label="Language selector">
+                        <option value="pt">PT-PT</option>
+                        <option value="en">ENG-UK</option>
+                    </select>
+                </div>
+            </div>
             <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:6px;font-weight:700;">Dificuldade</div>
             <div class="diff-grid">
                 <div class="diff-opt" id="diff-facil">
@@ -651,6 +730,9 @@
                     <span class="diff-opt-name" style="color:var(--bad)">Dificil</span>
                     <span class="diff-opt-desc">Stats apertadas, eventos frequentes e mais severos</span>
                 </div>
+            </div>
+            <div id="sector-preview" class="small" style="text-align:left;margin:0 0 12px;">
+                Pré-visualização: EBITDA 2.0-4.5 M€ · Múltiplo 10.0x-14.0x
             </div>
             <button class="start-btn" id="btn-start" data-i18n="start.begin">Iniciar Mandato</button>
         </div>
@@ -673,13 +755,6 @@
     <!-- Game -->
     <main class="layout" id="game-layout">
         <aside class="panel">
-            <div class="lang-switch">
-                <label for="lang-select" data-i18n="lang.label" style="margin-right:8px;font-size:0.8rem;color:var(--muted)">Idioma</label>
-                <select id="lang-select" aria-label="Language selector">
-                    <option value="pt">PT-PT</option>
-                    <option value="en">ENG-UK</option>
-                </select>
-            </div>
             <h1>M&A Dealmaker <span class="diff-badge diff-normal" id="diff-badge">Normal</span><span class="context-badge" id="mandate-sector">Technology / Software</span><span class="context-badge" id="mandate-persona">Founder / Empreendedor</span></h1>
             <p data-i18n="sidebar.subtitle" style="margin-bottom:10px;">Mandato de sell-side: do pitch ao closing, gerindo cliente, equipa e compradores.</p>
             <div class="stats">
@@ -720,7 +795,7 @@
                 </div>
             </div>
 
-            <div class="stat" style="margin:6px 0 12px;">
+            <div class="stat" id="pnl-panel" style="margin:6px 0 12px;">
                 <span class="label" data-i18n="labels.pnl">Advisor P&amp;L</span>
                 <div style="display:grid;grid-template-columns:1fr auto;gap:4px 8px;font-size:0.78rem;line-height:1.4;">
                     <span>Fee (Base / Upside)</span><strong id="s-fee-percentage" style="color:var(--accent);">0.00% / 0.00%</strong>
@@ -728,9 +803,11 @@
                     <span>Execution Costs (M€)</span><strong id="s-execution-costs" style="color:var(--warn);">0.0 M€</strong>
                     <span>Expected Net Margin (M€)</span><strong id="s-net-margin" style="color:var(--good);">0.0 M€</strong>
                 </div>
+                <div id="pnl-warning" class="pnl-warning">Alerta PE: margem líquida próxima do limite de tolerância.</div>
             </div>
 
-            <div class="small" id="s-team-load" style="margin:0 0 12px;">Equipa: 3 | Cap: 45 | Carga: 10</div>
+            <div class="small" id="s-team-load" style="margin:0 0 4px;">Equipa: 3 | Cap: 45 | Carga: 10</div>
+            <div class="small" id="s-onboarding-status" style="margin:0 0 12px;">Onboarding: sem contratações pendentes.</div>
 
             <div id="bidder-list"></div>
 
@@ -793,6 +870,14 @@
             <div class="log" id="log" aria-live="polite"></div>
         </section>
     </main>
+
+    <div class="modal-overlay hidden" id="game-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="modal-card panel">
+            <h2 id="modal-title">Confirmação</h2>
+            <p id="modal-message" style="margin-bottom:0;"></p>
+            <div class="modal-actions" id="modal-actions"></div>
+        </div>
+    </div>
 
     <script>
         // ---- DIFFICULTY CONFIG ----
@@ -1432,6 +1517,14 @@
             sWeeklyBurn:       document.getElementById("s-weekly-burn"),
             sExecutionCosts:    document.getElementById("s-execution-costs"),
             sNetMargin:         document.getElementById("s-net-margin"),
+            pnlPanel:           document.getElementById("pnl-panel"),
+            pnlWarning:         document.getElementById("pnl-warning"),
+            onboardingStatus:   document.getElementById("s-onboarding-status"),
+            startSectorPreview: document.getElementById("sector-preview"),
+            gameModal:          document.getElementById("game-modal"),
+            modalTitle:         document.getElementById("modal-title"),
+            modalMessage:       document.getElementById("modal-message"),
+            modalActions:       document.getElementById("modal-actions"),
             progressoFaseBar:   document.getElementById("progresso-fase-fill"),
             progressoFaseLabel: document.getElementById("fase-progresso-label"),
             vddBadge:           document.getElementById("vdd-badge"),
@@ -1471,8 +1564,14 @@
             return PHASE_WORKLOAD[phaseId] || 0;
         }
 
+        function getNextWorkload() {
+            if (!PHASES || (state.phaseIndex + 1) >= PHASES.length) return 0;
+            var nextId = PHASES[state.phaseIndex + 1].id;
+            return PHASE_WORKLOAD[nextId] || 0;
+        }
+
         function getTeamCapacity() {
-            return (state.teamHeadcount || 0) * 15;
+            return (state.activeHeadcount || state.teamHeadcount || 0) * 15;
         }
 
         function getWorkloadPressure() {
@@ -2130,17 +2229,10 @@
             if (actionId === "hire_analyst_associate") {
                 state.pontosAcao -= 1;
                 state.teamHeadcount += 1;
+                state.onboardingQueue.push({ count: 1, weeksRemaining: 1 });
                 state.hiredHeadcountBoost += 1;
-                var pressureBeforeHire = getWorkloadPressure();
-                var moraleDelta = 0;
-                if (pressureBeforeHire.understaffed) {
-                    moraleDelta = 10;
-                } else if (pressureBeforeHire.oversized) {
-                    moraleDelta = -10;
-                }
-                state.teamMorale = clamp(state.teamMorale + moraleDelta, 0, 100);
-                addLog("Novo Analyst/Associate contratado: headcount +1. Impacto na moral pela carga da equipa: " + (moraleDelta > 0 ? "+" : "") + moraleDelta + ".", moraleDelta >= 0 ? "good" : "bad");
-                updateStats({ teamMorale: moraleDelta });
+                addLog("Novo Analyst/Associate contratado: headcount +1 imediato. Capacidade só aumenta na próxima semana (onboarding).", "warn");
+                updateStats({ teamMorale: 0 });
                 if (checkLose()) return;
                 renderPhase();
                 return;
@@ -2157,6 +2249,11 @@
             }
 
             if (actionId === "demand_results") {
+                if (state.teamMorale < 35) {
+                    addLog("Reunião bloqueada: Team Morale demasiado baixa para evitar resignação em massa.", "bad");
+                    renderPhase();
+                    return;
+                }
                 state.pontosAcao -= 1;
                 state.teamMorale = clamp(state.teamMorale - 20, 0, 100);
                 state.nextDeliverableBonus = true;
@@ -2446,6 +2543,59 @@
             R.log.insertBefore(div, R.log.firstChild);
         }
 
+        // Modal reutilizável para substituir prompt/confirm nativos.
+        function showModal(title, message, options) {
+            return new Promise(function(resolve) {
+                if (!R.gameModal || !R.modalActions) {
+                    resolve(null);
+                    return;
+                }
+                R.modalTitle.textContent = title || "Confirmação";
+                R.modalMessage.textContent = message || "";
+                R.modalActions.innerHTML = "";
+                var opts = options && options.length ? options : [{ label: "OK", value: true }];
+
+                function close(value) {
+                    R.gameModal.className = "modal-overlay hidden";
+                    R.modalActions.innerHTML = "";
+                    resolve(value);
+                }
+
+                for (var i = 0; i < opts.length; i++) {
+                    (function(opt) {
+                        var btn = document.createElement("button");
+                        btn.textContent = opt.label;
+                        if (opt.tone === "danger") btn.style.borderColor = "rgba(255,123,145,0.75)";
+                        btn.addEventListener("click", function() { close(opt.value); });
+                        R.modalActions.appendChild(btn);
+                    })(opts[i]);
+                }
+
+                R.gameModal.className = "modal-overlay";
+            });
+        }
+
+        function getOnboardingStatusText() {
+            var queue = state.onboardingQueue || [];
+            if (!queue.length) return "Onboarding: sem contratações pendentes.";
+            var total = 0;
+            var chunks = [];
+            for (var i = 0; i < queue.length; i++) {
+                total += queue[i].count;
+                chunks.push(queue[i].count + " em " + queue[i].weeksRemaining + " sem");
+            }
+            return "Onboarding: " + total + " novo(s) recurso(s) pendente(s) (" + chunks.join(" · ") + ").";
+        }
+
+        function updateStartSectorPreview() {
+            if (!R.startSectorPreview) return;
+            if (selectedSector === "industrial") {
+                R.startSectorPreview.textContent = "Pré-visualização: EBITDA 8.0-15.0 M€ · Múltiplo 5.0x-7.5x";
+                return;
+            }
+            R.startSectorPreview.textContent = "Pré-visualização: EBITDA 2.0-4.5 M€ · Múltiplo 10.0x-14.0x";
+        }
+
         function showDelta(el, val) {
             if (!el || val === 0) return;
             el.textContent = (val > 0 ? "+" : "") + val;
@@ -2482,10 +2632,22 @@
             R.sNetMargin.textContent = pnl.netMargin.toFixed(3) + " M€";
             R.sNetMargin.style.color = pnl.netMargin >= 0 ? "var(--good)" : "var(--bad)";
 
+            var peTolerance = 1.4 + Math.max(0, calcularEV() - (state.clientExpectationEV || 0)) * 0.08;
+            var peNearLimit = state.persona === "pe" && (peTolerance - pnl.netMargin) >= 0 && (peTolerance - pnl.netMargin) <= 0.2;
+            if (R.pnlPanel) R.pnlPanel.className = "stat" + (peNearLimit ? " pnl-alert" : "");
+            if (R.pnlWarning) {
+                R.pnlWarning.className = "pnl-warning" + (peNearLimit ? " active" : "");
+                R.pnlWarning.textContent = "Alerta PE: Net Margin em " + pnl.netMargin.toFixed(3) + " M€ (limite " + peTolerance.toFixed(3) + " M€).";
+            }
+
             // Turn-based displays
             R.sSemana.textContent    = state.semanaAtual;
             var pressure = getWorkloadPressure();
-            if (R.sTeamLoad) R.sTeamLoad.textContent = (currentLang === "pt" ? "Equipa" : "Team") + ": " + state.teamHeadcount + " | Cap: " + pressure.capacity + " | " + (currentLang === "pt" ? "Carga" : "Load") + ": " + pressure.workload;
+            var nextWorkload = getNextWorkload();
+            var currentPhaseId = (PHASES[state.phaseIndex] && PHASES[state.phaseIndex].id) ? PHASES[state.phaseIndex].id : "-";
+            var nextPhaseId = (PHASES[state.phaseIndex + 1] && PHASES[state.phaseIndex + 1].id) ? PHASES[state.phaseIndex + 1].id : "-";
+            if (R.sTeamLoad) R.sTeamLoad.textContent = (currentLang === "pt" ? "Equipa" : "Team") + ": " + state.teamHeadcount + " | Cap: " + pressure.capacity + " | " + (currentLang === "pt" ? "Carga" : "Load") + ": " + currentPhaseId + " (" + pressure.workload + ") -> " + (currentLang === "pt" ? "Próxima" : "Next") + ": " + nextPhaseId + " (" + nextWorkload + ")";
+            if (R.onboardingStatus) R.onboardingStatus.textContent = getOnboardingStatusText();
             R.sRestantes.textContent = (state.semanasTotais - state.semanaAtual) + " " + t("labels.remainingWeeks");
             R.sPA.textContent        = state.pontosAcao;
 
@@ -2684,6 +2846,7 @@
 
         // ---- GAME OVER ----
         function endGame(msg, tone) {
+            if (state.ended) return;
             state.ended = true;
             state.endTone = tone;
             R.gameLayout.classList.add("hidden");
@@ -2857,7 +3020,7 @@
         }
 
         // ---- RANDOM EVENT (non-blocking) ----
-        function maybeEvent() {
+        async function maybeEvent() {
             if (state.ended) return;
 
             var pressure = getWorkloadPressure();
@@ -2890,7 +3053,7 @@
 
             var mitigated = false;
             if (ev.mitigation && state.pontosAcao >= ev.mitigation.apCost) {
-                var wantsMitigation = window.confirm(ev.mitigation.prompt + "\n\n(Disponivel: " + state.pontosAcao + " PA)");
+                var wantsMitigation = await showModal("Mitigação de Evento", ev.mitigation.prompt + " (Disponível: " + state.pontosAcao + " PA)", [{ label: "Mitigar", value: true }, { label: "Não mitigar", value: false, tone: "danger" }]);
                 if (wantsMitigation) {
                     state.pontosAcao -= ev.mitigation.apCost;
                     state.extraExecutionCosts = parseFloat((state.extraExecutionCosts + ev.mitigation.cashCost).toFixed(3));
@@ -2983,7 +3146,7 @@
         }
 
         // ---- CORE ACTION — default 1 PA, supports custom AP/week costs ----
-        function doAction(act) {
+        async function doAction(act) {
             var actionCost = act.apCost || 1;
             if (state.ended || state.pontosAcao < actionCost) return;
 
@@ -2999,16 +3162,39 @@
                     return;
                 }
 
-                var baseInput = window.prompt(
-                    "Enter base fee % applied up to client expectation EV (e.g., 1.5):",
-                    ((state.baseFee || 0.015) * 100).toFixed(2)
+                var baseChoice = await showModal(
+                    "Fee Base até à expectativa",
+                    "Escolhe a fee base (aplicada até ao EV esperado do cliente).",
+                    [
+                        { label: "1.25%", value: 1.25 },
+                        { label: "1.50%", value: 1.50 },
+                        { label: "1.75%", value: 1.75 },
+                        { label: "Cancelar", value: null }
+                    ]
                 );
-                var incentiveInput = window.prompt(
-                    "Enter incentive fee % applied only above client expectation EV (e.g., 5.0):",
-                    ((state.incentiveFee || 0.05) * 100).toFixed(2)
+                if (baseChoice === null) {
+                    addLog("Assinatura interrompida: negociação de fee cancelada.", "warn");
+                    renderPhase();
+                    return;
+                }
+                var incentiveChoice = await showModal(
+                    "Fee Upside acima da expectativa",
+                    "Escolhe a incentive fee (aplicada apenas ao EV acima da expectativa).",
+                    [
+                        { label: "4.0%", value: 4.0 },
+                        { label: "5.0%", value: 5.0 },
+                        { label: "6.0%", value: 6.0 },
+                        { label: "Cancelar", value: null }
+                    ]
                 );
-                var basePct = parseFloat(baseInput);
-                var incentivePct = parseFloat(incentiveInput);
+                if (incentiveChoice === null) {
+                    addLog("Assinatura interrompida: negociação de upside cancelada.", "warn");
+                    renderPhase();
+                    return;
+                }
+
+                var basePct = parseFloat(baseChoice);
+                var incentivePct = parseFloat(incentiveChoice);
 
                 if (!isNaN(basePct) && basePct > 0 && !isNaN(incentivePct) && incentivePct > 0) {
                     state.baseFee = basePct / 100;
@@ -3094,10 +3280,14 @@
                 }
             } else if (act.type === "set_client_expectation") {
                 var marketEV = calcularEV();
-                var suggested = (state.clientExpectationEV || marketEV).toFixed(1);
-                var inputEV = window.prompt("Negocia e fixa a expectativa inicial do cliente (M€):", suggested);
-                var targetEV = parseFloat(inputEV);
-                if (isNaN(targetEV) || targetEV <= 0) {
+                var expectedChoices = [
+                    { label: (marketEV * 0.95).toFixed(1) + " M€ (Conservador)", value: parseFloat((marketEV * 0.95).toFixed(1)) },
+                    { label: marketEV.toFixed(1) + " M€ (Mercado)", value: parseFloat(marketEV.toFixed(1)) },
+                    { label: (marketEV * 1.30).toFixed(1) + " M€ (Agressivo)", value: parseFloat((marketEV * 1.30).toFixed(1)) },
+                    { label: "Cancelar", value: null }
+                ];
+                var targetEV = await showModal("Definir expectativa do cliente", "Negocia e fixa a expectativa inicial do cliente (M€).", expectedChoices);
+                if (targetEV === null || isNaN(targetEV) || targetEV <= 0) {
                     state.progressoFase = Math.max(0, state.progressoFase - 10);
                     addLog("Expectativa invalida. A ancora inicial continua pendente e o progresso desta accao foi anulado.", "warn");
                 } else {
@@ -3256,6 +3446,7 @@
             var triggerRandom = opts.triggerRandom !== false;
             var triggerPriceChipping = opts.triggerPriceChipping !== false;
 
+            // 1) Incrementar semana
             state.semanaAtual++;
             state.semanasNaFase++;
             if (opts.clearEventArea !== false) {
@@ -3267,10 +3458,33 @@
                 return false;
             }
 
+            // 2) Actualizar onboarding
+            var activated = 0;
+            for (var i = (state.onboardingQueue || []).length - 1; i >= 0; i--) {
+                state.onboardingQueue[i].weeksRemaining -= 1;
+                if (state.onboardingQueue[i].weeksRemaining <= 0) {
+                    activated += state.onboardingQueue[i].count;
+                    state.onboardingQueue.splice(i, 1);
+                }
+            }
+            if (activated > 0) {
+                state.activeHeadcount = (state.activeHeadcount || 0) + activated;
+                addLog("Onboarding concluído: +" + activated + " recurso(s) agora contribuem para capacidade.", "good");
+            }
+
+            // 3) Calcular weekly burn (inclui penalização de oversized)
+            var pressure = getWorkloadPressure();
             var weeklyBurn = (state.teamHeadcount || 0) * 0.005;
+            if (pressure.oversized) {
+                weeklyBurn *= 1.3;
+            }
             state.extraExecutionCosts = parseFloat(((state.extraExecutionCosts || 0) + weeklyBurn).toFixed(3));
 
-            var pressure = getWorkloadPressure();
+            // 4) Actualizar Advisor P&L (via updateStats no final)
+
+            // 5) Workload pressure já calculado acima
+
+            // 6) Ajustar moral por pressão
             if (pressure.understaffed) {
                 state.teamMorale = clamp(state.teamMorale - 5, 0, 100);
                 addLog("Carga superior à capacidade: burnout semanal na equipa (-5 moral).", "bad");
@@ -3281,6 +3495,10 @@
 
             state.pontosAcao = calcPA(state.teamMorale);
             addLog("Semana " + state.semanaAtual + " iniciada. " + state.pontosAcao + " pontos de acao disponiveis.", "warn");
+
+            // 7) Risco PE e condições de derrota
+            if (checkPersonaTerminationRisk()) return false;
+            if (checkLose()) return false;
 
             if (triggerMacro) {
                 maybeMacroEvent();
@@ -3295,6 +3513,7 @@
                 if (state.ended) return false;
             }
 
+            if (checkPersonaTerminationRisk()) return false;
             if (checkLose()) return false;
             renderPhase();
             return true;
@@ -3381,9 +3600,16 @@
                         '<span class="choice-hint">' + act.hint + '</span>' +
                         '<span class="choice-hint" style="color:var(--accent);font-size:0.72rem;margin-top:3px;">' +
                         "▸ " + actionCost + " " + (actionCost > 1 ? t("ui.points") : t("ui.point")) + (act.weekCost ? " · " + act.weekCost + " semana" : "") + "</span>";
-                    btn.disabled = noPA || boardLocked || state.pontosAcao < actionCost;
+                    var blockedByMorale = act.id === "demand_results" && state.teamMorale < 35;
+                    btn.disabled = noPA || boardLocked || state.pontosAcao < actionCost || blockedByMorale;
                     btn.addEventListener("click", function() { doGlobalAction(act.id, act.bidderName); });
                     R.globalChoices.appendChild(btn);
+                    if (blockedByMorale) {
+                        var warn = document.createElement("div");
+                        warn.className = "warning-label";
+                        warn.textContent = "Bloqueado: Team Morale < 35 (risco de resignação total).";
+                        R.globalChoices.appendChild(warn);
+                    }
                 })(globalActions[g]);
             }
         }
@@ -3457,6 +3683,7 @@
             selectedSector = sectorKey;
             document.getElementById("sector-technology").className = "diff-opt" + (sectorKey === "technology" ? " sel" : "");
             document.getElementById("sector-industrial").className = "diff-opt" + (sectorKey === "industrial" ? " sel" : "");
+            updateStartSectorPreview();
         }
 
         function selectPersona(personaKey) {
@@ -3496,6 +3723,8 @@
                 incentiveFee: 0,
                 extraExecutionCosts: 0,
                 teamHeadcount: 3,
+                activeHeadcount: 3,
+                onboardingQueue: [],
                 teamHeadcountFatigue: 0,
                 weeklyCostPerHead: 0.005,
                 hiredHeadcountBoost: 0,
@@ -3592,6 +3821,7 @@
             });
         }
 
+        updateStartSectorPreview();
         applyI18nToStaticNodes();
     </script>
 </body>
