@@ -86,6 +86,8 @@
       box-shadow:0 8px 25px rgba(0,0,0,.45);
     }
     .hide { display:none; }
+    .info-icon { display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:999px; border:1px solid #5a79ad; font-size:.72rem; margin-left:4px; color:var(--accent); }
+    .tutorial-focus { box-shadow: 0 0 0 2px #7fd3ffcc, 0 0 22px #7fd3ff66; border-radius:10px; }
     @media (max-width: 980px) {
       .app { grid-template-columns: 1fr; }
       .sector-grid { grid-template-columns: 1fr 1fr; }
@@ -104,13 +106,13 @@
       <div class="stats">
         <div class="stat"><span class="label" id="lblDeal">Mandato</span><span id="s-deal" class="value">1/3</span></div>
         <div class="stat"><span class="label" id="lblWeek">Semana</span><span id="s-week" class="value">1</span></div>
-        <div class="stat"><span class="label" id="lblCash">Career Cash</span><span id="s-cash" class="value">€0.0M</span></div>
-        <div class="stat"><span class="label" id="lblAp">AP</span><span id="s-ap" class="value">3</span></div>
-        <div class="stat"><span class="label" id="lblNet">Net Margin</span><span id="s-net" class="value">0%</span></div>
+        <div class="stat" id="stat-cash"><span class="label" id="lblCash">Career Cash</span><span id="s-cash" class="value">€0.0M</span></div>
+        <div class="stat" id="stat-ap"><span class="label" id="lblAp">AP <span class="tooltip-anchor info-icon" id="ap-info">i<div class="tooltip hide" data-tip="ap"></div></span></span><span id="s-ap" class="value">3</span></div>
+        <div class="stat" id="stat-net"><span class="label" id="lblNet">Net Margin</span><span id="s-net" class="value">0%</span></div>
         <div class="stat"><span class="label" id="lblScore">Career Score</span><span id="s-score" class="value">0</span></div>
       </div>
-      <div style="margin-top:10px">
-        <div class="hint"><span id="workload-label" class="tooltip-anchor">Workload vs Capacity</span>
+      <div style="margin-top:10px" id="workload-block">
+        <div class="hint"><span id="workload-label" class="tooltip-anchor">Workload vs Capacity</span><span class="tooltip-anchor info-icon" id="workload-info">i<div class="tooltip hide" data-tip="workloadMath"></div></span>
           <div class="tooltip hide" data-tip="workload"></div>
         </div>
         <div class="bar"><span id="workload-fill" style="width:0%"></span></div>
@@ -194,32 +196,37 @@
   <script>
     const STORAGE_META = 'ma.meta.v2';
     const STORAGE_SLOT_PREFIX = 'ma.slot.v2.';
+    const STORAGE_AUTOSAVE = 'ma.autosave.v2';
 
     const i18n = {
       pt: {
         title: 'M&A Dealmaker Pro', careerTitle: 'Carreira de Advisor', deal: 'Mandato', week: 'Semana', cash: 'Career Cash', ap: 'AP', net: 'Net Margin', score: 'Career Score',
-        endWeek: 'Terminar Semana', newCareer: 'Nova Carreira', teamHeader: 'Team Skill Trees', teamDesc: 'Gasta XP para desbloquear especializações (+10% por membro especializado).',
-        settingsHeader: 'Save Slots', settingsDesc: 'Guardar/Carregar carreira manualmente.', dealRoom: 'Deal Room', teamTab: 'Team Management', settingsTab: 'Settings',
+        endWeek: 'Terminar Semana', newCareer: 'Nova Carreira', teamHeader: 'Gestão de Talentos', teamDesc: 'Gasta XP para desbloquear especializações (+10% por membro especializado).',
+        settingsHeader: 'Save Slots', settingsDesc: 'Guardar/Carregar carreira manualmente.', dealRoom: 'Deal Room', teamTab: 'Gestão de Talentos', settingsTab: 'Settings',
         startTitle: 'Novo Mandato', startDesc: 'Escolhe sector para iniciar a tua carreira de 3 mandatos.', startCareer: 'Iniciar Carreira',
         betweenTitle: 'Drafting entre mandatos', continueNext: 'Avançar para próximo mandato',
         tutorialTitle: 'Tutorial', next: 'Seguinte', skip: 'Saltar',
         tips: {
           workload: 'Se workload > capacidade, a moral cai e a probabilidade de sucesso reduz.',
           ap: 'Action Points (AP) = 3 base + bonus de moral + office upgrade.',
-          fee: 'Sem fee negotiation acordada, fechar o deal é impossível.'
+          fee: 'Sem fee negotiation acordada, fechar o deal é impossível.',
+          workloadMath: 'Capacidade = 50 base + moral indireta via AP. Se workload > capacidade: penalização de sucesso (-12pp) e queda de moral semanal = (workload-capacidade)/8.',
+          tutorialFocus: ['Este indicador mede Workload vs Capacity. Acima de 100% tens penalização imediata.', 'Aqui vês o teu P&L da carreira (Net Margin acumulada).', 'Este bloco mostra AP disponíveis para executar ações esta semana.']
         }
       },
       en: {
         title: 'M&A Dealmaker Pro', careerTitle: 'Advisor Career', deal: 'Mandate', week: 'Week', cash: 'Career Cash', ap: 'AP', net: 'Net Margin', score: 'Career Score',
-        endWeek: 'End Week', newCareer: 'New Career', teamHeader: 'Team Skill Trees', teamDesc: 'Spend XP to unlock specialisations (+10% per specialised member).',
-        settingsHeader: 'Save Slots', settingsDesc: 'Manually save/load career.', dealRoom: 'Deal Room', teamTab: 'Team Management', settingsTab: 'Settings',
+        endWeek: 'End Week', newCareer: 'New Career', teamHeader: 'Talent Management', teamDesc: 'Spend XP to unlock specialisations (+10% per specialised member).',
+        settingsHeader: 'Save Slots', settingsDesc: 'Manually save/load career.', dealRoom: 'Deal Room', teamTab: 'Talent Management', settingsTab: 'Settings',
         startTitle: 'New Mandate', startDesc: 'Pick a sector and start your 3-mandate advisor career.', startCareer: 'Start Career',
         betweenTitle: 'Between-deal Drafting', continueNext: 'Proceed to next mandate',
         tutorialTitle: 'Tutorial', next: 'Next', skip: 'Skip',
         tips: {
           workload: 'If workload > capacity, morale drops and success probability falls.',
           ap: 'Action Points (AP) = 3 base + morale bonus + office upgrades.',
-          fee: 'Without fee negotiation agreed, deal closing cannot happen.'
+          fee: 'Without fee negotiation agreed, deal closing cannot happen.',
+          workloadMath: 'Capacity starts at 50. If workload exceeds capacity: immediate success penalty (-12pp) and weekly morale drop = (workload-capacity)/8.',
+          tutorialFocus: ['This gauge tracks Workload vs Capacity. Above 100% you take an immediate execution penalty.', 'This is your career P&L tracker (cumulative Net Margin).', 'This block shows available AP for this week\'s actions.']
         }
       }
     };
@@ -228,7 +235,7 @@
       { key: 'technology', name: 'Technology', multiple: [9, 13], risk: 1.0, note: 'Balanced mandate.' },
       { key: 'industrials', name: 'Industrials', multiple: [7, 11], risk: 1.1, note: 'Execution-heavy.' },
       { key: 'services', name: 'Services', multiple: [8, 12], risk: 0.95, note: 'Stable but slower.' },
-      { key: 'healthcare', name: 'Healthcare', multiple: [12, 16], risk: 1.3, note: 'High multiples, +30% regulatory risk.' },
+      { key: 'healthcare', name: 'Healthcare', multiple: [12, 16], risk: 1.25, note: 'High multiples, +25% regulatory risk.' },
       { key: 'consumer', name: 'Consumer', multiple: [8, 12], risk: 1.0, note: 'High EBITDA visibility, macro-sensitive.' }
     ];
 
@@ -239,15 +246,43 @@
 
     const el = (id) => document.getElementById(id);
 
+    function readJSON(key, fallback = null) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return fallback;
+        return JSON.parse(raw);
+      } catch (_e) {
+        return fallback;
+      }
+    }
+
+    function writeJSON(key, value) {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+        return true;
+      } catch (_e) {
+        return false;
+      }
+    }
+
+    function removeKey(key) {
+      try {
+        localStorage.removeItem(key);
+        return true;
+      } catch (_e) {
+        return false;
+      }
+    }
+
     function loadMeta() {
-      const raw = localStorage.getItem(STORAGE_META);
-      if (raw) return JSON.parse(raw);
+      const parsed = readJSON(STORAGE_META, null);
+      if (parsed) return parsed;
       const seed = { language: 'pt', achievements: [] };
-      localStorage.setItem(STORAGE_META, JSON.stringify(seed));
+      writeJSON(STORAGE_META, seed);
       return seed;
     }
 
-    function saveMeta() { localStorage.setItem(STORAGE_META, JSON.stringify(meta)); }
+    function saveMeta() { writeJSON(STORAGE_META, meta); }
 
     function member(name, role='Analyst') {
       return { id: crypto.randomUUID(), name, role, xp: 0, skill: { financial: false, legal: false, commercial: false } };
@@ -419,15 +454,14 @@
 
     function saveSlot(slot) {
       if (!state) return;
-      localStorage.setItem(STORAGE_SLOT_PREFIX + slot, JSON.stringify({ savedAt: Date.now(), career: getCareerPayload() }));
-      state.activeSlot = slot;
+      const ok = writeJSON(STORAGE_SLOT_PREFIX + slot, { savedAt: Date.now(), career: getCareerPayload() });
+      if (ok) state.activeSlot = slot;
       renderSlots();
     }
 
     function loadSlot(slot) {
-      const raw = localStorage.getItem(STORAGE_SLOT_PREFIX + slot);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
+      const parsed = readJSON(STORAGE_SLOT_PREFIX + slot, null);
+      if (!parsed || !parsed.career) return;
       state = parsed.career;
       state.activeSlot = slot;
       hideStart();
@@ -435,13 +469,14 @@
     }
 
     function clearSlot(slot) {
-      localStorage.removeItem(STORAGE_SLOT_PREFIX + slot);
+      removeKey(STORAGE_SLOT_PREFIX + slot);
       renderSlots();
     }
 
     function autoSave() {
-      if (!state || !state.activeSlot) return;
-      saveSlot(state.activeSlot);
+      if (!state) return;
+      writeJSON(STORAGE_AUTOSAVE, { savedAt: Date.now(), career: getCareerPayload() });
+      if (state.activeSlot) saveSlot(state.activeSlot);
     }
 
     function showStart(){ el('start-overlay').classList.remove('hidden'); }
@@ -454,13 +489,16 @@
       renderTutorial();
     }
 
+    function clearTutorialFocus() {
+      ['workload-block','stat-net','stat-ap'].forEach(id => el(id).classList.remove('tutorial-focus'));
+    }
+
     function renderTutorial() {
-      const steps = [
-        label({ pt:'Workload vs Capacity: quando workload ultrapassa capacidade, a moral e success chance caem.', en:'Workload vs Capacity: if workload exceeds capacity, morale and success chance drop.' }),
-        label({ pt:'Action Points: AP gerados por semana com base em moral e office upgrades.', en:'Action Points: AP are generated weekly from morale and office upgrades.' }),
-        label({ pt:'Fee Negotiation gate: sem fee acordada não há closing válido.', en:'Fee Negotiation gate: no agreed fee means no valid closing.' })
-      ];
-      el('tutorialBody').textContent = steps[tutorialStep];
+      clearTutorialFocus();
+      const t = i18n[meta.language];
+      const focusIds = ['workload-block', 'stat-net', 'stat-ap'];
+      if (focusIds[tutorialStep]) el(focusIds[tutorialStep]).classList.add('tutorial-focus');
+      el('tutorialBody').textContent = t.tips.tutorialFocus[tutorialStep];
     }
 
     function log(msg, cls='') {
@@ -514,20 +552,19 @@
       const wrap = el('slot-grid');
       wrap.innerHTML = '';
       [1,2,3].forEach(slot => {
-        const raw = localStorage.getItem(STORAGE_SLOT_PREFIX + slot);
+        const parsed = readJSON(STORAGE_SLOT_PREFIX + slot, null);
         const div = document.createElement('div');
         div.className = 'slot';
         let subtitle = 'Empty';
-        if (raw) {
-          const parsed = JSON.parse(raw);
+        if (parsed && parsed.career) {
           subtitle = `${new Date(parsed.savedAt).toLocaleString()} · D${parsed.career.currentDeal}/3 · ${Math.round(parsed.career.careerScore)} pts`;
         }
         div.innerHTML = `<strong>Slot ${slot}</strong><p>${subtitle}</p>`;
         const row = document.createElement('div');
         row.style.display='flex'; row.style.gap='6px'; row.style.flexWrap='wrap';
         const s = document.createElement('button'); s.textContent='Save'; s.onclick=()=>saveSlot(slot);
-        const l = document.createElement('button'); l.textContent='Load'; l.disabled=!raw; l.onclick=()=>loadSlot(slot);
-        const c = document.createElement('button'); c.textContent='Clear'; c.disabled=!raw; c.onclick=()=>clearSlot(slot);
+        const l = document.createElement('button'); l.textContent='Load'; l.disabled=!parsed; l.onclick=()=>loadSlot(slot);
+        const c = document.createElement('button'); c.textContent='Clear'; c.disabled=!parsed; c.onclick=()=>clearSlot(slot);
         row.append(s,l,c);
         div.appendChild(row);
         wrap.appendChild(div);
@@ -576,6 +613,8 @@
       el('tutorial-skip').textContent = t.skip;
       document.querySelector('[data-tip="workload"]').textContent = t.tips.workload;
       document.querySelector('[data-tip="fee"]').textContent = t.tips.fee;
+      document.querySelector('[data-tip="ap"]').textContent = t.tips.ap;
+      document.querySelector('[data-tip="workloadMath"]').textContent = t.tips.workloadMath;
     }
 
     function renderAll() {
@@ -648,6 +687,7 @@
         tutorialStep += 1;
         if (tutorialStep > 2) {
           el('tutorial-overlay').classList.add('hidden');
+          clearTutorialFocus();
           if (!meta.achievements.includes('tutorial-done')) meta.achievements.push('tutorial-done');
           saveMeta();
           return;
@@ -656,6 +696,7 @@
       };
       el('tutorial-skip').onclick = ()=>{
         el('tutorial-overlay').classList.add('hidden');
+        clearTutorialFocus();
         if (!meta.achievements.includes('tutorial-done')) meta.achievements.push('tutorial-done');
         saveMeta();
       };
@@ -666,6 +707,12 @@
         anchor.addEventListener('mouseenter', ()=>tip.classList.remove('hide'));
         anchor.addEventListener('mouseleave', ()=>tip.classList.add('hide'));
       });
+    }
+
+    const auto = readJSON(STORAGE_AUTOSAVE, null);
+    if (auto && auto.career) {
+      state = auto.career;
+      hideStart();
     }
 
     renderI18n();
