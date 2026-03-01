@@ -1367,17 +1367,19 @@
             return parseFloat((ebitda * multiplo).toFixed(1));
         }
 
-        function calculateAdvisorMargin() {
-            var effectiveEV = typeof finalEV === "number" ? finalEV : calcularEV();
+        function calculateAdvisorMargin(finalEV) {
+            var effectiveEV = typeof finalEV === "number"
+                ? finalEV
+                : (typeof state.signedValue === "number" ? state.signedValue : calcularEV());
             var expectationEV = Math.max(0, state.clientExpectationEV || 0);
             var baseFee = state.baseFee || 0;
             var incentiveFee = state.incentiveFee || 0;
             var grossFee = 0;
 
-            if (finalEV <= expectationEV) {
-                grossFee = finalEV * baseFee;
+            if (effectiveEV <= expectationEV) {
+                grossFee = effectiveEV * baseFee;
             } else {
-                grossFee = (expectationEV * baseFee) + ((finalEV - expectationEV) * incentiveFee);
+                grossFee = (expectationEV * baseFee) + ((effectiveEV - expectationEV) * incentiveFee);
             }
 
             var weeklyBurn = (state.teamHeadcount || 0) * (state.weeklyCostPerHead || 0);
