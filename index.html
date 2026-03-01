@@ -388,6 +388,24 @@
             gap: 10px;
             margin: 16px 0 24px;
         }
+        .config-row {
+            margin: 10px 0 12px;
+            text-align: left;
+        }
+        .config-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--muted);
+            margin-bottom: 6px;
+            font-weight: 700;
+            display: block;
+        }
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
         .diff-opt {
             border: 2px solid rgba(255,255,255,0.15);
             background: rgba(15, 22, 55, 0.95);
@@ -402,6 +420,19 @@
         .diff-opt.sel   { border-color: var(--accent); background: rgba(28, 48, 120, 0.9); }
         .diff-opt-name  { font-size: 1.05rem; font-weight: 700; display: block; margin-bottom: 5px; }
         .diff-opt-desc  { font-size: 0.76rem; color: var(--muted); }
+
+        .context-badge {
+            display: inline-block;
+            padding: 2px 9px;
+            border-radius: 999px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--muted);
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            background: rgba(255, 255, 255, 0.07);
+            margin-left: 6px;
+            vertical-align: middle;
+        }
 
         .start-btn {
             width: 100%;
@@ -522,6 +553,32 @@
             <h1 class="start-title">M&A Dealmaker</h1>
             <p class="start-sub">Simulacao interactiva de mandato de venda &mdash; do pitch ao closing.</p>
             <p style="font-size:0.88rem;color:var(--muted);margin-bottom:10px;">Gere o cliente, a equipa e os compradores em 10 fases criticas. Usa Pontos de Acao por semana com sabedoria. Eventos aleatorios testam a tua resiliencia.</p>
+            <div class="config-row">
+                <span class="config-label">Setor de Atividade</span>
+                <div class="config-grid">
+                    <div class="diff-opt sel" id="sector-technology">
+                        <span class="diff-opt-name" style="font-size:0.9rem;color:var(--accent)">Technology / Software</span>
+                        <span class="diff-opt-desc">Multiplo alto · EBITDA mais leve</span>
+                    </div>
+                    <div class="diff-opt" id="sector-industrial">
+                        <span class="diff-opt-name" style="font-size:0.9rem;color:var(--warn)">Industrial / Manufacturing</span>
+                        <span class="diff-opt-desc">Multiplo conservador · EBITDA robusto</span>
+                    </div>
+                </div>
+            </div>
+            <div class="config-row">
+                <span class="config-label">Perfil do Cliente</span>
+                <div class="config-grid">
+                    <div class="diff-opt sel" id="persona-founder">
+                        <span class="diff-opt-name" style="font-size:0.9rem;color:var(--good)">Founder / Empreendedor</span>
+                        <span class="diff-opt-desc">Emocional, forte sensibilidade a confianca</span>
+                    </div>
+                    <div class="diff-opt" id="persona-pe">
+                        <span class="diff-opt-name" style="font-size:0.9rem;color:var(--bad)">PE Sponsor / Fundo</span>
+                        <span class="diff-opt-desc">Racional, foco agressivo em economics</span>
+                    </div>
+                </div>
+            </div>
             <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:6px;font-weight:700;">Dificuldade</div>
             <div class="diff-grid">
                 <div class="diff-opt" id="diff-facil">
@@ -558,7 +615,7 @@
     <!-- Game -->
     <main class="layout" id="game-layout">
         <aside class="panel">
-            <h1>M&A Dealmaker <span class="diff-badge diff-normal" id="diff-badge">Normal</span></h1>
+            <h1>M&A Dealmaker <span class="diff-badge diff-normal" id="diff-badge">Normal</span><span class="context-badge" id="mandate-sector">Technology / Software</span><span class="context-badge" id="mandate-persona">Founder / Empreendedor</span></h1>
             <p style="margin-bottom:10px;">Mandato de sell-side: do pitch ao closing, gerindo cliente, equipa e compradores.</p>
             <div class="stats">
                 <div class="stat">
@@ -1157,6 +1214,8 @@
 
         // ---- STATE ----
         var diff = "normal";
+        var selectedSector = "technology";
+        var selectedPersona = "founder";
         var state = {};
         var gameHistory = [];
         var deltaTimers = {};
@@ -1209,7 +1268,9 @@
             btnReviewImprove:   document.getElementById("btn-review-improve"),
             btnReviewRedo:      document.getElementById("btn-review-redo"),
             gameLayout:         document.getElementById("game-layout"),
-            postmortemNarrative:document.getElementById("postmortem-narrative")
+            postmortemNarrative:document.getElementById("postmortem-narrative"),
+            mandateSector:      document.getElementById("mandate-sector"),
+            mandatePersona:     document.getElementById("mandate-persona")
         };
 
         // ---- HELPERS ----
@@ -1232,7 +1293,7 @@
         }
 
         function calculateAdvisorMargin() {
-            var finalEV = calcularEV();
+            var effectiveEV = typeof finalEV === "number" ? finalEV : calcularEV();
             var expectationEV = Math.max(0, state.clientExpectationEV || 0);
             var baseFee = state.baseFee || 0;
             var incentiveFee = state.incentiveFee || 0;
@@ -1445,9 +1506,13 @@
             state.bidders = [exclusive];
 
             if (totalExpectationHit && (exclusive.earnoutPercentage || 0) >= 0.5) {
-                state.cliente = clamp(state.cliente - 4, 0, 100);
+                var earnoutTrustPenalty = state.persona === "founder" ? 8 : 4;
+                state.cliente = clamp(state.cliente - earnoutTrustPenalty, 0, 100);
                 addLog("Cliente desapontado com a estrutura: apesar do total cumprir a expectativa, o earn-out/rollover elevado reduziu a confianca.", "warn");
-                updateStats({ cliente: -4 });
+                if (state.persona === "founder") {
+                    addLog("Founder Persona: resistencia elevada a earn-out agravou o impacto de confianca.", "bad");
+                }
+                updateStats({ cliente: -earnoutTrustPenalty });
             } else if (expectationGap > 0.2) {
                 var trustPenalty = clamp(Math.round(expectationGap / 3), 2, 9);
                 state.cliente = clamp(state.cliente - trustPenalty, 0, 100);
@@ -2158,6 +2223,7 @@
         }
 
         function finishCampaign() {
+            if (state.ended) return;
             var bidder = null;
             if (state.bidderExclusivo && state.bidders && state.bidders.length > 0) {
                 bidder = state.bidders[0];
@@ -2169,6 +2235,8 @@
 
             state.multiplo = appliedMultiple;
             state.signedValue = finalEV;
+
+            if (checkPersonaTerminationRisk(finalEV)) return;
 
             if (state.teamMorale < 15 || state.cliente < 20) {
                 endGame("Mandate terminated: trust and/or team resilience fell below critical thresholds.", "bad");
@@ -2488,6 +2556,9 @@
                 }
             }
 
+            var currentPhaseId = PHASES[state.phaseIndex] ? PHASES[state.phaseIndex].id : null;
+            applyPersonaTrustModifiers(currentPhaseId, deltas);
+
             if (deltas.teamMorale < 0) {
                 state.teamHeadcountFatigue = clamp(state.teamHeadcountFatigue + Math.abs(deltas.teamMorale), 0, 100);
             }
@@ -2692,6 +2763,83 @@
             }
         }
 
+
+        function randomRange(min, max) {
+            return parseFloat((min + Math.random() * (max - min)).toFixed(1));
+        }
+
+        function getSectorConfig() {
+            if (selectedSector === "industrial") {
+                return {
+                    key: "industrial",
+                    label: "Industrial / Manufacturing",
+                    multiplo: randomRange(5.0, 7.5),
+                    ebitda: randomRange(8.0, 15.0)
+                };
+            }
+            return {
+                key: "technology",
+                label: "Technology / Software",
+                multiplo: randomRange(10.0, 14.0),
+                ebitda: randomRange(2.0, 4.5)
+            };
+        }
+
+        function getPersonaConfig() {
+            if (selectedPersona === "pe") {
+                return { key: "pe", label: "PE Sponsor / Fundo" };
+            }
+            return { key: "founder", label: "Founder / Empreendedor" };
+        }
+
+        function applyPersonaTrustModifiers(phaseId, deltas) {
+            if (!deltas) return;
+            var isDueDiligence = phaseId === "DUE DILIGENCE";
+            var evDelta = parseFloat(((deltas.ebitda || 0) * state.multiplo + (deltas.multiplo || 0) * state.ebitda).toFixed(1));
+            if (state.persona === "founder" && isDueDiligence && evDelta < 0) {
+                var extraDrop = Math.max(1, Math.round(Math.abs(deltas.cliente || 0) * 0.5));
+                state.cliente = clamp(state.cliente - extraDrop, 0, 100);
+                deltas.cliente = (deltas.cliente || 0) - extraDrop;
+                addLog("Founder Persona: queda de EV em DD amplificou a erosao de confianca do cliente.", "bad");
+            }
+            if (state.persona === "pe") {
+                var currentEV = calcularEV();
+                if (evDelta < 0 && currentEV >= state.clientExpectationEV) {
+                    var recovered = Math.abs(Math.min(0, deltas.cliente || 0));
+                    if (recovered > 0) {
+                        state.cliente = clamp(state.cliente + recovered, 0, 100);
+                        deltas.cliente = (deltas.cliente || 0) + recovered;
+                        addLog("PE Persona: sem perda de confianca por flutuacao de EV enquanto EV >= expectativa.", "good");
+                    }
+                }
+            }
+        }
+
+        function checkPersonaTerminationRisk(finalEV) {
+            if (state.persona !== "pe" || state.ended) return false;
+            var pnl = calculateAdvisorMargin();
+            var effectiveEV = typeof finalEV === "number" ? finalEV : calcularEV();
+            var valueGenerated = Math.max(0, effectiveEV - state.clientExpectationEV);
+            var tolerance = 1.4 + valueGenerated * 0.08;
+            if (pnl.netMargin > tolerance) {
+                endGame("PE Sponsor interrompeu o mandato: fee economics considerados excessivos face ao valor criado.", "bad");
+                return true;
+            }
+            return false;
+        }
+
+        function selectSector(sectorKey) {
+            selectedSector = sectorKey;
+            document.getElementById("sector-technology").className = "diff-opt" + (sectorKey === "technology" ? " sel" : "");
+            document.getElementById("sector-industrial").className = "diff-opt" + (sectorKey === "industrial" ? " sel" : "");
+        }
+
+        function selectPersona(personaKey) {
+            selectedPersona = personaKey;
+            document.getElementById("persona-founder").className = "diff-opt" + (personaKey === "founder" ? " sel" : "");
+            document.getElementById("persona-pe").className = "diff-opt" + (personaKey === "pe" ? " sel" : "");
+        }
+
         // ---- DIFFICULTY SELECT ----
         function selectDiff(d) {
             diff = d;
@@ -2703,6 +2851,8 @@
         // ---- START / RESTART ----
         function startGame() {
             var cfg        = DIFF[diff];
+            var sectorCfg = getSectorConfig();
+            var personaCfg = getPersonaConfig();
             var startTeamMorale = cfg.start.teamMorale;
             state = {
                 phaseIndex:    0,
@@ -2724,8 +2874,12 @@
                 weeklyCostPerHead: 0.005,
                 hiredHeadcountBoost: 0,
                 nextDeliverableBonus: false,
-                ebitda:        cfg.start.ebitda,
-                multiplo:      cfg.start.multiplo,
+                sector:        sectorCfg.key,
+                sectorLabel:   sectorCfg.label,
+                persona:       personaCfg.key,
+                personaLabel:  personaCfg.label,
+                ebitda:        sectorCfg.ebitda,
+                multiplo:      sectorCfg.multiplo,
                 fecho:         cfg.start.fecho,
                 semanaAtual:   1,
                 semanasTotais: 34,
@@ -2736,7 +2890,7 @@
                 hiddenFlaws: [],
                 generatedDeliverables: {},
                 ddMassacreResolved: false,
-                clientExpectationEV: parseFloat(((cfg.start.ebitda * cfg.start.multiplo) + 4).toFixed(1)),
+                clientExpectationEV: parseFloat(((sectorCfg.ebitda * sectorCfg.multiplo) + 4).toFixed(1)),
                 liabilityRisk: false,
                 liabilityRiskActive: false,
                 liabilityPenaltyEUR: 1.5,
@@ -2755,11 +2909,13 @@
             R.gameLayout.classList.remove("hidden");
             R.badge.textContent   = cfg.label;
             R.badge.className     = "diff-badge " + cfg.badgeClass;
+            R.mandateSector.textContent = sectorCfg.label;
+            R.mandatePersona.textContent = personaCfg.label;
             R.progress.style.width              = "0%";
             R.progressoFaseBar.style.width      = "0%";
             R.progressoFaseLabel.textContent    = "0%";
             renderMarketNews();
-            addLog("Mandato iniciado em modo " + cfg.label + ". " + state.pontosAcao + " pontos de acao disponiveis na Semana 1.", "warn");
+            addLog("Mandato iniciado em modo " + cfg.label + " | " + sectorCfg.label + " | " + personaCfg.label + ". " + state.pontosAcao + " pontos de acao disponiveis na Semana 1.", "warn");
             renderPhase();
         }
 
@@ -2778,6 +2934,10 @@
         document.getElementById("diff-facil").addEventListener("click",   function() { selectDiff("facil"); });
         document.getElementById("diff-normal").addEventListener("click",  function() { selectDiff("normal"); });
         document.getElementById("diff-dificil").addEventListener("click", function() { selectDiff("dificil"); });
+        document.getElementById("sector-technology").addEventListener("click", function() { selectSector("technology"); });
+        document.getElementById("sector-industrial").addEventListener("click", function() { selectSector("industrial"); });
+        document.getElementById("persona-founder").addEventListener("click", function() { selectPersona("founder"); });
+        document.getElementById("persona-pe").addEventListener("click", function() { selectPersona("pe"); });
         R.btnReviewApprove.addEventListener("click", function() { processReviewBoard("approve"); });
         R.btnReviewCorrect.addEventListener("click", function() { processReviewBoard("correct"); });
         R.btnReviewImprove.addEventListener("click", function() { processReviewBoard("improve"); });
