@@ -898,7 +898,8 @@
                 teamCapacityInitialMod: -0.10,
                 negativeEventRiskMod: 1.25,
                 earnoutPenaltyExtra: 8,
-                emotionalExtremes: true
+                emotionalExtremes: true,
+                trustPenaltyCap: -22
             },
             pe: {
                 key: "pe",
@@ -906,7 +907,7 @@
                 trustMultiplier: 0.7,
                 teamCapacityInitialMod: 0,
                 negativeEventRiskMod: 0.8,
-                timelineStrictWeeks: 999,
+                timelineStrictWeeks: 30,
                 capsToleranceBonus: 0.30
             },
             corporate: {
@@ -1117,9 +1118,9 @@
                         log: "Promessa de market mapping detalhado feita ao cliente; execucao entrou em revisao imediata do Board."
                     },
                     {
-                        text: "Propose Tiered Fee Structure",
-                        hint: "So funciona com Cliente >= 75. Negocia base fee ate a expectativa do cliente e incentivo para upside acima da ancora.",
-                        type: "propose_tiered_fee_structure",
+                        text: "Negotiate Fee Ratchet",
+                        hint: "Micro-fase obrigatoria. Negocia base fee (0.5%-2.0%) e incentivo (3%-10%) no mandato.",
+                        type: "negotiate_fee_ratchet",
                         effects: {},
                         log: "Estrutura de fee ratchet (base + upside) apresentada ao cliente."
                     }
@@ -1455,9 +1456,11 @@
         var PHASES_PRO = [
             { id: "PITCH", title: "Pitch inicial ao accionista", desc: "Ganha o mandato com credibilidade comercial e alinhamento de expectativas.", microPhases: [
                 { id: "equity-story", name: "Equity Story", progressTarget: 100, actions: pickLegacyActions("PITCH", ["Develop Go-to-Market Narrative"]) },
-                { id: "valuation", name: "Valuation Expectations", progressTarget: 100, actions: pickLegacyActions("PITCH", ["Definir expectativa inicial de valuation (M€)", "Review Market Comparables"]) },
+                { id: "valuation-anchor", name: "Valuation Anchor", progressTarget: 100, actions: pickLegacyActions("PITCH", ["Definir expectativa inicial de valuation (M€)"]) },
+                { id: "comparables", name: "Market Comparables", progressTarget: 100, actions: pickLegacyActions("PITCH", ["Review Market Comparables"]) },
                 { id: "mapping", name: "Market Mapping", progressTarget: 100, actions: pickLegacyActions("PITCH", ["Promise Detailed Market Mapping"]) },
-                { id: "fees", name: "Fee Structure", progressTarget: 100, actions: pickLegacyActions("PITCH", ["Propose Tiered Fee Structure"]) }
+                { id: "alignment", name: "Client Alignment", progressTarget: 100, actions: [{ text: "Alinhar mandato, governance e calendário", hint: "Consolida compromisso do cliente para a execução do processo.", effects: { cliente: 6, fecho: 2, progressoFase: 20, progressoMicroFase: 100 }, log: "Cliente alinhado com governance e calendário do mandato." }] },
+                { id: "fee-negotiation", name: "Negociação de Fees", progressTarget: 100, actions: pickLegacyActions("PITCH", ["Negotiate Fee Ratchet"]) }
             ]},
             { id: "MANDATO ASSINADO", title: "Mandato Assinado", desc: "Formaliza o mandato e as regras de trabalho com o cliente.", microPhases: [
                 { id: "mandate-confirm", name: "Confirmação do mandato", progressTarget: 100, actions: [{ text: "Formalizar mandato e governance", hint: "Acorda escopo, calendário e responsáveis.", effects: { cliente: 5, fecho: 2, progressoFase: 50 }, log: "Mandato formalizado com governance clara entre advisor e cliente." }] },
@@ -1816,10 +1819,10 @@
             function assignFogData(bidder) {
                 var trueOffer = bidderOfferEUR(bidder);
                 var centerSkew = (Math.random() * 0.06) - 0.03;
-                var minFactor = 0.85 + centerSkew - (Math.random() * 0.02);
-                var maxFactor = 1.15 + centerSkew + (Math.random() * 0.02);
-                minFactor = clamp(minFactor, 0.80, 0.90);
-                maxFactor = clamp(maxFactor, 1.10, 1.20);
+                var minFactor = 0.84 + centerSkew - (Math.random() * 0.01);
+                var maxFactor = 1.16 + centerSkew + (Math.random() * 0.01);
+                minFactor = clamp(minFactor, 0.80, 0.85);
+                maxFactor = clamp(maxFactor, 1.15, 1.20);
                 if (maxFactor <= minFactor) maxFactor = minFactor + 0.15;
 
                 bidder.offerKnown = false;
@@ -2625,11 +2628,11 @@
 
                 if (!a.offerKnown) {
                     hasUnknown = true;
-                    aScore = ((a.perceivedMin || (aScore * 0.85)) + (a.perceivedMax || (aScore * 1.15))) / 2;
+                    aScore = ((a.perceivedMin || (aScore * 0.84)) + (a.perceivedMax || (aScore * 1.16))) / 2;
                 }
                 if (!b.offerKnown) {
                     hasUnknown = true;
-                    bScore = ((b.perceivedMin || (bScore * 0.85)) + (b.perceivedMax || (bScore * 1.15))) / 2;
+                    bScore = ((b.perceivedMin || (bScore * 0.84)) + (b.perceivedMax || (bScore * 1.16))) / 2;
                 }
                 return bScore - aScore;
             });
@@ -2659,8 +2662,8 @@
             var offer = bidderOfferEUR(b);
             var cashOffer = bidderCashOfferEUR(b);
             var earnoutOffer = bidderEarnoutOfferEUR(b);
-            var rangeMin = b.perceivedMin || (offer * 0.85);
-            var rangeMax = b.perceivedMax || (offer * 1.15);
+            var rangeMin = b.perceivedMin || (offer * 0.84);
+            var rangeMax = b.perceivedMax || (offer * 1.16);
             var perceivedMid = (rangeMin + rangeMax) / 2;
             var isPE = b.tipo === "Private Equity";
             var bgCol = isPE ? "rgba(134,215,255,0.12)" : "rgba(255,201,112,0.12)";
@@ -3327,7 +3330,7 @@
                 updateStats({ cliente: emotionalSwing });
                 addLog("Reação emocional extrema do cliente: confiança " + (emotionalSwing > 0 ? "+" : "") + emotionalSwing + ".", emotionalSwing > 0 ? "good" : "bad");
             }
-            if (state.persona === "family" && Math.random() < 0.22) {
+            if (state.persona === "family" && Math.random() < 0.35) {
                 state.familyEmotionalEventActive = true;
                 state.familyEmotionalEventAge = 0;
                 addLog("Family Business: evento emocional crítico ativo. Mitiga nas próximas 2 semanas para evitar término do mandato.", "bad");
@@ -3415,42 +3418,51 @@
             state.pontosAcao -= actionCost;
             var previousProgress = state.progressoFase;
 
-            if (act.type === "propose_tiered_fee_structure") {
-                if (state.cliente < 75) {
-                    state.cliente = clamp(state.cliente - 8, 0, 100);
-                    addLog("Propose Tiered Fee Structure falhou: confianca insuficiente (Cliente < 75). O cliente recuou e a semana foi desperdicada.", "bad");
-                    updateStats({ cliente: -8 });
-                    advanceOneWeek();
+            if (act.type === "negotiate_fee_ratchet") {
+                if (state.cliente < 70) {
+                    state.cliente = clamp(state.cliente - 10, 0, 100);
+                    addLog("Negociação de fees rejeitada: Cliente < 70. Perda de confiança por proposta fora de timing.", "bad");
+                    updateStats({ cliente: -10 });
+                    renderPhase();
                     return;
                 }
 
                 var baseChoice = await showModal(
-                    "Fee Base até à expectativa",
-                    "Escolhe a fee base (aplicada até ao EV esperado do cliente).",
+                    "Negociação de Fees · Base",
+                    "Escolhe a Base Fee (0.5% a 2.0%) aplicada até ao EV esperado do cliente.",
                     [
+                        { label: "0.50%", value: 0.5 },
+                        { label: "0.75%", value: 0.75 },
+                        { label: "1.00%", value: 1.0 },
                         { label: "1.25%", value: 1.25 },
                         { label: "1.50%", value: 1.50 },
                         { label: "1.75%", value: 1.75 },
+                        { label: "2.00%", value: 2.0 },
                         { label: "Cancelar", value: null }
                     ]
                 );
                 if (baseChoice === null) {
-                    addLog("Assinatura interrompida: negociação de fee cancelada.", "warn");
+                    addLog("Negociação de fees cancelada antes de fechar base fee.", "warn");
                     renderPhase();
                     return;
                 }
                 var incentiveChoice = await showModal(
-                    "Fee Upside acima da expectativa",
-                    "Escolhe a incentive fee (aplicada apenas ao EV acima da expectativa).",
+                    "Negociação de Fees · Incentivo",
+                    "Escolhe a Incentive Fee (3.0% a 10.0%) para upside acima da expectativa.",
                     [
+                        { label: "3.0%", value: 3.0 },
                         { label: "4.0%", value: 4.0 },
                         { label: "5.0%", value: 5.0 },
                         { label: "6.0%", value: 6.0 },
+                        { label: "7.0%", value: 7.0 },
+                        { label: "8.0%", value: 8.0 },
+                        { label: "9.0%", value: 9.0 },
+                        { label: "10.0%", value: 10.0 },
                         { label: "Cancelar", value: null }
                     ]
                 );
                 if (incentiveChoice === null) {
-                    addLog("Assinatura interrompida: negociação de upside cancelada.", "warn");
+                    addLog("Negociação de fees cancelada antes de fechar incentive fee.", "warn");
                     renderPhase();
                     return;
                 }
@@ -3458,18 +3470,18 @@
                 var basePct = parseFloat(baseChoice);
                 var incentivePct = parseFloat(incentiveChoice);
 
-                if (!isNaN(basePct) && basePct > 0 && !isNaN(incentivePct) && incentivePct > 0) {
+                if (!isNaN(basePct) && basePct >= 0.5 && basePct <= 2 && !isNaN(incentivePct) && incentivePct >= 3 && incentivePct <= 10) {
                     state.baseFee = basePct / 100;
                     state.incentiveFee = incentivePct / 100;
-                    state.progressoFase = getCurrentPhaseAggregateTarget();
-                    state.progressoMicroFase = getPhaseProgressTarget();
-                    addLog("Mandato assinado com fee ratchet: " + basePct.toFixed(2) + "% base / " + incentivePct.toFixed(2) + "% upside.", "good");
-                    updateStats({ progressoFase: state.progressoFase - previousProgress });
-                    advancePhase();
+                    state.feeNegotiated = true;
+                    state.progressoMicroFase = Math.max(state.progressoMicroFase, getPhaseProgressTarget());
+                    addLog("Fee ratchet acordado: " + basePct.toFixed(2) + "% base / " + incentivePct.toFixed(2) + "% incentivo.", "good");
+                    updateStats({ feePercentage: 0 });
+                    renderPhase();
                     return;
                 }
 
-                addLog("Assinatura interrompida: fee ratchet invalido. A tentativa consumiu 1 PA.", "warn");
+                addLog("Negociação de fees inválida. Mantém-se pendente na micro-fase obrigatória.", "warn");
                 renderPhase();
                 return;
             }
@@ -3661,6 +3673,8 @@
                 var currentPhase = PHASES[state.currentPhaseIndex];
                 if (currentPhase.id === "PITCH" && !state.expectationAnchored) {
                     addLog("Antes de fechar o Pitch, tens de negociar e fixar a expectativa inicial de valuation em M€.", "warn");
+                } else if (currentPhase.id === "PITCH" && state.currentMicroPhaseIndex === 5 && !state.feeNegotiated) {
+                    addLog("Micro-fase obrigatória em falta: completa a Negociação de Fees antes de concluir o Pitch.", "warn");
                 } else {
                     state.currentMicroPhaseIndex++;
                     state.progressoMicroFase = 0;
@@ -3687,6 +3701,13 @@
             state.semanasNaFase = 0;
             addLog("Fase " + completed.id + " concluida com sucesso!", "good");
             gameHistory.push({ type: "phase_complete", label: completed.id, text: "Fase concluida" });
+
+            if (completed.id === "PITCH" && !state.feeNegotiated) {
+                state.currentPhaseIndex = Math.max(0, state.currentPhaseIndex - 1);
+                addLog("Pitch bloqueado: Negociação de Fees é obrigatória antes de avançar.", "warn");
+                renderPhase();
+                return;
+            }
 
             if (completed.id === "PITCH" && state.cliente < 70) {
                 endGame("Mandate Denied: o cliente terminou o Pitch com confiança insuficiente (<70).", "bad");
@@ -3777,10 +3798,19 @@
                 addLog("Equipa sobredimensionada para a carga actual: ineficiência semanal (-2 moral).", "warn");
             }
 
+            if (state.persona === "corporate" && state.currentDeliverable) {
+                state.cliente = clamp(state.cliente - 6, 0, 100);
+                addLog("Corporate Persona: documentação incompleta penaliza confiança semanalmente (-6).", "bad");
+            }
+
             state.pontosAcao = calcPA(state.teamMorale);
             addLog("Semana " + state.semanaAtual + " iniciada. " + state.pontosAcao + " pontos de acao disponiveis.", "warn");
 
-                        if ((state.outsourceWorkstreamWeeks || 0) > 0) {
+            if (state.persona === "pe" && state.semanaAtual >= 26) {
+                addLog("B02 Warning: PE Seller mantém deadline duro de 30 semanas. Acelera execução.", "warn");
+            }
+
+            if ((state.outsourceWorkstreamWeeks || 0) > 0) {
                 state.outsourceWorkstreamWeeks -= 1;
             }
 
@@ -3832,7 +3862,7 @@
 
             if (checkPersonaTerminationRisk()) return false;
             if (checkLose()) return false;
-            renderPhase();
+            renderPhase(); // hotfix: force refresh de PA/acções no fim da semana
             return true;
         }
 
@@ -3842,6 +3872,7 @@
 
         // ---- RENDER PHASE ----
         function renderPhase() {
+            if (R.choices) R.choices.innerHTML = "";
             updateStats();
             if (state.ended) return;
             if (checkLose()) return;
@@ -3907,7 +3938,7 @@
                         '<span class="choice-hint">' + act.hint + '</span>' +
                         '<span class="choice-hint" style="color:var(--accent);font-size:0.72rem;margin-top:3px;">' +
                         "\u25B8 " + (act.apCost || 1) + " Ponto" + ((act.apCost || 1) > 1 ? "s" : "") + " de Acao" + progressLabel + " \u00B7 " + Math.round(successProb * 100) + "% sucesso</span>";
-                    btn.disabled = noPA || boardLocked || state.pontosAcao < (act.apCost || 1);
+                    btn.disabled = (state.pontosAcao <= 0) || boardLocked || (state.pontosAcao < (act.apCost || 1));
                     btn.addEventListener("click", function() { doAction(act); });
                     R.choices.appendChild(btn);
                 })(phaseActions[i], i);
@@ -3933,7 +3964,7 @@
                         '<span class="choice-hint" style="color:var(--accent);font-size:0.72rem;margin-top:3px;">' +
                         "▸ " + actionCost + " " + (actionCost > 1 ? t("ui.points") : t("ui.point")) + (act.weekCost ? " · " + act.weekCost + " semana" : "") + "</span>";
                     var blockedByMorale = act.id === "demand_results" && state.teamMorale < 35;
-                    btn.disabled = noPA || boardLocked || state.pontosAcao < actionCost || blockedByMorale;
+                    btn.disabled = (state.pontosAcao <= 0) || boardLocked || (state.pontosAcao < actionCost) || blockedByMorale;
                     btn.addEventListener("click", function() { doGlobalAction(act.id, act.bidderName); });
                     R.globalChoices.appendChild(btn);
                     if (blockedByMorale) {
@@ -3982,6 +4013,15 @@
                 deltas.cliente = (deltas.cliente || 0) - extraDrop;
                 addLog("Founder Persona: queda de EV em DD amplificou a erosao de confianca do cliente.", "bad");
             }
+            if (state.persona === "founder" && (deltas.cliente || 0) < 0) {
+                var founderCap = (CLIENT_TYPES.founder.trustPenaltyCap || -22);
+                if (deltas.cliente < founderCap) {
+                    var correction = founderCap - deltas.cliente;
+                    state.cliente = clamp(state.cliente + correction, 0, 100);
+                    deltas.cliente = founderCap;
+                    addLog("Founder-Led: penalização de confiança limitada ao cap de " + founderCap + " pontos.", "warn");
+                }
+            }
             if (state.persona === "pe") {
                 var currentEV = calcularEV();
                 if (evDelta < 0 && currentEV >= state.clientExpectationEV) {
@@ -4005,6 +4045,10 @@
                 var tolerance = 1.4 + valueGenerated * 0.08;
                 if (pnl.netMargin > tolerance) {
                     endGame("PE Seller interrompeu o mandato: fee economics considerados excessivos face ao valor criado.", "bad");
+                    return true;
+                }
+                if (state.semanaAtual > 30) {
+                    endGame("PE Seller terminou o mandato: deadline duro de 30 semanas excedido.", "bad");
                     return true;
                 }
             }
@@ -4103,6 +4147,7 @@
                 liabilityPenaltyEUR: 1.5,
                 closingProbBonus: 0,
                 expectationAnchored: false,
+                feeNegotiated: false,
                 expectationTrapActive: false,
                 marketNews:    [],
                 macroState: {
