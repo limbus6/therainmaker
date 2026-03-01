@@ -208,6 +208,7 @@
         }
 
         button {
+            min-height: 44px;
             border: 1px solid rgba(255,255,255,0.14);
             background: rgba(21, 31, 71, 0.95);
             color: var(--text);
@@ -657,11 +658,62 @@
             color: var(--good);
         }
 
+
+        .mobile-stats-toggle {
+            display: none;
+            position: fixed;
+            right: 14px;
+            bottom: 14px;
+            z-index: 140;
+            border-radius: 999px;
+            padding: 12px 16px;
+            min-height: 44px;
+            background: linear-gradient(135deg, #7ec5ff, #8fffc6);
+            color: #021126;
+            font-weight: 700;
+        }
+
+        .mobile-drawer-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.55);
+            z-index: 130;
+        }
+
+        .collapsible-trigger {
+            width: 100%;
+            text-align: left;
+            min-height: 44px;
+            margin-bottom: 8px;
+        }
+
+        .collapsible-content[data-collapsed="true"] { display: none; }
+
+        .team-load-wrap { margin: 0 0 10px; }
+        .workload-bar { height: 10px; border-radius: 999px; background: rgba(255,255,255,0.09); overflow: hidden; margin-top: 5px; }
+        .workload-fill { height: 100%; width: 0%; background: var(--good); transition: width .35s ease, background .35s ease; }
+
         @media (max-width: 900px) {
+            body { padding-bottom: 88px; }
             .layout { grid-template-columns: 1fr; }
             .diff-grid { grid-template-columns: 1fr; }
             .end-stats-grid { grid-template-columns: repeat(2, 1fr); }
             .kanban-board { grid-template-columns: 1fr; }
+            .mobile-stats-toggle { display: inline-flex; align-items: center; }
+            #sidebar-panel {
+                position: fixed;
+                left: 10px;
+                right: 10px;
+                bottom: 10px;
+                z-index: 150;
+                max-height: 75vh;
+                overflow-y: auto;
+                transform: translateY(calc(100% + 16px));
+                transition: transform .25s ease;
+            }
+            body.drawer-open #sidebar-panel { transform: translateY(0); }
+            body.drawer-open .mobile-drawer-backdrop { display: block; }
         }
         @media (max-width: 500px) {
             body { padding: 10px; }
@@ -760,9 +812,12 @@
         </div>
     </div>
 
+    <button id="mobile-stats-toggle" class="mobile-stats-toggle" data-i18n="mobile.openDrawer">Stats & P&L</button>
+    <div id="mobile-drawer-backdrop" class="mobile-drawer-backdrop"></div>
+
     <!-- Game -->
     <main class="layout" id="game-layout">
-        <aside class="panel">
+        <aside class="panel" id="sidebar-panel">
             <h1>M&A Dealmaker <span class="diff-badge diff-normal" id="diff-badge">Normal</span><span class="context-badge" id="mandate-sector">Technology / Software</span><span class="context-badge" id="mandate-persona">Founder-Led</span></h1>
             <p data-i18n="sidebar.subtitle" style="margin-bottom:10px;">Mandato de sell-side: do pitch ao closing, gerindo cliente, equipa e compradores.</p>
             <div class="stats">
@@ -814,10 +869,14 @@
                 <div id="pnl-warning" class="pnl-warning">Alerta PE: margem líquida próxima do limite de tolerância.</div>
             </div>
 
-            <div class="small" id="s-team-load" style="margin:0 0 4px;">Equipa: 3 | Cap: 45 | Carga: 10</div>
+            <div class="team-load-wrap">
+                <div class="small" id="s-team-load" style="margin:0 0 4px;" title="">Equipa: 3 | Cap: 45 | Carga: 10</div>
+                <div class="workload-bar" aria-hidden="true"><span class="workload-fill" id="workload-fill"></span></div>
+            </div>
             <div class="small" id="s-onboarding-status" style="margin:0 0 12px;">Onboarding: sem contratações pendentes.</div>
 
-            <div id="bidder-list"></div>
+            <button id="toggle-bidders" class="collapsible-trigger" data-i18n="mobile.bidders">Bidder List</button>
+            <div id="bidder-collapsible" class="collapsible-content"><div id="bidder-list"></div></div>
 
             <!-- Pontos de Acao display -->
             <div class="stat" style="margin:0 0 10px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
@@ -875,7 +934,8 @@
                 <h3>Gestão de Equipa</h3>
                 <div class="choices" id="global-actions"></div>
             </div>
-            <div class="market-news" id="market-news" aria-live="polite"></div>
+            <button id="toggle-market-news" class="collapsible-trigger" data-i18n="mobile.news">Market News</button>
+            <div id="news-collapsible" class="collapsible-content"><div class="market-news" id="market-news" aria-live="polite"></div></div>
             <div class="log" id="log" aria-live="polite"></div>
         </section>
     </main>
@@ -1548,7 +1608,12 @@
                 "ui.exhausted": "Pontos de Acao esgotados — clica em \"Terminar Semana\" para continuar.",
                 "ui.missingChoices": "Containers de escolhas não encontrados no DOM.",
                 "labels.closingNoExclusive": "Sem exclusividade formalizada.",
-                "labels.remainingWeeks": "restantes"
+                "labels.remainingWeeks": "restantes",
+                "mobile.openDrawer": "Stats & P&L",
+                "mobile.closeDrawer": "Fechar painel",
+                "mobile.bidders": "Lista de Compradores",
+                "mobile.news": "Notícias de Mercado",
+                "ui.forecast": "Previsão"
             },
             en: {
                 "lang.label": "Language",
@@ -1593,7 +1658,12 @@
                 "ui.exhausted": "Action points exhausted — click \"End Week\" to continue.",
                 "ui.missingChoices": "Choice containers not found in DOM.",
                 "labels.closingNoExclusive": "No exclusivity formalized.",
-                "labels.remainingWeeks": "remaining"
+                "labels.remainingWeeks": "remaining",
+                "mobile.openDrawer": "Stats & P&L",
+                "mobile.closeDrawer": "Close panel",
+                "mobile.bidders": "Bidder List",
+                "mobile.news": "Market News",
+                "ui.forecast": "Forecast"
             }
         };
         var currentLang = "pt";
@@ -1611,6 +1681,7 @@
                 nodes[i].textContent = t(key);
             }
             document.documentElement.lang = currentLang === "pt" ? "pt-PT" : "en-GB";
+            if (R.mobileStatsToggle) R.mobileStatsToggle.textContent = document.body.classList.contains("drawer-open") ? t("mobile.closeDrawer") : t("mobile.openDrawer");
         }
 
         var state = {};
@@ -1677,7 +1748,14 @@
             postmortemNarrative:document.getElementById("postmortem-narrative"),
             mandateSector:      document.getElementById("mandate-sector"),
             mandatePersona:     document.getElementById("mandate-persona"),
-            sTeamLoad:          document.getElementById("s-team-load")
+            sTeamLoad:          document.getElementById("s-team-load"),
+            workloadFill:       document.getElementById("workload-fill"),
+            mobileStatsToggle:  document.getElementById("mobile-stats-toggle"),
+            mobileBackdrop:     document.getElementById("mobile-drawer-backdrop"),
+            toggleBidders:      document.getElementById("toggle-bidders"),
+            bidderCollapsible:  document.getElementById("bidder-collapsible"),
+            toggleNews:         document.getElementById("toggle-market-news"),
+            newsCollapsible:    document.getElementById("news-collapsible")
         };
 
         // ---- HELPERS ----
@@ -2899,7 +2977,17 @@
             var nextWorkload = getNextWorkload();
             var currentPhaseId = (PHASES[state.currentPhaseIndex] && PHASES[state.currentPhaseIndex].id) ? PHASES[state.currentPhaseIndex].id : "-";
             var nextPhaseId = (PHASES[state.currentPhaseIndex + 1] && PHASES[state.currentPhaseIndex + 1].id) ? PHASES[state.currentPhaseIndex + 1].id : "-";
-            if (R.sTeamLoad) R.sTeamLoad.textContent = (currentLang === "pt" ? "Equipa" : "Team") + ": " + state.teamHeadcount + " | Cap: " + pressure.capacity + " | " + (currentLang === "pt" ? "Carga" : "Load") + ": " + currentPhaseId + " (" + pressure.workload + ") -> " + (currentLang === "pt" ? "Próxima" : "Next") + ": " + nextPhaseId + " (" + nextWorkload + ")";
+            if (R.sTeamLoad) {
+                R.sTeamLoad.textContent = (currentLang === "pt" ? "Equipa" : "Team") + ": " + state.teamHeadcount + " | Cap: " + pressure.capacity + " | " + (currentLang === "pt" ? "Carga" : "Load") + ": " + currentPhaseId + " (" + pressure.workload + ") -> " + (currentLang === "pt" ? "Próxima" : "Next") + ": " + nextPhaseId + " (" + nextWorkload + ")";
+                var next2 = (PHASES[state.currentPhaseIndex + 2] && PHASES[state.currentPhaseIndex + 2].id) ? PHASE_WORKLOAD[PHASES[state.currentPhaseIndex + 2].id] || 0 : 0;
+                R.sTeamLoad.title = t("ui.forecast") + ": +1 " + nextWorkload + " | +2 " + next2;
+            }
+            if (R.workloadFill) {
+                var ratio = pressure.capacity > 0 ? Math.min(200, (pressure.workload / pressure.capacity) * 100) : 0;
+                R.workloadFill.style.width = Math.max(8, ratio) + "%";
+                var diffLoad = pressure.capacity - pressure.workload;
+                R.workloadFill.style.background = diffLoad > 8 ? "var(--good)" : (Math.abs(diffLoad) <= 8 ? "var(--warn)" : "var(--bad)");
+            }
             if (R.onboardingStatus) R.onboardingStatus.textContent = getOnboardingStatusText();
             R.sRestantes.textContent = (state.semanasTotais - state.semanaAtual) + " " + t("labels.remainingWeeks");
             R.sPA.textContent        = state.pontosAcao;
@@ -3238,13 +3326,18 @@
             }
 
             var eventHistory = gameHistory.filter(function(h) { return h.type === "event" || h.type === "red_flag"; });
-            var topEvents = eventHistory.slice(-3).map(function(h) { return h.label; });
-            while (topEvents.length < 3) topEvents.push("sem evento crítico relevante");
-            var finalResult = tone === "good" ? "sucesso premium" : (msg.toLowerCase().indexOf("sign") !== -1 ? "falhou em Signing" : "não chegou a Closing");
+            var mitigatedCount = gameHistory.filter(function(h) { return h.type === "event_mitigated"; }).length;
+            var keyMoments = eventHistory.slice(-2).map(function(h) { return h.label; });
             var mandateDuration = state.semanaAtual;
             var sectorNarr = state.sectorLabel || "setor não identificado";
             var clientType = state.personaLabel || "cliente";
-            var narrative = "O seu mandato de " + mandateDuration + " semanas no setor " + sectorNarr + " para um cliente " + clientType + " terminou em " + finalResult + ", apesar de " + topEvents[0] + ", " + topEvents[1] + " e " + topEvents[2] + ".";
+            var marginTone = financials.netMargin >= 1.5 ? "premium" : (financials.netMargin >= 0 ? "disciplined" : "pressured");
+            var finalResult = tone === "good" ? (currentLang === "pt" ? "sucesso" : "success") : (currentLang === "pt" ? "desfecho adverso" : "adverse outcome");
+            var mitigText = mitigatedCount > 0 ? (currentLang === "pt" ? " com " + mitigatedCount + " evento(s) crítico(s) mitigado(s)" : " with " + mitigatedCount + " major event(s) mitigated") : "";
+            var momentsText = keyMoments.length ? (currentLang === "pt" ? " Momentos-chave: " + keyMoments.join("; ") + "." : " Key moments: " + keyMoments.join("; ") + ".") : "";
+            var narrative = (currentLang === "pt"
+                ? "O seu mandato de " + mandateDuration + " semanas no setor " + sectorNarr + " para um cliente " + clientType + " terminou com " + finalResult + mitigText + ", e Net Margin final de " + financials.netMargin.toFixed(3) + " M€ (perfil " + marginTone + ")."
+                : "Your " + mandateDuration + "-week mandate in " + sectorNarr + " for a " + clientType + " client ended in " + finalResult + mitigText + ", with a final Net Margin of " + financials.netMargin.toFixed(3) + " M€ (" + marginTone + " profile).") + momentsText;
             R.postmortemNarrative.innerHTML = '<div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent);margin-bottom:6px;">Narrativa Dinâmica</div>' +
                 '<div style="font-size:0.86rem;line-height:1.45;color:var(--text);">' + narrative + '</div>';
 
@@ -3333,6 +3426,7 @@
                     mitigated = true;
                     tagsHtml += '<span class="eff-tag eff-neg">PA -' + ev.mitigation.apCost + '</span><span class="eff-tag eff-neg">Custo -' + ev.mitigation.cashCost.toFixed(1) + 'M€</span>';
 
+                    gameHistory.push({ type: "event_mitigated", label: ev.title, text: "Mitigation executed" });
                     if (ev.mitigation.recover70) {
                         mitigatedPenalty = {};
                         var basePenalty = ev.effects || {};
@@ -4286,6 +4380,32 @@
         R.btnReviewCorrect.addEventListener("click", function() { processReviewBoard("correct"); });
         R.btnReviewImprove.addEventListener("click", function() { processReviewBoard("improve"); });
         R.btnReviewRedo.addEventListener("click", function() { processReviewBoard("redo"); });
+
+
+        if (R.mobileStatsToggle) {
+            R.mobileStatsToggle.addEventListener("click", function() {
+                document.body.classList.toggle("drawer-open");
+                applyI18nToStaticNodes();
+            });
+        }
+        if (R.mobileBackdrop) {
+            R.mobileBackdrop.addEventListener("click", function() {
+                document.body.classList.remove("drawer-open");
+                applyI18nToStaticNodes();
+            });
+        }
+        function toggleCollapsible(content, trigger) {
+            if (!content) return;
+            var collapsed = content.getAttribute("data-collapsed") === "true";
+            content.setAttribute("data-collapsed", collapsed ? "false" : "true");
+            if (trigger) trigger.setAttribute("aria-expanded", collapsed ? "true" : "false");
+        }
+        if (R.toggleBidders) R.toggleBidders.addEventListener("click", function(){ toggleCollapsible(R.bidderCollapsible, R.toggleBidders); });
+        if (R.toggleNews) R.toggleNews.addEventListener("click", function(){ toggleCollapsible(R.newsCollapsible, R.toggleNews); });
+        if (window.matchMedia && window.matchMedia("(max-width: 900px)").matches) {
+            if (R.bidderCollapsible) R.bidderCollapsible.setAttribute("data-collapsed", "true");
+            if (R.newsCollapsible) R.newsCollapsible.setAttribute("data-collapsed", "true");
+        }
 
         var langSelect = document.getElementById("lang-select");
         if (langSelect) {
