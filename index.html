@@ -678,36 +678,7 @@
     <!-- Start overlay -->
     <div class="overlay" id="start-overlay">
         <div class="ov-card">
-            <h1 class="start-title" data-i18n="start.title">M&A Dealmaker</h1>
-            <p class="start-sub" data-i18n="start.subtitle">Simulacao interactiva de mandato de venda &mdash; do pitch ao closing.</p>
-            <p style="font-size:0.88rem;color:var(--muted);margin-bottom:10px;">Gere o cliente, a equipa e os compradores em 10 fases criticas. Usa Pontos de Acao por semana com sabedoria. Eventos aleatorios testam a tua resiliencia.</p>
-            <div class="config-row">
-                <span class="config-label">Setor de Atividade</span>
-                <div class="config-grid">
-                    <div class="diff-opt sel" id="sector-technology">
-                        <span class="diff-opt-name" style="font-size:0.9rem;color:var(--accent)">Technology / Software</span>
-                        <span class="diff-opt-desc">Multiplo alto · EBITDA mais leve</span>
-                    </div>
-                    <div class="diff-opt" id="sector-industrial">
-                        <span class="diff-opt-name" style="font-size:0.9rem;color:var(--warn)">Industrial / Manufacturing</span>
-                        <span class="diff-opt-desc">Multiplo conservador · EBITDA robusto</span>
-                    </div>
-                </div>
-            </div>
-            <div class="config-row">
-                <span class="config-label">Perfil do Cliente</span>
-                <div class="config-grid">
-                    <div class="diff-opt sel" id="persona-founder">
-                        <span class="diff-opt-name" style="font-size:0.9rem;color:var(--good)">Founder / Empreendedor</span>
-                        <span class="diff-opt-desc">Emocional, forte sensibilidade a confianca</span>
-                    </div>
-                    <div class="diff-opt" id="persona-pe">
-                        <span class="diff-opt-name" style="font-size:0.9rem;color:var(--bad)">PE Sponsor / Fundo</span>
-                        <span class="diff-opt-desc">Racional, foco agressivo em economics</span>
-                    </div>
-                </div>
-            </div>
-            <div class="config-row">
+            <div class="config-row" style="margin-bottom:14px;">
                 <div class="lang-switch" style="justify-content:flex-start;margin-bottom:0;">
                     <label for="lang-select" data-i18n="lang.label" style="font-size:0.8rem;color:var(--muted)">Idioma</label>
                     <select id="lang-select" aria-label="Language selector">
@@ -716,19 +687,48 @@
                     </select>
                 </div>
             </div>
-            <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:6px;font-weight:700;">Dificuldade</div>
+            <h1 class="start-title" data-i18n="start.title">M&A Dealmaker</h1>
+            <p class="start-sub" data-i18n="start.subtitle">Simulacao interactiva de mandato de venda &mdash; do pitch ao closing.</p>
+            <p data-i18n="start.description" style="font-size:0.88rem;color:var(--muted);margin-bottom:10px;">Gere o cliente, a equipa e os compradores em 10 fases criticas. Usa Pontos de Acao por semana com sabedoria. Eventos aleatorios testam a tua resiliencia.</p>
+            <div class="config-row">
+                <span class="config-label" data-i18n="start.sector">Setor de Atividade</span>
+                <div class="config-grid">
+                    <div class="diff-opt sel" id="sector-technology">
+                        <span class="diff-opt-name" data-i18n="start.sectorTechnology" style="font-size:0.9rem;color:var(--accent)">Technology / Software</span>
+                        <span class="diff-opt-desc" data-i18n="start.sectorTechnologyDesc">Multiplo alto · EBITDA mais leve</span>
+                    </div>
+                    <div class="diff-opt" id="sector-industrial">
+                        <span class="diff-opt-name" data-i18n="start.sectorIndustrial" style="font-size:0.9rem;color:var(--warn)">Industrial / Manufacturing</span>
+                        <span class="diff-opt-desc" data-i18n="start.sectorIndustrialDesc">Multiplo conservador · EBITDA robusto</span>
+                    </div>
+                </div>
+            </div>
+            <div class="config-row">
+                <span class="config-label" data-i18n="start.clientProfile">Perfil do Cliente</span>
+                <div class="config-grid">
+                    <div class="diff-opt sel" id="persona-founder">
+                        <span class="diff-opt-name" data-i18n="start.personaFounder" style="font-size:0.9rem;color:var(--good)">Founder / Empreendedor</span>
+                        <span class="diff-opt-desc" data-i18n="start.personaFounderDesc">Emocional, forte sensibilidade a confianca</span>
+                    </div>
+                    <div class="diff-opt" id="persona-pe">
+                        <span class="diff-opt-name" data-i18n="start.personaPE" style="font-size:0.9rem;color:var(--bad)">PE Sponsor / Fundo</span>
+                        <span class="diff-opt-desc" data-i18n="start.personaPEDesc">Racional, foco agressivo em economics</span>
+                    </div>
+                </div>
+            </div>
+            <div data-i18n="start.difficulty" style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:6px;font-weight:700;">Dificuldade</div>
             <div class="diff-grid">
                 <div class="diff-opt" id="diff-facil">
-                    <span class="diff-opt-name" style="color:var(--good)">Facil</span>
-                    <span class="diff-opt-desc">Stats favoraveis, eventos mais suaves, menos frequentes</span>
+                    <span class="diff-opt-name" data-i18n="start.easy" style="color:var(--good)">Facil</span>
+                    <span class="diff-opt-desc" data-i18n="start.easyDesc">Stats favoraveis, eventos mais suaves, menos frequentes</span>
                 </div>
                 <div class="diff-opt sel" id="diff-normal">
-                    <span class="diff-opt-name" style="color:var(--warn)">Normal</span>
-                    <span class="diff-opt-desc">Experiencia equilibrada com risco genuino</span>
+                    <span class="diff-opt-name" data-i18n="start.normal" style="color:var(--warn)">Normal</span>
+                    <span class="diff-opt-desc" data-i18n="start.normalDesc">Experiencia equilibrada com risco genuino</span>
                 </div>
                 <div class="diff-opt" id="diff-dificil">
-                    <span class="diff-opt-name" style="color:var(--bad)">Dificil</span>
-                    <span class="diff-opt-desc">Stats apertadas, eventos frequentes e mais severos</span>
+                    <span class="diff-opt-name" data-i18n="start.hard" style="color:var(--bad)">Dificil</span>
+                    <span class="diff-opt-desc" data-i18n="start.hardDesc">Stats apertadas, eventos frequentes e mais severos</span>
                 </div>
             </div>
             <div id="sector-preview" class="small" style="text-align:left;margin:0 0 12px;">
@@ -1411,6 +1411,24 @@
                 "start.title": "M&A Dealmaker",
                 "start.subtitle": "Simulacao interactiva de mandato de venda — do pitch ao closing.",
                 "start.begin": "Iniciar Mandato",
+                "start.description": "Gere o cliente, a equipa e os compradores em 10 fases criticas. Usa Pontos de Acao por semana com sabedoria. Eventos aleatorios testam a tua resiliencia.",
+                "start.sector": "Setor de Atividade",
+                "start.sectorTechnology": "Technology / Software",
+                "start.sectorTechnologyDesc": "Multiplo alto · EBITDA mais leve",
+                "start.sectorIndustrial": "Industrial / Manufacturing",
+                "start.sectorIndustrialDesc": "Multiplo conservador · EBITDA robusto",
+                "start.clientProfile": "Perfil do Cliente",
+                "start.personaFounder": "Founder / Empreendedor",
+                "start.personaFounderDesc": "Emocional, forte sensibilidade a confianca",
+                "start.personaPE": "PE Sponsor / Fundo",
+                "start.personaPEDesc": "Racional, foco agressivo em economics",
+                "start.difficulty": "Dificuldade",
+                "start.easy": "Facil",
+                "start.easyDesc": "Stats favoraveis, eventos mais suaves, menos frequentes",
+                "start.normal": "Normal",
+                "start.normalDesc": "Experiencia equilibrada com risco genuino",
+                "start.hard": "Dificil",
+                "start.hardDesc": "Stats apertadas, eventos frequentes e mais severos",
                 "end.newMandate": "Novo Mandato",
                 "sidebar.subtitle": "Mandato de sell-side: do pitch ao closing, gerindo cliente, equipa e compradores.",
                 "labels.client": "Cliente",
@@ -1438,6 +1456,24 @@
                 "start.title": "M&A Dealmaker",
                 "start.subtitle": "Interactive sell-side mandate simulation — from pitch to closing.",
                 "start.begin": "Start Mandate",
+                "start.description": "Manage the client, team, and bidders across 10 critical phases. Use weekly Action Points wisely. Random events will test your resilience.",
+                "start.sector": "Business Sector",
+                "start.sectorTechnology": "Technology / Software",
+                "start.sectorTechnologyDesc": "Higher multiple · Lower EBITDA base",
+                "start.sectorIndustrial": "Industrial / Manufacturing",
+                "start.sectorIndustrialDesc": "Conservative multiple · Stronger EBITDA",
+                "start.clientProfile": "Client Profile",
+                "start.personaFounder": "Founder / Entrepreneur",
+                "start.personaFounderDesc": "Emotional profile, highly trust-sensitive",
+                "start.personaPE": "PE Sponsor / Fund",
+                "start.personaPEDesc": "Rational profile, aggressive economics focus",
+                "start.difficulty": "Difficulty",
+                "start.easy": "Easy",
+                "start.easyDesc": "Favorable stats, softer and less frequent events",
+                "start.normal": "Normal",
+                "start.normalDesc": "Balanced experience with real risk",
+                "start.hard": "Hard",
+                "start.hardDesc": "Tighter stats, more frequent and severe events",
                 "end.newMandate": "New Mandate",
                 "sidebar.subtitle": "Sell-side mandate: from pitch to closing, managing client, team and bidders.",
                 "labels.client": "Client",
@@ -2590,10 +2626,14 @@
         function updateStartSectorPreview() {
             if (!R.startSectorPreview) return;
             if (selectedSector === "industrial") {
-                R.startSectorPreview.textContent = "Pré-visualização: EBITDA 8.0-15.0 M€ · Múltiplo 5.0x-7.5x";
+                R.startSectorPreview.textContent = currentLang === "pt"
+                    ? "Pré-visualização: EBITDA 8.0-15.0 M€ · Múltiplo 5.0x-7.5x"
+                    : "Preview: EBITDA 8.0-15.0 M€ · Multiple 5.0x-7.5x";
                 return;
             }
-            R.startSectorPreview.textContent = "Pré-visualização: EBITDA 2.0-4.5 M€ · Múltiplo 10.0x-14.0x";
+            R.startSectorPreview.textContent = currentLang === "pt"
+                ? "Pré-visualização: EBITDA 2.0-4.5 M€ · Múltiplo 10.0x-14.0x"
+                : "Preview: EBITDA 2.0-4.5 M€ · Multiple 10.0x-14.0x";
         }
 
         function showDelta(el, val) {
@@ -3815,6 +3855,7 @@
             langSelect.addEventListener("change", function(e) {
                 currentLang = e.target.value === "en" ? "en" : "pt";
                 applyI18nToStaticNodes();
+                updateStartSectorPreview();
                 if (!state.ended && Object.keys(state).length > 0) {
                     renderPhase();
                 }
