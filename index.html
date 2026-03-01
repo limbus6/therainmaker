@@ -89,9 +89,7 @@
     .info-icon { display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:999px; border:1px solid #5a79ad; font-size:.72rem; margin-left:4px; color:var(--accent); }
     .tutorial-focus { box-shadow: 0 0 0 2px #7fd3ffcc, 0 0 22px #7fd3ff66; border-radius:10px; }
 
-    .debug-fab { border-radius:999px; width:36px; height:36px; padding:0; font-weight:700; }
-    .debug-panel { position:fixed; right:16px; bottom:16px; width:min(420px,calc(100vw - 24px)); max-height:70vh; overflow:auto; z-index:180; }
-    .debug-panel pre { background:#061126; border:1px solid #2d4a7c; border-radius:8px; padding:8px; white-space:pre-wrap; word-break:break-word; }
+    .hidden { display:none !important; }
     #modal-overlay { position:fixed; inset:0; background:transparent; z-index:140; display:none; pointer-events:none; }
     @media (max-width: 980px) {
       .mobile-drawer { position:fixed; left:0; right:0; bottom:0; z-index:130; transform:translateY(calc(100% - 46px)); transition:transform .25s ease; }
@@ -140,7 +138,6 @@
 
     <main class="card">
       <div class="tabs">
-        <button id="debug-open" class="debug-fab" title="Debug Hub">?</button>
         <button class="tab-btn active" data-tab="deal" id="tab-deal">Deal Room</button>
         <button class="tab-btn" data-tab="team" id="tab-team">Team Management</button>
         <button class="tab-btn" data-tab="settings" id="tab-settings">Settings</button>
@@ -207,16 +204,6 @@
 
 
   <div id="modal-overlay"></div>
-
-  <div id="debug-panel" class="card debug-panel hidden">
-    <h3>Debug Hub</h3>
-    <p class="hint">Key: D</p>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
-      <button id="hard-refresh-ui" class="primary">Hard Refresh UI</button>
-      <button id="debug-close">Close</button>
-    </div>
-    <pre id="debug-trace"></pre>
-  </div>
 
   <script>
     const STORAGE_META = 'ma.meta.v2';
@@ -716,34 +703,6 @@
       }
       ensureValidMicroPhase();
       renderAll();
-      updateDebugTrace();
-    }
-
-    function hardRefreshUI() {
-      if (!state) return;
-      state.current.ap = calculateInitialPA();
-      state.currentPhaseIndex = 0;
-      state.currentMicroPhaseIndex = 0;
-      R.choices.innerHTML = '';
-      renderPhase();
-    }
-
-    function updateDebugTrace() {
-      if (!state) return;
-      const micro = ensureValidMicroPhase();
-      el('debug-trace').textContent = JSON.stringify({
-        phaseIndex: state.currentPhaseIndex,
-        microPhaseIndex: state.currentMicroPhaseIndex,
-        microPhase: micro,
-        currentAP: state.current.ap
-      }, null, 2);
-    }
-
-    function toggleDebugPanel(forceOpen = null) {
-      const panel = el('debug-panel');
-      const shouldOpen = forceOpen === null ? panel.classList.contains('hidden') : forceOpen;
-      panel.classList.toggle('hidden', !shouldOpen);
-      if (shouldOpen) updateDebugTrace();
     }
 
     function closeDrawer() {
@@ -800,12 +759,6 @@
       };
       el('new-career').onclick = ()=>{ showStart(); };
       el('drawer-toggle').onclick = ()=>el('stats-drawer').classList.toggle('open');
-      el('debug-open').onclick = ()=>toggleDebugPanel();
-      el('debug-close').onclick = ()=>toggleDebugPanel(false);
-      el('hard-refresh-ui').onclick = ()=>hardRefreshUI();
-      document.addEventListener('keydown', (event)=>{
-        if (event.key.toLowerCase() === 'd') toggleDebugPanel();
-      });
       el('continue-next').onclick = ()=>startNextDeal(selectedSector);
 
       el('buy-analyst').onclick = ()=>{
