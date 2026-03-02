@@ -143,6 +143,7 @@
           <div class="tooltip hide" data-tip="workload"></div>
         </div>
         <div id="workload-text" class="hint"></div><div class="bar"><span id="workload-fill" style="width:0%"></span></div>
+        <div id="next-phase-preview" class="hint" style="margin-top:4px"></div>
       </div>
       <p style="margin-top:10px"><span id="fee-label" class="tooltip-anchor">Fee Negotiation Gate</span>
         <div class="tooltip hide" data-tip="fee"></div>
@@ -169,6 +170,7 @@
 
       <section id="panel-deal" class="tab-panel active">
         <h3 id="dealHeader">Mandato</h3>
+        <p id="phase-breadcrumbs" class="hint"></p>
         <p id="phase-header"></p>
         <div class="progress-stack">
           <div class="progress-line"><span id="phase-progress-label"></span><span id="phase-progress-value"></span></div>
@@ -177,6 +179,11 @@
           <div class="bar"><span id="micro-progress-fill" style="width:0%"></span></div>
         </div>
         <p id="dealContext"></p>
+        <div id="review-panel" class="card" style="display:none; margin:10px 0;">
+          <h4>Partner Review Board</h4>
+          <p id="review-summary" class="hint"></p>
+          <div class="actions" id="review-actions"></div>
+        </div>
         <div class="actions" id="action-list"></div>
         <h4 id="logTitle" style="margin-top:12px">Deal Log</h4>
         <div class="log" id="log"></div>
@@ -276,7 +283,7 @@
         tutorialTitle: 'Tutorial', next: 'Seguinte', skip: 'Saltar',
         phaseHeader: 'Fase {phase}/{total} · {phaseLabel} · {microLabel}',
         phaseProgress: 'Progresso da fase', microProgress: 'Progresso da micro-fase',
-        workloadValue: 'Carga: {workload}/{capacity}', liveClosing: 'Probabilidade live de closing: {value}%', endCareerTitle: 'Carreira Concluída',
+        workloadValue: 'Carga: {workload}/{capacity} ({percentage}%)', nextPhasePreview: 'Próxima fase: {name} (workload: {value})', liveClosing: 'Probabilidade live de closing: {value}%', endCareerTitle: 'Carreira Concluída',
         totalScore: 'Career Score total', mandateHistory: 'Histórico de Mandatos',
         careerNarrative: 'Narrativa de Carreira', newCareerBtn: 'Nova Carreira',
         feeModalTitle: 'Negociação de fees', feeModalBody: 'Escolhe a abordagem de negociação para este cliente.',
@@ -307,7 +314,7 @@
           ap: 'Action Points (AP) = 3 base + bonus de moral + office upgrade.',
           fee: 'Sem fee negotiation acordada, fechar o deal é impossível.',
           workloadMath: 'Capacidade = 50 base + moral indireta via AP. Se workload > capacidade: penalização de sucesso (-12pp) e queda de moral semanal = (workload-capacidade)/8 e decay de carga = -15/semana.',
-          tutorialFocus: ['Este indicador mede Workload vs Capacity. Acima de 100% tens penalização imediata.', 'Aqui vês o teu P&L da carreira (Net Margin acumulada).', 'Este bloco mostra AP disponíveis para executar ações esta semana.']
+          tutorialFocus: ['Este indicador mede Workload vs Capacity. Acima de 100% tens penalização imediata.', 'Aqui vês o teu P&L da carreira (Net Margin acumulada).', 'Este bloco mostra AP disponíveis para executar ações esta semana.', 'Na fase de outreach vais desbloquear bidders e gerir interesse competitivo.', 'Eventos semanais podem surgir; mitigar custa AP e cash mas evita impacto.', 'Review Board: alguns drafts exigem aprovação antes de continuar.']
         }
       },
       en: {
@@ -319,7 +326,7 @@
         tutorialTitle: 'Tutorial', next: 'Next', skip: 'Skip',
         phaseHeader: 'Phase {phase}/{total} · {phaseLabel} · {microLabel}',
         phaseProgress: 'Phase progress', microProgress: 'Micro-phase progress',
-        workloadValue: 'Load: {workload}/{capacity}', liveClosing: 'Live closing probability: {value}%', endCareerTitle: 'Career Completed',
+        workloadValue: 'Load: {workload}/{capacity} ({percentage}%)', nextPhasePreview: 'Next phase: {name} (workload: {value})', liveClosing: 'Live closing probability: {value}%', endCareerTitle: 'Career Completed',
         totalScore: 'Total Career Score', mandateHistory: 'Mandate History',
         careerNarrative: 'Career Narrative', newCareerBtn: 'New Career',
         feeModalTitle: 'Fee negotiation', feeModalBody: 'Choose the negotiation approach for this client.',
@@ -350,7 +357,7 @@
           ap: 'Action Points (AP) = 3 base + morale bonus + office upgrades.',
           fee: 'Without fee negotiation agreed, deal closing cannot happen.',
           workloadMath: 'Capacity starts at 50. If workload exceeds capacity: immediate success penalty (-12pp) and weekly morale drop = (workload-capacity)/8 and load decay = -15/week.',
-          tutorialFocus: ['This gauge tracks Workload vs Capacity. Above 100% you take an immediate execution penalty.', 'This is your career P&L tracker (cumulative Net Margin).', 'This block shows available AP for this week\'s actions.']
+          tutorialFocus: ['This gauge tracks Workload vs Capacity. Above 100% you take an immediate execution penalty.', 'This is your career P&L tracker (cumulative Net Margin).', 'This block shows available AP for this week\'s actions.', 'During outreach you unlock bidders and manage competitive tension.', 'Weekly events can trigger; mitigation costs AP/cash but limits damage.', 'Review Board: some drafts must be approved before normal actions resume.']
         }
       }
     };
@@ -810,7 +817,11 @@
         boardHeat: 0,
         bidders: [],
         droppedBidders: [],
-        exclusiveBidder: null
+        exclusiveBidder: null,
+        currentDeliverable: null,
+        deliverableQualities: {},
+        hiddenFlaws: [],
+        eventHistory: []
       };
     }
 
@@ -1018,6 +1029,42 @@
     }
 
 
+    function showConfirmModal(title, body, onConfirm) {
+      const overlay = el('modal-overlay');
+      overlay.style.display = 'flex';
+      overlay.style.alignItems = 'center';
+      overlay.style.justifyContent = 'center';
+      overlay.style.background = 'rgba(2,6,18,.72)';
+      overlay.style.pointerEvents = 'auto';
+      overlay.innerHTML = `
+        <div class="modal card">
+          <h3>${title}</h3>
+          <p>${body}</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button id="confirm-yes" class="primary">Confirmar</button>
+            <button id="confirm-no">Cancelar</button>
+          </div>
+        </div>
+      `;
+      const cleanup = () => {
+        overlay.innerHTML = '';
+        overlay.style.display = 'none';
+        overlay.style.pointerEvents = 'none';
+        overlay.style.background = 'transparent';
+      };
+      el('confirm-yes').onclick = () => { cleanup(); onConfirm(true); };
+      el('confirm-no').onclick = () => { cleanup(); onConfirm(false); };
+    }
+
+    function queueDeliverableReview(d, key, quality) {
+      d.currentDeliverable = { name: key, quality, iterations: 0 };
+      d.deliverableQualities[key] = quality;
+    }
+
+    function isReviewableAction(actionKey) {
+      return ['draft_teaser','draft_im','draft_process_letter','review_spa_draft'].includes(actionKey);
+    }
+
     function showExclusiveBidderModal(resolveChoice) {
       const t = i18n[meta.language];
       const overlay = el('modal-overlay');
@@ -1049,8 +1096,7 @@
         btn.className = 'primary';
         btn.textContent = b.nome;
         btn.onclick = () => {
-          const confirmed = window.confirm(t.winnerModalBody.replace('{name}', b.nome));
-          cleanup(confirmed ? b.id : null);
+          showConfirmModal(t.winnerModalTitle, t.winnerModalBody.replace('{name}', b.nome), (confirmed) => cleanup(confirmed ? b.id : null));
         };
         list.appendChild(btn);
       });
@@ -1074,9 +1120,9 @@
 
       makeAction('collect_documents','financial',1,8,0.65,['doc_collection'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',3); applyDelta(d,'morale',-3);} else { applyDelta(d,'closeProbability',-2); const extra = d.clientType === 'corporate' ? CLIENT_TYPES.corporate.specialRules.docFailPenalty : -3; applyDelta(d,'relationship',extra);} }),
       makeAction('outsource_doc_collection','financial',1,4,0.72,['doc_collection'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',2); applyDelta(d,'netMargin',-0.8);} else applyDelta(d,'netMargin',-0.4); }),
-      makeAction('draft_teaser','commercial',1,5,0.70,['teaser'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',3); applyDelta(d,'relationship',4); const q = Math.floor(40 + Math.random() * 41); log(i18n[meta.language].deliverableReview.replace('{quality}', q), ''); } else applyDelta(d,'relationship',-2); }),
+      makeAction('draft_teaser','commercial',1,5,0.70,['teaser'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',3); applyDelta(d,'relationship',4); const q = Math.floor(40 + Math.random() * 41); queueDeliverableReview(d, 'draft_teaser', q); log(i18n[meta.language].deliverableReview.replace('{quality}', q), ''); } else applyDelta(d,'relationship',-2); }),
       makeAction('premium_teaser','commercial',2,8,0.60,['teaser'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',5); applyDelta(d,'relationship',6); const q = Math.floor(71 + Math.random() * 30); log(i18n[meta.language].deliverableReview.replace('{quality}', q), 'good'); } else { applyDelta(d,'morale',-5); applyDelta(d,'relationship',-3);} }),
-      makeAction('draft_im','financial',2,8,0.62,['im'],(ok,d)=>{ if(ok){ applyDelta(d,'relationship',6); applyDelta(d,'multiple',0.2); const q = Math.floor(40 + Math.random() * 41); log(i18n[meta.language].deliverableReview.replace('{quality}', q), ''); } else { applyDelta(d,'morale',-4); applyDelta(d,'relationship',-3);} }),
+      makeAction('draft_im','financial',2,8,0.62,['im'],(ok,d)=>{ if(ok){ applyDelta(d,'relationship',6); applyDelta(d,'multiple',0.2); const q = Math.floor(40 + Math.random() * 41); queueDeliverableReview(d, 'draft_im', q); log(i18n[meta.language].deliverableReview.replace('{quality}', q), ''); if (q > 80) applyDelta(d,'closeProbability',2); } else { applyDelta(d,'morale',-4); applyDelta(d,'relationship',-3);} }),
       makeAction('setup_vdr','legal',1,10,0.68,['vdr_setup'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',4); applyDelta(d,'morale',-4);} else { applyDelta(d,'closeProbability',-3); applyDelta(d,'morale',-6);} }),
       makeAction('finalise_buyer_list','commercial',1,4,0.75,['buyer_list'],(ok,d)=>{ if(ok) applyDelta(d,'closeProbability',4); else applyDelta(d,'closeProbability',-1); }),
       makeAction('set_timeline','legal',1,3,0.78,['timeline'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',2); applyDelta(d,'relationship',d.clientType === 'pe' ? 8 : 4);} else applyDelta(d,'relationship',-2); }),
@@ -1090,7 +1136,7 @@
       makeAction('evaluate_interest','commercial',1,4,0.78,['analyse_interest'],(ok,d)=>{ if(ok){ applyDelta(d,'relationship',4); applyDelta(d,'closeProbability',3);} else applyDelta(d,'closeProbability',-1); }),
       makeAction('additional_calls','commercial',1,5,0.72,['additional_meetings'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',4); applyDelta(d,'morale',-2);} else applyDelta(d,'morale',-3); }),
       makeAction('finalise_shortlist','commercial',1,4,0.75,['final_shortlist'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',5); applyDelta(d,'relationship',6); const ranked = activeBidders(d).sort((a,b) => b.interesse - a.interesse); ranked.forEach((b, i) => { b.shortlisted = i < 3; if (i >= 3) dropBidder(d, b, true); }); } else { applyDelta(d,'closeProbability',-2); applyDelta(d,'relationship',-3);} }),
-      makeAction('draft_process_letter','legal',1,5,0.70,['process_letter'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',4); applyDelta(d,'morale',-2); const q = Math.floor(55 + Math.random() * 36); log(i18n[meta.language].deliverableReview.replace('{quality}', q), ''); } else applyDelta(d,'closeProbability',-2); }),
+      makeAction('draft_process_letter','legal',1,5,0.70,['process_letter'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',4); applyDelta(d,'morale',-2); const q = Math.floor(55 + Math.random() * 36); queueDeliverableReview(d, 'draft_process_letter', q); log(i18n[meta.language].deliverableReview.replace('{quality}', q), ''); } else applyDelta(d,'closeProbability',-2); }),
 
       makeAction('receive_nbo','commercial',1,4,0.82,['receive_nbo'],(ok,d)=>{ if(ok){ applyDelta(d,'relationship',6); applyDelta(d,'multiple',0.3);} else applyDelta(d,'relationship',-2); }),
       makeAction('probe_bidder','commercial',1,3,0.70,['receive_nbo'],(ok,d)=>{ if(ok){ const active = activeBidders(d).filter(b => !b.offerKnown); if (active.length){ const bidder = active[Math.floor(Math.random()*active.length)]; bidder.offerKnown = true; log(i18n[meta.language].bidderIntel.replace('{bidder}', bidder.nome).replace('{multiple}', bidder.multiploProposto.toFixed(1))); } applyDelta(d,'closeProbability',2);} else applyDelta(d,'closeProbability',-2); }),
@@ -1109,7 +1155,7 @@
       makeAction('negotiate_offer_structure','commercial',2,7,0.60,['negotiate_structure'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',6); applyDelta(d,'netMargin',1.0); applyDelta(d,'morale',-3);} else { applyDelta(d,'closeProbability',-4); applyDelta(d,'relationship',-4);} }),
       makeAction('select_exclusive_bidder','commercial',2,5,0.70,['choose_winner'],(ok,d)=>{ if(ok){ applyDelta(d,'relationship',6);} else { applyDelta(d,'closeProbability',-6); applyDelta(d,'relationship',-8);} }),
 
-      makeAction('review_spa_draft','legal',1,7,0.65,['draft_review'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',4); applyDelta(d,'morale',-3); const q = Math.floor(55 + Math.random() * 41); log(i18n[meta.language].deliverableReview.replace('{quality}', q), ''); } else applyDelta(d,'closeProbability',-3); }),
+      makeAction('review_spa_draft','legal',1,7,0.65,['draft_review'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',4); applyDelta(d,'morale',-3); const q = Math.floor(55 + Math.random() * 41); queueDeliverableReview(d, 'review_spa_draft', q); log(i18n[meta.language].deliverableReview.replace('{quality}', q), ''); } else applyDelta(d,'closeProbability',-3); }),
       makeAction('negotiate_caps_baskets','legal',1,6,0.58,['caps_baskets'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',5); applyDelta(d,'relationship',-2);} else { applyDelta(d,'closeProbability',-4); applyDelta(d,'relationship',-5);} }),
       makeAction('concede_warranties','legal',1,3,0.90,['caps_baskets'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',8); applyDelta(d,'netMargin',-2.0);} }),
       makeAction('finalise_schedules','legal',1,5,0.72,['schedules'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',4);} else applyDelta(d,'closeProbability',-2); }),
@@ -1151,6 +1197,9 @@
         const active = activeBidders(state.current);
         if (!active.length) return Promise.resolve(null);
         return new Promise((resolve) => showExclusiveBidderModal((bidderId) => resolve(bidderId ? `${key}:${bidderId}` : null)));
+      }
+      if (key === 'concede_warranties') {
+        return new Promise((resolve) => showConfirmModal('Conceder warranties?', 'Conceder warranties? A net margin será penalizada.', (ok) => resolve(ok ? key : null)));
       }
       return Promise.resolve(key);
     }
@@ -1200,6 +1249,7 @@
         if (event.positive && !event.mitigation) {
           applyEffects(d, event.effects);
           log(`EVENT: ${label(event.label)} (+)`, 'good');
+          d.eventHistory.push({ label: label(event.label), mitigated: false, positive: true });
           continue;
         }
         let mitigated = false;
@@ -1212,6 +1262,7 @@
             if (Math.random() < event.mitigation.successProb) {
               applyEffects(d, event.mitigation.successEffects);
               log(`EVENT: ${label(event.label)} mitigado com sucesso.`, 'good');
+              d.eventHistory.push({ label: label(event.label), mitigated: true, positive: false });
               mitigated = true;
             } else {
               log(`EVENT: ${label(event.label)} mitigação falhou.`, 'bad');
@@ -1222,9 +1273,67 @@
         }
         if (!mitigated) {
           applyEffects(d, event.effects);
+          d.eventHistory.push({ label: label(event.label), mitigated: false, positive: !!event.positive });
           log(`EVENT: ${label(event.label)}`, event.positive ? 'good' : 'bad');
         }
       }
+    }
+
+
+    function applyReviewDecision(decision) {
+      const d = state.current;
+      const deliverable = d.currentDeliverable;
+      if (!deliverable) return;
+      if (decision === 'approve') {
+        if (deliverable.quality < 50) d.hiddenFlaws.push(`${deliverable.name}_q${deliverable.quality}`);
+        d.currentDeliverable = null;
+      } else if (decision === 'fix') {
+        deliverable.quality = Math.min(100, deliverable.quality + 15);
+        deliverable.iterations += 1;
+        d.morale = Math.max(0, d.morale - 5);
+        d.deliverableQualities[deliverable.name] = deliverable.quality;
+      } else if (decision === 'improve') {
+        deliverable.quality = Math.min(100, deliverable.quality + 25);
+        deliverable.iterations += 1;
+        d.morale = Math.max(0, d.morale - 10);
+        d.week = Math.min(d.maxWeeks, d.week + 1);
+        d.deliverableQualities[deliverable.name] = deliverable.quality;
+      } else if (decision === 'redo') {
+        deliverable.quality = Math.min(100, 20 + Math.floor(40 + Math.random() * 61));
+        deliverable.iterations += 1;
+        d.morale = Math.max(0, d.morale - 20);
+        d.relationship = Math.max(0, d.relationship - 5);
+        d.week = Math.min(d.maxWeeks, d.week + 2);
+        d.deliverableQualities[deliverable.name] = deliverable.quality;
+      }
+      d.closeProbability = getLiveClosingProbability();
+      clampDealState(d);
+      renderPhase();
+    }
+
+    function renderReviewPanel() {
+      const d = state.current;
+      const panel = el('review-panel');
+      if (!d.currentDeliverable) {
+        panel.style.display = 'none';
+        return;
+      }
+      panel.style.display = 'block';
+      const rv = d.currentDeliverable;
+      el('review-summary').textContent = `${actionLabel(rv.name)} · quality ${rv.quality}/100 · iterations ${rv.iterations}`;
+      const wrap = el('review-actions');
+      wrap.innerHTML = '';
+      [
+        { key: 'approve', label: 'Aprovar (0 AP, 0 semanas)' },
+        { key: 'fix', label: 'Corrigir (+15 qualidade, -5 morale)' },
+        { key: 'improve', label: 'Melhorar (+25 qualidade, +1 semana, -10 morale)' },
+        { key: 'redo', label: 'Refazer (reroll+20, +2 semanas, -20 morale, -5 relationship)' }
+      ].forEach((option) => {
+        const b = document.createElement('button');
+        b.textContent = option.label;
+        b.onclick = () => applyReviewDecision(option.key);
+        wrap.appendChild(b);
+      });
     }
 
     async function doAction(key) {
@@ -1235,6 +1344,7 @@
       const selectedBidderId = resolvedKey.includes(':') ? resolvedKey.split(':')[1] : null;
       const a = actions.find(x=>x.key===actionKey);
       if (!a || d.completed) return;
+      if (d.currentDeliverable) { log('Partner Review Board pendente. Resolve o deliverable antes de novas ações.', 'bad'); renderPhase(); return; }
       const currentMicro = getCurrentMicroEntry();
       if (a.phases && !a.phases.includes(currentMicro.key)) {
         log(`Ação indisponível na fase ${label(currentMicro.label)}.`, 'bad');
@@ -1350,13 +1460,33 @@
       renderPhase();
     }
 
+    function calcDealScore(deal) {
+      const evComponent = Math.max(0, (deal.ev - 20) / 100) * 300;
+      const closeComponent = deal.won ? (deal.closeProbability / 100) * 250 : 0;
+      const marginComponent = Math.max(0, deal.netMargin) * 15;
+      const speedBonus = Math.max(0, (34 - deal.weeks) / 34) * 100;
+      const relationshipBonus = (deal.relationship / 100) * 50;
+      return Math.round(Math.min(1000, evComponent + closeComponent + marginComponent + speedBonus + relationshipBonus));
+    }
+
     function careerGrade(score) {
-      if (score >= 950) return 'A+';
-      if (score >= 780) return 'A';
-      if (score >= 620) return 'B';
-      if (score >= 480) return 'C';
-      if (score >= 320) return 'D';
+      if (score >= 850) return 'A+';
+      if (score >= 700) return 'A';
+      if (score >= 500) return 'B';
+      if (score >= 350) return 'C';
+      if (score >= 200) return 'D';
       return 'F';
+    }
+
+    function buildDealNarrative(deal) {
+      const outcome = deal.won ? 'fecho bem-sucedido' : 'resultado adverso';
+      const marginTone = deal.netMargin > 15 ? 'alta eficiência' : (deal.netMargin >= 0 ? 'gestão cuidada' : 'custos e concessões pesadas');
+      const keyMitigated = deal.events.find(e => e.mitigated);
+      const keyMoment = keyMitigated ? `mitigação de ${keyMitigated.label}` : 'pressão operacional sem mitigação crítica';
+      const avgQ = deal.avgDeliverableQuality;
+      const teamState = deal.teamMoraleEnd >= 45 ? 'manteve-se coesa' : 'sofreu burnout significativo';
+      const exclusiveText = deal.exclusiveBidder ? ` Bidding exclusivo com ${deal.exclusiveBidder}.` : '';
+      return `O teu mandato de ${deal.weeks} semanas para um ${deal.clientType} no sector ${deal.sector} resultou em ${outcome}. Net margin de ${deal.netMargin.toFixed(1)}% reflecte ${marginTone}. O momento mais crítico foi ${keyMoment}. Qualidade média dos deliverables: ${avgQ.toFixed(1)}. A equipa de ${deal.headcount} membros ${teamState}.${exclusiveText}`;
     }
 
     function gradeClass(grade) {
@@ -1376,10 +1506,9 @@
       gradeNode.className = `grade-pill ${gradeClass(grade)}`;
       gradeNode.textContent = grade;
       el('end-score').textContent = `${t.totalScore}: ${Math.round(state.careerScore)}`;
-      const narrative = meta.language === 'pt'
-        ? `Melhor mandato: ${best.sector} (${best.clientType}) com ${best.netMargin.toFixed(1)}% margem. Pior mandato: ${worst.sector} em ${worst.weeks} semanas (${worst.won ? 'won' : 'lost'}).`
-        : `Best mandate: ${best.sector} (${best.clientType}) with ${best.netMargin.toFixed(1)}% margin. Toughest mandate: ${worst.sector} in ${worst.weeks} weeks (${worst.won ? 'won' : 'lost'}).`;
-      el('end-narrative').textContent = `${t.careerNarrative}: ${narrative}`;
+      const narratives = state.deals.map((deal) => buildDealNarrative(deal));
+      const summary = `Melhor mandato: ${best.sector} (${best.clientType}) com ${best.netMargin.toFixed(1)}% margem. Pior mandato: ${worst.sector} em ${worst.weeks} semanas.`;
+      el('end-narrative').textContent = `${t.careerNarrative}: ${summary} ${narratives.join(' | ')}`;
       el('end-mandates-body').innerHTML = state.deals.map(d => `<tr><td>${d.sector}</td><td>${d.clientType}</td><td>${d.ev.toFixed(1)}</td><td>${d.netMargin.toFixed(1)}%</td><td>${d.weeks}</td><td>${d.won ? 'Won' : 'Lost'}</td></tr>`).join('');
       el('end-career-overlay').classList.remove('hidden');
     }
@@ -1391,12 +1520,30 @@
       if (!won) ev *= 0.5;
       const fee = won ? ev * ((d.baseFeePct/100) + (d.netMargin/100)) : ev * 0.006;
       const netMargin = Math.max(-8, Math.min(35, d.netMargin + (won ? 8 : -4)));
-      const dealScore = Math.max(0, Math.round((won ? 150 : 40) + d.closeProbability + netMargin * 4 + d.relationship));
+      const avgDeliverableQuality = Object.values(d.deliverableQualities || {}).length
+        ? Object.values(d.deliverableQualities).reduce((a,b)=>a+b,0) / Object.values(d.deliverableQualities).length
+        : 0;
+      const dealRecord = {
+        sector: d.sectorName,
+        clientType: label(CLIENT_TYPES[d.clientType].name),
+        won,
+        ev: +ev.toFixed(1),
+        closeProbability: d.closeProbability,
+        netMargin: +netMargin.toFixed(1),
+        weeks: d.week,
+        relationship: d.relationship,
+        events: d.eventHistory || [],
+        avgDeliverableQuality,
+        exclusiveBidder: d.exclusiveBidder,
+        headcount: state.team.length,
+        teamMoraleEnd: d.morale
+      };
+      const dealScore = calcDealScore(dealRecord);
 
       state.careerCash += fee / 10;
       state.totalNetMargin += netMargin;
       state.careerScore += dealScore;
-      state.deals.push({ sector: d.sectorName, clientType: label(CLIENT_TYPES[d.clientType].name), won, ev: +ev.toFixed(1), netMargin: +netMargin.toFixed(1), score: dealScore, weeks: d.week });
+      state.deals.push({ ...dealRecord, score: dealScore, narrative: buildDealNarrative(dealRecord) });
       state.career.largestNetMargin = Math.max(state.career.largestNetMargin, netMargin);
       if (!state.career.unlockedSectors.includes(d.sector)) state.career.unlockedSectors.push(d.sector);
 
@@ -1489,7 +1636,7 @@
     function renderTutorial() {
       clearTutorialFocus();
       const t = i18n[meta.language];
-      const focusIds = ['workload-block', 'stat-net', 'stat-ap'];
+      const focusIds = ['workload-block', 'stat-net', 'stat-ap', 'bidders-list', 'log', 'review-panel'];
       if (focusIds[tutorialStep]) el(focusIds[tutorialStep]).classList.add('tutorial-focus');
       el('tutorialBody').textContent = t.tips.tutorialFocus[tutorialStep];
     }
@@ -1505,6 +1652,15 @@
       const box = el('action-list');
       box.innerHTML = '';
       const currentMicro = getCurrentMicroEntry();
+      if (state.current.currentDeliverable) {
+        renderReviewPanel();
+        const hold = document.createElement('p');
+        hold.className = 'hint';
+        hold.textContent = 'Ações bloqueadas até concluir Partner Review Board.';
+        box.appendChild(hold);
+        return;
+      }
+      el('review-panel').style.display = 'none';
       const visibleActions = actions.filter(a => (!a.phases || a.phases.includes(currentMicro.key)) && !['negotiate_fees','aggressive_fee_push'].includes(a.key));
       visibleActions.forEach(a => {
         const b = document.createElement('button');
@@ -1717,6 +1873,10 @@
       d.bidders = d.bidders || [];
       d.droppedBidders = d.droppedBidders || [];
       d.exclusiveBidder = d.exclusiveBidder || null;
+      d.currentDeliverable = d.currentDeliverable || null;
+      d.deliverableQualities = d.deliverableQualities || {};
+      d.hiddenFlaws = d.hiddenFlaws || [];
+      d.eventHistory = d.eventHistory || [];
       const currentMicro = getCurrentMicroEntry();
       el('s-deal').textContent = `${state.currentDeal}/${state.totalDeals}`;
       el('s-week').textContent = `${d.week}`;
@@ -1728,7 +1888,12 @@
       const workloadRatio = d.workload / Math.max(1,d.capacity);
       el('workload-fill').style.width = `${Math.min(100, workloadRatio*100)}%`;
       el('workload-fill').style.background = workloadRatio > 1 ? 'var(--bad)' : (workloadRatio >= 0.8 ? 'var(--warn)' : 'var(--good)');
-      el('workload-text').textContent = t.workloadValue.replace('{workload}', Math.round(d.workload)).replace('{capacity}', d.capacity);
+      const workloadPct = Math.round((Math.max(0, d.workload) / Math.max(1, d.capacity)) * 100);
+      el('workload-text').textContent = t.workloadValue.replace('{workload}', Math.round(d.workload)).replace('{capacity}', d.capacity).replace('{percentage}', workloadPct);
+      const flat = flattenMicroPhases();
+      const currentIdx = flat.findIndex(x => x.phaseIndex === state.currentPhaseIndex && x.microIndex === state.currentMicroPhaseIndex);
+      const next = flat[Math.min(flat.length - 1, Math.max(0, currentIdx + 1))];
+      el('next-phase-preview').textContent = next ? t.nextPhasePreview.replace('{name}', label(next.label)).replace('{value}', next.workload ?? PHASES_PRO[next.phaseIndex].workload) : '';
       const phase = currentPhase();
       const completedMicro = state.currentPhaseIndex === PHASES_PRO.length - 1 && state.current.completed ? phase.microPhases.length : state.currentMicroPhaseIndex;
       const phasePct = Math.round((completedMicro / Math.max(1, phase.microPhases.length)) * 100);
@@ -1739,6 +1904,7 @@
       el('micro-progress-value').textContent = `${Math.min(100,microPct)}%`;
       el('micro-progress-fill').style.width = `${Math.min(100,microPct)}%`;
       el('phase-header').textContent = t.phaseHeader.replace('{phase}', state.currentPhaseIndex + 1).replace('{total}', PHASES_PRO.length).replace('{phaseLabel}', label(phase.label)).replace('{microLabel}', label(currentMicro.label));
+      el('phase-breadcrumbs').textContent = PHASES_PRO.map((_, idx) => idx < state.currentPhaseIndex ? '●' : idx === state.currentPhaseIndex ? '◐' : '○').join(' ');
       el('dealHeader').textContent = `${d.sectorName} · EV ≈ €${(d.ebitda*d.multiple).toFixed(1)}M`;
       el('dealContext').textContent = `Rel ${d.relationship} · Morale ${d.morale} · Close Prob ${Math.round(getLiveClosingProbability())}% · Fee ${d.feeAgreed ? '✓' : '✗'}`;
       el('betweenDesc').textContent = `Career Cash: €${state.careerCash.toFixed(1)}M | Office Lv.${state.officeLevel}`;
@@ -1808,7 +1974,7 @@
 
       el('tutorial-next').onclick = ()=>{
         tutorialStep += 1;
-        if (tutorialStep > 2) {
+        if (tutorialStep > 5) {
           el('tutorial-overlay').classList.add('hidden');
       el('end-career-overlay').classList.add('hidden');
           clearTutorialFocus();
