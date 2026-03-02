@@ -65,6 +65,7 @@
     .member { border:1px solid #29406f; border-radius:10px; padding:8px; background:#0e1a38; }
     .badges { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
     .badge { font-size:.72rem; padding:2px 8px; border-radius:999px; border:1px solid #3a5186; }
+    .badge.new { border-color: var(--good); color: var(--good); }
     .branch-row { display:grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap:6px; margin-top:8px; }
     .branch-row button { padding:8px; font-size:.78rem; text-align:center; }
     .hint { font-size:.8rem; color:var(--muted); }
@@ -109,6 +110,9 @@
 
     .hidden { display:none !important; }
     #modal-overlay { position:fixed; inset:0; background:transparent; z-index:140; display:none; pointer-events:none; }
+    .toast-wrap { position: fixed; right: 16px; bottom: 16px; display: grid; gap: 8px; z-index: 450; }
+    .toast { background:#09203f; border:1px solid #2d4a7c; border-left:4px solid var(--good); border-radius:10px; padding:10px 12px; width:min(320px, calc(100vw - 24px)); }
+    .leaderboard-row.current { border-color: var(--accent); box-shadow: inset 0 0 0 1px #68c7ff66; }
     @media (max-width: 980px) {
       .mobile-drawer { position:fixed; left:0; right:0; bottom:0; z-index:130; transform:translateY(calc(100% - 46px)); transition:transform .25s ease; }
       .mobile-drawer.open { transform:translateY(0); }
@@ -166,6 +170,7 @@
         <button class="tab-btn active" data-tab="deal" id="tab-deal">Deal Room</button>
         <button class="tab-btn" data-tab="team" id="tab-team">Team Management</button>
         <button class="tab-btn" data-tab="settings" id="tab-settings">Settings</button>
+        <button class="tab-btn" data-tab="leaderboard" id="tab-leaderboard">Leaderboard</button>
       </div>
 
       <section id="panel-deal" class="tab-panel active">
@@ -199,6 +204,12 @@
         <h3 id="settingsHeader">Save Slots</h3>
         <p id="settingsDesc">Guardar/Carregar carreira manualmente.</p>
         <div class="slot-grid" id="slot-grid"></div>
+      </section>
+
+      <section id="panel-leaderboard" class="tab-panel">
+        <h3 id="leaderboardHeader">Leaderboard</h3>
+        <p id="leaderboardDesc" class="hint"></p>
+        <div class="slot-grid" id="leaderboard-list"></div>
       </section>
     </main>
   </div>
@@ -267,11 +278,13 @@
 
 
   <div id="modal-overlay"></div>
+  <div id="toast-wrap" class="toast-wrap"></div>
 
   <script>
     const STORAGE_META = 'ma.meta.v2';
     const STORAGE_SLOT_PREFIX = 'ma.slot.v2.';
     const STORAGE_AUTOSAVE = 'ma.autosave.v2';
+    const STORAGE_LEADERBOARD = 'ma.leaderboard.v2';
 
     const i18n = {
       pt: {
@@ -361,6 +374,31 @@
         }
       }
     };
+
+
+
+    const ACHIEVEMENTS = [
+      { key:'first_close', label:{pt:'Closer',en:'Closer'}, desc:{pt:'Fechar o primeiro mandato com sucesso.',en:'Close your first mandate successfully.'} },
+      { key:'speed_demon', label:{pt:'Speed Demon',en:'Speed Demon'}, desc:{pt:'Fechar um mandato em <= 24 semanas.',en:'Close a mandate in <= 24 weeks.'} },
+      { key:'fee_machine', label:{pt:'Fee Machine',en:'Fee Machine'}, desc:{pt:'Atingir margem líquida >= 8% num mandato.',en:'Reach net margin >= 8% in one mandate.'} },
+      { key:'rainmaker', label:{pt:'Rainmaker',en:'Rainmaker'}, desc:{pt:'Score de carreira >= 700 ao fim de 3 mandatos.',en:'Career score >= 700 after 3 mandates.'} },
+      { key:'crisis_manager', label:{pt:'Crisis Manager',en:'Crisis Manager'}, desc:{pt:'Mitigar 3 eventos negativos numa carreira.',en:'Mitigate 3 negative events in one career.'} },
+      { key:'perfect_pitch', label:{pt:'Perfect Pitch',en:'Perfect Pitch'}, desc:{pt:'Concluir fase de Pitch com relação >= 80.',en:'Finish Pitch phase with relationship >= 80.'} },
+      { key:'family_whisperer', label:{pt:'Family Whisperer',en:'Family Whisperer'}, desc:{pt:'Ganhar um mandato Family Business.',en:'Win one Family Business mandate.'} },
+      { key:'sector_diversifier', label:{pt:'Diversificado',en:'Diversified'}, desc:{pt:'Concluir 4 sectores diferentes na carreira.',en:'Complete 4 different sectors in a career.'} },
+      { key:'ironman', label:{pt:'Ironman',en:'Ironman'}, desc:{pt:'5 mandatos sem perder nenhum.',en:'Win all 5 mandates in a career.'} },
+      { key:'fog_master', label:{pt:'Fog Master',en:'Fog Master'}, desc:{pt:'Fechar deal com prob. live < 60%.',en:'Close a deal with live probability < 60%.'} },
+      { key:'board_favorite', label:{pt:'Board Favorite',en:'Board Favorite'}, desc:{pt:'Aprovar 4 deliverables sem rework.',en:'Approve 4 deliverables without rework.'} },
+      { key:'no_burnout', label:{pt:'No Burnout',en:'No Burnout'}, desc:{pt:'Terminar mandato com morale >= 70.',en:'Finish mandate with morale >= 70.'} },
+      { key:'zero_to_hero', label:{pt:'Zero to Hero',en:'Zero to Hero'}, desc:{pt:'Começar com 2.5M e acabar carreira com >= 8M cash.',en:'Start at 2.5M and end career with >= 8M cash.'} },
+      { key:'ap_master', label:{pt:'AP Master',en:'AP Master'}, desc:{pt:'Concluir 10 ações com AP no limite exacto.',en:'Complete 10 actions spending exact AP limit.'} },
+      { key:'deal_doctor', label:{pt:'Deal Doctor',en:'Deal Doctor'}, desc:{pt:'Recuperar de relação < 30 para fechar com sucesso.',en:'Recover from relationship < 30 and still win.'} },
+      { key:'bidder_king', label:{pt:'Bidder King',en:'Bidder King'}, desc:{pt:'Gerar 6 bidders num mandato.',en:'Generate 6 bidders in one mandate.'} },
+      { key:'legal_eagle', label:{pt:'Legal Eagle',en:'Legal Eagle'}, desc:{pt:'Concluir SPA sem conceder warranties.',en:'Finish SPA without conceding warranties.'} },
+      { key:'steady_hand', label:{pt:'Steady Hand',en:'Steady Hand'}, desc:{pt:'Nunca cair abaixo de 40 de morale num mandato ganho.',en:'Never drop below 40 morale in a won mandate.'} },
+      { key:'closing_artist', label:{pt:'Closing Artist',en:'Closing Artist'}, desc:{pt:'Fechar com wire transfer à primeira.',en:'Close with wire transfer success on first try.'} },
+      { key:'tutorial_done', label:{pt:'Bem-vindo',en:'Welcome Aboard'}, desc:{pt:'Concluir tutorial.',en:'Complete the tutorial.'} }
+    ];
 
     const sectors = [
       { key: 'technology', name: 'Technology', multiple: [9, 13], risk: 1.0, note: 'Balanced mandate.' },
@@ -519,7 +557,7 @@
         key: 'pe',
         name: { pt: 'PE Seller', en: 'PE Seller' },
         desc: { pt: 'Racional. Processo e disciplina acima de tudo.', en: 'Rational. Process and discipline above all.' },
-        modifiers: { relationshipMultiplier: 0.7, moraleModifier: 0, riskMultiplier: 0.8, narrativeBoost: 0.02 },
+        modifiers: { relationshipMultiplier: 0.8, moraleModifier: 2, riskMultiplier: 0.72, narrativeBoost: 0.03 },
         specialRules: {
           timelinePenalty: true,
           feeTermination: (d, margin) => margin > 2.0
@@ -529,7 +567,7 @@
         key: 'corporate',
         name: { pt: 'Corporate Carve-out', en: 'Corporate Carve-out' },
         desc: { pt: 'Burocrático. Documentação rigorosa. DD pesada.', en: 'Bureaucratic. Rigorous documentation. Heavy DD.' },
-        modifiers: { relationshipMultiplier: 0.9, moraleModifier: -15, riskMultiplier: 1.1, narrativeBoost: 0.03 },
+        modifiers: { relationshipMultiplier: 1.0, moraleModifier: -10, riskMultiplier: 0.95, narrativeBoost: 0.04 },
         specialRules: {
           docFailPenalty: -10,
           ddMultiplier: 1.5
@@ -539,7 +577,7 @@
         key: 'family',
         name: { pt: 'Family Business', en: 'Family Business' },
         desc: { pt: 'Altamente emocional. Comunicação é tudo.', en: 'Highly emotional. Communication is everything.' },
-        modifiers: { relationshipMultiplier: 2.0, moraleModifier: -5, riskMultiplier: 1.2, narrativeBoost: 0.1 },
+        modifiers: { relationshipMultiplier: 1.55, moraleModifier: -6, riskMultiplier: 1.3, narrativeBoost: 0.1 },
         specialRules: {
           emotionalEvents: true,
           mgmtPresentationBonus: 15
@@ -698,12 +736,83 @@
     function loadMeta() {
       const parsed = readJSON(STORAGE_META, null);
       if (parsed) return parsed;
-      const seed = { language: 'pt', achievements: [] };
+      const seed = { language: 'pt', achievements: [], careerCount: 0 };
       writeJSON(STORAGE_META, seed);
       return seed;
     }
 
     function saveMeta() { writeJSON(STORAGE_META, meta); }
+
+    function tAchievement(key) {
+      const a = ACHIEVEMENTS.find(x => x.key === key);
+      return a ? label(a.label) : key;
+    }
+
+    function toast(title, body='') {
+      const wrap = el('toast-wrap');
+      if (!wrap) return;
+      const node = document.createElement('div');
+      node.className = 'toast';
+      node.innerHTML = `<strong>${title}</strong>${body ? `<div class="hint">${body}</div>` : ''}`;
+      wrap.prepend(node);
+      setTimeout(() => node.remove(), 3200);
+    }
+
+    function unlockAchievement(key) {
+      if (meta.achievements.includes(key)) return;
+      meta.achievements.push(key);
+      saveMeta();
+      toast(`🏆 ${tAchievement(key)}`, ACHIEVEMENTS.find(x => x.key === key) ? label(ACHIEVEMENTS.find(x => x.key === key).desc) : '');
+    }
+
+    function evaluateAchievements(context = {}) {
+      const d = state.current;
+      if (!d) return;
+      if (context.wonDeal) unlockAchievement('first_close');
+      if (context.wonDeal && d.week <= 24) unlockAchievement('speed_demon');
+      if (context.wonDeal && context.netMargin >= 8) unlockAchievement('fee_machine');
+      if (state.deals.length >= 3 && state.careerScore >= 700) unlockAchievement('rainmaker');
+      if ((state.career?.mitigatedEvents || 0) >= 3) unlockAchievement('crisis_manager');
+      if (state.currentPhaseIndex > 0 && PHASES_PRO[state.currentPhaseIndex-1]?.key === 'pitch' && d.relationship >= 80) unlockAchievement('perfect_pitch');
+      if (context.wonDeal && d.clientType === 'family') unlockAchievement('family_whisperer');
+      if ((state.career?.unlockedSectors || []).length >= 4) unlockAchievement('sector_diversifier');
+      if (state.deals.length === state.totalDeals && state.deals.every(x => x.won)) unlockAchievement('ironman');
+      if (context.wonDeal && context.liveClosing < 60) unlockAchievement('fog_master');
+      if ((state.career?.reviewApproved || 0) >= 4) unlockAchievement('board_favorite');
+      if (context.wonDeal && d.morale >= 70) unlockAchievement('no_burnout');
+      if (state.deals.length === state.totalDeals && state.careerCash >= 8) unlockAchievement('zero_to_hero');
+      if ((state.career?.exactApTurns || 0) >= 10) unlockAchievement('ap_master');
+      if (context.wonDeal && state.career?.hitLowRelationship && state.career?.lowRelRecovered) unlockAchievement('deal_doctor');
+      if ((state.career?.maxBidders || 0) >= 6) unlockAchievement('bidder_king');
+      if (context.wonDeal && !state.career?.concededWarranties) unlockAchievement('legal_eagle');
+      if (context.wonDeal && (state.career?.minMorale || 0) >= 40) unlockAchievement('steady_hand');
+      if (context.wonDeal && state.career?.wireFirstShot) unlockAchievement('closing_artist');
+      if (meta.achievements.includes('tutorial-done')) unlockAchievement('tutorial_done');
+      state.career.achievements = [...meta.achievements];
+    }
+
+    function readLeaderboard() { return readJSON(STORAGE_LEADERBOARD, []); }
+    function saveLeaderboard(board) { writeJSON(STORAGE_LEADERBOARD, board.slice(0,10)); }
+
+    function pushLeaderboard() {
+      const board = readLeaderboard();
+      meta.careerCount = (meta.careerCount || 0) + 1;
+      const entry = {
+        id: makeId(),
+        name: `Carreira #${meta.careerCount}`,
+        score: Math.round(state.careerScore),
+        deals: state.deals.length,
+        grade: careerGrade(state.careerScore),
+        date: new Date().toISOString(),
+        sectors: [...new Set(state.deals.map(d => d.sector))],
+        clientTypes: [...new Set(state.deals.map(d => d.clientType))]
+      };
+      board.push(entry);
+      board.sort((a,b)=>b.score-a.score);
+      saveLeaderboard(board);
+      saveMeta();
+      state.lastLeaderboardId = entry.id;
+    }
 
     function makeId() {
       if (window.crypto && typeof window.crypto.randomUUID === 'function') {
@@ -795,7 +904,7 @@
         sector: sector.key,
         sectorName: sector.name,
         week: 1,
-        maxWeeks: 34,
+        maxWeeks: 30,
         relationship: Math.max(0, Math.min(100, 60 + (clientConfig.modifiers.relationshipMultiplier - 1) * 5)),
         morale: Math.max(0, Math.min(100, 68 + officeLevel * 2 + clientConfig.modifiers.moraleModifier)),
         workload: PHASES_PRO[0].workload,
@@ -804,7 +913,7 @@
         feeAgreed: false,
         ebitda: baseEbitda,
         multiple: randBetween(sector.multiple[0], sector.multiple[1]),
-        closeProbability: 28,
+        closeProbability: 36,
         netMargin: 0,
         score: 0,
         completed: false,
@@ -836,7 +945,7 @@
         deals: [],
         totalNetMargin: 0,
         careerScore: 0,
-        career: { achievements: [...(meta.achievements || [])], unlockedSectors: [selectedSector], largestNetMargin: 0 },
+        career: { achievements: [...(meta.achievements || [])], unlockedSectors: [selectedSector], largestNetMargin: 0, wonDeals: 0, mitigatedEvents: 0, exactApTurns: 0, reviewApproved: 0, minMorale: 100, lowRelRecovered: false, hitLowRelationship: false, concededWarranties: false, wireFirstShot: false, maxBidders: 0 },
         current: makeDeal(selectedSector, 0)
       };
       state.current.logs.push('Mandato iniciado. Negociar fee é prioridade.');
@@ -1157,7 +1266,7 @@
 
       makeAction('review_spa_draft','legal',1,7,0.65,['draft_review'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',4); applyDelta(d,'morale',-3); const q = Math.floor(55 + Math.random() * 41); queueDeliverableReview(d, 'review_spa_draft', q); log(i18n[meta.language].deliverableReview.replace('{quality}', q), ''); } else applyDelta(d,'closeProbability',-3); }),
       makeAction('negotiate_caps_baskets','legal',1,6,0.58,['caps_baskets'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',5); applyDelta(d,'relationship',-2);} else { applyDelta(d,'closeProbability',-4); applyDelta(d,'relationship',-5);} }),
-      makeAction('concede_warranties','legal',1,3,0.90,['caps_baskets'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',8); applyDelta(d,'netMargin',-2.0);} }),
+      makeAction('concede_warranties','legal',1,3,0.90,['caps_baskets'],(ok,d)=>{ if(ok){ state.career.concededWarranties = true; applyDelta(d,'closeProbability',8); applyDelta(d,'netMargin',-2.0);} }),
       makeAction('finalise_schedules','legal',1,5,0.72,['schedules'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',4);} else applyDelta(d,'closeProbability',-2); }),
       makeAction('obtain_internal_approval','commercial',1,4,0.68,['internal_approval'],(ok,d)=>{ if(ok){ const cp = d.clientType === 'pe' ? 3 : d.clientType === 'corporate' ? 7 : 5; applyDelta(d,'closeProbability',cp);} else { applyDelta(d,'closeProbability',-3); applyDelta(d,'relationship',-4);} }),
 
@@ -1167,7 +1276,7 @@
 
       makeAction('obtain_waivers','legal',1,4,0.75,['waivers'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',5);} else applyDelta(d,'closeProbability',-4); }),
       makeAction('complete_registrations','legal',1,3,0.80,['registrations'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',3); applyDelta(d,'relationship',3);} else applyDelta(d,'closeProbability',-2); }),
-      makeAction('execute_wire_transfer','financial',2,5,0.50,['wire_transfer'],(ok,d)=>{ if(ok){ d.completed = true; log('DEAL CLOSED!', 'good'); } else { applyDelta(d,'closeProbability',-10); applyDelta(d,'relationship',-8);} })
+      makeAction('execute_wire_transfer','financial',2,5,0.62,['wire_transfer'],(ok,d)=>{ if(ok){ if(!d.wireAttempted){ state.career.wireFirstShot = true; } d.completed = true; log('DEAL CLOSED!', 'good'); } else { d.wireAttempted = true; applyDelta(d,'closeProbability',-8); applyDelta(d,'relationship',-6);} })
     ];
 
     function xp(branch) {
@@ -1263,6 +1372,7 @@
               applyEffects(d, event.mitigation.successEffects);
               log(`EVENT: ${label(event.label)} mitigado com sucesso.`, 'good');
               d.eventHistory.push({ label: label(event.label), mitigated: true, positive: false });
+              state.career.mitigatedEvents += 1;
               mitigated = true;
             } else {
               log(`EVENT: ${label(event.label)} mitigação falhou.`, 'bad');
@@ -1286,6 +1396,7 @@
       if (!deliverable) return;
       if (decision === 'approve') {
         if (deliverable.quality < 50) d.hiddenFlaws.push(`${deliverable.name}_q${deliverable.quality}`);
+        state.career.reviewApproved += 1;
         d.currentDeliverable = null;
       } else if (decision === 'fix') {
         deliverable.quality = Math.min(100, deliverable.quality + 15);
@@ -1354,10 +1465,13 @@
       if (d.ap < a.ap) { log('Sem AP suficiente.', 'bad'); return; }
 
       d.ap -= a.ap;
+      if (d.ap === 0) state.career.exactApTurns += 1;
       d.workload = Math.min(140, d.workload + a.load);
-      let p = getActionBaseProbability(a, d) + teamSkillBonus(a.branch);
-      p += (d.morale - 50) / 250;
-      if (d.workload > d.capacity) p -= 0.12;
+      const baseP = getActionBaseProbability(a, d);
+      const skillP = teamSkillBonus(a.branch);
+      const moraleP = (d.morale - 50) / 250;
+      const loadP = d.workload > d.capacity ? -0.12 : 0;
+      let p = baseP + skillP + moraleP + loadP;
       p = Math.max(0.05, Math.min(0.95, p));
       const ok = Math.random() < p;
 
@@ -1405,7 +1519,10 @@
         log('Burnout penalty aplicado (1.3x custo implícito).', 'bad');
       }
       d.morale = Math.max(10, d.morale - Math.round(overload / 8));
+      state.career.minMorale = Math.min(state.career.minMorale, d.morale);
       d.relationship = Math.max(0, Math.min(100, d.relationship - 0.6));
+      if (d.relationship < 30) state.career.hitLowRelationship = true;
+      if (state.career.hitLowRelationship && d.relationship > 45) state.career.lowRelRecovered = true;
       d.workload = Math.max(0, d.workload - 15);
       d.ap = calculateInitialPA();
 
@@ -1515,7 +1632,7 @@
 
     function finishDeal(successOverride = null) {
       const d = state.current;
-      const won = successOverride !== null ? successOverride : (d.completed && d.feeAgreed && d.closeProbability >= 45);
+      const won = successOverride !== null ? successOverride : (d.completed && d.feeAgreed && d.closeProbability >= 52);
       let ev = d.ebitda * d.multiple;
       if (!won) ev *= 0.5;
       const fee = won ? ev * ((d.baseFeePct/100) + (d.netMargin/100)) : ev * 0.006;
@@ -1547,12 +1664,11 @@
       state.career.largestNetMargin = Math.max(state.career.largestNetMargin, netMargin);
       if (!state.career.unlockedSectors.includes(d.sector)) state.career.unlockedSectors.push(d.sector);
 
-      if (won && !meta.achievements.includes('closer')) meta.achievements.push('closer');
-      if (state.deals.length === 3 && state.careerScore > 700 && !meta.achievements.includes('rainmaker')) meta.achievements.push('rainmaker');
-      state.career.achievements = [...meta.achievements];
-      saveMeta();
+      if (won) state.career.wonDeals += 1;
+      evaluateAchievements({ wonDeal: won, netMargin, liveClosing: getLiveClosingProbability() });
 
       if (state.currentDeal >= state.totalDeals) {
+        pushLeaderboard();
         showCareerEndOverlay();
       } else {
         el('between-overlay').classList.remove('hidden');
@@ -1666,7 +1782,16 @@
         const b = document.createElement('button');
         b.className = 'action';
         b.disabled = state.current.completed;
-        b.innerHTML = `<strong>${actionLabel(a.key)}</strong><small>AP ${a.ap} · ${a.branch} · +load ${a.load}</small>`;
+        const d = state.current;
+        const baseP = getActionBaseProbability(a, d);
+        const skillP = teamSkillBonus(a.branch);
+        const moraleP = (d.morale - 50) / 250;
+        const loadP = d.workload > d.capacity ? -0.12 : 0;
+        const p = Math.max(0.05, Math.min(0.95, baseP + skillP + moraleP + loadP));
+        const breakdown = meta.language === 'pt'
+          ? `Base ${Math.round(baseP*100)}% + Skill ${Math.round(skillP*100)}% + Morale ${Math.round(moraleP*100)}% ${loadP ? `+ Workload ${Math.round(loadP*100)}%` : ''}`
+          : `Base ${Math.round(baseP*100)}% + Skill ${Math.round(skillP*100)}% + Morale ${Math.round(moraleP*100)}% ${loadP ? `+ Workload ${Math.round(loadP*100)}%` : ''}`;
+        b.innerHTML = `<strong>${actionLabel(a.key)}</strong><small>AP ${a.ap} · ${a.branch} · +load ${a.load} · ${Math.round(p*100)}%</small><small>${breakdown}</small>`;
         b.onclick = ()=>doAction(a.key);
         box.appendChild(b);
       });
@@ -1734,6 +1859,26 @@
     }
 
 
+
+    function renderLeaderboard() {
+      const wrap = el('leaderboard-list');
+      if (!wrap) return;
+      const board = readLeaderboard();
+      const t = i18n[meta.language];
+      el('leaderboardDesc').textContent = meta.language === 'pt' ? 'Top 10 carreiras locais por score.' : 'Top 10 local careers by score.';
+      if (!board.length) {
+        wrap.innerHTML = `<div class="slot">${meta.language === 'pt' ? 'Sem carreiras registadas.' : 'No careers recorded yet.'}</div>`;
+        return;
+      }
+      wrap.innerHTML = board.map((row, idx) => `
+        <div class="slot leaderboard-row ${row.id === state.lastLeaderboardId ? 'current' : ''}">
+          <strong>#${idx+1} · ${row.name}</strong>
+          <p>Score ${row.score} · ${row.grade} · ${row.deals}/5 · ${new Date(row.date).toLocaleDateString()}</p>
+          <p class="hint">Sectors: ${row.sectors.join(', ')} | Clients: ${row.clientTypes.join(', ')}</p>
+        </div>
+      `).join('');
+    }
+
     function renderSectorGrid() {
       const wrap = el('sector-grid');
       wrap.innerHTML = '';
@@ -1775,6 +1920,8 @@
       el('tab-deal').textContent = t.dealRoom;
       el('tab-team').textContent = t.teamTab;
       el('tab-settings').textContent = t.settingsTab;
+      el('tab-leaderboard').textContent = 'Leaderboard';
+      el('leaderboardHeader').textContent = 'Leaderboard';
       el('teamHeader').textContent = t.teamHeader;
       el('teamDesc').textContent = t.teamDesc;
       el('settingsHeader').textContent = t.settingsHeader;
@@ -1868,6 +2015,7 @@
       renderSlots();
       renderSectorGrid();
       renderClientTypeGrid();
+      renderLeaderboard();
       if (!state) return;
       const d = state.current;
       d.bidders = d.bidders || [];
@@ -1877,6 +2025,7 @@
       d.deliverableQualities = d.deliverableQualities || {};
       d.hiddenFlaws = d.hiddenFlaws || [];
       d.eventHistory = d.eventHistory || [];
+      state.career.maxBidders = Math.max(state.career.maxBidders || 0, d.bidders.length || 0);
       const currentMicro = getCurrentMicroEntry();
       el('s-deal').textContent = `${state.currentDeal}/${state.totalDeals}`;
       el('s-week').textContent = `${d.week}`;
@@ -1914,7 +2063,7 @@
       logBox.innerHTML = d.logs.map(x=>`<div>${x}</div>`).join('');
 
       const ach = el('sidebar-achievements');
-      ach.innerHTML = (meta.achievements || []).map(a=>`<span class="badge">${a}</span>`).join('');
+      ach.innerHTML = (meta.achievements || []).map(a=>`<span class="badge">${tAchievement(a)}</span>`).join('');
 
       renderActions();
       renderTeam();
@@ -1978,7 +2127,7 @@
           el('tutorial-overlay').classList.add('hidden');
       el('end-career-overlay').classList.add('hidden');
           clearTutorialFocus();
-          if (!meta.achievements.includes('tutorial-done')) meta.achievements.push('tutorial-done');
+          if (!meta.achievements.includes('tutorial-done')) meta.achievements.push('tutorial-done'); unlockAchievement('tutorial_done');
           saveMeta();
           return;
         }
@@ -1988,7 +2137,7 @@
         el('tutorial-overlay').classList.add('hidden');
       el('end-career-overlay').classList.add('hidden');
         clearTutorialFocus();
-        if (!meta.achievements.includes('tutorial-done')) meta.achievements.push('tutorial-done');
+        if (!meta.achievements.includes('tutorial-done')) meta.achievements.push('tutorial-done'); unlockAchievement('tutorial_done');
         saveMeta();
       };
 
