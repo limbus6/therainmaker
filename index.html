@@ -270,6 +270,14 @@
         mandateLost: 'Mandato perdido: confiança abaixo do mínimo.', teamCollapsed: 'Equipa colapsou por moral crítica.',
         mandateLossRisk: '⚠️ Risco elevado de perder o mandato após abordagem agressiva.',
         deliverableReview: 'Deliverable review: qualidade {quality}/100.',
+        actionLabels: {
+          build_agenda: 'Construir agenda', refine_key_messages: 'Refinar key messages', prepare_investment_case: 'Preparar investment case', define_buyer_universe: 'Definir buyer universe',
+          process_considerations: 'Mapear considerações de processo', negotiate_fees: 'Negociar fees', aggressive_fee_push: 'Push agressivo de fee', present_team: 'Apresentar equipa',
+          final_pitch_meeting: 'Reunião final de pitch', kickoff_meeting: 'Kickoff meeting', define_governance: 'Definir governance', agree_workflows: 'Acordar workflows',
+          collect_documents: 'Recolher documentos', outsource_doc_collection: 'Outsourcing da recolha documental', draft_teaser: 'Draft teaser', premium_teaser: 'Teaser premium',
+          draft_im: 'Draft IM', setup_vdr: 'Configurar VDR', finalise_buyer_list: 'Finalizar buyer list', set_timeline: 'Definir timeline', send_teaser: 'Enviar teaser',
+          distribute_im: 'Distribuir IM', management_presentation: 'Management presentation', handle_initial_qa: 'Gerir Q&A inicial', track_interest: 'Track interest'
+        },
         tips: {
           workload: 'Se workload > capacidade, a moral cai e a probabilidade de sucesso reduz.',
           ap: 'Action Points (AP) = 3 base + bonus de moral + office upgrade.',
@@ -296,6 +304,14 @@
         mandateLost: 'Mandate lost: relationship dropped below the minimum.', teamCollapsed: 'Team collapsed due to critical morale.',
         mandateLossRisk: '⚠️ High risk of mandate loss after an aggressive approach.',
         deliverableReview: 'Deliverable review: quality {quality}/100.',
+        actionLabels: {
+          build_agenda: 'Build agenda', refine_key_messages: 'Refine key messages', prepare_investment_case: 'Prepare investment case', define_buyer_universe: 'Define buyer universe',
+          process_considerations: 'Process considerations', negotiate_fees: 'Negotiate fees', aggressive_fee_push: 'Aggressive fee push', present_team: 'Present team',
+          final_pitch_meeting: 'Final pitch meeting', kickoff_meeting: 'Kickoff meeting', define_governance: 'Define governance', agree_workflows: 'Agree workflows',
+          collect_documents: 'Collect documents', outsource_doc_collection: 'Outsource document collection', draft_teaser: 'Draft teaser', premium_teaser: 'Premium teaser',
+          draft_im: 'Draft IM', setup_vdr: 'Setup VDR', finalise_buyer_list: 'Finalise buyer list', set_timeline: 'Set timeline', send_teaser: 'Send teaser',
+          distribute_im: 'Distribute IM', management_presentation: 'Management presentation', handle_initial_qa: 'Handle initial Q&A', track_interest: 'Track interest'
+        },
         tips: {
           workload: 'If workload > capacity, morale drops and success probability falls.',
           ap: 'Action Points (AP) = 3 base + morale bonus + office upgrades.',
@@ -656,8 +672,12 @@
       return true;
     }
 
-    function makeAction(key, branch, ap, load, baseProb, phases, labels, effect, gated=false) {
-      return { key, branch, ap, load, baseProb, phases, label: labels, effect, gated };
+    function makeAction(key, branch, ap, load, baseProb, phases, effect, gated=false) {
+      return { key, branch, ap, load, baseProb, phases, effect, gated };
+    }
+
+    function actionLabel(actionKey) {
+      return i18n[meta.language].actionLabels[actionKey] || actionKey;
     }
 
     function applyClientModifiers(delta, stat, d) {
@@ -727,34 +747,34 @@
     }
 
     const actions = [
-      makeAction('build_agenda','commercial',1,3,0.80,['agenda'],{ pt:'Construir agenda', en:'Build agenda' },(ok,d)=>{ if(ok){ applyDelta(d,'relationship',3); applyDelta(d,'morale',1);} else applyDelta(d,'relationship',-2); }),
-      makeAction('refine_key_messages','commercial',1,4,0.75,['key_messages'],{ pt:'Refinar key messages', en:'Refine key messages' },(ok,d)=>{ if(ok){ const rel = d.clientTypeKey === 'founder' ? 10 : d.clientTypeKey === 'pe' ? 6 : d.clientTypeKey === 'family' ? 12 : 8; applyDelta(d,'relationship',rel); applyDelta(d,'multiple',0.1);} else applyDelta(d,'relationship',-3); }),
-      makeAction('prepare_investment_case','financial',1,5,0.70,['investment_case'],{ pt:'Preparar investment case', en:'Prepare investment case' },(ok,d)=>{ if(ok){ applyDelta(d,'relationship',6); applyDelta(d,'multiple',0.2);} else { applyDelta(d,'relationship',-4); applyDelta(d,'multiple',-0.1);} }),
-      makeAction('define_buyer_universe','commercial',1,4,0.72,['buyer_universe'],{ pt:'Definir buyer universe', en:'Define buyer universe' },(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',4); if(d.clientTypeKey === 'founder') applyDelta(d,'relationship',7); if(d.clientTypeKey === 'pe') applyDelta(d,'relationship',10);} else applyDelta(d,'closeProbability',-2); }),
-      makeAction('process_considerations','legal',1,3,0.74,['process_considerations'],{ pt:'Mapear considerações de processo', en:'Process considerations' },(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',3); applyDelta(d,'relationship',d.clientTypeKey === 'pe' ? 10 : 6);} else applyDelta(d,'relationship',-2); }),
-      makeAction('negotiate_fees','commercial',1,4,0.55,['fee_negotiation'],{ pt:'Negociar fees', en:'Negotiate fees' },(ok,d)=>{ if(ok){ d.feeAgreed = true; applyDelta(d,'relationship',4); applyDelta(d,'netMargin',1.5);} else applyDelta(d,'relationship', (d.clientTypeKey === 'founder' || d.clientTypeKey === 'family') ? -8 : -6); }),
-      makeAction('aggressive_fee_push','commercial',1,3,0.40,['fee_negotiation'],{ pt:'Push agressivo de fee', en:'Aggressive fee push' },(ok,d)=>{ if(ok){ d.feeAgreed = true; applyDelta(d,'netMargin',2.5);} else { applyDelta(d,'relationship',-10); log(i18n[meta.language].mandateLossRisk, 'bad'); } }),
-      makeAction('present_team','commercial',1,3,0.82,['team_presentation'],{ pt:'Apresentar equipa', en:'Present team' },(ok,d)=>{ if(ok){ applyDelta(d,'relationship',4); applyDelta(d,'morale',4);} else applyDelta(d,'relationship',-2); }),
-      makeAction('final_pitch_meeting','commercial',2,6,0.60,['final_pitch'],{ pt:'Reunião final de pitch', en:'Final pitch meeting' },(ok,d)=>{ if(ok){ applyDelta(d,'relationship',10); applyDelta(d,'closeProbability',5);} else applyDelta(d,'relationship',-8); }),
+      makeAction('build_agenda','commercial',1,3,0.80,['agenda'],(ok,d)=>{ if(ok){ applyDelta(d,'relationship',3); applyDelta(d,'morale',1);} else applyDelta(d,'relationship',-2); }),
+      makeAction('refine_key_messages','commercial',1,4,0.75,['key_messages'],(ok,d)=>{ if(ok){ const rel = d.clientTypeKey === 'founder' ? 10 : d.clientTypeKey === 'pe' ? 6 : d.clientTypeKey === 'family' ? 12 : 8; applyDelta(d,'relationship',rel); applyDelta(d,'multiple',0.1);} else applyDelta(d,'relationship',-3); }),
+      makeAction('prepare_investment_case','financial',1,5,0.70,['investment_case'],(ok,d)=>{ if(ok){ applyDelta(d,'relationship',6); applyDelta(d,'multiple',0.2);} else { applyDelta(d,'relationship',-4); applyDelta(d,'multiple',-0.1);} }),
+      makeAction('define_buyer_universe','commercial',1,4,0.72,['buyer_universe'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',4); if(d.clientTypeKey === 'founder') applyDelta(d,'relationship',7); if(d.clientTypeKey === 'pe') applyDelta(d,'relationship',10);} else applyDelta(d,'closeProbability',-2); }),
+      makeAction('process_considerations','legal',1,3,0.74,['process_considerations'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',3); applyDelta(d,'relationship',d.clientTypeKey === 'pe' ? 10 : 6);} else applyDelta(d,'relationship',-2); }),
+      makeAction('negotiate_fees','commercial',1,4,0.55,['fee_negotiation'],(ok,d)=>{ if(ok){ d.feeAgreed = true; applyDelta(d,'relationship',4); applyDelta(d,'netMargin',1.5);} else applyDelta(d,'relationship', (d.clientTypeKey === 'founder' || d.clientTypeKey === 'family') ? -8 : -6); }),
+      makeAction('aggressive_fee_push','commercial',1,3,0.40,['fee_negotiation'],(ok,d)=>{ if(ok){ d.feeAgreed = true; applyDelta(d,'netMargin',2.5);} else { applyDelta(d,'relationship',-10); log(i18n[meta.language].mandateLossRisk, 'bad'); } }),
+      makeAction('present_team','commercial',1,3,0.82,['team_presentation'],(ok,d)=>{ if(ok){ applyDelta(d,'relationship',4); applyDelta(d,'morale',4);} else applyDelta(d,'relationship',-2); }),
+      makeAction('final_pitch_meeting','commercial',2,6,0.60,['final_pitch'],(ok,d)=>{ if(ok){ applyDelta(d,'relationship',10); applyDelta(d,'closeProbability',5);} else applyDelta(d,'relationship',-8); }),
 
-      makeAction('kickoff_meeting','commercial',1,3,0.85,['kickoff'],{ pt:'Kickoff meeting', en:'Kickoff meeting' },(ok,d)=>{ if(ok){ applyDelta(d,'relationship',6); applyDelta(d,'morale',5);} else applyDelta(d,'morale',-3); }),
-      makeAction('define_governance','legal',1,4,0.78,['governance'],{ pt:'Definir governance', en:'Define governance' },(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',3); applyDelta(d,'morale',4);} else applyDelta(d,'closeProbability',-1); }),
-      makeAction('agree_workflows','financial',1,3,0.80,['workflows'],{ pt:'Acordar workflows', en:'Agree workflows' },(ok,d)=>{ if(ok){ applyDelta(d,'morale',6); applyDelta(d,'relationship',3);} else applyDelta(d,'morale',-4); }),
+      makeAction('kickoff_meeting','commercial',1,3,0.85,['kickoff'],(ok,d)=>{ if(ok){ applyDelta(d,'relationship',6); applyDelta(d,'morale',5);} else applyDelta(d,'morale',-3); }),
+      makeAction('define_governance','legal',1,4,0.78,['governance'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',3); applyDelta(d,'morale',4);} else applyDelta(d,'closeProbability',-1); }),
+      makeAction('agree_workflows','financial',1,3,0.80,['workflows'],(ok,d)=>{ if(ok){ applyDelta(d,'morale',6); applyDelta(d,'relationship',3);} else applyDelta(d,'morale',-4); }),
 
-      makeAction('collect_documents','financial',1,8,0.65,['doc_collection'],{ pt:'Recolher documentos', en:'Collect documents' },(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',3); applyDelta(d,'morale',-3);} else { applyDelta(d,'closeProbability',-2); applyDelta(d,'relationship',d.clientTypeKey === 'carveout' ? -6 : -3);} }),
-      makeAction('outsource_doc_collection','financial',1,4,0.72,['doc_collection'],{ pt:'Outsourcing da recolha documental', en:'Outsource document collection' },(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',2); applyDelta(d,'netMargin',-0.8);} else applyDelta(d,'netMargin',-0.4); }),
-      makeAction('draft_teaser','commercial',1,5,0.70,['teaser'],{ pt:'Draft teaser', en:'Draft teaser' },(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',3); applyDelta(d,'relationship',4); const q = Math.floor(40 + Math.random() * 41); log(i18n[meta.language].deliverableReview.replace('{quality}', q), ''); } else applyDelta(d,'relationship',-2); }),
-      makeAction('premium_teaser','commercial',2,8,0.60,['teaser'],{ pt:'Premium teaser', en:'Premium teaser' },(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',5); applyDelta(d,'relationship',6); const q = Math.floor(71 + Math.random() * 30); log(i18n[meta.language].deliverableReview.replace('{quality}', q), 'good'); } else { applyDelta(d,'morale',-5); applyDelta(d,'relationship',-3);} }),
-      makeAction('draft_im','financial',2,8,0.62,['im'],{ pt:'Draft IM', en:'Draft IM' },(ok,d)=>{ if(ok){ applyDelta(d,'relationship',6); applyDelta(d,'multiple',0.2); const q = Math.floor(40 + Math.random() * 41); log(i18n[meta.language].deliverableReview.replace('{quality}', q), ''); } else { applyDelta(d,'morale',-4); applyDelta(d,'relationship',-3);} }),
-      makeAction('setup_vdr','legal',1,10,0.68,['vdr_setup'],{ pt:'Configurar VDR', en:'Setup VDR' },(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',4); applyDelta(d,'morale',-4);} else { applyDelta(d,'closeProbability',-3); applyDelta(d,'morale',-6);} }),
-      makeAction('finalise_buyer_list','commercial',1,4,0.75,['buyer_list'],{ pt:'Finalizar buyer list', en:'Finalise buyer list' },(ok,d)=>{ if(ok) applyDelta(d,'closeProbability',4); else applyDelta(d,'closeProbability',-1); }),
-      makeAction('set_timeline','legal',1,3,0.78,['timeline'],{ pt:'Definir timeline', en:'Set timeline' },(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',2); applyDelta(d,'relationship',d.clientTypeKey === 'pe' ? 8 : 4);} else applyDelta(d,'relationship',-2); }),
+      makeAction('collect_documents','financial',1,8,0.65,['doc_collection'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',3); applyDelta(d,'morale',-3);} else { applyDelta(d,'closeProbability',-2); applyDelta(d,'relationship',d.clientTypeKey === 'carveout' ? -6 : -3);} }),
+      makeAction('outsource_doc_collection','financial',1,4,0.72,['doc_collection'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',2); applyDelta(d,'netMargin',-0.8);} else applyDelta(d,'netMargin',-0.4); }),
+      makeAction('draft_teaser','commercial',1,5,0.70,['teaser'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',3); applyDelta(d,'relationship',4); const q = Math.floor(40 + Math.random() * 41); log(i18n[meta.language].deliverableReview.replace('{quality}', q), ''); } else applyDelta(d,'relationship',-2); }),
+      makeAction('premium_teaser','commercial',2,8,0.60,['teaser'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',5); applyDelta(d,'relationship',6); const q = Math.floor(71 + Math.random() * 30); log(i18n[meta.language].deliverableReview.replace('{quality}', q), 'good'); } else { applyDelta(d,'morale',-5); applyDelta(d,'relationship',-3);} }),
+      makeAction('draft_im','financial',2,8,0.62,['im'],(ok,d)=>{ if(ok){ applyDelta(d,'relationship',6); applyDelta(d,'multiple',0.2); const q = Math.floor(40 + Math.random() * 41); log(i18n[meta.language].deliverableReview.replace('{quality}', q), ''); } else { applyDelta(d,'morale',-4); applyDelta(d,'relationship',-3);} }),
+      makeAction('setup_vdr','legal',1,10,0.68,['vdr_setup'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',4); applyDelta(d,'morale',-4);} else { applyDelta(d,'closeProbability',-3); applyDelta(d,'morale',-6);} }),
+      makeAction('finalise_buyer_list','commercial',1,4,0.75,['buyer_list'],(ok,d)=>{ if(ok) applyDelta(d,'closeProbability',4); else applyDelta(d,'closeProbability',-1); }),
+      makeAction('set_timeline','legal',1,3,0.78,['timeline'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',2); applyDelta(d,'relationship',d.clientTypeKey === 'pe' ? 8 : 4);} else applyDelta(d,'relationship',-2); }),
 
-      makeAction('send_teaser','commercial',1,5,0.80,['send_teaser'],{ pt:'Enviar teaser', en:'Send teaser' },(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',5); applyDelta(d,'morale',-2);} else applyDelta(d,'closeProbability',-2); }),
-      makeAction('distribute_im','commercial',1,5,0.78,['send_im'],{ pt:'Distribuir IM', en:'Distribute IM' },(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',4); applyDelta(d,'relationship',3);} else applyDelta(d,'relationship',-2); }),
-      makeAction('management_presentation','commercial',2,8,0.65,['mgmt_presentation'],{ pt:'Management presentation', en:'Management presentation' },(ok,d)=>{ if(ok){ const rel = d.clientTypeKey === 'founder' ? 14 : d.clientTypeKey === 'family' ? 15 : d.clientTypeKey === 'carveout' ? 6 : 8; applyDelta(d,'relationship',rel); applyDelta(d,'morale',-3);} else { applyDelta(d,'relationship',-6); applyDelta(d,'closeProbability',-3);} }),
-      makeAction('handle_initial_qa','financial',1,6,0.68,['initial_qa'],{ pt:'Gerir Q&A inicial', en:'Handle initial Q&A' },(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',3); applyDelta(d,'morale',-2);} else { applyDelta(d,'morale',-4); applyDelta(d,'closeProbability',-2);} }),
-      makeAction('track_interest','commercial',1,3,0.85,['tracking'],{ pt:'Track interest', en:'Track interest' },(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',2); applyDelta(d,'relationship',2);} else applyDelta(d,'relationship',-1); })
+      makeAction('send_teaser','commercial',1,5,0.80,['send_teaser'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',5); applyDelta(d,'morale',-2);} else applyDelta(d,'closeProbability',-2); }),
+      makeAction('distribute_im','commercial',1,5,0.78,['send_im'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',4); applyDelta(d,'relationship',3);} else applyDelta(d,'relationship',-2); }),
+      makeAction('management_presentation','commercial',2,8,0.65,['mgmt_presentation'],(ok,d)=>{ if(ok){ const rel = d.clientTypeKey === 'founder' ? 14 : d.clientTypeKey === 'family' ? 15 : d.clientTypeKey === 'carveout' ? 6 : 8; applyDelta(d,'relationship',rel); applyDelta(d,'morale',-3);} else { applyDelta(d,'relationship',-6); applyDelta(d,'closeProbability',-3);} }),
+      makeAction('handle_initial_qa','financial',1,6,0.68,['initial_qa'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',3); applyDelta(d,'morale',-2);} else { applyDelta(d,'morale',-4); applyDelta(d,'closeProbability',-2);} }),
+      makeAction('track_interest','commercial',1,3,0.85,['tracking'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',2); applyDelta(d,'relationship',2);} else applyDelta(d,'relationship',-1); })
     ];
 
     function xp(branch) {
@@ -832,7 +852,7 @@
       }
 
       closeDrawer();
-      log(`${label(a.label)}: ${ok ? '✓' : '✗'} (${Math.round(p*100)}%)`, ok ? 'good' : 'bad');
+      log(`${actionLabel(a.key)}: ${ok ? '✓' : '✗'} (${Math.round(p*100)}%)`, ok ? 'good' : 'bad');
       renderPhase();
     }
 
@@ -1041,7 +1061,7 @@
         const b = document.createElement('button');
         b.className = 'action';
         b.disabled = state.current.completed;
-        b.innerHTML = `<strong>${label(a.label)}</strong><small>AP ${a.ap} · ${a.branch} · +load ${a.load}</small>`;
+        b.innerHTML = `<strong>${actionLabel(a.key)}</strong><small>AP ${a.ap} · ${a.branch} · +load ${a.load}</small>`;
         b.onclick = ()=>doAction(a.key);
         box.appendChild(b);
       });
