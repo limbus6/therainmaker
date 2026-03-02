@@ -75,6 +75,12 @@
     }
     .start-overlay.hidden, .between-overlay.hidden, .tutorial-overlay.hidden, .end-career-overlay.hidden { display:none; }
     .modal { width:min(860px,100%); max-height:92vh; overflow:auto; }
+    .ov-card { max-height: 90vh; overflow-y: auto; }
+    .dashboard-grid { display:grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap:8px; margin-bottom:10px; }
+    .metric { background:#0d1730; border:1px solid #24345f; border-radius:10px; padding:8px; }
+    .metric strong { display:block; font-size:.75rem; color:var(--muted); margin-bottom:4px; text-transform:uppercase; }
+    .metric .v.good { color: var(--good); } .metric .v.bad { color: var(--bad); }
+    .section-title { margin-top:10px; margin-bottom:6px; }
     .sector-grid { display:grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap:8px; margin:10px 0; }
     .sector { border:1px solid #2d4377; border-radius:10px; padding:10px; background:#0f1c3d; cursor:pointer; }
     .sector.active { border-color: var(--accent); }
@@ -184,12 +190,23 @@
           <div class="bar"><span id="micro-progress-fill" style="width:0%"></span></div>
         </div>
         <p id="dealContext"></p>
+        <div id="analytics-dashboard" class="card" style="margin:10px 0;">
+          <h4>Dashboard Analítico</h4>
+          <div class="dashboard-grid">
+            <div class="metric"><strong>Estado do Processo</strong><span id="dash-process-state" class="v"></span></div>
+            <div class="metric"><strong>Confiança do Cliente</strong><span id="dash-client-trust" class="v"></span></div>
+            <div class="metric"><strong>Valor Esperado vs Mercado</strong><span id="dash-value-gap" class="v"></span></div>
+            <div class="metric"><strong>Atratividade do Deal</strong><span id="dash-attractiveness" class="v"></span></div>
+            <div class="metric"><strong>Interesse dos Compradores</strong><span id="dash-bidder-interest" class="v"></span></div>
+          </div>
+        </div>
         <div id="review-panel" class="card" style="display:none; margin:10px 0;">
           <h4>Partner Review Board</h4>
           <p id="review-summary" class="hint"></p>
           <div class="actions" id="review-actions"></div>
         </div>
-        <div class="actions" id="action-list"></div>
+        <h4 class="section-title">Phase-Specific Actions</h4><div class="actions" id="action-list"></div>
+        <h4 class="section-title">Gestão de Equipa</h4><div class="actions" id="global-action-list"></div>
         <h4 id="logTitle" style="margin-top:12px">Deal Log</h4>
         <div class="log" id="log"></div>
       </section>
@@ -215,7 +232,7 @@
   </div>
 
   <div id="start-overlay" class="start-overlay">
-    <div class="modal card">
+    <div class="modal card ov-card">
       <h2 id="startTitle">Novo Mandato</h2>
       <p id="startDesc">Escolhe sector para iniciar a tua carreira de 5 mandatos.</p>
       <div class="sector-grid" id="sector-grid"></div>
@@ -228,7 +245,7 @@
   </div>
 
   <div id="between-overlay" class="between-overlay hidden">
-    <div class="modal card">
+    <div class="modal card ov-card">
       <h2 id="betweenTitle">Drafting entre mandatos</h2>
       <p id="betweenDesc"></p>
       <div class="actions">
@@ -243,7 +260,7 @@
   </div>
 
   <div id="tutorial-overlay" class="tutorial-overlay hidden">
-    <div class="modal card">
+    <div class="modal card ov-card">
       <h2 id="tutorialTitle">Tutorial</h2>
       <p id="tutorialBody"></p>
       <div style="display:flex;gap:8px;">
@@ -257,7 +274,7 @@
 
 
   <div id="end-career-overlay" class="end-career-overlay hidden">
-    <div class="modal card">
+    <div class="modal card ov-card">
       <h2 id="endCareerTitle">Career Completed</h2>
       <div id="end-grade" class="grade-pill grade-b">B</div>
       <p id="end-score"></p>
@@ -701,7 +718,7 @@
         }
       }
     ];
-    const R = { get choices(){ return el('action-list'); } };
+    const R = { get choices(){ return el('action-list'); }, get globalChoices(){ return el('global-action-list'); } };
 
     const el = (id) => document.getElementById(id);
 
@@ -930,7 +947,17 @@
         currentDeliverable: null,
         deliverableQualities: {},
         hiddenFlaws: [],
-        eventHistory: []
+        eventHistory: [],
+        teamHeadcount: 2,
+        apCapBonus: 0,
+        weeklyCostPerHead: 0.12,
+        retentionCashSpent: 0,
+        nextDeliverableQualityBonus: 0,
+        reviewedPhases: {},
+        clientExpectationEV: +(baseEbitda * randBetween(sector.multiple[0], sector.multiple[1])).toFixed(1),
+        hasVDD: false,
+        liabilityRisk: false,
+        baseMultiple: null
       };
     }
 
@@ -975,7 +1002,7 @@
 
     function calculateInitialPA() {
       const d = state.current;
-      return Math.max(1, Math.min(6, 3 + Math.floor((d.morale - 50) / 20) + state.officeLevel));
+      return Math.max(1, Math.min(10, 3 + Math.floor((d.morale - 50) / 20) + state.officeLevel + (d.apCapBonus || 0)));
     }
 
     function currentPhase() {
@@ -1049,6 +1076,12 @@
         state.currentMicroPhaseIndex += 1;
         state.microPhaseProgress = 0;
         const nextMicro = getCurrentMicroEntry();
+        if (PHASES_PRO[state.currentPhaseIndex].key === 'due_diligence' && state.current.hiddenFlaws?.length) {
+          state.current.hiddenFlaws.forEach((flaw) => {
+            state.current.ebitda = Math.max(1, +(state.current.ebitda - 0.9).toFixed(2));
+            log(`Red Flag inevitável (${flaw}) provocou price chipping.`, 'bad');
+          });
+        }
         if (nextMicro.phaseKey === 'outreach' && nextMicro.key === 'tracking' && !state.current.bidders.length) {
           generateBidders(state.current);
         }
@@ -1060,6 +1093,12 @@
         state.microPhaseProgress = 0;
         state.current.workload = PHASES_PRO[state.currentPhaseIndex].workload;
         const nextMicro = getCurrentMicroEntry();
+        if (PHASES_PRO[state.currentPhaseIndex].key === 'due_diligence' && state.current.hiddenFlaws?.length) {
+          state.current.hiddenFlaws.forEach((flaw) => {
+            state.current.ebitda = Math.max(1, +(state.current.ebitda - 0.9).toFixed(2));
+            log(`Red Flag inevitável (${flaw}) provocou price chipping.`, 'bad');
+          });
+        }
         if (nextMicro.phaseKey === 'outreach' && nextMicro.key === 'tracking' && !state.current.bidders.length) {
           generateBidders(state.current);
         }
@@ -1115,7 +1154,7 @@
       overlay.style.background = 'rgba(2,6,18,.72)';
       overlay.style.pointerEvents = 'auto';
       overlay.innerHTML = `
-        <div class="modal card">
+        <div class="modal card ov-card">
           <h3>${t.feeModalTitle}</h3>
           <p>${t.feeModalBody}</p>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -1146,7 +1185,7 @@
       overlay.style.background = 'rgba(2,6,18,.72)';
       overlay.style.pointerEvents = 'auto';
       overlay.innerHTML = `
-        <div class="modal card">
+        <div class="modal card ov-card">
           <h3>${title}</h3>
           <p>${body}</p>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -1184,7 +1223,7 @@
       overlay.style.background = 'rgba(2,6,18,.72)';
       overlay.style.pointerEvents = 'auto';
       overlay.innerHTML = `
-        <div class="modal card">
+        <div class="modal card ov-card">
           <h3>${t.winnerModalTitle}</h3>
           <div id="winner-list" class="actions"></div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
@@ -1327,7 +1366,7 @@
       overlay.style.background = 'rgba(2,6,18,.72)';
       overlay.style.pointerEvents = 'auto';
       overlay.innerHTML = `
-        <div class="modal card">
+        <div class="modal card ov-card">
           <h3>${label(event.label)}</h3>
           <p>${label(event.desc)}</p>
           <p class="hint">${label(m.label)}</p>
@@ -1399,23 +1438,29 @@
         state.career.reviewApproved += 1;
         d.currentDeliverable = null;
       } else if (decision === 'fix') {
+        if (d.ap < 1) { log('Sem AP para corrigir.', 'bad'); return; }
+        d.ap -= 1;
         deliverable.quality = Math.min(100, deliverable.quality + 15);
         deliverable.iterations += 1;
         d.morale = Math.max(0, d.morale - 5);
         d.deliverableQualities[deliverable.name] = deliverable.quality;
       } else if (decision === 'improve') {
+        if (d.ap < 1) { log('Sem AP para melhorar.', 'bad'); return; }
+        d.ap -= 1;
         deliverable.quality = Math.min(100, deliverable.quality + 25);
         deliverable.iterations += 1;
         d.morale = Math.max(0, d.morale - 10);
         d.week = Math.min(d.maxWeeks, d.week + 1);
         d.deliverableQualities[deliverable.name] = deliverable.quality;
       } else if (decision === 'redo') {
-        deliverable.quality = Math.min(100, 20 + Math.floor(40 + Math.random() * 61));
+        const spent = d.ap;
+        d.ap = 0;
+        deliverable.quality = Math.min(100, 45 + Math.floor(Math.random() * 56));
         deliverable.iterations += 1;
-        d.morale = Math.max(0, d.morale - 20);
-        d.relationship = Math.max(0, d.relationship - 5);
+        d.morale = Math.max(0, d.morale - 25);
         d.week = Math.min(d.maxWeeks, d.week + 2);
         d.deliverableQualities[deliverable.name] = deliverable.quality;
+        log(`Redo total executado (${spent} AP consumidos).`, 'bad');
       }
       d.closeProbability = getLiveClosingProbability();
       clampDealState(d);
@@ -1431,14 +1476,15 @@
       }
       panel.style.display = 'block';
       const rv = d.currentDeliverable;
-      el('review-summary').textContent = `${actionLabel(rv.name)} · quality ${rv.quality}/100 · iterations ${rv.iterations}`;
+      const hint = rv.quality < 40 ? 'Qualidade aparenta fraca.' : rv.quality < 70 ? 'Qualidade intermédia, com risco.' : 'Qualidade sólida.';
+      el('review-summary').textContent = `${rv.name} · ${hint} · iterações ${rv.iterations}`;
       const wrap = el('review-actions');
       wrap.innerHTML = '';
       [
-        { key: 'approve', label: 'Aprovar (0 AP, 0 semanas)' },
-        { key: 'fix', label: 'Corrigir (+15 qualidade, -5 morale)' },
-        { key: 'improve', label: 'Melhorar (+25 qualidade, +1 semana, -10 morale)' },
-        { key: 'redo', label: 'Refazer (reroll+20, +2 semanas, -20 morale, -5 relationship)' }
+        { key: 'approve', label: 'Approve (rápido)' },
+        { key: 'fix', label: 'Correct (1 AP, +15 quality, -5 morale)' },
+        { key: 'improve', label: 'Improve (1 AP + 1 week, +25 quality, -10 morale)' },
+        { key: 'redo', label: 'Redo Everything (all AP + 2 weeks, reroll, -25 morale)' }
       ].forEach((option) => {
         const b = document.createElement('button');
         b.textContent = option.label;
@@ -1513,6 +1559,7 @@
       const d = state.current;
       if (d.completed) return;
       d.week += 1;
+      d.netMargin = Math.max(-8, d.netMargin - ((d.teamHeadcount || state.team.length) * (d.weeklyCostPerHead || 0) / 10));
       const overload = Math.max(0, d.workload - d.capacity);
       if (overload > 0) {
         d.netMargin = Math.max(-8, d.netMargin - 1.3);
@@ -1764,53 +1811,149 @@
 
     function label(map){ return map[meta.language] || map.pt; }
 
+    function classifyClientTrust(relationship) {
+      if (relationship < 35) return 'Crítica';
+      if (relationship < 70) return 'Estável';
+      return 'Elevada';
+    }
+
+    function computeAttractiveness(d) {
+      const score = (d.multiple * 8) + (d.morale * 0.5);
+      if (score < 55) return 'Baixa';
+      if (score < 90) return 'Média';
+      return 'Alta';
+    }
+
+    function updateDashboard() {
+      const d = state.current;
+      const phase = currentPhase();
+      const marketEV = d.ebitda * d.multiple;
+      const expectedEV = d.clientExpectationEV || marketEV;
+      const deltaClass = marketEV >= expectedEV ? 'good' : 'bad';
+      const progressPct = Math.round(((state.microPhaseProgress || 0) / Math.max(1, microPhaseTarget())) * 100);
+      const active = activeBidders(d).filter(b => !b.dropped);
+      const avgInterest = active.length ? (active.reduce((acc, b) => acc + b.interesse, 0) / active.length) : 0;
+
+      el('dash-process-state').textContent = `${label(phase.label)} · ${progressPct}%`;
+      el('dash-client-trust').textContent = `${classifyClientTrust(d.relationship)} (${Math.round(d.relationship)})`;
+      const valueNode = el('dash-value-gap');
+      valueNode.className = `v ${deltaClass}`;
+      valueNode.textContent = `Esperado €${expectedEV.toFixed(1)}M vs Mercado €${marketEV.toFixed(1)}M`;
+      el('dash-attractiveness').textContent = `${computeAttractiveness(d)} (Múltiplo ${d.multiple.toFixed(1)}x / Morale ${Math.round(d.morale)})`;
+      el('dash-bidder-interest').textContent = `${Math.round(avgInterest)}/100`;
+    }
+
+    function getPhaseActions() {
+      const d = state.current;
+      const phaseKey = currentPhase().key;
+      const actionsByPhase = {
+        pitch: [
+          { key: 'review_market_comps', label: 'Review Market Comparables', run: () => { applyDelta(d,'multiple',0.2); applyDelta(d,'relationship',3); } },
+          { key: 'promise_market_mapping', label: 'Promise Detailed Market Mapping', run: () => { applyDelta(d,'relationship',6); applyDelta(d,'workload',4); } },
+          { key: 'force_mandate_signature', label: 'Force Mandate Signature', run: () => {
+            const fee = Number(prompt('Fee % alvo (ex: 1.8)', d.baseFeePct || 1.8));
+            const expected = Number(prompt('Client Expected EV (€M)', (d.ebitda * d.multiple).toFixed(1)));
+            if (!Number.isNaN(fee) && fee > 0) d.baseFeePct = fee;
+            if (!Number.isNaN(expected) && expected > 0) d.clientExpectationEV = expected;
+            d.feeAgreed = true;
+            state.microPhaseProgress = microPhaseTarget();
+          } }
+        ],
+        preparation: [
+          { key: 'convince_vdd', label: 'Convince client to execute Vendor Due Diligence (VDD)', run: () => { d.hasVDD = true; applyDelta(d,'relationship',4); applyDelta(d,'closeProbability',3);} }
+        ],
+        shortlist: [
+          { key: 'probe_advisor', label: 'Probe Advisor', run: () => { activeBidders(d).forEach(b=>b.offerKnown=true); } },
+          { key: 'filter_shortlist', label: 'Filter Bidders for Shortlist', run: () => { activeBidders(d).sort((a,b)=>b.interesse-a.interesse).forEach((b,i)=>{ b.shortlisted = i<3; if(i>=3) dropBidder(d,b,true); }); } }
+        ],
+        final_offers: [
+          { key: 'preemptive_exclusivity', label: 'Propose Pre-emptive Exclusivity', run: () => { if (Math.random() < 0.45) { d.exclusiveBidder = (activeBidders(d)[0]||{}).nome || 'Lead bidder'; applyDelta(d,'closeProbability',8);} else { applyDelta(d,'relationship',-10); applyDelta(d,'closeProbability',-8);} } }
+        ],
+        due_diligence: [
+          { key: 'sanitize_data_room', label: 'Sanitize Data Room', run: () => { d.competitorPhishersRemoved = true; applyDelta(d,'closeProbability',5);} }
+        ],
+        spa_negotiation: [
+          { key: 'aggressive_escrow', label: 'Negotiate aggressive Escrow', run: () => { applyDelta(d,'netMargin',1.2); applyDelta(d,'closeProbability',-2);} },
+          { key: 'concede_warranties_hard', label: 'Concede on Warranties', run: () => { d.liabilityRisk = true; applyDelta(d,'closeProbability',3); applyDelta(d,'netMargin',-0.8);} },
+          { key: 'alt_debt_support', label: 'Help PE Buyer secure alternative debt', run: () => { applyDelta(d,'closeProbability',6); applyDelta(d,'relationship',3);} }
+        ]
+      };
+      return actionsByPhase[phaseKey] || [];
+    }
+
+    function getGlobalActions() {
+      const d = state.current;
+      return [
+        { key:'hire_analyst', label:'Hire Analyst/Associate', run:()=>{ d.ap -= 1; d.teamHeadcount += 1; d.apCapBonus += 1; d.morale -= 10; state.team.push(member(`Hire ${state.team.length+1}`,'Analyst')); } },
+        { key:'increase_salaries', label:'Increase Salaries', run:()=>{ d.ap -= 1; d.weeklyCostPerHead += 0.08; d.netMargin -= 0.5; d.morale += 25; } },
+        { key:'retention_bonus', label:'Pay Retention Bonus / Team Building', run:()=>{ d.ap -= 1; d.week = Math.min(d.maxWeeks,d.week+1); d.morale = 100; d.netMargin -= 1.5; d.retentionCashSpent += 0.5; } },
+        { key:'hard_meeting', label:'Demand Results (Hard Meeting)', run:()=>{ d.ap -= 1; d.morale -= 20; d.nextDeliverableQualityBonus += 25; } },
+        { key:'status_update', label:'Weekly Status Update with Client', run:()=>{ d.ap -= 1; const marketDown = d.multiple < (d.baseMultiple || d.multiple); const reqMorale = marketDown ? 70 : 45; if (d.morale >= reqMorale || Math.random() < 0.65) applyDelta(d,'relationship',6); else applyDelta(d,'relationship',-6);} }
+      ];
+    }
+
+    function maybeTriggerPartnerReview() {
+      const d = state.current;
+      if (d.currentDeliverable) return;
+      d.reviewedPhases = d.reviewedPhases || {};
+      const phaseKey = currentPhase().key;
+      const progressPct = ((state.microPhaseProgress || 0) / Math.max(1, microPhaseTarget())) * 100;
+      if (progressPct < 50 || d.reviewedPhases[phaseKey]) return;
+      const names = ['Draft Teaser', 'Financial Model', 'Process Letter', 'SPA Markup', 'Data Book'];
+      const base = Math.floor(Math.random() * 61);
+      const moraleImpact = Math.round((d.morale - 50) * 0.6) + (d.nextDeliverableQualityBonus || 0);
+      const quality = Math.max(0, Math.min(100, base + moraleImpact));
+      d.currentDeliverable = { name: names[Math.floor(Math.random()*names.length)], quality, iterations: 0 };
+      d.reviewedPhases[phaseKey] = true;
+      d.nextDeliverableQualityBonus = 0;
+      log('Partner Review Board convocado para revisão intermédia.', '');
+    }
+
     function renderActions() {
-      const box = el('action-list');
-      box.innerHTML = '';
+      const box = R.choices;
+      const globalBox = R.globalChoices;
+      if (box) box.innerHTML = '';
+      if (globalBox) globalBox.innerHTML = '';
+      const d = state.current;
       const currentMicro = getCurrentMicroEntry();
-      if (state.current.currentDeliverable) {
+
+      maybeTriggerPartnerReview();
+      if (d.currentDeliverable) {
         renderReviewPanel();
         const hold = document.createElement('p');
         hold.className = 'hint';
-        hold.textContent = 'Ações bloqueadas até concluir Partner Review Board.';
-        box.appendChild(hold);
-        return;
+        hold.textContent = 'Ações de fase bloqueadas até concluir Partner Review Board.';
+        if (box) box.appendChild(hold);
+      } else {
+        el('review-panel').style.display = 'none';
+        const visibleActions = actions.filter(a => (!a.phases || a.phases.includes(currentMicro.key)) && !['negotiate_fees','aggressive_fee_push'].includes(a.key));
+        const phaseSpecific = getPhaseActions();
+        [...visibleActions.map(a => ({label: actionLabel(a.key), click:()=>doAction(a.key), disabled: d.completed})), ...phaseSpecific.map(a => ({label:a.label, click:()=>{ if(d.ap<1){log('Sem AP suficiente.','bad'); return;} d.ap-=1; a.run(); clampDealState(d); if(state.microPhaseProgress>=microPhaseTarget()) advancePhase(); renderPhase(); }, disabled:d.completed}))].forEach((entry) => {
+          if (!box) return;
+          const b = document.createElement('button');
+          b.className = 'action';
+          b.disabled = entry.disabled;
+          b.textContent = entry.label;
+          b.onclick = entry.click;
+          box.appendChild(b);
+        });
       }
-      el('review-panel').style.display = 'none';
-      const visibleActions = actions.filter(a => (!a.phases || a.phases.includes(currentMicro.key)) && !['negotiate_fees','aggressive_fee_push'].includes(a.key));
-      visibleActions.forEach(a => {
-        const b = document.createElement('button');
-        b.className = 'action';
-        b.disabled = state.current.completed;
-        const d = state.current;
-        const baseP = getActionBaseProbability(a, d);
-        const skillP = teamSkillBonus(a.branch);
-        const moraleP = (d.morale - 50) / 250;
-        const loadP = d.workload > d.capacity ? -0.12 : 0;
-        const p = Math.max(0.05, Math.min(0.95, baseP + skillP + moraleP + loadP));
-        const breakdown = meta.language === 'pt'
-          ? `Base ${Math.round(baseP*100)}% + Skill ${Math.round(skillP*100)}% + Morale ${Math.round(moraleP*100)}% ${loadP ? `+ Workload ${Math.round(loadP*100)}%` : ''}`
-          : `Base ${Math.round(baseP*100)}% + Skill ${Math.round(skillP*100)}% + Morale ${Math.round(moraleP*100)}% ${loadP ? `+ Workload ${Math.round(loadP*100)}%` : ''}`;
-        b.innerHTML = `<strong>${actionLabel(a.key)}</strong><small>AP ${a.ap} · ${a.branch} · +load ${a.load} · ${Math.round(p*100)}%</small><small>${breakdown}</small>`;
-        b.onclick = ()=>doAction(a.key);
-        box.appendChild(b);
-      });
 
-      if (currentMicro.key === 'fee_negotiation') {
-        const feeChoice = document.createElement('button');
-        feeChoice.className = 'primary';
-        feeChoice.disabled = state.current.completed;
-        feeChoice.textContent = meta.language === 'pt' ? 'Escolher estratégia de fee' : 'Choose fee strategy';
-        feeChoice.onclick = () => doAction('fee_negotiation_choice');
-        box.appendChild(feeChoice);
-      }
+      getGlobalActions().forEach((a)=>{
+        if (!globalBox) return;
+        const b = document.createElement('button');
+        b.textContent = a.label;
+        b.disabled = d.completed || d.ap < 1;
+        b.onclick = ()=>{ a.run(); clampDealState(d); renderPhase(); };
+        globalBox.appendChild(b);
+      });
 
       const closeButton = document.createElement('button');
       closeButton.className = 'primary';
-      closeButton.disabled = !state.current.completed;
+      closeButton.disabled = !d.completed;
       closeButton.textContent = meta.language === 'pt' ? 'Concluir mandato (após closing)' : 'Close mandate (after closing)';
       closeButton.onclick = ()=>finishDeal(null);
-      box.appendChild(closeButton);
+      if (box) box.appendChild(closeButton);
     }
 
     function renderTeam() {
@@ -2003,7 +2146,16 @@
         return;
       }
       ensureValidMicroPhase();
-      renderAll();
+      try {
+        renderAll();
+      } catch (err) {
+        console.error('renderPhase failure', err);
+        if (R.choices) R.choices.innerHTML = '<p class="hint">Erro de rendering recuperado.</p>';
+      }
+    }
+
+    function updateUI() {
+      renderPhase();
     }
 
     function closeDrawer() {
@@ -2025,6 +2177,15 @@
       d.deliverableQualities = d.deliverableQualities || {};
       d.hiddenFlaws = d.hiddenFlaws || [];
       d.eventHistory = d.eventHistory || [];
+      d.teamHeadcount = d.teamHeadcount || state.team.length;
+      d.apCapBonus = d.apCapBonus || 0;
+      d.weeklyCostPerHead = d.weeklyCostPerHead || 0.12;
+      d.retentionCashSpent = d.retentionCashSpent || 0;
+      d.nextDeliverableQualityBonus = d.nextDeliverableQualityBonus || 0;
+      d.reviewedPhases = d.reviewedPhases || {};
+      d.hasVDD = !!d.hasVDD;
+      d.baseMultiple = d.baseMultiple || d.multiple;
+      d.clientExpectationEV = d.clientExpectationEV || +(d.ebitda * d.multiple).toFixed(1);
       state.career.maxBidders = Math.max(state.career.maxBidders || 0, d.bidders.length || 0);
       const currentMicro = getCurrentMicroEntry();
       el('s-deal').textContent = `${state.currentDeal}/${state.totalDeals}`;
@@ -2066,6 +2227,7 @@
       ach.innerHTML = (meta.achievements || []).map(a=>`<span class="badge">${tAchievement(a)}</span>`).join('');
 
       renderActions();
+      updateDashboard();
       renderTeam();
       renderBidders();
     }
