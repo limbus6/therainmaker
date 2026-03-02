@@ -99,6 +99,13 @@
     .end-table { width:100%; border-collapse:collapse; font-size:.85rem; margin:10px 0; }
     .end-table th, .end-table td { border:1px solid #2d4377; padding:6px; text-align:left; }
     .end-table th { background:#122247; }
+    .bidders-panel { margin-top: 10px; border:1px solid #2a3f71; border-radius:10px; padding:8px; background:#0d1730; }
+    .bidders-list { display:grid; gap:6px; margin-top:8px; }
+    .bidder-card { border:1px solid #2e4578; border-left:4px solid var(--accent); border-radius:10px; padding:8px; background:#101d3f; }
+    .bidder-card.industrial { border-left-color: var(--warn); }
+    .bidder-card.strategic { border-left-color: var(--good); }
+    .bidder-card.dropped { opacity: .45; }
+    .bidder-card.exclusive { box-shadow: inset 0 0 0 1px #8dffc7aa; }
 
     .hidden { display:none !important; }
     #modal-overlay { position:fixed; inset:0; background:transparent; z-index:140; display:none; pointer-events:none; }
@@ -140,6 +147,12 @@
       <p style="margin-top:10px"><span id="fee-label" class="tooltip-anchor">Fee Negotiation Gate</span>
         <div class="tooltip hide" data-tip="fee"></div>
       </p>
+      <p id="closing-live" class="hint" style="margin-top:6px"></p>
+      <div class="bidders-panel">
+        <h4 id="bidders-title">Bidders</h4>
+        <p id="bidders-empty" class="hint"></p>
+        <div id="bidders-list" class="bidders-list"></div>
+      </div>
       <div id="sidebar-achievements" class="badges"></div>
       <div style="display:grid;gap:8px;margin-top:10px;">
         <button id="advance-week" class="primary">Terminar Semana</button>
@@ -253,7 +266,7 @@
 
     const i18n = {
       pt: {
-        title: 'M&A Dealmaker Pro', careerTitle: 'Carreira de Advisor', deal: 'Mandato', week: 'Semana', cash: 'Career Cash', ap: 'AP', net: 'Net Margin', score: 'Career Score',
+        title: 'M&A Dealmaker Pro', careerTitle: 'Carreira de Advisor', deal: 'Mandato', week: 'Semana', cash: 'Career Cash', ap: 'AP', net: 'Net Margin', score: 'Career Score', biddersTitle: 'Compradores', biddersPending: 'Compradores serão gerados na fase de Market Outreach.', indicativeRange: 'Indicative Range: €{min}M - €{max}M (?)', confirmedOffer: 'Confirmed: €{offer}M ({cash}% cash / {earnout}% earnout)', bidderDropped: '{name} abandonou o processo (interesse insuficiente).', marketRejection: 'Market rejection — todos os compradores abandonaram o processo.',
         endWeek: 'Terminar Semana', newCareer: 'Nova Carreira', teamHeader: 'Gestão de Talentos', teamDesc: 'Gasta XP para desbloquear especializações (+10% por membro especializado).',
         settingsHeader: 'Save Slots', settingsDesc: 'Guardar/Carregar carreira manualmente.', dealRoom: 'Deal Room', teamTab: 'Gestão de Talentos', settingsTab: 'Settings',
         startTitle: 'Novo Mandato', startDesc: 'Escolhe sector para iniciar a tua carreira de 5 mandatos.', startCareer: 'Iniciar Carreira',
@@ -261,12 +274,12 @@
         tutorialTitle: 'Tutorial', next: 'Seguinte', skip: 'Saltar',
         phaseHeader: 'Fase {phase}/{total} · {phaseLabel} · {microLabel}',
         phaseProgress: 'Progresso da fase', microProgress: 'Progresso da micro-fase',
-        workloadValue: 'Carga: {workload}/{capacity}', endCareerTitle: 'Carreira Concluída',
+        workloadValue: 'Carga: {workload}/{capacity}', liveClosing: 'Probabilidade live de closing: {value}%', endCareerTitle: 'Carreira Concluída',
         totalScore: 'Career Score total', mandateHistory: 'Histórico de Mandatos',
         careerNarrative: 'Narrativa de Carreira', newCareerBtn: 'Nova Carreira',
         feeModalTitle: 'Negociação de fees', feeModalBody: 'Escolhe a abordagem de negociação para este cliente.',
         feeModalConservative: 'Negociação equilibrada', feeModalAggressive: 'Push agressivo de fee', feeModalCancel: 'Cancelar',
-        winnerModalTitle: 'Confirmar exclusividade', winnerModalBody: 'Selecionar bidder exclusivo é irreversível. Queres continuar?', winnerModalConfirm: 'Confirmar exclusividade', winnerModalCancel: 'Cancelar',
+        winnerModalTitle: 'Confirmar exclusividade', winnerModalBody: 'Selecionar {name} como comprador exclusivo? Esta acção é irreversível.', winnerModalConfirm: 'Confirmar exclusividade', winnerModalCancel: 'Cancelar',
         bidderIntel: 'Intelligence: oferta de {bidder} estimada em {multiple}x EBITDA.', redFlagAlert: '⚠️ Red flag legal identificado: risco acrescido no processo.',
         feeGateBlocked: 'Sem fee acordada não é possível concluir o processo.',
         mandateLost: 'Mandato perdido: confiança abaixo do mínimo.', teamCollapsed: 'Equipa colapsou por moral crítica.',
@@ -296,7 +309,7 @@
         }
       },
       en: {
-        title: 'M&A Dealmaker Pro', careerTitle: 'Advisor Career', deal: 'Mandate', week: 'Week', cash: 'Career Cash', ap: 'AP', net: 'Net Margin', score: 'Career Score',
+        title: 'M&A Dealmaker Pro', careerTitle: 'Advisor Career', deal: 'Mandate', week: 'Week', cash: 'Career Cash', ap: 'AP', net: 'Net Margin', score: 'Career Score', biddersTitle: 'Bidders', biddersPending: 'Bidders will be generated during Market Outreach.', indicativeRange: 'Indicative Range: €{min}M - €{max}M (?)', confirmedOffer: 'Confirmed: €{offer}M ({cash}% cash / {earnout}% earnout)', bidderDropped: '{name} dropped out of the process (insufficient interest).', marketRejection: 'Market rejection — all bidders dropped out.',
         endWeek: 'End Week', newCareer: 'New Career', teamHeader: 'Talent Management', teamDesc: 'Spend XP to unlock specialisations (+10% per specialised member).',
         settingsHeader: 'Save Slots', settingsDesc: 'Manually save/load career.', dealRoom: 'Deal Room', teamTab: 'Talent Management', settingsTab: 'Settings',
         startTitle: 'New Mandate', startDesc: 'Pick a sector and start your 5-mandate advisor career.', startCareer: 'Start Career',
@@ -304,12 +317,12 @@
         tutorialTitle: 'Tutorial', next: 'Next', skip: 'Skip',
         phaseHeader: 'Phase {phase}/{total} · {phaseLabel} · {microLabel}',
         phaseProgress: 'Phase progress', microProgress: 'Micro-phase progress',
-        workloadValue: 'Load: {workload}/{capacity}', endCareerTitle: 'Career Completed',
+        workloadValue: 'Load: {workload}/{capacity}', liveClosing: 'Live closing probability: {value}%', endCareerTitle: 'Career Completed',
         totalScore: 'Total Career Score', mandateHistory: 'Mandate History',
         careerNarrative: 'Career Narrative', newCareerBtn: 'New Career',
         feeModalTitle: 'Fee negotiation', feeModalBody: 'Choose the negotiation approach for this client.',
         feeModalConservative: 'Balanced fee negotiation', feeModalAggressive: 'Aggressive fee push', feeModalCancel: 'Cancel',
-        winnerModalTitle: 'Confirm exclusivity', winnerModalBody: 'Selecting an exclusive bidder is irreversible. Continue?', winnerModalConfirm: 'Confirm exclusivity', winnerModalCancel: 'Cancel',
+        winnerModalTitle: 'Confirm exclusivity', winnerModalBody: 'Select {name} as exclusive buyer? This action is irreversible.', winnerModalConfirm: 'Confirm exclusivity', winnerModalCancel: 'Cancel',
         bidderIntel: 'Intelligence: {bidder} exact bid indicated at {multiple}x EBITDA.', redFlagAlert: '⚠️ Legal red flag surfaced: elevated process risk.',
         feeGateBlocked: 'Without an agreed fee, the process cannot be closed.',
         mandateLost: 'Mandate lost: relationship dropped below the minimum.', teamCollapsed: 'Team collapsed due to critical morale.',
@@ -540,21 +553,74 @@
       return { id: makeId(), name, role, xp: 0, skill: { financial: false, legal: false, commercial: false } };
     }
 
-    function makeBidders(clientTypeKey) {
-      const types = ['pe','strategic','industrial'];
-      return types.map(type => {
-        const attraction = CLIENT_TYPES[clientTypeKey].bidderAttraction[type] || 0;
-        const hidden = Math.round(35 + Math.random() * 35 + attraction * 100);
+    const PE_NAMES = ['Horizon Capital', 'Nordic PE', 'Atlas Growth', 'Vanguard Partners', 'Castello Equity', 'Lynx Investments'];
+    const INDUSTRIAL_NAMES = ['GrupoIbero Ind.', 'Nexus Industrial', 'EuroTech Corp.', 'Atlantico Manufacturing', 'CoreFab Group', 'Prime Components'];
+    const STRATEGIC_NAMES = ['TechVentures Inc.', 'GlobalSync Corp.', 'Apex Holdings', 'Pinnacle Group', 'NorthBridge Systems', 'Vector Dynamics'];
+
+    function randInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function typeLabel(type) {
+      if (type === 'Private Equity') return 'pe';
+      if (type === 'Industrial') return 'industrial';
+      return 'strategic';
+    }
+
+    function generateBidders(d) {
+      const count = randInt(4, 6);
+      const pool = [
+        ...Array.from({ length: 3 }, () => 'Private Equity'),
+        ...Array.from({ length: 2 }, () => 'Private Equity'),
+        ...Array.from({ length: 3 }, () => 'Industrial'),
+        ...Array.from({ length: 2 }, () => 'Strategic')
+      ];
+      const picks = ['Private Equity', 'Private Equity'];
+      picks.push(Math.random() < 0.5 ? 'Industrial' : 'Strategic');
+      while (picks.length < count) {
+        picks.push(pool[randInt(0, pool.length - 1)]);
+      }
+      const namePools = {
+        'Private Equity': [...PE_NAMES],
+        Industrial: [...INDUSTRIAL_NAMES],
+        Strategic: [...STRATEGIC_NAMES]
+      };
+      const bidders = picks.map(type => {
+        const names = namePools[type];
+        const idx = randInt(0, names.length - 1);
+        const nome = names.splice(idx, 1)[0];
+        const interesse = randInt(40, 80);
+        let multiploProposto = d.multiple;
+        if (type === 'Private Equity') multiploProposto = +(d.multiple - (0.5 + Math.random())).toFixed(2);
+        if (type === 'Industrial') multiploProposto = +(d.multiple + (Math.random() - 0.5) * 2).toFixed(2);
+        if (type === 'Strategic') multiploProposto = +(d.multiple + (0.5 + Math.random())).toFixed(2);
+        multiploProposto = Math.max(3, multiploProposto);
+        const trueOffer = +(d.ebitda * multiploProposto).toFixed(1);
+        let cashPercentage = 100;
+        if (type === 'Private Equity') cashPercentage = randInt(50, 70);
+        if (type === 'Industrial') cashPercentage = randInt(70, 100);
+        if (type === 'Strategic') cashPercentage = randInt(80, 100);
+        const earnoutPercentage = 100 - cashPercentage;
+        const perceivedMin = +(trueOffer * (0.85 + Math.random() * 0.10)).toFixed(1);
+        const perceivedMax = +(trueOffer * (1.05 + Math.random() * 0.10)).toFixed(1);
         return {
           id: makeId(),
-          type,
-          confidence: 28 + Math.random() * 22,
-          synergy: 30 + Math.random() * 30,
-          valuationView: hidden,
-          intelligence: 8,
-          active: true
+          nome,
+          tipo: type,
+          interesse,
+          multiploProposto,
+          cashPercentage,
+          earnoutPercentage,
+          dropped: false,
+          shortlisted: false,
+          offerKnown: false,
+          perceivedMin: Math.min(perceivedMin, perceivedMax),
+          perceivedMax: Math.max(perceivedMin, perceivedMax),
+          trueOffer
         };
       });
+      d.bidders = bidders;
+      d.droppedBidders = [];
     }
 
     function makeDeal(sectorKey, officeLevel=0) {
@@ -586,8 +652,9 @@
         clientType: label(CLIENT_TYPES[clientTypeKey].label),
         mitigations: { regulatory: 0, leak: 0, financing: 0 },
         boardHeat: 0,
-        bidders: makeBidders(clientTypeKey),
-        fogOfWar: 68
+        bidders: [],
+        droppedBidders: [],
+        exclusiveBidder: null
       };
     }
 
@@ -658,12 +725,40 @@
       d.closeProbability = Math.max(0, Math.min(95, d.closeProbability));
       d.relationship = Math.max(0, Math.min(100, d.relationship));
       d.morale = Math.max(0, Math.min(100, d.morale));
-      d.fogOfWar = Math.max(10, Math.min(90, d.fogOfWar));
     }
 
     function microPhaseTarget() {
       const micro = getCurrentMicroEntry();
       return micro.progressTarget || 100;
+    }
+
+    function activeBidders(d) {
+      return d.bidders.filter(b => !b.dropped);
+    }
+
+    function dropBidder(d, bidder, fromShortlist = false) {
+      bidder.dropped = true;
+      bidder.shortlisted = false;
+      if (!d.droppedBidders.find(x => x.id === bidder.id)) d.droppedBidders.push(bidder);
+      if (!fromShortlist) log(i18n[meta.language].bidderDropped.replace('{name}', bidder.nome), 'bad');
+    }
+
+    function applyInterestDelta(d, amount) {
+      activeBidders(d).forEach(b => {
+        b.interesse = Math.max(0, Math.min(100, b.interesse + amount));
+      });
+    }
+
+    function getLiveClosingProbability() {
+      const d = state.current;
+      if (!d.exclusiveBidder) return 0;
+      const bidder = d.bidders.find(b => b.nome === d.exclusiveBidder && !b.dropped);
+      if (!bidder) return 0;
+      const phaseProgress = state.currentPhaseIndex / PHASES_PRO.length;
+      const trustMod = (d.relationship - 50) * 0.3;
+      const moraleMod = (d.morale - 50) * 0.2;
+      const bidderMod = (bidder.interesse - 50) * 0.25;
+      return Math.max(0, Math.min(95, 30 + phaseProgress * 20 + trustMod + moraleMod + bidderMod));
     }
 
     function advancePhase() {
@@ -677,6 +772,10 @@
       if (state.currentMicroPhaseIndex < phase.microPhases.length - 1) {
         state.currentMicroPhaseIndex += 1;
         state.microPhaseProgress = 0;
+        const nextMicro = getCurrentMicroEntry();
+        if (nextMicro.phaseKey === 'outreach' && nextMicro.key === 'tracking' && !state.current.bidders.length) {
+          generateBidders(state.current);
+        }
         return true;
       }
       if (state.currentPhaseIndex < PHASES_PRO.length - 1) {
@@ -684,6 +783,10 @@
         state.currentMicroPhaseIndex = 0;
         state.microPhaseProgress = 0;
         state.current.workload = PHASES_PRO[state.currentPhaseIndex].workload;
+        const nextMicro = getCurrentMicroEntry();
+        if (nextMicro.phaseKey === 'outreach' && nextMicro.key === 'tracking' && !state.current.bidders.length) {
+          generateBidders(state.current);
+        }
         return true;
       }
       state.current.completed = true;
@@ -768,6 +871,7 @@
     function showExclusiveBidderModal(resolveChoice) {
       const t = i18n[meta.language];
       const overlay = el('modal-overlay');
+      const active = activeBidders(state.current);
       overlay.style.display = 'flex';
       overlay.style.alignItems = 'center';
       overlay.style.justifyContent = 'center';
@@ -776,22 +880,31 @@
       overlay.innerHTML = `
         <div class="modal card">
           <h3>${t.winnerModalTitle}</h3>
-          <p>${t.winnerModalBody}</p>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button id="winner-choice-confirm" class="primary">${t.winnerModalConfirm}</button>
+          <div id="winner-list" class="actions"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
             <button id="winner-choice-cancel">${t.winnerModalCancel}</button>
           </div>
         </div>
       `;
-      const cleanup = (choice = false) => {
+      const cleanup = (choice = null) => {
         overlay.innerHTML = '';
         overlay.style.display = 'none';
         overlay.style.pointerEvents = 'none';
         overlay.style.background = 'transparent';
         resolveChoice(choice);
       };
-      el('winner-choice-confirm').onclick = () => cleanup(true);
-      el('winner-choice-cancel').onclick = () => cleanup(false);
+      const list = el('winner-list');
+      active.forEach(b => {
+        const btn = document.createElement('button');
+        btn.className = 'primary';
+        btn.textContent = b.nome;
+        btn.onclick = () => {
+          const confirmed = window.confirm(t.winnerModalBody.replace('{name}', b.nome));
+          cleanup(confirmed ? b.id : null);
+        };
+        list.appendChild(btn);
+      });
+      el('winner-choice-cancel').onclick = () => cleanup(null);
     }
 
     const actions = [
@@ -819,18 +932,18 @@
       makeAction('set_timeline','legal',1,3,0.78,['timeline'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',2); applyDelta(d,'relationship',d.clientTypeKey === 'pe' ? 8 : 4);} else applyDelta(d,'relationship',-2); }),
 
       makeAction('send_teaser','commercial',1,5,0.80,['send_teaser'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',5); applyDelta(d,'morale',-2);} else applyDelta(d,'closeProbability',-2); }),
-      makeAction('distribute_im','commercial',1,5,0.78,['send_im'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',4); applyDelta(d,'relationship',3);} else applyDelta(d,'relationship',-2); }),
-      makeAction('management_presentation','commercial',2,8,0.65,['mgmt_presentation'],(ok,d)=>{ if(ok){ const rel = d.clientTypeKey === 'founder' ? 14 : d.clientTypeKey === 'family' ? 15 : d.clientTypeKey === 'carveout' ? 6 : 8; applyDelta(d,'relationship',rel); applyDelta(d,'morale',-3);} else { applyDelta(d,'relationship',-6); applyDelta(d,'closeProbability',-3);} }),
+      makeAction('distribute_im','commercial',1,5,0.78,['send_im'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',4); applyDelta(d,'relationship',3); applyInterestDelta(d,4);} else applyDelta(d,'relationship',-2); }),
+      makeAction('management_presentation','commercial',2,8,0.65,['mgmt_presentation'],(ok,d)=>{ if(ok){ const rel = d.clientTypeKey === 'founder' ? 14 : d.clientTypeKey === 'family' ? 15 : d.clientTypeKey === 'carveout' ? 6 : 8; applyDelta(d,'relationship',rel); applyDelta(d,'morale',-3); applyInterestDelta(d,6);} else { applyDelta(d,'relationship',-6); applyDelta(d,'closeProbability',-3);} }),
       makeAction('handle_initial_qa','financial',1,6,0.68,['initial_qa'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',3); applyDelta(d,'morale',-2);} else { applyDelta(d,'morale',-4); applyDelta(d,'closeProbability',-2);} }),
       makeAction('track_interest','commercial',1,3,0.85,['tracking'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',2); applyDelta(d,'relationship',2);} else applyDelta(d,'relationship',-1); }),
 
       makeAction('evaluate_interest','commercial',1,4,0.78,['analyse_interest'],(ok,d)=>{ if(ok){ applyDelta(d,'relationship',4); applyDelta(d,'closeProbability',3);} else applyDelta(d,'closeProbability',-1); }),
       makeAction('additional_calls','commercial',1,5,0.72,['additional_meetings'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',4); applyDelta(d,'morale',-2);} else applyDelta(d,'morale',-3); }),
-      makeAction('finalise_shortlist','commercial',1,4,0.75,['final_shortlist'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',5); applyDelta(d,'relationship',6);} else { applyDelta(d,'closeProbability',-2); applyDelta(d,'relationship',-3);} }),
+      makeAction('finalise_shortlist','commercial',1,4,0.75,['final_shortlist'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',5); applyDelta(d,'relationship',6); const ranked = activeBidders(d).sort((a,b) => b.interesse - a.interesse); ranked.forEach((b, i) => { b.shortlisted = i < 3; if (i >= 3) dropBidder(d, b, true); }); } else { applyDelta(d,'closeProbability',-2); applyDelta(d,'relationship',-3);} }),
       makeAction('draft_process_letter','legal',1,5,0.70,['process_letter'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',4); applyDelta(d,'morale',-2); const q = Math.floor(55 + Math.random() * 36); log(i18n[meta.language].deliverableReview.replace('{quality}', q), ''); } else applyDelta(d,'closeProbability',-2); }),
 
       makeAction('receive_nbo','commercial',1,4,0.82,['receive_nbo'],(ok,d)=>{ if(ok){ applyDelta(d,'relationship',6); applyDelta(d,'multiple',0.3);} else applyDelta(d,'relationship',-2); }),
-      makeAction('probe_bidder','commercial',1,3,0.70,['receive_nbo'],(ok,d)=>{ if(ok){ const active = d.bidders.filter(b => b.active); if (active.length){ const bidder = active[Math.floor(Math.random()*active.length)]; d.fogOfWar = Math.max(10, d.fogOfWar - 10); log(i18n[meta.language].bidderIntel.replace('{bidder}', bidder.type.toUpperCase()).replace('{multiple}', bidder.valuationView.toFixed(1))); } applyDelta(d,'closeProbability',2);} else applyDelta(d,'closeProbability',-2); }),
+      makeAction('probe_bidder','commercial',1,3,0.70,['receive_nbo'],(ok,d)=>{ if(ok){ const active = activeBidders(d).filter(b => !b.offerKnown); if (active.length){ const bidder = active[Math.floor(Math.random()*active.length)]; bidder.offerKnown = true; log(i18n[meta.language].bidderIntel.replace('{bidder}', bidder.nome).replace('{multiple}', bidder.multiploProposto.toFixed(1))); } applyDelta(d,'closeProbability',2);} else applyDelta(d,'closeProbability',-2); }),
       makeAction('analyse_nbo','financial',1,5,0.75,['analyse_nbo'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',3); applyDelta(d,'morale',-2);} else applyDelta(d,'morale',-3); }),
       makeAction('request_improvement','commercial',1,4,0.55,['improve_nbo'],(ok,d)=>{ if(ok){ applyDelta(d,'multiple',0.2); applyDelta(d,'relationship',-2);} else { applyDelta(d,'closeProbability',-3); applyDelta(d,'relationship',-4);} }),
       makeAction('align_client_expectations','commercial',1,3,0.65,['align_expectations'],(ok,d)=>{ if(ok){ const rel = d.clientTypeKey === 'founder' ? 10 : d.clientTypeKey === 'pe' ? 5 : 6; applyDelta(d,'relationship',rel); applyDelta(d,'closeProbability',2);} else applyDelta(d,'relationship',-5); }),
@@ -839,12 +952,12 @@
       makeAction('handle_financial_qa','financial',1,8,0.62,['qa_financial'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',5); applyDelta(d,'morale',-3);} else { applyDelta(d,'ebitda',-0.3); applyDelta(d,'closeProbability',-4);} }),
       makeAction('handle_tax_qa','financial',1,7,0.60,['qa_tax'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',3); applyDelta(d,'morale',-3);} else { applyDelta(d,'closeProbability',-3); applyDelta(d,'relationship',-3);} }),
       makeAction('handle_legal_qa','legal',1,8,0.58,['qa_legal'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',4);} else { applyDelta(d,'closeProbability',-5); applyDelta(d,'relationship',-4); if (Math.random() < 0.2) { d.negativeRiskMod = +(d.negativeRiskMod + 0.15).toFixed(2); log(i18n[meta.language].redFlagAlert, 'bad'); } } }),
-      makeAction('organise_site_visit','commercial',1,5,0.78,['site_visits'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',4); applyDelta(d,'relationship',5);} else applyDelta(d,'relationship',-3); }),
+      makeAction('organise_site_visit','commercial',1,5,0.78,['site_visits'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',4); applyDelta(d,'relationship',5); applyInterestDelta(d,5);} else applyDelta(d,'relationship',-3); }),
       makeAction('prepare_trading_update','financial',1,5,0.72,['trading_update'],(ok,d)=>{ if(ok){ applyDelta(d,'multiple',0.2); applyDelta(d,'relationship',3);} else { applyDelta(d,'multiple',-0.1); applyDelta(d,'relationship',-2);} }),
 
       makeAction('receive_binding_offer','commercial',1,5,0.75,['receive_bo'],(ok,d)=>{ if(ok){ applyDelta(d,'relationship',6); applyDelta(d,'multiple',0.4); applyDelta(d,'closeProbability',5);} else applyDelta(d,'closeProbability',-4); }),
       makeAction('negotiate_offer_structure','commercial',2,7,0.60,['negotiate_structure'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',6); applyDelta(d,'netMargin',1.0); applyDelta(d,'morale',-3);} else { applyDelta(d,'closeProbability',-4); applyDelta(d,'relationship',-4);} }),
-      makeAction('select_exclusive_bidder','commercial',2,5,0.70,['choose_winner'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',10); applyDelta(d,'relationship',6);} else { applyDelta(d,'closeProbability',-6); applyDelta(d,'relationship',-8);} }),
+      makeAction('select_exclusive_bidder','commercial',2,5,0.70,['choose_winner'],(ok,d)=>{ if(ok){ applyDelta(d,'relationship',6);} else { applyDelta(d,'closeProbability',-6); applyDelta(d,'relationship',-8);} }),
 
       makeAction('review_spa_draft','legal',1,7,0.65,['draft_review'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',4); applyDelta(d,'morale',-3); const q = Math.floor(55 + Math.random() * 41); log(i18n[meta.language].deliverableReview.replace('{quality}', q), ''); } else applyDelta(d,'closeProbability',-3); }),
       makeAction('negotiate_caps_baskets','legal',1,6,0.58,['caps_baskets'],(ok,d)=>{ if(ok){ applyDelta(d,'closeProbability',5); applyDelta(d,'relationship',-2);} else { applyDelta(d,'closeProbability',-4); applyDelta(d,'relationship',-5);} }),
@@ -878,7 +991,7 @@
         return 0.60 + (d.relationship - 50) / 200;
       }
       if (a.key === 'execute_wire_transfer') {
-        return 0.50 + d.closeProbability / 200;
+        return 0.50 + getLiveClosingProbability() / 200;
       }
       return a.baseProb;
     }
@@ -892,7 +1005,9 @@
         }));
       }
       if (key === 'select_exclusive_bidder') {
-        return new Promise((resolve) => showExclusiveBidderModal((confirmed) => resolve(confirmed ? key : null)));
+        const active = activeBidders(state.current);
+        if (!active.length) return Promise.resolve(null);
+        return new Promise((resolve) => showExclusiveBidderModal((bidderId) => resolve(bidderId ? `${key}:${bidderId}` : null)));
       }
       return Promise.resolve(key);
     }
@@ -901,7 +1016,9 @@
       const d = state.current;
       const resolvedKey = await resolveActionKey(key);
       if (!resolvedKey) return;
-      const a = actions.find(x=>x.key===resolvedKey);
+      const actionKey = resolvedKey.includes(':') ? resolvedKey.split(':')[0] : resolvedKey;
+      const selectedBidderId = resolvedKey.includes(':') ? resolvedKey.split(':')[1] : null;
+      const a = actions.find(x=>x.key===actionKey);
       if (!a || d.completed) return;
       const currentMicro = getCurrentMicroEntry();
       if (a.phases && !a.phases.includes(currentMicro.key)) {
@@ -926,12 +1043,11 @@
       state.microPhaseProgress = Math.min(microPhaseTarget(), (state.microPhaseProgress || 0) + progressGain);
 
       if (ok) {
-        d.fogOfWar = Math.max(10, d.fogOfWar - 2);
       } else {
         d.boardHeat += 1;
-        d.fogOfWar = Math.min(90, d.fogOfWar + 2);
       }
 
+      d.closeProbability = getLiveClosingProbability();
       clampDealState(d);
       if (!ensureCoreHealth()) {
         renderPhase();
@@ -942,6 +1058,15 @@
       }
 
       closeDrawer();
+      if (a.key === 'select_exclusive_bidder' && ok && selectedBidderId) {
+        const selected = d.bidders.find(b => b.id === selectedBidderId && !b.dropped);
+        if (selected) {
+          d.exclusiveBidder = selected.nome;
+          d.bidders.forEach(b => {
+            if (b.id !== selected.id && !b.dropped) dropBidder(d, b, true);
+          });
+        }
+      }
       log(`${actionLabel(a.key)}: ${ok ? '✓' : '✗'} (${Math.round(p*100)}%)`, ok ? 'good' : 'bad');
       renderPhase();
     }
@@ -970,7 +1095,6 @@
       }
       if (Math.random() < 0.1 && d.mitigations.leak < 2) {
         d.relationship = Math.max(0, d.relationship - 4);
-        d.fogOfWar = Math.min(90, d.fogOfWar + 6);
         log('Leak risk materializado: rumor de mercado.', 'bad');
       }
       if (Math.random() < 0.09 + d.boardHeat * 0.02) {
@@ -982,8 +1106,16 @@
         log('ECB rate hike: EBITDA reduzida no Consumer.', 'bad');
       }
 
-      const visibleBidderScore = d.bidders.reduce((acc,b)=> acc + (b.active ? (b.confidence + b.intelligence*0.3) : 0), 0) / Math.max(1, d.bidders.length);
-      d.closeProbability = Math.max(0, Math.min(95, d.closeProbability + (visibleBidderScore - 45) * 0.06));
+      activeBidders(d).forEach(bidder => {
+        bidder.interesse = Math.max(0, bidder.interesse - randInt(1, 3));
+        if (bidder.interesse < 20) dropBidder(d, bidder);
+      });
+      if (!activeBidders(d).length && d.bidders.length) {
+        log(i18n[meta.language].marketRejection, 'bad');
+        finishDeal(false);
+        return;
+      }
+      d.closeProbability = getLiveClosingProbability();
       if (d.week > d.maxWeeks || d.relationship <= 10) {
         finishDeal(false);
       }
@@ -1270,6 +1402,7 @@
       el('micro-progress-label').textContent = t.microProgress;
       el('endCareerTitle').textContent = t.endCareerTitle;
       el('end-new-career').textContent = t.newCareerBtn;
+      el('bidders-title').textContent = t.biddersTitle;
     }
 
 
@@ -1286,6 +1419,37 @@
         state.currentMicroPhaseIndex = 0;
       }
       return getCurrentMicroEntry();
+    }
+
+
+    function renderBidders() {
+      const d = state.current;
+      const t = i18n[meta.language];
+      const list = el('bidders-list');
+      list.innerHTML = '';
+      const hint = el('bidders-empty');
+      const unlocked = state.currentPhaseIndex >= 3;
+      if (!unlocked || !d.bidders.length) {
+        hint.textContent = t.biddersPending;
+        return;
+      }
+      hint.textContent = '';
+      d.bidders.forEach(b => {
+        const card = document.createElement('div');
+        card.className = `bidder-card ${typeLabel(b.tipo)} ${b.dropped ? 'dropped' : ''} ${d.exclusiveBidder === b.nome ? 'exclusive' : ''}`.trim();
+        const offerText = b.offerKnown
+          ? t.confirmedOffer.replace('{offer}', b.trueOffer.toFixed(1)).replace('{cash}', b.cashPercentage).replace('{earnout}', b.earnoutPercentage)
+          : t.indicativeRange.replace('{min}', b.perceivedMin.toFixed(1)).replace('{max}', b.perceivedMax.toFixed(1));
+        card.innerHTML = `<strong>${b.nome}</strong> · ${b.tipo}<br><span class="hint">Interesse ${Math.round(b.interesse)}</span><div class="bar"><span style="width:${Math.max(0, Math.min(100, b.interesse))}%; background:${b.tipo === 'Private Equity' ? 'var(--accent)' : b.tipo === 'Industrial' ? 'var(--warn)' : 'var(--good)'}"></span></div><p class="hint" style="margin-top:6px;">${offerText}</p>`;
+        list.appendChild(card);
+      });
+      d.droppedBidders.forEach(b => {
+        if (d.bidders.find(x => x.id === b.id)) return;
+        const card = document.createElement('div');
+        card.className = `bidder-card ${typeLabel(b.tipo)} dropped`;
+        card.innerHTML = `<strong>${b.nome}</strong> · ${b.tipo}<br><span class="hint">Interesse ${Math.round(b.interesse)}</span>`;
+        list.appendChild(card);
+      });
     }
 
     function renderPhase() {
@@ -1307,6 +1471,9 @@
       renderSectorGrid();
       if (!state) return;
       const d = state.current;
+      d.bidders = d.bidders || [];
+      d.droppedBidders = d.droppedBidders || [];
+      d.exclusiveBidder = d.exclusiveBidder || null;
       const currentMicro = getCurrentMicroEntry();
       el('s-deal').textContent = `${state.currentDeal}/${state.totalDeals}`;
       el('s-week').textContent = `${d.week}`;
@@ -1330,8 +1497,9 @@
       el('micro-progress-fill').style.width = `${Math.min(100,microPct)}%`;
       el('phase-header').textContent = t.phaseHeader.replace('{phase}', state.currentPhaseIndex + 1).replace('{total}', PHASES_PRO.length).replace('{phaseLabel}', label(phase.label)).replace('{microLabel}', label(currentMicro.label));
       el('dealHeader').textContent = `${d.sectorName} · EV ≈ €${(d.ebitda*d.multiple).toFixed(1)}M`;
-      el('dealContext').textContent = `Rel ${d.relationship} · Morale ${d.morale} · Close Prob ${d.closeProbability}% · Fee ${d.feeAgreed ? '✓' : '✗'} · Fog ${d.fogOfWar}%`;
+      el('dealContext').textContent = `Rel ${d.relationship} · Morale ${d.morale} · Close Prob ${Math.round(getLiveClosingProbability())}% · Fee ${d.feeAgreed ? '✓' : '✗'}`;
       el('betweenDesc').textContent = `Career Cash: €${state.careerCash.toFixed(1)}M | Office Lv.${state.officeLevel}`;
+      el('closing-live').textContent = t.liveClosing.replace('{value}', Math.round(getLiveClosingProbability()));
 
       const logBox = el('log');
       logBox.innerHTML = d.logs.map(x=>`<div>${x}</div>`).join('');
@@ -1341,6 +1509,7 @@
 
       renderActions();
       renderTeam();
+      renderBidders();
     }
 
     function initEvents() {
