@@ -1,0 +1,13671 @@
+# Consistency Review and Context Expansion Walkthrough
+
+## Verified Steps & File Diff Summary
+
+All game architecture and specific phase documentation files inside `playground/new game` have been extensively reviewed, updated for Phase numerical consistency, and fundamentally expanded to provide a much richer game design context. 
+
+### Core System Context Overhauls
+- **`01_MA_Game_Narrative_Context.md`**
+  - Expanded the structural overview to specify how the process transitions from a qualitative, relationship-driven origin (Phase 0) entirely down to a quantitative, legally binding close (Phase 7-10). Added specific narrative gravity to Phase 7 BO/BAFO as the most stressful period for an M&A advisor.
+- **`02_MA_Game_Task_System.md`**
+  - Added new, specific task examples for Phase 6 (Manage Data Room Q&A, Coordinate Expert Sessions), Phase 7 (Draft Process Letter for Final Bids), Phase 8 (Negotiate Reps & Warranties), and tasks bridging maintaining competitive tension across phases.
+- **`03_MA_Game_Workstreams_System.md`**
+  - Completely rewrote the phase headers from Phase 6 through 10 to match the new 11-step mechanics. 
+  - Substantially deepened the `Quality` dynamic, explaining how "brutal" the consequences are—specifically citing how poor 'Target Intelligence' executed in Phase 0 translates directly into severe 'Risk Exposure' catastrophes in Phase 6.
+- **`04_MA_Game_Event_System.md`**
+  - Added brutal later-stage events like "Due Diligence Bombshells" (buyer algorithms uncovering aggressive EBITDA normalization) and "Last-Minute Retrades in SPA" (attempting to drop EV by 10% the day before signing).
+- **`05_MA_Game_Risk_Outcome_System.md`**
+  - Overhauled the `Risk Debt Effects` section, detailing how granting buyer exclusivity amplifies consequences. Described a "Failure Cascade" mechanism mapping poor Phase 4 work directly into Phase 6 disasters.
+- **`06_MA_Game_Phase_Architecture.md`**
+  - Rewrote the entire latter half of the document. Reconstructed `# Phase 6 — Management Presentations` into `# Phase 6 — Due Diligence` with correct objectives, constraints, and dependencies.
+  - Reconstructed `# Phase 7 — Due Diligence` into `# Phase 7 — BO / BAFO (Binding Offers)`.
+  - Upgraded `# Phase 8 — SPA Negotiation`.
+  - Split the old generic "Signing & Closing" into the separated `# Phase 9 - Signing` and `# Phase 10 - Closing`, adding administrative regulatory constraints and conditions precedent arrays for them.
+
+### Specific Phase Files Lore Injection
+- **`MA_Game_PHASE_0.md` through `MA_Game_PHASE_10.md`**
+  - Ran a programmatic pass injecting a `### Narrative & Strategic Context` block intimately detailing the psychological and operational tension characterizing each phase. 
+  - For example, Phase 0 details reality-checking founder expectations. Phase 7 details orchestrating a high-stakes competitive auction for the cleanest terms. Phase 10 details the emotional relief, bank wires, tombstone announcements, and the immediate hunt for the next cycle.
+
+## Conclusion
+
+The documentation now reads not just as a mechanical system guide, but as a rich, thematic game design document explicitly detailing why the player's choices matter across all 11 phases.
+
+```diff
+```diff:01_MA_Game_Narrative_Context.md
+\# M\&A Dealmaker — Narrative \& Simulation Framework Context
+
+
+
+\## Purpose of this document
+
+
+
+This document provides the context required to continue designing the \*\*narrative and simulation structure\*\* of a strategic management game based on the \*\*sell-side M\&A process\*\*.
+
+
+
+The goal is to iteratively construct the \*\*operational narrative of M\&A transactions phase by phase\*\*, in a way that is compatible with a \*\*generic simulation engine\*\* that can also support other management games (e.g. restaurant management, football manager, project management).
+
+
+
+This document should be used as the \*\*starting prompt for further design sessions\*\*.
+
+
+
+---
+
+
+
+\# Core Concept of the Game
+
+
+
+The game simulates the professional life of an \*\*M\&A advisor\*\* managing deal processes, teams, and pipeline over time.
+
+
+
+The player’s goal is to:
+
+
+
+\- originate deals
+
+\- win mandates
+
+\- execute transactions
+
+\- maximize accumulated capital
+
+
+
+The simulation must capture the \*\*uncertainty, timing pressure, and resource constraints\*\* typical of real M\&A processes.
+
+
+
+Deals can fail at multiple stages.
+
+
+
+---
+
+
+
+\# Game Modes
+
+
+
+\## Workshop Mode
+
+
+
+Pedagogical mode.
+
+
+
+Characteristics:
+
+
+
+\- only one active project
+
+\- focus on understanding the M\&A process
+
+\- simplified resource management
+
+
+
+Goal: learn how deals unfold.
+
+
+
+---
+
+
+
+\## Career Mode
+
+
+
+Full simulation.
+
+
+
+Characteristics:
+
+
+
+\- multiple deals simultaneously
+
+\- pipeline management
+
+\- team hiring and staffing
+
+\- financial management of the advisory firm
+
+
+
+Goal: maximize long-term capital and reputation.
+
+
+
+---
+
+
+
+\# Career Cycles
+
+
+
+The game can be played over different time horizons.
+
+
+
+3-year cycle  
+
+5-year cycle  
+
+10-year cycle
+
+
+
+---
+
+
+
+\# Rainmaker Status
+
+
+
+Optional achievement.
+
+
+
+Success rate required:
+
+
+
+3-year cycle → 100% deal success  
+
+5-year cycle → ≥ 85% success  
+
+10-year cycle → ≥ 75% success  
+
+
+
+Success rate = deals closed / mandates signed.
+
+
+
+---
+
+
+
+\# Macro Phases of the M\&A Process
+
+
+
+The game models the full sell-side process.
+
+
+
+0\. Deal Origination  
+
+1\. Pitching / Mandate Acquisition  
+
+2\. Preparation  
+
+3\. Marketing / Outreach  
+
+4\. Q\&A / Data Room  
+
+5\. First Round Offers  
+
+6\. Management Presentations  
+
+7\. Due Diligence  
+
+8\. SPA Negotiation  
+
+9\. Signing \& Closing
+
+
+
+Deals may fail in several phases, including late stages.
+
+
+
+---
+
+
+
+\# Simulation Engine — Core Architecture
+
+
+
+The game engine runs on a \*\*repeating operational cycle\*\*.
+
+
+
+\## Simulation Loop
+
+
+
+Each cycle contains:
+
+
+
+1\. Events / Information  
+
+2\. Player Decisions  
+
+3\. Resource Allocation  
+
+4\. Execution  
+
+5\. Outcome Resolution  
+
+6\. State Update
+
+
+
+---
+
+
+
+\# Two-Layer Decision Model
+
+
+
+Player decisions occur in two steps.
+
+
+
+\## Step 1 — Define Work (Intent)
+
+
+
+The player decides \*\*what needs to be done\*\*.
+
+
+
+Examples:
+
+
+
+\- research a company
+
+\- prepare a meeting
+
+\- analyze valuation
+
+\- map potential buyers
+
+\- run a conflict check
+
+\- prepare a pitch
+
+
+
+This creates \*\*tasks\*\*.
+
+
+
+Tasks do not immediately consume resources.
+
+
+
+---
+
+
+
+\## Step 2 — Execute Work (Execution)
+
+
+
+The player decides \*\*how the work is executed\*\*.
+
+
+
+Options include:
+
+
+
+\- internal team
+
+\- outsourcing
+
+\- delay
+
+\- automation
+
+\- cancellation
+
+
+
+Execution consumes resources.
+
+
+
+---
+
+
+
+\# Resources in the Simulation
+
+
+
+The game models four core organizational resources.
+
+
+
+\## 1. Time
+
+
+
+Human capacity.
+
+
+
+Measured in hours of:
+
+
+
+\- Partner
+
+\- Associate
+
+\- Analyst
+
+
+
+Example:
+
+
+
+Partner → 6 productive hours/day  
+
+Associate → 7 hours/day  
+
+Analyst → 7 hours/day
+
+
+
+---
+
+
+
+\## 2. Money
+
+
+
+Operational budget.
+
+
+
+Used for:
+
+
+
+\- outsourcing work
+
+\- hiring staff
+
+\- purchasing data
+
+\- travel
+
+\- research
+
+
+
+Financial discipline affects runway.
+
+
+
+---
+
+
+
+\## 3. Organizational Capacity
+
+
+
+Size and skill of the team.
+
+
+
+Includes:
+
+
+
+\- number of employees
+
+\- expertise
+
+\- efficiency
+
+\- workload pressure
+
+
+
+Overload reduces morale and efficiency.
+
+
+
+---
+
+
+
+\## 4. Relational Capital
+
+
+
+Reputation and network.
+
+
+
+Influences:
+
+
+
+\- deal sourcing
+
+\- access to founders
+
+\- buyer engagement
+
+\- success probability in pitches
+
+
+
+---
+
+
+
+\# Tasks vs Workstreams
+
+
+
+Important conceptual distinction.
+
+
+
+\## Tasks
+
+
+
+Concrete activities performed by the team.
+
+
+
+Examples:
+
+
+
+\- prepare valuation analysis
+
+\- map buyer universe
+
+\- prepare founder meeting
+
+\- conflict check
+
+
+
+Tasks consume resources.
+
+
+
+---
+
+
+
+\## Workstreams
+
+
+
+Dimensions of progress in a deal.
+
+
+
+Workstreams accumulate progress over time.
+
+
+
+Example workstreams in Origination:
+
+
+
+\- Target Intelligence
+
+\- Relationship Development
+
+\- Qualification
+
+\- Valuation Framing
+
+\- Confidentiality \& Conflicts
+
+\- Pitch Readiness
+
+
+
+Tasks contribute progress to workstreams.
+
+
+
+---
+
+
+
+\# Task Structure
+
+
+
+Each task has three components.
+
+
+
+\## Inputs
+
+
+
+Resources required.
+
+
+
+Examples:
+
+
+
+\- hours of staff
+
+\- financial cost
+
+\- skills
+
+
+
+---
+
+
+
+\## Outputs
+
+
+
+Effects produced.
+
+
+
+Examples:
+
+
+
+\- progress in workstreams
+
+\- improved information
+
+\- changes in deal variables
+
+
+
+---
+
+
+
+\## Risk
+
+
+
+Tasks may trigger events.
+
+
+
+Examples:
+
+
+
+\- competitor appears
+
+\- information leak
+
+\- founder loses interest
+
+\- valuation expectations inflate
+
+
+
+---
+
+
+
+\# Deal Variables
+
+
+
+Each opportunity contains dynamic variables.
+
+
+
+Examples:
+
+
+
+Lead Heat  
+
+Access Level  
+
+Data Visibility  
+
+Competitive Pressure  
+
+Confidentiality Risk  
+
+Fit Score  
+
+
+
+These variables influence outcomes and events.
+
+
+
+---
+
+
+
+\# Firm-Level Variables
+
+
+
+Global metrics affect all deals.
+
+
+
+Examples:
+
+
+
+Team Morale  
+
+Team Workload  
+
+Reputation  
+
+Network Strength  
+
+Market Sentiment  
+
+Financial Runway
+
+
+
+---
+
+
+
+\# Pipeline Structure
+
+
+
+The firm manages a pipeline of opportunities.
+
+
+
+Pipeline stages:
+
+
+
+Leads  
+
+Pitch  
+
+Mandates  
+
+Closed Deals
+
+
+
+Each stage has probabilities of conversion.
+
+
+
+---
+
+
+
+\# Risk Debt Concept
+
+
+
+Early decisions may create hidden risks.
+
+
+
+Examples:
+
+
+
+\- overpromising valuation
+
+\- leaking information
+
+\- weak qualification
+
+\- under-resourced preparation
+
+
+
+Risk Debt may surface later during:
+
+
+
+\- due diligence
+
+\- negotiations
+
+\- buyer confidence shifts
+
+
+
+---
+
+
+
+\# Narrative Layer
+
+
+
+The simulation includes narrative events such as:
+
+
+
+emails  
+
+calls  
+
+rumours  
+
+competitive approaches  
+
+internal team issues
+
+
+
+These events shape decisions and outcomes.
+
+
+
+Example narrative events:
+
+
+
+Founder requesting valuation range  
+
+Competitor advisor entering the situation  
+
+Buyer interest emerging  
+
+Information leak in the market  
+
+Team member burnout
+
+
+
+---
+
+
+
+\# Desired Player Experience
+
+
+
+The game should create a sense that:
+
+
+
+\- progress is being made
+
+\- uncertainty remains high
+
+\- deals can collapse unexpectedly
+
+\- early decisions have long-term consequences
+
+
+
+In many real transactions, deals fail due to \*\*multiple small issues interacting\*\*, not a single cause.
+
+
+
+The game should reflect this reality.
+
+
+
+---
+
+
+
+\# Next Design Step
+
+
+
+The next stage of development is to design \*\*each macro phase of the M\&A process in detail\*\*, including:
+
+
+
+\- description of the phase
+
+\- workstreams active in that phase
+
+\- micro-phases
+
+\- dependencies between workstreams
+
+\- progress thresholds
+
+\- player actions
+
+\- narrative events
+
+\- critical decisions
+
+\- failure scenarios
+
+
+
+The process should start with:
+
+
+
+\*\*Phase 0 — Deal Origination\*\*
+
+
+
+and then proceed sequentially through the full M\&A lifecycle.
+
+
+
+The design must remain compatible with the simulation architecture described above.
+
+===
+\# M\&A Dealmaker — Narrative \& Simulation Framework Context
+
+
+
+\## Purpose of this document
+
+
+
+This document provides the context required to continue designing the \*\*narrative and simulation structure\*\* of a strategic management game based on the \*\*sell-side M\&A process\*\*.
+
+
+
+The goal is to iteratively construct the \*\*operational narrative of M\&A transactions phase by phase\*\*, in a way that is compatible with a \*\*generic simulation engine\*\* that can also support other management games (e.g. restaurant management, football manager, project management).
+
+
+
+This document should be used as the \*\*starting prompt for further design sessions\*\*.
+
+
+
+---
+
+
+
+\# Core Concept of the Game
+
+
+
+The game simulates the professional life of an \*\*M\&A advisor\*\* managing deal processes, teams, and pipeline over time.
+
+
+
+The player’s goal is to:
+
+
+
+\- originate deals
+
+\- win mandates
+
+\- execute transactions
+
+\- maximize accumulated capital
+
+
+
+The simulation must capture the \*\*uncertainty, timing pressure, and resource constraints\*\* typical of real M\&A processes.
+
+
+
+Deals can fail at multiple stages.
+
+
+
+---
+
+
+
+\# Game Modes
+
+
+
+\## Workshop Mode
+
+
+
+Pedagogical mode.
+
+
+
+Characteristics:
+
+
+
+\- only one active project
+
+\- focus on understanding the M\&A process
+
+\- simplified resource management
+
+
+
+Goal: learn how deals unfold.
+
+
+
+---
+
+
+
+\## Career Mode
+
+
+
+Full simulation.
+
+
+
+Characteristics:
+
+
+
+\- multiple deals simultaneously
+
+\- pipeline management
+
+\- team hiring and staffing
+
+\- financial management of the advisory firm
+
+
+
+Goal: maximize long-term capital and reputation.
+
+
+
+---
+
+
+
+\# Career Cycles
+
+
+
+The game can be played over different time horizons.
+
+
+
+3-year cycle  
+
+5-year cycle  
+
+10-year cycle
+
+
+
+---
+
+
+
+\# Rainmaker Status
+
+
+
+Optional achievement.
+
+
+
+Success rate required:
+
+
+
+3-year cycle → 100% deal success  
+
+5-year cycle → ≥ 85% success  
+
+10-year cycle → ≥ 75% success  
+
+
+
+Success rate = deals closed / mandates signed.
+
+
+
+---
+
+
+
+\# Macro Phases of the M\&A Process
+
+
+
+The game models the full sell-side process.
+
+
+
+0. Deal Origination  
+
+1. Pitch / Mandate Acquisition  
+
+2. Preparation  
+
+3. Market Outreach  
+
+4. IM Distribution & Bidder Engagement  
+
+5. NBO Analysis, Short Listing & DD Entry  
+
+6. Due Diligence  
+
+7. BO / BAFO  
+
+8. SPA Negotiation  
+
+9. Signing  
+
+10. Closing
+
+
+
+Deals may fail in several phases, including late stages.
+
+The process is designed as a delicate progression from **Origination (Phase 0)**, where everything is highly qualitative and relationship-driven, down towards **Due Diligence (Phase 6)** and **BO/BAFO (Phase 7)**, where the process becomes highly quantitative and legally binding. 
+
+Phase 7 (BO/BAFO) typically represents the most stressful period for an advisor. It requires balancing multiple aggressive bidders, mitigating suddenly uncovered risks, and ensuring the seller’s valuation expectations are mathematically supported by the final binding offers. Failure at these later stages carries a devastating reputational cost.
+
+---
+
+\# Simulation Engine — Core Architecture
+
+
+
+The game engine runs on a \*\*repeating operational cycle\*\*.
+
+
+
+\## Simulation Loop
+
+
+
+Each cycle contains:
+
+
+
+1\. Events / Information  
+
+2\. Player Decisions  
+
+3\. Resource Allocation  
+
+4\. Execution  
+
+5\. Outcome Resolution  
+
+6\. State Update
+
+
+
+---
+
+
+
+\# Two-Layer Decision Model
+
+
+
+Player decisions occur in two steps.
+
+
+
+\## Step 1 — Define Work (Intent)
+
+
+
+The player decides \*\*what needs to be done\*\*.
+
+
+
+Examples:
+
+
+
+\- research a company
+
+\- prepare a meeting
+
+\- analyze valuation
+
+\- map potential buyers
+
+\- run a conflict check
+
+\- prepare a pitch
+
+
+
+This creates \*\*tasks\*\*.
+
+
+
+Tasks do not immediately consume resources.
+
+
+
+---
+
+
+
+\## Step 2 — Execute Work (Execution)
+
+
+
+The player decides \*\*how the work is executed\*\*.
+
+
+
+Options include:
+
+
+
+\- internal team
+
+\- outsourcing
+
+\- delay
+
+\- automation
+
+\- cancellation
+
+
+
+Execution consumes resources.
+
+
+
+---
+
+
+
+\# Resources in the Simulation
+
+
+
+The game models four core organizational resources.
+
+
+
+\## 1. Time
+
+
+
+Human capacity.
+
+
+
+Measured in hours of:
+
+
+
+\- Partner
+
+\- Associate
+
+\- Analyst
+
+
+
+Example:
+
+
+
+Partner → 6 productive hours/day  
+
+Associate → 7 hours/day  
+
+Analyst → 7 hours/day
+
+
+
+---
+
+
+
+\## 2. Money
+
+
+
+Operational budget.
+
+
+
+Used for:
+
+
+
+\- outsourcing work
+
+\- hiring staff
+
+\- purchasing data
+
+\- travel
+
+\- research
+
+
+
+Financial discipline affects runway.
+
+
+
+---
+
+
+
+\## 3. Organizational Capacity
+
+
+
+Size and skill of the team.
+
+
+
+Includes:
+
+
+
+\- number of employees
+
+\- expertise
+
+\- efficiency
+
+\- workload pressure
+
+
+
+Overload reduces morale and efficiency.
+
+
+
+---
+
+
+
+\## 4. Relational Capital
+
+
+
+Reputation and network.
+
+
+
+Influences:
+
+
+
+\- deal sourcing
+
+\- access to founders
+
+\- buyer engagement
+
+\- success probability in pitches
+
+
+
+---
+
+
+
+\# Tasks vs Workstreams
+
+
+
+Important conceptual distinction.
+
+
+
+\## Tasks
+
+
+
+Concrete activities performed by the team.
+
+
+
+Examples:
+
+
+
+\- prepare valuation analysis
+
+\- map buyer universe
+
+\- prepare founder meeting
+
+\- conflict check
+
+
+
+Tasks consume resources.
+
+
+
+---
+
+
+
+\## Workstreams
+
+
+
+Dimensions of progress in a deal.
+
+
+
+Workstreams accumulate progress over time.
+
+
+
+Example workstreams in Origination:
+
+
+
+\- Target Intelligence
+
+\- Relationship Development
+
+\- Qualification
+
+\- Valuation Framing
+
+\- Confidentiality \& Conflicts
+
+\- Pitch Readiness
+
+
+
+Tasks contribute progress to workstreams.
+
+
+
+---
+
+
+
+\# Task Structure
+
+
+
+Each task has three components.
+
+
+
+\## Inputs
+
+
+
+Resources required.
+
+
+
+Examples:
+
+
+
+\- hours of staff
+
+\- financial cost
+
+\- skills
+
+
+
+---
+
+
+
+\## Outputs
+
+
+
+Effects produced.
+
+
+
+Examples:
+
+
+
+\- progress in workstreams
+
+\- improved information
+
+\- changes in deal variables
+
+
+
+---
+
+
+
+\## Risk
+
+
+
+Tasks may trigger events.
+
+
+
+Examples:
+
+
+
+\- competitor appears
+
+\- information leak
+
+\- founder loses interest
+
+\- valuation expectations inflate
+
+
+
+---
+
+
+
+\# Deal Variables
+
+
+
+Each opportunity contains dynamic variables.
+
+
+
+Examples:
+
+
+
+Lead Heat  
+
+Access Level  
+
+Data Visibility  
+
+Competitive Pressure  
+
+Confidentiality Risk  
+
+Fit Score  
+
+
+
+These variables influence outcomes and events.
+
+
+
+---
+
+
+
+\# Firm-Level Variables
+
+
+
+Global metrics affect all deals.
+
+
+
+Examples:
+
+
+
+Team Morale  
+
+Team Workload  
+
+Reputation  
+
+Network Strength  
+
+Market Sentiment  
+
+Financial Runway
+
+
+
+---
+
+
+
+\# Pipeline Structure
+
+
+
+The firm manages a pipeline of opportunities.
+
+
+
+Pipeline stages:
+
+
+
+Leads  
+
+Pitch  
+
+Mandates  
+
+Closed Deals
+
+
+
+Each stage has probabilities of conversion.
+
+
+
+---
+
+
+
+\# Risk Debt Concept
+
+
+
+Early decisions may create hidden risks.
+
+
+
+Examples:
+
+
+
+\- overpromising valuation
+
+\- leaking information
+
+\- weak qualification
+
+\- under-resourced preparation
+
+
+
+Risk Debt may surface later during:
+
+
+
+\- due diligence
+
+\- negotiations
+
+\- buyer confidence shifts
+
+
+
+---
+
+
+
+\# Narrative Layer
+
+
+
+The simulation includes narrative events such as:
+
+
+
+emails  
+
+calls  
+
+rumours  
+
+competitive approaches  
+
+internal team issues
+
+
+
+These events shape decisions and outcomes.
+
+
+
+Example narrative events:
+
+
+
+Founder requesting valuation range  
+
+Competitor advisor entering the situation  
+
+Buyer interest emerging  
+
+Information leak in the market  
+
+Team member burnout
+
+
+
+---
+
+
+
+\# Desired Player Experience
+
+
+
+The game should create a sense that:
+
+
+
+\- progress is being made
+
+\- uncertainty remains high
+
+\- deals can collapse unexpectedly
+
+\- early decisions have long-term consequences
+
+
+
+In many real transactions, deals fail due to \*\*multiple small issues interacting\*\*, not a single cause.
+
+
+
+The game should reflect this reality.
+
+
+
+---
+
+
+
+\# Next Design Step
+
+
+
+The next stage of development is to design \*\*each macro phase of the M\&A process in detail\*\*, including:
+
+
+
+\- description of the phase
+
+\- workstreams active in that phase
+
+\- micro-phases
+
+\- dependencies between workstreams
+
+\- progress thresholds
+
+\- player actions
+
+\- narrative events
+
+\- critical decisions
+
+\- failure scenarios
+
+
+
+The process should start with:
+
+
+
+\*\*Phase 0 — Deal Origination\*\*
+
+
+
+and then proceed sequentially through the full M\&A lifecycle.
+
+
+
+The design must remain compatible with the simulation architecture described above.
+
+```
+```diff:02_MA_Game_Task_System.md
+\# M\&A Dealmaker — Task System Specification
+
+
+
+\## Purpose
+
+
+
+This document defines the \*\*Task System\*\*, one of the core components of the M\&A Dealmaker simulation engine.
+
+
+
+Tasks represent \*\*concrete actions performed by the advisory firm\*\*.
+
+
+
+They translate player intent into:
+
+
+
+\- resource consumption
+
+\- progress in deal workstreams
+
+\- narrative consequences
+
+\- probabilistic outcomes
+
+
+
+The system is designed to be \*\*generic\*\*, allowing reuse in other simulation games.
+
+
+
+---
+
+
+
+\# Conceptual Model
+
+
+
+The player does not directly progress deals.
+
+
+
+Instead, the player:
+
+
+
+1\. decides \*\*what work needs to be done\*\*
+
+2\. allocates \*\*resources to execute that work\*\*
+
+
+
+The simulation engine converts those decisions into:
+
+
+
+\- workstream progress
+
+\- state changes
+
+\- events
+
+
+
+---
+
+
+
+\# Task Definition
+
+
+
+A task represents a \*\*unit of work\*\*.
+
+
+
+Examples in M\&A context:
+
+
+
+Prepare Founder Meeting
+
+Build Buyer Universe
+
+Conflict Check
+
+Valuation Analysis
+
+Draft Pitch Deck
+
+Sector Research
+
+Financial Intelligence Gathering
+
+
+
+---
+
+
+
+\# Task Structure
+
+
+
+Each task contains three components.
+
+
+
+\## 1. Inputs
+
+
+
+Resources required to perform the task.
+
+
+
+\### Time
+
+
+
+Human hours required by role.
+
+
+
+Example:
+
+
+
+Partner: 1h
+
+Associate: 3h
+
+Analyst: 2h
+
+
+
+---
+
+
+
+\### Money
+
+
+
+Financial cost.
+
+
+
+Examples:
+
+
+
+\- research databases
+
+\- industry reports
+
+\- outsourcing
+
+\- consultants
+
+\- travel
+
+
+
+Example:
+
+
+
+Cost: €3,000
+
+
+
+---
+
+
+
+\### Skills
+
+
+
+Certain tasks may require capabilities.
+
+
+
+Examples:
+
+
+
+Valuation expertise
+
+Sector expertise
+
+Legal knowledge
+
+Relationship capital
+
+
+
+Skills influence \*\*efficiency and quality\*\*.
+
+
+
+---
+
+
+
+\# 2. Outputs
+
+
+
+Tasks generate effects.
+
+
+
+\### Workstream Progress
+
+
+
+Tasks increase progress in one or more workstreams.
+
+
+
+Example:
+
+
+
+Prepare Buyer Landscape
+
+
+
+Target Intelligence +15
+
+Pitch Readiness +10
+
+
+
+---
+
+
+
+\### Information Gain
+
+
+
+Some tasks reveal hidden information.
+
+
+
+Examples:
+
+
+
+\- revenue breakdown
+
+\- customer concentration
+
+\- competitive landscape
+
+\- founder motivations
+
+
+
+Information improves decision quality.
+
+
+
+---
+
+
+
+\### Variable Changes
+
+
+
+Tasks may modify deal variables.
+
+
+
+Examples:
+
+
+
+Relationship meeting
+
+
+
+Access Level +12
+
+Lead Heat +5
+
+
+
+---
+
+
+
+\# 3. Risk
+
+
+
+Tasks may trigger probabilistic outcomes.
+
+
+
+Examples:
+
+
+
+Competitor appears
+
+Information leak
+
+Founder hesitation
+
+Unexpected buyer interest
+
+
+
+Risk probabilities depend on variables such as:
+
+
+
+Confidentiality Risk
+
+Competitive Pressure
+
+Market Sentiment
+
+
+
+---
+
+
+
+\# Internal vs Outsourced Execution
+
+
+
+Most tasks can be executed in two ways.
+
+
+
+\## Internal Execution
+
+
+
+Consumes staff capacity.
+
+
+
+Advantages:
+
+
+
+lower cost
+
+higher control
+
+better learning
+
+
+
+Disadvantages:
+
+
+
+team workload increases
+
+slower execution if team small
+
+
+
+---
+
+
+
+\## Outsourced Execution
+
+
+
+Consumes financial resources.
+
+
+
+Advantages:
+
+
+
+faster execution
+
+less team workload
+
+
+
+Disadvantages:
+
+
+
+higher cost
+
+lower internal learning
+
+potential information leakage risk
+
+
+
+---
+
+
+
+\# Task Efficiency
+
+
+
+Task output depends on execution efficiency.
+
+
+
+Efficiency is influenced by:
+
+
+
+team experience
+
+sector expertise
+
+team morale
+
+team workload
+
+
+
+---
+
+
+
+\## Efficiency Formula (Conceptual)
+
+
+
+Progress = Effort × Efficiency × Quality
+
+
+
+Where:
+
+
+
+Effort = hours allocated
+
+Efficiency = skill modifier
+
+Quality = execution quality
+
+
+
+---
+
+
+
+\# Task Duration
+
+
+
+Tasks may be:
+
+
+
+Immediate
+
+Same-day completion.
+
+
+
+Multi-day
+
+Progress accumulated over several days.
+
+
+
+Examples:
+
+
+
+Pitch Deck Preparation
+
+Financial Analysis
+
+Due Diligence Preparation
+
+
+
+---
+
+
+
+\# Task Categories
+
+
+
+Tasks can be grouped into categories.
+
+
+
+\## Deal Tasks
+
+
+
+Specific to an opportunity.
+
+
+
+Examples:
+
+
+
+Founder meeting preparation
+
+Buyer mapping
+
+Valuation work
+
+
+
+---
+
+
+
+\## Firm Tasks
+
+
+
+Strategic work affecting the whole firm.
+
+
+
+Examples:
+
+
+
+Hiring staff
+
+Training employees
+
+Networking events
+
+Sector research programs
+
+
+
+---
+
+
+
+\## Maintenance Tasks
+
+
+
+Operational work.
+
+
+
+Examples:
+
+
+
+Team management
+
+Internal reviews
+
+Compliance checks
+
+
+
+---
+
+
+
+\# Task Queue
+
+
+
+The player defines a \*\*task queue\*\*.
+
+
+
+Tasks are then executed based on:
+
+
+
+available capacity
+
+priority
+
+resource constraints
+
+
+
+The simulation engine resolves execution each cycle.
+
+
+
+---
+
+
+
+\# Task Dependencies
+
+
+
+Some tasks require previous tasks.
+
+
+
+Examples:
+
+
+
+Valuation Analysis requires Financial Intelligence.
+
+
+
+Buyer Outreach requires Buyer Landscape mapping.
+
+
+
+Pitch Deck requires Qualification progress.
+
+
+
+Dependencies ensure logical sequencing.
+
+
+
+---
+
+
+
+\# Task Priority
+
+
+
+Players can assign priority levels.
+
+
+
+High priority tasks receive resources first.
+
+
+
+Low priority tasks may be delayed.
+
+
+
+This becomes important when multiple deals compete for resources.
+
+
+
+---
+
+
+
+\# Task Failure
+
+
+
+Tasks may fail.
+
+
+
+Examples:
+
+
+
+Meeting cancelled
+
+Data unavailable
+
+Incorrect assumptions
+
+
+
+Failure may result in:
+
+
+
+no progress
+
+reduced morale
+
+increased uncertainty
+
+
+
+---
+
+
+
+\# Task Data Structure (Conceptual)
+
+
+
+Example representation.
+
+===
+\# M\&A Dealmaker — Task System Specification
+
+
+
+\## Purpose
+
+
+
+This document defines the \*\*Task System\*\*, one of the core components of the M\&A Dealmaker simulation engine.
+
+
+
+Tasks represent \*\*concrete actions performed by the advisory firm\*\*.
+
+
+
+They translate player intent into:
+
+
+
+\- resource consumption
+
+\- progress in deal workstreams
+
+\- narrative consequences
+
+\- probabilistic outcomes
+
+
+
+The system is designed to be \*\*generic\*\*, allowing reuse in other simulation games.
+
+
+
+---
+
+
+
+\# Conceptual Model
+
+
+
+The player does not directly progress deals.
+
+
+
+Instead, the player:
+
+
+
+1\. decides \*\*what work needs to be done\*\*
+
+2\. allocates \*\*resources to execute that work\*\*
+
+
+
+The simulation engine converts those decisions into:
+
+
+
+\- workstream progress
+
+\- state changes
+
+\- events
+
+
+
+---
+
+
+
+\# Task Definition
+
+
+
+A task represents a \*\*unit of work\*\*.
+
+
+
+Examples in M\&A context:
+
+
+
+Prepare Founder Meeting
+Build Buyer Universe
+Conflict Check
+Valuation Analysis
+Draft Pitch Deck
+Sector Research
+Financial Intelligence Gathering
+Manage Data Room Q&A (Phase 6 Due Diligence)
+Coordinate Expert Due Diligence Sessions (Phase 6)
+Draft Process Letter for Final Bids (Phase 7 BO/BAFO)
+Maintain Competitive Tension (Bridges Phase 4-7)
+Negotiate Representations & Warranties (Phase 8 SPA)
+
+
+
+---
+
+
+
+\# Task Structure
+
+
+
+Each task contains three components.
+
+
+
+\## 1. Inputs
+
+
+
+Resources required to perform the task.
+
+
+
+\### Time
+
+
+
+Human hours required by role.
+
+
+
+Example:
+
+
+
+Partner: 1h
+
+Associate: 3h
+
+Analyst: 2h
+
+
+
+---
+
+
+
+\### Money
+
+
+
+Financial cost.
+
+
+
+Examples:
+
+
+
+\- research databases
+
+\- industry reports
+
+\- outsourcing
+
+\- consultants
+
+\- travel
+
+
+
+Example:
+
+
+
+Cost: €3,000
+
+
+
+---
+
+
+
+\### Skills
+
+
+
+Certain tasks may require capabilities.
+
+
+
+Examples:
+
+
+
+Valuation expertise
+
+Sector expertise
+
+Legal knowledge
+
+Relationship capital
+
+
+
+Skills influence \*\*efficiency and quality\*\*.
+
+
+
+---
+
+
+
+\# 2. Outputs
+
+
+
+Tasks generate effects.
+
+
+
+\### Workstream Progress
+
+
+
+Tasks increase progress in one or more workstreams.
+
+
+
+Example:
+
+
+
+Prepare Buyer Landscape
+
+
+
+Target Intelligence +15
+
+Pitch Readiness +10
+
+
+
+---
+
+
+
+\### Information Gain
+
+
+
+Some tasks reveal hidden information.
+
+
+
+Examples:
+
+
+
+\- revenue breakdown
+
+\- customer concentration
+
+\- competitive landscape
+
+\- founder motivations
+
+
+
+Information improves decision quality.
+
+
+
+---
+
+
+
+\### Variable Changes
+
+
+
+Tasks may modify deal variables.
+
+
+
+Examples:
+
+
+
+Relationship meeting
+
+
+
+Access Level +12
+
+Lead Heat +5
+
+
+
+---
+
+
+
+\# 3. Risk
+
+
+
+Tasks may trigger probabilistic outcomes.
+
+
+
+Examples:
+
+
+
+Competitor appears
+
+Information leak
+
+Founder hesitation
+
+Unexpected buyer interest
+
+
+
+Risk probabilities depend on variables such as:
+
+
+
+Confidentiality Risk
+
+Competitive Pressure
+
+Market Sentiment
+
+
+
+---
+
+
+
+\# Internal vs Outsourced Execution
+
+
+
+Most tasks can be executed in two ways.
+
+
+
+\## Internal Execution
+
+
+
+Consumes staff capacity.
+
+
+
+Advantages:
+
+
+
+lower cost
+
+higher control
+
+better learning
+
+
+
+Disadvantages:
+
+
+
+team workload increases
+
+slower execution if team small
+
+
+
+---
+
+
+
+\## Outsourced Execution
+
+
+
+Consumes financial resources.
+
+
+
+Advantages:
+
+
+
+faster execution
+
+less team workload
+
+
+
+Disadvantages:
+
+
+
+higher cost
+
+lower internal learning
+
+potential information leakage risk
+
+
+
+---
+
+
+
+\# Task Efficiency
+
+
+
+Task output depends on execution efficiency.
+
+
+
+Efficiency is influenced by:
+
+
+
+team experience
+
+sector expertise
+
+team morale
+
+team workload
+
+
+
+---
+
+
+
+\## Efficiency Formula (Conceptual)
+
+
+
+Progress = Effort × Efficiency × Quality
+
+
+
+Where:
+
+
+
+Effort = hours allocated
+
+Efficiency = skill modifier
+
+Quality = execution quality
+
+
+
+---
+
+
+
+\# Task Duration
+
+
+
+Tasks may be:
+
+
+
+Immediate
+
+Same-day completion.
+
+
+
+Multi-day
+
+Progress accumulated over several days.
+
+
+
+Examples:
+
+
+
+Pitch Deck Preparation
+
+Financial Analysis
+
+Due Diligence Preparation
+
+
+
+---
+
+
+
+\# Task Categories
+
+
+
+Tasks can be grouped into categories.
+
+
+
+\## Deal Tasks
+
+
+
+Specific to an opportunity.
+
+
+
+Examples:
+
+
+
+Founder meeting preparation
+
+Buyer mapping
+
+Valuation work
+
+
+
+---
+
+
+
+\## Firm Tasks
+
+
+
+Strategic work affecting the whole firm.
+
+
+
+Examples:
+
+
+
+Hiring staff
+
+Training employees
+
+Networking events
+
+Sector research programs
+
+
+
+---
+
+
+
+\## Maintenance Tasks
+
+
+
+Operational work.
+
+
+
+Examples:
+
+
+
+Team management
+
+Internal reviews
+
+Compliance checks
+
+
+
+---
+
+
+
+\# Task Queue
+
+
+
+The player defines a \*\*task queue\*\*.
+
+
+
+Tasks are then executed based on:
+
+
+
+available capacity
+
+priority
+
+resource constraints
+
+
+
+The simulation engine resolves execution each cycle.
+
+
+
+---
+
+
+
+\# Task Dependencies
+
+
+
+Some tasks require previous tasks.
+
+
+
+Examples:
+
+
+
+Valuation Analysis requires Financial Intelligence.
+
+Buyer Outreach requires Buyer Landscape mapping.
+
+Pitch Deck requires Qualification progress.
+
+Send Teaser requires Phase 3 (Market Outreach).
+
+Send IM requires Phase 4 (IM Distribution & Bidder Engagement).
+
+Receive NBOs requires end of Phase 4.
+
+Analyse Offers requires Phase 5.
+
+Short List Bidders for DD requires Phase 5.
+
+Dependencies ensure logical sequencing.
+
+
+
+---
+
+
+
+\# Task Priority
+
+
+
+Players can assign priority levels.
+
+
+
+High priority tasks receive resources first.
+
+
+
+Low priority tasks may be delayed.
+
+
+
+This becomes important when multiple deals compete for resources.
+
+
+
+---
+
+
+
+\# Task Failure
+
+
+
+Tasks may fail.
+
+
+
+Examples:
+
+
+
+Meeting cancelled
+
+Data unavailable
+
+Incorrect assumptions
+
+
+
+Failure may result in:
+
+
+
+no progress
+
+reduced morale
+
+increased uncertainty
+
+
+
+---
+
+
+
+\# Task Data Structure (Conceptual)
+
+
+
+Example representation.
+
+```
+```diff:03_MA_Game_Workstreams_System.md
+\# M\&A Dealmaker — Workstreams System Specification
+
+
+
+\## Purpose
+
+
+
+This document defines the \*\*Workstream System\*\*, the core mechanism used to represent the progress of deals in the M\&A Dealmaker simulation.
+
+
+
+Workstreams measure \*\*progress across the different dimensions of a transaction process\*\*.
+
+
+
+They translate task execution into structured deal progression.
+
+
+
+---
+
+
+
+\# Conceptual Model
+
+
+
+Deals do not progress in a single linear sequence.
+
+
+
+Instead, they evolve through \*\*multiple parallel workstreams\*\* that advance at different speeds.
+
+
+
+Example:
+
+
+
+\- relationship building may advance quickly
+
+\- valuation understanding may lag
+
+\- buyer landscape may be incomplete
+
+
+
+The interaction between these workstreams determines whether the deal can move forward.
+
+
+
+---
+
+
+
+\# Workstreams vs Tasks
+
+
+
+Important distinction.
+
+
+
+Tasks are actions performed by the team.
+
+
+
+Workstreams measure \*\*progress in the deal process\*\*.
+
+
+
+Example:
+
+
+
+Task: Prepare Founder Meeting  
+
+Workstream impact: Relationship Development +10
+
+
+
+---
+
+
+
+\# Workstream Structure
+
+
+
+Each workstream contains two metrics.
+
+
+
+Progress  
+
+Quality
+
+
+
+Both range from 0 to 100.
+
+
+
+---
+
+
+
+\## Progress
+
+
+
+Represents \*\*how much work has been completed\*\*.
+
+
+
+Example:
+
+
+
+Target Intelligence
+
+
+
+0 → no information  
+
+50 → basic understanding  
+
+100 → full understanding
+
+
+
+---
+
+
+
+\## Quality
+
+
+
+Represents \*\*how reliable and robust the work is\*\*.
+
+
+
+Example:
+
+
+
+Valuation Framing
+
+
+
+Progress 60 / Quality 25
+
+
+
+Means:
+
+
+
+work has been done  
+
+but assumptions are weak
+
+
+
+Low quality increases risk later.
+
+
+
+---
+
+
+
+\# Quality Importance
+
+
+
+Quality influences later outcomes.
+
+
+
+Examples:
+
+
+
+Low quality valuation analysis may cause:
+
+
+
+\- unrealistic founder expectations
+
+\- buyer retrades
+
+\- negotiation breakdown
+
+
+
+Low quality buyer mapping may cause:
+
+
+
+\- weak buyer competition
+
+\- lower offers
+
+
+
+Quality therefore directly affects \*\*deal outcomes\*\*.
+
+
+
+---
+
+
+
+\# Workstream Progress Mechanism
+
+
+
+Tasks contribute progress.
+
+
+
+Example:
+
+
+
+Financial Intelligence Task
+
+
+
+Target Intelligence +20 progress  
+
+Target Intelligence +10 quality
+
+
+
+Some tasks increase progress but not quality.
+
+
+
+Example:
+
+
+
+Quick Research
+
+
+
++15 progress  
+
++2 quality
+
+
+
+Others focus on quality improvement.
+
+
+
+Example:
+
+
+
+Deep Analysis
+
+
+
++5 progress  
+
++15 quality
+
+
+
+---
+
+
+
+\# Workstream Dependencies
+
+
+
+Certain workstreams influence others.
+
+
+
+Example:
+
+
+
+Target Intelligence affects Valuation Framing.
+
+
+
+Relationship Development affects Qualification.
+
+
+
+Buyer Landscape affects Marketing.
+
+
+
+Dependencies ensure realistic sequencing.
+
+
+
+---
+
+
+
+\# Workstream Thresholds
+
+
+
+Each phase requires minimum thresholds.
+
+
+
+Example:
+
+
+
+Pitch phase may require:
+
+
+
+Relationship Development ≥ 60  
+
+Qualification ≥ 50  
+
+Target Intelligence ≥ 40
+
+
+
+These thresholds act as \*\*gates\*\*.
+
+
+
+---
+
+
+
+\# Workstream Decay
+
+
+
+Some workstreams may decay over time.
+
+
+
+Examples:
+
+
+
+Relationship strength may fade without contact.
+
+
+
+Market intelligence may become outdated.
+
+
+
+Decay introduces time pressure.
+
+
+
+---
+
+
+
+\# Risk Debt
+
+
+
+Low quality in early workstreams generates \*\*Risk Debt\*\*.
+
+
+
+Risk Debt increases probability of problems in later phases.
+
+
+
+Examples:
+
+
+
+Weak qualification  
+
+Poor valuation framing  
+
+Incomplete buyer mapping
+
+
+
+Risk Debt surfaces during:
+
+
+
+Due Diligence  
+
+SPA Negotiations  
+
+Final Closing
+
+
+
+---
+
+
+
+\# Workstream Categories by Phase
+
+
+
+\## Phase 0 — Deal Origination
+
+
+
+Target Intelligence  
+
+Relationship Development  
+
+Qualification  
+
+Valuation Framing  
+
+Confidentiality \& Conflicts  
+
+Pitch Readiness
+
+
+
+---
+
+
+
+\## Phase 1 — Pitching
+
+
+
+Pitch Preparation  
+
+Client Trust Building  
+
+Deal Strategy Definition
+
+
+
+---
+
+
+
+\## Phase 2 — Preparation
+
+
+
+Information Collection  
+
+Financial Analysis  
+
+Equity Story Development  
+
+Documentation Quality
+
+
+
+---
+
+
+
+\## Phase 3 — Marketing
+
+
+
+Buyer Landscape  
+
+Marketing Materials  
+
+Buyer Engagement
+
+
+
+---
+
+
+
+\## Phase 4 — Q\&A / Data Room
+
+
+
+Information Disclosure  
+
+Buyer Questions Resolution  
+
+Trust Maintenance
+
+
+
+---
+
+
+
+\## Phase 5 — First Round Offers
+
+
+
+Offer Participation  
+
+Buyer Competition  
+
+Deal Attractiveness
+
+
+
+---
+
+
+
+\## Phase 6 — Management Presentations
+
+
+
+Management Performance  
+
+Strategic Alignment  
+
+Buyer Confidence
+
+
+
+---
+
+
+
+\## Phase 7 — Due Diligence
+
+
+
+Information Accuracy  
+
+Risk Exposure  
+
+Buyer Confidence
+
+
+
+---
+
+
+
+\## Phase 8 — SPA Negotiation
+
+
+
+Negotiation Leverage  
+
+Legal Clarity  
+
+Deal Certainty
+
+
+
+---
+
+
+
+\## Phase 9 — Signing \& Closing
+
+
+
+Execution Coordination  
+
+Regulatory Clearance  
+
+Transaction Completion
+
+
+
+---
+
+
+
+\# Workstream Data Structure (Conceptual)
+
+
+
+Example representation.
+
+
+
+===
+\# M\&A Dealmaker — Workstreams System Specification
+
+
+
+\## Purpose
+
+
+
+This document defines the \*\*Workstream System\*\*, the core mechanism used to represent the progress of deals in the M\&A Dealmaker simulation.
+
+
+
+Workstreams measure \*\*progress across the different dimensions of a transaction process\*\*.
+
+
+
+They translate task execution into structured deal progression.
+
+
+
+---
+
+
+
+\# Conceptual Model
+
+
+
+Deals do not progress in a single linear sequence.
+
+
+
+Instead, they evolve through \*\*multiple parallel workstreams\*\* that advance at different speeds.
+
+
+
+Example:
+
+
+
+\- relationship building may advance quickly
+
+\- valuation understanding may lag
+
+\- buyer landscape may be incomplete
+
+
+
+The interaction between these workstreams determines whether the deal can move forward.
+
+
+
+---
+
+
+
+\# Workstreams vs Tasks
+
+
+
+Important distinction.
+
+
+
+Tasks are actions performed by the team.
+
+
+
+Workstreams measure \*\*progress in the deal process\*\*.
+
+
+
+Example:
+
+
+
+Task: Prepare Founder Meeting  
+
+Workstream impact: Relationship Development +10
+
+
+
+---
+
+
+
+\# Workstream Structure
+
+
+
+Each workstream contains two metrics.
+
+
+
+Progress  
+
+Quality
+
+
+
+Both range from 0 to 100.
+
+
+
+---
+
+
+
+\## Progress
+
+
+
+Represents \*\*how much work has been completed\*\*.
+
+
+
+Example:
+
+
+
+Target Intelligence
+
+
+
+0 → no information  
+
+50 → basic understanding  
+
+100 → full understanding
+
+
+
+---
+
+
+
+\## Quality
+
+
+
+Represents \*\*how reliable and robust the work is\*\*.
+
+
+
+Example:
+
+
+
+Valuation Framing
+
+
+
+Progress 60 / Quality 25
+
+
+
+Means:
+
+
+
+work has been done  
+
+but assumptions are weak
+
+
+
+Low quality increases risk later.
+
+
+
+---
+
+
+
+\# Quality Importance
+
+
+
+Quality influences later outcomes.
+
+
+
+Examples:
+
+
+
+Low quality valuation analysis may cause:
+
+- unrealistic founder expectations
+- buyer retrades
+- negotiation breakdown
+
+Low quality buyer mapping may cause:
+
+- weak buyer competition
+- lower offers
+
+In later phases, the consequences of `Quality` become brutal. For example, poor 'Target Intelligence' executed back in Phase 0 translates directly into severe 'Risk Exposure' catastrophes during Phase 6 (Due Diligence). High `Progress` merely means you rushed the work; high `Quality` means the work survives contact with hostile private equity auditors.
+
+Quality therefore directly affects **deal outcomes**.
+
+
+
+---
+
+
+
+\# Workstream Progress Mechanism
+
+
+
+Tasks contribute progress.
+
+
+
+Example:
+
+
+
+Financial Intelligence Task
+
+
+
+Target Intelligence +20 progress  
+
+Target Intelligence +10 quality
+
+
+
+Some tasks increase progress but not quality.
+
+
+
+Example:
+
+
+
+Quick Research
+
+
+
++15 progress  
+
++2 quality
+
+
+
+Others focus on quality improvement.
+
+
+
+Example:
+
+
+
+Deep Analysis
+
+
+
++5 progress  
+
++15 quality
+
+
+
+---
+
+
+
+\# Workstream Dependencies
+
+
+
+Certain workstreams influence others.
+
+
+
+Example:
+
+
+
+Target Intelligence affects Valuation Framing.
+
+
+
+Relationship Development affects Qualification.
+
+
+
+Buyer Landscape affects Marketing.
+
+
+
+Dependencies ensure realistic sequencing.
+
+
+
+---
+
+
+
+\# Workstream Thresholds
+
+
+
+Each phase requires minimum thresholds.
+
+
+
+Example:
+
+
+
+Pitch phase may require:
+
+
+
+Relationship Development ≥ 60  
+
+Qualification ≥ 50  
+
+Target Intelligence ≥ 40
+
+
+
+These thresholds act as \*\*gates\*\*.
+
+
+
+---
+
+
+
+\# Workstream Decay
+
+
+
+Some workstreams may decay over time.
+
+
+
+Examples:
+
+
+
+Relationship strength may fade without contact.
+
+
+
+Market intelligence may become outdated.
+
+
+
+Decay introduces time pressure.
+
+
+
+---
+
+
+
+\# Risk Debt
+
+
+
+Low quality in early workstreams generates \*\*Risk Debt\*\*.
+
+
+
+Risk Debt increases probability of problems in later phases.
+
+
+
+Examples:
+
+
+
+Weak qualification  
+
+Poor valuation framing  
+
+Incomplete buyer mapping
+
+
+
+Risk Debt surfaces during:
+
+
+
+Due Diligence  
+
+SPA Negotiations  
+
+Final Closing
+
+
+
+---
+
+
+
+\# Workstream Categories by Phase
+
+
+
+\## Phase 0 — Deal Origination
+
+
+
+Target Intelligence  
+
+Relationship Development  
+
+Qualification  
+
+Valuation Framing  
+
+Confidentiality \& Conflicts  
+
+Pitch Readiness
+
+
+
+---
+
+
+
+\## Phase 1 — Pitching
+
+
+
+Pitch Preparation  
+
+Client Trust Building  
+
+Deal Strategy Definition
+
+
+
+---
+
+
+
+\## Phase 2 — Preparation
+
+
+
+Information Collection  
+
+Financial Analysis  
+
+Equity Story Development  
+
+Documentation Quality
+
+
+
+---
+
+
+
+\## Phase 3 — Market Outreach
+
+
+
+Buyer Landscape  
+
+Teaser Distribution \& NDA Signature  
+
+Buyer Screening \& Interest Testing
+
+
+
+---
+
+
+
+\## Phase 4 — IM Distribution \& Bidder Engagement
+
+
+
+IM \& Data Pack Disclosure  
+
+Buyer Questions Resolution  
+
+Trust Maintenance
+
+
+
+---
+
+
+
+\## Phase 5 — NBO Analysis, Short Listing \& DD Entry
+
+
+
+Offer Comparison \& Clarification  
+
+Bidder Ranking  
+
+DD Shortlisting
+
+
+
+---
+
+
+
+## Phase 6 — Due Diligence
+
+Information Accuracy  
+Risk Exposure  
+Management Defensibility
+
+---
+
+## Phase 7 — BO / BAFO
+
+Binding Offer Generation  
+Competitive Tension Maintenance  
+Valuation Maximization
+
+---
+
+## Phase 8 — SPA Negotiation
+
+Negotiation Leverage  
+Legal Clarity  
+Deal Certainty
+
+---
+
+## Phase 9 — Signing
+
+Execution Coordination  
+Regulatory Clearance Preparation
+
+---
+
+## Phase 10 — Closing
+
+Fund Transfer Coordination  
+Transaction Completion
+
+---
+
+
+
+\# Workstream Data Structure (Conceptual)
+
+
+
+Example representation.
+
+
+
+```
+```diff:04_MA_Game_Event_System.md
+\# M\&A Dealmaker — Event System Specification
+
+
+
+\## Purpose
+
+
+
+This document defines the \*\*Event System\*\*, responsible for the narrative layer of the M\&A Dealmaker simulation.
+
+
+
+While \*\*tasks and workstreams model operational execution\*\*, events represent the \*\*unexpected developments, communications, and external forces\*\* that influence deals.
+
+
+
+The event system ensures that the game feels \*\*dynamic, uncertain, and alive\*\*, reflecting the reality of M\&A processes.
+
+
+
+---
+
+
+
+\# Conceptual Model
+
+
+
+Events represent \*\*changes in the environment or communications between actors\*\*.
+
+
+
+Examples:
+
+
+
+\- emails
+
+\- phone calls
+
+\- rumors
+
+\- competitor actions
+
+\- internal team issues
+
+\- market developments
+
+
+
+Events influence:
+
+
+
+\- player decisions
+
+\- deal variables
+
+\- workstream progression
+
+\- risk levels
+
+
+
+---
+
+
+
+\# Event Trigger Mechanisms
+
+
+
+Events can be triggered in three ways.
+
+
+
+\## 1. Probabilistic Triggers
+
+
+
+Triggered based on probabilities.
+
+
+
+Probability depends on variables such as:
+
+
+
+Confidentiality Risk  
+
+Competitive Pressure  
+
+Market Sentiment  
+
+Relationship Development  
+
+Buyer Interest
+
+
+
+Example:
+
+
+
+High confidentiality risk increases probability of a \*\*market rumor event\*\*.
+
+
+
+---
+
+
+
+\## 2. Threshold Triggers
+
+
+
+Events triggered when variables reach certain levels.
+
+
+
+Example:
+
+
+
+Relationship Development ≥ 60
+
+
+
+may trigger:
+
+
+
+Founder invites CFO to meeting.
+
+
+
+---
+
+
+
+\## 3. Task-Driven Triggers
+
+
+
+Certain tasks can generate events.
+
+
+
+Example:
+
+
+
+Buyer outreach task may trigger:
+
+
+
+Inbound interest from additional buyers.
+
+
+
+---
+
+
+
+\# Event Types
+
+
+
+Events can be categorized by origin.
+
+
+
+\## Founder / Client Events
+
+
+
+Examples:
+
+
+
+Founder requests valuation estimate  
+
+Founder invites CFO into process  
+
+Founder expresses hesitation  
+
+Founder receives competing advisor approach
+
+
+
+---
+
+
+
+\## Buyer Events
+
+
+
+Examples:
+
+
+
+Strategic buyer shows interest  
+
+Private equity fund requests information  
+
+Buyer withdraws from process  
+
+Buyer raises concern during diligence
+
+
+
+---
+
+
+
+\## Advisor Competition Events
+
+
+
+Examples:
+
+
+
+Competing advisor approaches founder  
+
+Rival bank prepares pitch  
+
+Advisor leaks market information
+
+
+
+---
+
+
+
+\## Market Events
+
+
+
+Examples:
+
+
+
+Sector valuation multiple changes  
+
+Competitor transaction announced  
+
+Economic shock affects buyers
+
+
+
+---
+
+
+
+\## Internal Team Events
+
+
+
+Examples:
+
+
+
+Key associate burnout  
+
+Team member leaves firm  
+
+Internal conflict about strategy
+
+
+
+---
+
+
+
+\# Event Structure
+
+
+
+Each event contains several components.
+
+
+
+\## Trigger Conditions
+
+
+
+Defines when the event can occur.
+
+
+
+Example:
+
+
+
+Confidentiality Risk ≥ 50  
+
+Competitive Pressure ≥ 40
+
+
+
+---
+
+
+
+\## Narrative Description
+
+
+
+Text presented to the player.
+
+
+
+Example:
+
+
+
+"An industry contact mentions hearing rumors that the company may be exploring strategic options."
+
+
+
+---
+
+
+
+\## Player Decision Options
+
+
+
+Events often require player responses.
+
+
+
+Example:
+
+
+
+Option A — Deny rumors and reinforce confidentiality  
+
+Option B — Ignore rumor  
+
+Option C — Accelerate process
+
+
+
+---
+
+
+
+\## Outcomes
+
+
+
+Each decision produces effects.
+
+
+
+Examples:
+
+
+
+Change in deal variables  
+
+Workstream progress changes  
+
+Risk increases or decreases  
+
+New tasks unlocked
+
+
+
+---
+
+
+
+\# Event Frequency
+
+
+
+Events occur periodically.
+
+
+
+Frequency depends on:
+
+
+
+Deal activity level  
+
+Market volatility  
+
+Workstream states
+
+
+
+Busy deals generate more events.
+
+
+
+---
+
+
+
+\# Event Probability Model
+
+
+
+Events are resolved using a probability model.
+
+
+
+Example formula:
+
+
+
+Event Probability = Base Probability × Variable Modifiers
+
+
+
+Example:
+
+
+
+Market Rumor Event
+
+
+
+Base Probability: 5%
+
+
+
+Modifiers:
+
+
+
+Confidentiality Risk  
+
+Competitive Pressure  
+
+Media Attention
+
+
+
+---
+
+
+
+\# Event Chains
+
+
+
+Some events trigger follow-up events.
+
+
+
+Example chain:
+
+
+
+Rumor appears in market  
+
+↓
+
+
+
+Founder asks advisor about rumor  
+
+↓
+
+
+
+Player response determines outcome
+
+
+
+---
+
+
+
+\# Event Severity
+
+
+
+Events can have different impact levels.
+
+
+
+Minor  
+
+Moderate  
+
+Critical
+
+
+
+Example:
+
+
+
+Minor event  
+
+Investor curiosity email.
+
+
+
+Critical event  
+
+Founder signs mandate with competing advisor.
+
+
+
+---
+
+
+
+\# Hidden Events
+
+
+
+Some events occur without immediate player visibility.
+
+
+
+Example:
+
+
+
+Competitor advisor begins approaching buyers.
+
+
+
+The player may discover hidden events later.
+
+
+
+---
+
+
+
+\# Event Resolution
+
+
+
+Events are resolved during the \*\*simulation resolution phase\*\*.
+
+
+
+Sequence:
+
+
+
+1\. Event triggered
+
+2\. Player chooses response
+
+3\. Engine calculates outcome
+
+4\. State updated
+
+
+
+---
+
+
+
+\# Event Data Structure (Conceptual)
+
+
+
+Example representation.
+
+
+
+===
+\# M\&A Dealmaker — Event System Specification
+
+
+
+\## Purpose
+
+
+
+This document defines the \*\*Event System\*\*, responsible for the narrative layer of the M\&A Dealmaker simulation.
+
+
+
+While \*\*tasks and workstreams model operational execution\*\*, events represent the \*\*unexpected developments, communications, and external forces\*\* that influence deals.
+
+
+
+The event system ensures that the game feels \*\*dynamic, uncertain, and alive\*\*, reflecting the reality of M\&A processes.
+
+
+
+---
+
+
+
+\# Conceptual Model
+
+
+
+Events represent \*\*changes in the environment or communications between actors\*\*.
+
+
+
+Examples:
+
+
+
+\- emails
+
+\- phone calls
+
+\- rumors
+
+\- competitor actions
+
+\- internal team issues
+
+\- market developments
+
+
+
+Events influence:
+
+
+
+\- player decisions
+
+\- deal variables
+
+\- workstream progression
+
+\- risk levels
+
+
+
+---
+
+
+
+\# Event Trigger Mechanisms
+
+
+
+Events can be triggered in three ways.
+
+
+
+\## 1. Probabilistic Triggers
+
+
+
+Triggered based on probabilities.
+
+
+
+Probability depends on variables such as:
+
+
+
+Confidentiality Risk  
+
+Competitive Pressure  
+
+Market Sentiment  
+
+Relationship Development  
+
+Buyer Interest
+
+
+
+Example:
+
+
+
+High confidentiality risk increases probability of a \*\*market rumor event\*\*.
+
+
+
+---
+
+
+
+\## 2. Threshold Triggers
+
+
+
+Events triggered when variables reach certain levels.
+
+
+
+Example:
+
+
+
+Relationship Development ≥ 60
+
+
+
+may trigger:
+
+
+
+Founder invites CFO to meeting.
+
+
+
+---
+
+
+
+\## 3. Task-Driven Triggers
+
+
+
+Certain tasks can generate events.
+
+
+
+Example:
+
+
+
+Buyer outreach task may trigger:
+
+
+
+Inbound interest from additional buyers.
+
+
+
+---
+
+
+
+\# Event Types
+
+
+
+Events can be categorized by origin.
+
+
+
+\## Founder / Client Events
+
+
+
+Examples:
+
+
+
+Founder requests valuation estimate  
+
+Founder invites CFO into process  
+
+Founder expresses hesitation  
+
+Founder receives competing advisor approach
+
+
+
+---
+
+
+
+## Buyer Events
+
+Examples:
+
+Strategic buyer shows interest  
+Private equity fund requests information  
+Buyer withdraws from process  
+Buyer raises concern during diligence  
+**Due Diligence Bombshell:** Buyer's auditors uncover aggressive normalized EBITDA  
+**Last-Minute Retrades in SPA:** Buyer attempts to drop EV by 10% day before signing
+
+---
+
+
+
+\## Advisor Competition Events
+
+
+
+Examples:
+
+
+
+Competing advisor approaches founder  
+
+Rival bank prepares pitch  
+
+Advisor leaks market information
+
+
+
+---
+
+
+
+\## Market Events
+
+
+
+Examples:
+
+
+
+Sector valuation multiple changes  
+
+Competitor transaction announced  
+
+Economic shock affects buyers
+
+
+
+---
+
+
+
+\## Internal Team Events
+
+
+
+Examples:
+
+
+
+Key associate burnout  
+
+Team member leaves firm  
+
+Internal conflict about strategy
+
+
+
+---
+
+
+
+\# Event Structure
+
+
+
+Each event contains several components.
+
+
+
+\## Trigger Conditions
+
+
+
+Defines when the event can occur.
+
+
+
+Example:
+
+
+
+Confidentiality Risk ≥ 50  
+
+Competitive Pressure ≥ 40
+
+
+
+---
+
+
+
+\## Narrative Description
+
+
+
+Text presented to the player.
+
+
+
+Example:
+
+
+
+"An industry contact mentions hearing rumors that the company may be exploring strategic options."
+
+
+
+---
+
+
+
+\## Player Decision Options
+
+
+
+Events often require player responses.
+
+
+
+Example:
+
+
+
+Option A — Deny rumors and reinforce confidentiality  
+
+Option B — Ignore rumor  
+
+Option C — Accelerate process
+
+
+
+---
+
+
+
+\## Outcomes
+
+
+
+Each decision produces effects.
+
+
+
+Examples:
+
+
+
+Change in deal variables  
+
+Workstream progress changes  
+
+Risk increases or decreases  
+
+New tasks unlocked
+
+
+
+---
+
+
+
+\# Event Frequency
+
+
+
+Events occur periodically.
+
+
+
+Frequency depends on:
+
+
+
+Deal activity level  
+
+Market volatility  
+
+Workstream states
+
+
+
+Busy deals generate more events.
+
+
+
+---
+
+
+
+\# Event Probability Model
+
+
+
+Events are resolved using a probability model.
+
+
+
+Example formula:
+
+
+
+Event Probability = Base Probability × Variable Modifiers
+
+
+
+Example:
+
+
+
+Market Rumor Event
+
+
+
+Base Probability: 5%
+
+
+
+Modifiers:
+
+
+
+Confidentiality Risk  
+
+Competitive Pressure  
+
+Media Attention
+
+
+
+---
+
+
+
+\# Event Chains
+
+
+
+Some events trigger follow-up events.
+
+
+
+Example chain:
+
+
+
+Rumor appears in market  
+
+↓
+
+
+
+Founder asks advisor about rumor  
+
+↓
+
+
+
+Player response determines outcome
+
+
+
+---
+
+
+
+\# Event Severity
+
+
+
+Events can have different impact levels.
+
+
+
+Minor  
+
+Moderate  
+
+Critical
+
+
+
+Example:
+
+
+
+Minor event  
+
+Investor curiosity email.
+
+
+
+Critical event  
+
+Founder signs mandate with competing advisor.
+
+
+
+---
+
+
+
+\# Hidden Events
+
+
+
+Some events occur without immediate player visibility.
+
+
+
+Example:
+
+
+
+Competitor advisor begins approaching buyers.
+
+
+
+The player may discover hidden events later.
+
+
+
+---
+
+
+
+\# Event Resolution
+
+
+
+Events are resolved during the \*\*simulation resolution phase\*\*.
+
+
+
+Sequence:
+
+
+
+1\. Event triggered
+
+2\. Player chooses response
+
+3\. Engine calculates outcome
+
+4\. State updated
+
+
+
+---
+
+
+
+\# Event Data Structure (Conceptual)
+
+
+
+Example representation.
+
+
+
+```
+```diff:05_MA_Game_Risk_Outcome_System.md
+\# M\&A Dealmaker — Risk \& Outcome System Specification
+
+
+
+\## Purpose
+
+
+
+This document defines the \*\*Risk \& Outcome System\*\*, which determines how deals evolve toward success or failure in the M\&A Dealmaker simulation.
+
+
+
+While:
+
+
+
+\- \*\*Tasks\*\* represent work performed
+
+\- \*\*Workstreams\*\* represent deal progress
+
+\- \*\*Events\*\* represent narrative developments
+
+
+
+the \*\*Risk \& Outcome System\*\* determines the \*\*final consequences of those elements\*\*.
+
+
+
+This system ensures that:
+
+
+
+\- deal outcomes are uncertain
+
+\- early decisions have long-term consequences
+
+\- weak execution increases failure probability
+
+
+
+---
+
+
+
+\# Conceptual Model
+
+
+
+The outcome of a deal is not deterministic.
+
+
+
+Instead, it follows the structure:
+
+
+
+Expected Result + Controlled Variance
+
+
+
+Expected Result depends on:
+
+
+
+\- workstream progress
+
+\- workstream quality
+
+\- deal variables
+
+\- market conditions
+
+
+
+Variance introduces uncertainty.
+
+
+
+---
+
+
+
+\# Outcome Layers
+
+
+
+The system evaluates outcomes across three layers.
+
+
+
+\## 1. Operational Layer
+
+
+
+Measures execution quality.
+
+
+
+Key inputs:
+
+
+
+Workstream progress  
+
+Workstream quality  
+
+Task execution quality
+
+
+
+This layer determines how well the process has been run.
+
+
+
+---
+
+
+
+\## 2. Market Layer
+
+
+
+Represents external market forces.
+
+
+
+Examples:
+
+
+
+Market Sentiment  
+
+Sector Multiples  
+
+Buyer Liquidity  
+
+Macroeconomic conditions
+
+
+
+These factors affect:
+
+
+
+\- buyer interest
+
+\- valuation levels
+
+\- deal timing
+
+
+
+---
+
+
+
+\## 3. Behavioral Layer
+
+
+
+Represents human decision-making.
+
+
+
+Examples:
+
+
+
+Founder expectations  
+
+Buyer confidence  
+
+Trust between parties  
+
+Negotiation dynamics
+
+
+
+This layer introduces volatility.
+
+
+
+---
+
+
+
+\# Risk Debt
+
+
+
+Risk Debt is a hidden variable that accumulates when early decisions are weak.
+
+
+
+Examples:
+
+
+
+Overpromising valuation  
+
+Weak qualification of founder motivations  
+
+Incomplete financial understanding  
+
+Poor buyer mapping
+
+
+
+Risk Debt may not affect early stages but increases the probability of problems later.
+
+
+
+---
+
+
+
+\## Risk Debt Effects
+
+
+
+Risk Debt can surface during:
+
+
+
+Due Diligence  
+
+Negotiation  
+
+Final Closing
+
+
+
+Examples:
+
+
+
+Buyers discover hidden risks  
+
+Buyers retrade price  
+
+Founder loses confidence  
+
+Negotiations collapse
+
+
+
+---
+
+
+
+\# Risk Debt Accumulation
+
+
+
+Risk Debt increases when:
+
+
+
+Workstream quality is low  
+
+Player skips key tasks  
+
+Player accelerates process prematurely
+
+
+
+Example:
+
+
+
+Pitching without proper qualification.
+
+
+
+---
+
+
+
+\# Risk Debt Resolution
+
+
+
+Risk Debt can be reduced by:
+
+
+
+Additional analysis  
+
+Relationship management  
+
+Improved documentation
+
+
+
+However, late mitigation is often costly.
+
+
+
+---
+
+
+
+\# Buyer Competition Model
+
+
+
+Buyer competition is one of the most important drivers of deal outcomes.
+
+
+
+Competition depends on:
+
+
+
+Buyer Landscape workstream  
+
+Marketing effectiveness  
+
+Deal attractiveness  
+
+Market sentiment
+
+
+
+---
+
+
+
+\## Competition Effects
+
+
+
+High competition:
+
+
+
+\- increases valuation
+
+\- improves deal certainty
+
+
+
+Low competition:
+
+
+
+\- reduces offers
+
+\- increases negotiation risk
+
+
+
+---
+
+
+
+\# Valuation Model
+
+
+
+Each deal has a \*\*valuation baseline\*\*.
+
+
+
+Baseline depends on:
+
+
+
+Revenue  
+
+EBITDA  
+
+Growth  
+
+Sector multiples
+
+
+
+---
+
+
+
+\## Valuation Adjustments
+
+
+
+Valuation is adjusted by:
+
+
+
+Buyer competition  
+
+Market conditions  
+
+Perceived risk  
+
+Quality of equity story
+
+
+
+---
+
+
+
+\## Example
+
+
+
+Baseline EV:
+
+
+
+€40M
+
+
+
+Adjustments:
+
+
+
+Competition bonus +10%  
+
+Risk discount −5%  
+
+Market sentiment +3%
+
+
+
+Final EV:
+
+
+
+€42.8M
+
+
+
+---
+
+
+
+\# Offer Generation
+
+
+
+During the offer phase, buyers generate bids.
+
+
+
+Each bid is determined by:
+
+
+
+Buyer strategy  
+
+Deal attractiveness  
+
+Competition level  
+
+Risk perception
+
+
+
+---
+
+
+
+\# Offer Distribution
+
+
+
+Offers are generated within a range.
+
+
+
+Example:
+
+
+
+Low competition:
+
+
+
+€32M – €38M
+
+
+
+High competition:
+
+
+
+€38M – €48M
+
+
+
+---
+
+
+
+\# Deal Failure Conditions
+
+
+
+Deals may fail for multiple reasons.
+
+
+
+Examples:
+
+
+
+Founder rejects offers  
+
+Buyers withdraw during diligence  
+
+Legal risks discovered  
+
+Negotiations collapse
+
+
+
+Failures often result from \*\*multiple small issues interacting\*\*.
+
+
+
+---
+
+
+
+\# Outcome Resolution
+
+
+
+At each phase, the engine evaluates:
+
+
+
+1\. Workstream state
+
+2\. Risk Debt
+
+3\. Market conditions
+
+4\. Random variance
+
+
+
+These inputs determine whether the deal:
+
+
+
+progresses  
+
+stalls  
+
+fails
+
+
+
+---
+
+
+
+\# Failure Cascades
+
+
+
+Some failures occur gradually.
+
+
+
+Example:
+
+
+
+Weak financial understanding  
+
+↓
+
+
+
+Buyer discovers issues in diligence  
+
+↓
+
+
+
+Buyer retrades price  
+
+↓
+
+
+
+Founder refuses retrade  
+
+↓
+
+
+
+Deal collapses
+
+
+
+---
+
+
+
+\# Success Conditions
+
+
+
+Successful deals require:
+
+
+
+Strong workstream progress  
+
+High workstream quality  
+
+Low Risk Debt  
+
+Healthy buyer competition  
+
+Positive market conditions
+
+
+
+---
+
+
+
+\# Player Feedback
+
+
+
+The game should communicate outcomes through:
+
+
+
+buyer reactions  
+
+founder communications  
+
+market signals
+
+
+
+Players should infer the causes of success or failure.
+
+
+
+---
+
+
+
+\# Data Structure (Conceptual)
+
+
+
+Example representation.
+
+
+
+
+
+DealOutcomeModel {
+
+expected\_value
+
+variance
+
+
+
+workstream\_inputs
+
+market\_inputs
+
+behavioral\_inputs
+
+
+
+risk\_debt
+
+
+
+competition\_level
+
+
+
+}
+
+
+
+
+
+---
+
+
+
+\# Design Principles
+
+
+
+The outcome system should:
+
+
+
+reward disciplined execution  
+
+penalize shortcuts  
+
+reflect real M\&A dynamics  
+
+maintain uncertainty
+
+
+
+The player should feel that:
+
+
+
+good preparation increases probability of success  
+
+but certainty is never guaranteed.
+
+
+
+---
+
+
+
+\# Next Design Step
+
+
+
+The next step is defining the \*\*Phase Architecture\*\*, detailing:
+
+
+
+\- micro-phases within each stage
+
+\- phase gates
+
+\- key decisions
+
+\- task libraries for each phase
+
+
+
+starting with:
+
+
+
+Phase 0 — Deal Origination
+
+===
+\# M\&A Dealmaker — Risk \& Outcome System Specification
+
+
+
+\## Purpose
+
+
+
+This document defines the \*\*Risk \& Outcome System\*\*, which determines how deals evolve toward success or failure in the M\&A Dealmaker simulation.
+
+
+
+While:
+
+
+
+\- \*\*Tasks\*\* represent work performed
+
+\- \*\*Workstreams\*\* represent deal progress
+
+\- \*\*Events\*\* represent narrative developments
+
+
+
+the \*\*Risk \& Outcome System\*\* determines the \*\*final consequences of those elements\*\*.
+
+
+
+This system ensures that:
+
+
+
+\- deal outcomes are uncertain
+
+\- early decisions have long-term consequences
+
+\- weak execution increases failure probability
+
+
+
+---
+
+
+
+\# Conceptual Model
+
+
+
+The outcome of a deal is not deterministic.
+
+
+
+Instead, it follows the structure:
+
+
+
+Expected Result + Controlled Variance
+
+
+
+Expected Result depends on:
+
+
+
+\- workstream progress
+
+\- workstream quality
+
+\- deal variables
+
+\- market conditions
+
+
+
+Variance introduces uncertainty.
+
+
+
+---
+
+
+
+\# Outcome Layers
+
+
+
+The system evaluates outcomes across three layers.
+
+
+
+\## 1. Operational Layer
+
+
+
+Measures execution quality.
+
+
+
+Key inputs:
+
+
+
+Workstream progress  
+
+Workstream quality  
+
+Task execution quality
+
+
+
+This layer determines how well the process has been run.
+
+
+
+---
+
+
+
+\## 2. Market Layer
+
+
+
+Represents external market forces.
+
+
+
+Examples:
+
+
+
+Market Sentiment  
+
+Sector Multiples  
+
+Buyer Liquidity  
+
+Macroeconomic conditions
+
+
+
+These factors affect:
+
+
+
+\- buyer interest
+
+\- valuation levels
+
+\- deal timing
+
+
+
+---
+
+
+
+\## 3. Behavioral Layer
+
+
+
+Represents human decision-making.
+
+
+
+Examples:
+
+
+
+Founder expectations  
+
+Buyer confidence  
+
+Trust between parties  
+
+Negotiation dynamics
+
+
+
+This layer introduces volatility.
+
+
+
+---
+
+
+
+\# Risk Debt
+
+
+
+Risk Debt is a hidden variable that accumulates when early decisions are weak.
+
+
+
+Examples:
+
+
+
+Overpromising valuation  
+
+Weak qualification of founder motivations  
+
+Incomplete financial understanding  
+
+Poor buyer mapping
+
+
+
+Risk Debt may not affect early stages but increases the probability of problems later.
+
+
+
+---
+
+
+
+Risk Debt can surface during:
+
+Phase 6 — Due Diligence  
+Phase 7 — BO / BAFO  
+Phase 8 — SPA Negotiation  
+Phase 9 — Signing
+
+The consequences become severely amplified because the buyer has already been granted exclusivity. A failure cascade from Phase 4 (IM Distribution) where financials were not thoroughly scrubbed will guarantee discovering hidden risks during Phase 6 (Due Diligence).
+
+Examples:
+
+
+
+Buyers discover hidden risks  
+
+Buyers retrade price  
+
+Founder loses confidence  
+
+Negotiations collapse
+
+
+
+---
+
+
+
+\# Risk Debt Accumulation
+
+
+
+Risk Debt increases when:
+
+
+
+Workstream quality is low  
+
+Player skips key tasks  
+
+Player accelerates process prematurely
+
+
+
+Example:
+
+
+
+Pitching without proper qualification.
+
+
+
+---
+
+
+
+\# Risk Debt Resolution
+
+
+
+Risk Debt can be reduced by:
+
+
+
+Additional analysis  
+
+Relationship management  
+
+Improved documentation
+
+
+
+However, late mitigation is often costly.
+
+
+
+---
+
+
+
+\# Buyer Competition Model
+
+
+
+Buyer competition is one of the most important drivers of deal outcomes.
+
+
+
+Competition depends on:
+
+
+
+Buyer Landscape workstream  
+
+Marketing effectiveness  
+
+Deal attractiveness  
+
+Market sentiment
+
+
+
+---
+
+
+
+\## Competition Effects
+
+
+
+High competition:
+
+
+
+\- increases valuation
+
+\- improves deal certainty
+
+
+
+Low competition:
+
+
+
+\- reduces offers
+
+\- increases negotiation risk
+
+
+
+---
+
+
+
+\# Valuation Model
+
+
+
+Each deal has a \*\*valuation baseline\*\*.
+
+
+
+Baseline depends on:
+
+
+
+Revenue  
+
+EBITDA  
+
+Growth  
+
+Sector multiples
+
+
+
+---
+
+
+
+\## Valuation Adjustments
+
+
+
+Valuation is adjusted by:
+
+
+
+Buyer competition  
+
+Market conditions  
+
+Perceived risk  
+
+Quality of equity story
+
+
+
+---
+
+
+
+\## Example
+
+
+
+Baseline EV:
+
+
+
+€40M
+
+
+
+Adjustments:
+
+
+
+Competition bonus +10%  
+
+Risk discount −5%  
+
+Market sentiment +3%
+
+
+
+Final EV:
+
+
+
+€42.8M
+
+
+
+---
+
+
+
+\# Offer Generation
+
+During the offer phase, buyers generate bids. The NBO multiple depends on a mathematical integration of previous phases:
+
+CompetitionFactor = 1 + 0.05 × (ActiveBidders − 1)
+PreparationFactor = 1 + (PreparationQuality − 50) / 200
+InfoFactor = 1 + (InformationConfidence − 50) / 250
+MarketFactor = 1 + (MarketTemperature − 50) / 150
+ExpectationAnchorFactor = 1 + (ExpectationAnchor − BaselineMultiple) / (BaselineMultiple × 4)
+
+ExpectedMultiple = 
+BaselineMultiple ×  
+CompetitionFactor ×  
+PreparationFactor ×  
+InfoFactor ×  
+MarketFactor ×  
+ExpectationAnchorFactor
+
+Each buyer generates its own NBO:
+OfferMultiple = ExpectedMultiple × BuyerBias × RandomNoise
+
+BuyerBias depends on buyer type:
+- strategic buyer
+- private equity buyer
+- opportunistic buyer
+
+RandomNoise represents controlled variance.
+
+---
+
+
+
+\# Offer Distribution
+
+
+
+Offers are generated within a range.
+
+
+
+Example:
+
+
+
+Low competition:
+
+
+
+€32M – €38M
+
+
+
+High competition:
+
+
+
+€38M – €48M
+
+
+
+---
+
+
+
+\# Deal Failure Conditions
+
+
+
+Deals may fail for multiple reasons.
+
+
+
+Examples:
+
+
+
+Founder rejects offers  
+
+Buyers withdraw during diligence  
+
+Legal risks discovered  
+
+Negotiations collapse
+
+
+
+Failures often result from \*\*multiple small issues interacting\*\*.
+
+
+
+---
+
+
+
+\# Outcome Resolution
+
+
+
+At each phase, the engine evaluates:
+
+
+
+1\. Workstream state
+
+2\. Risk Debt
+
+3\. Market conditions
+
+4\. Random variance
+
+
+
+These inputs determine whether the deal:
+
+
+
+progresses  
+
+stalls  
+
+fails
+
+
+
+---
+
+
+
+\# Failure Cascades
+
+
+
+Some failures occur gradually.
+
+
+
+Example:
+
+
+
+Weak financial understanding  
+
+↓
+
+
+
+Buyer discovers issues in diligence  
+
+↓
+
+
+
+Buyer retrades price  
+
+↓
+
+
+
+Founder refuses retrade  
+
+↓
+
+
+
+Deal collapses
+
+
+
+---
+
+
+
+\# Success Conditions
+
+
+
+Successful deals require:
+
+
+
+Strong workstream progress  
+
+High workstream quality  
+
+Low Risk Debt  
+
+Healthy buyer competition  
+
+Positive market conditions
+
+
+
+---
+
+
+
+\# Player Feedback
+
+
+
+The game should communicate outcomes through:
+
+
+
+buyer reactions  
+
+founder communications  
+
+market signals
+
+
+
+Players should infer the causes of success or failure.
+
+
+
+---
+
+
+
+\# Data Structure (Conceptual)
+
+
+
+Example representation.
+
+
+
+
+
+DealOutcomeModel {
+
+expected\_value
+
+variance
+
+
+
+workstream\_inputs
+
+market\_inputs
+
+behavioral\_inputs
+
+
+
+risk\_debt
+
+
+
+competition\_level
+
+
+
+}
+
+
+
+
+
+---
+
+
+
+\# Design Principles
+
+
+
+The outcome system should:
+
+
+
+reward disciplined execution  
+
+penalize shortcuts  
+
+reflect real M\&A dynamics  
+
+maintain uncertainty
+
+
+
+The player should feel that:
+
+
+
+good preparation increases probability of success  
+
+but certainty is never guaranteed.
+
+
+
+---
+
+
+
+\# Next Design Step
+
+
+
+The next step is defining the \*\*Phase Architecture\*\*, detailing:
+
+
+
+\- micro-phases within each stage
+
+\- phase gates
+
+\- key decisions
+
+\- task libraries for each phase
+
+
+
+starting with:
+
+
+
+Phase 0 — Deal Origination
+
+```
+```diff:06_MA_Game_Phase_Architecture.md
+\# M\&A Dealmaker — Phase Architecture Specification
+
+\## Compatible with HTML, CSS and Vanilla JavaScript
+
+
+
+\## Purpose
+
+
+
+This document defines the \*\*Phase Architecture\*\* of the M\&A Dealmaker simulation.
+
+
+
+Its purpose is to translate the real-world sell-side M\&A process into a structure that is:
+
+
+
+\- operationally realistic
+
+\- narratively rich
+
+\- compatible with the simulation engine
+
+\- simple enough to implement in \*\*HTML, CSS and vanilla JavaScript\*\*
+
+
+
+This document assumes the game is built without frameworks.
+
+
+
+Therefore, the phase system must be:
+
+
+
+\- modular
+
+\- data-driven
+
+\- easy to render from JSON-like objects
+
+\- manageable with simple state objects and procedural update functions
+
+
+
+---
+
+
+
+\# Design Principle
+
+
+
+The game should not model each phase as a fixed linear sequence.
+
+
+
+Instead, each phase is represented by:
+
+
+
+\- a set of \*\*active workstreams\*\*
+
+\- a set of \*\*available tasks\*\*
+
+\- a set of \*\*phase-specific events\*\*
+
+\- a set of \*\*gates\*\*
+
+\- a set of \*\*failure conditions\*\*
+
+
+
+Each phase is therefore a \*\*state container\*\* with its own logic.
+
+
+
+This is especially important for vanilla JavaScript implementation, because it allows the game to operate through:
+
+
+
+\- one central state object
+
+\- phase configuration objects
+
+\- reusable rendering functions
+
+
+
+---
+
+
+
+\# High-Level Phase Model
+
+
+
+Each deal moves across 10 macro phases:
+
+
+
+0\. Deal Origination  
+
+1\. Pitching / Mandate Acquisition  
+
+2\. Preparation  
+
+3\. Marketing / Outreach  
+
+4\. Q\&A / Data Room  
+
+5\. First Round Offers  
+
+6\. Management Presentations  
+
+7\. Due Diligence  
+
+8\. SPA Negotiation  
+
+9\. Signing \& Closing
+
+
+
+Each phase has:
+
+
+
+\- objectives
+
+\- workstreams
+
+\- gates
+
+\- risks
+
+\- tasks
+
+\- event pools
+
+
+
+---
+
+
+
+\# Recommended Vanilla JS Data Model
+
+
+
+Each phase should be defined as a plain object.
+
+
+
+Example structure:
+
+
+
+```js
+
+const phaseDefinition = {
+
+&nbsp; id: 0,
+
+&nbsp; name: "Deal Origination",
+
+&nbsp; objectives: \[],
+
+&nbsp; workstreams: \[],
+
+&nbsp; gates: \[],
+
+&nbsp; tasks: \[],
+
+&nbsp; events: \[],
+
+&nbsp; failConditions: \[]
+
+};
+
+````
+
+
+
+This should be kept in static config files or constant objects.
+
+
+
+The game engine should read from these definitions and update the main game state.
+
+
+
+---
+
+
+
+\# Core Rules for Phase Design
+
+
+
+\## 1. Phases are not timelines
+
+
+
+A phase is not a list of steps.
+
+
+
+A phase is a \*\*bundle of parallel progress systems\*\*.
+
+
+
+This is important both for realism and for implementation simplicity.
+
+
+
+---
+
+
+
+\## 2. Progress is not enough
+
+
+
+Each workstream must track:
+
+
+
+\* progress
+
+\* quality
+
+
+
+Because many M\&A problems arise not from lack of activity, but from low-quality execution.
+
+
+
+---
+
+
+
+\## 3. Early phases must be lightweight
+
+
+
+For vanilla JS implementation, early phases should avoid too many micro-systems at once.
+
+
+
+The player should understand:
+
+
+
+\* what the deal is
+
+\* what needs to happen
+
+\* what resources are available
+
+\* what might go wrong
+
+
+
+without facing overwhelming UI complexity.
+
+
+
+---
+
+
+
+\## 4. Later phases can become denser
+
+
+
+Complexity should increase as the deal advances.
+
+
+
+This mirrors real M\&A and makes the game easier to learn.
+
+
+
+---
+
+
+
+\# Universal Phase Structure
+
+
+
+Each phase should be designed using the following template.
+
+
+
+\## Phase Definition Template
+
+
+
+\### 1. Phase Description
+
+
+
+What this phase represents operationally.
+
+
+
+\### 2. Objectives
+
+
+
+What must be achieved to move forward.
+
+
+
+\### 3. Active Workstreams
+
+
+
+Which dimensions of progress matter in this phase.
+
+
+
+\### 4. Dependencies
+
+
+
+Hard and soft dependencies between workstreams.
+
+
+
+\### 5. Gates
+
+
+
+Thresholds required to advance.
+
+
+
+\### 6. Available Tasks
+
+
+
+Tasks the player can trigger.
+
+
+
+\### 7. Typical Events
+
+
+
+Narrative events likely to occur in this phase.
+
+
+
+\### 8. Key Decisions
+
+
+
+Strategic decisions that affect future outcomes.
+
+
+
+\### 9. Failure Conditions
+
+
+
+How the deal can stall or die.
+
+
+
+\### 10. UI Notes
+
+
+
+How this phase should be represented in vanilla HTML/CSS/JS.
+
+
+
+---
+
+
+
+\# Phase 0 — Deal Origination
+
+
+
+\## 1. Description
+
+
+
+Deal Origination is the phase in which the advisory firm identifies, qualifies and develops a potential sell-side opportunity before a formal mandate exists.
+
+
+
+At this stage:
+
+
+
+\* the company is not yet a client
+
+\* access is partial
+
+\* information is incomplete
+
+\* timing is uncertain
+
+\* competing advisors may exist
+
+
+
+The purpose of the phase is to transform a raw lead into a \*\*qualified pitch opportunity\*\*.
+
+
+
+---
+
+
+
+\## 2. Objectives
+
+
+
+Main objectives:
+
+
+
+\* understand the target sufficiently
+
+\* establish founder access
+
+\* assess whether the opportunity is worth pursuing
+
+\* frame an initial valuation view
+
+\* manage confidentiality
+
+\* become ready to enter Pitching
+
+
+
+---
+
+
+
+\## 3. Active Workstreams
+
+
+
+Recommended workstreams:
+
+
+
+\### Target Intelligence
+
+
+
+How well the advisory firm understands the company.
+
+
+
+\### Relationship Development
+
+
+
+How strong access and trust are with the founder or decision-maker.
+
+
+
+\### Qualification
+
+
+
+How clearly the opportunity has been assessed in terms of fit, timing, and probability of mandate conversion.
+
+
+
+\### Valuation Framing
+
+
+
+How robust the initial view on valuation and value drivers is.
+
+
+
+\### Confidentiality \& Conflicts
+
+
+
+How well confidentiality is being preserved and whether any conflict issues exist.
+
+
+
+\### Pitch Readiness
+
+
+
+How prepared the firm is to move into a formal pitch process.
+
+
+
+---
+
+
+
+\## 4. Dependencies
+
+
+
+\### Hard Dependencies
+
+
+
+\* Pitch Readiness cannot advance meaningfully without Qualification progress.
+
+\* Formal pitch cannot start if Confidentiality \& Conflicts is below minimum threshold.
+
+\* Valuation Framing requires minimum Target Intelligence.
+
+
+
+\### Soft Dependencies
+
+
+
+\* Weak Relationship Development reduces founder responsiveness.
+
+\* Weak Qualification increases Risk Debt.
+
+\* Weak Confidentiality control increases rumor probability.
+
+
+
+---
+
+
+
+\## 5. Gates
+
+
+
+Suggested gate for moving to Phase 1:
+
+
+
+\* Target Intelligence ≥ 40
+
+\* Relationship Development ≥ 60
+
+\* Qualification ≥ 50
+
+\* Valuation Framing ≥ 35
+
+\* Confidentiality \& Conflicts ≥ 30
+
+\* Pitch Readiness ≥ 40
+
+
+
+These values should be configurable in plain objects.
+
+
+
+---
+
+
+
+\## 6. Available Tasks
+
+
+
+Examples:
+
+
+
+\* Founder Research
+
+\* Sector Mapping
+
+\* Prepare Founder Meeting
+
+\* Founder Intro Call
+
+\* Qualification Analysis
+
+\* Conflict Check
+
+\* Preliminary Valuation Analysis
+
+\* Buyer Landscape Sketch
+
+\* Internal Go / No-Go Review
+
+
+
+Tasks should be stored as data objects and filtered by phase.
+
+
+
+---
+
+
+
+\## 7. Typical Events
+
+
+
+Examples:
+
+
+
+\* Founder replies to intro email
+
+\* Competing advisor appears
+
+\* Market rumor emerges
+
+\* Founder asks for valuation indication
+
+\* Sector news affects attractiveness
+
+\* Internal referral arrives
+
+\* Founder invites CFO to next call
+
+
+
+---
+
+
+
+\## 8. Key Decisions
+
+
+
+Examples:
+
+
+
+\* pursue or drop the lead
+
+\* aggressive vs conservative valuation framing
+
+\* broad relationship approach vs discreet approach
+
+\* invest more internal time vs outsource research
+
+\* accelerate toward pitch vs deepen qualification
+
+
+
+---
+
+
+
+\## 9. Failure Conditions
+
+
+
+Examples:
+
+
+
+\* founder disengages
+
+\* competing advisor wins access
+
+\* conflict issue kills opportunity
+
+\* confidentiality leak damages process
+
+\* opportunity timing disappears
+
+\* team cannot support pursuit
+
+
+
+---
+
+
+
+\## 10. UI Notes
+
+
+
+Vanilla implementation suggestion:
+
+
+
+\* left panel: inbox / events
+
+\* center panel: opportunity card + workstreams
+
+\* right panel: available tasks + resource allocation
+
+
+
+All rendered from state.
+
+
+
+No complex drag-and-drop required.
+
+
+
+Buttons and simple forms are sufficient.
+
+
+
+---
+
+
+
+\# Phase 1 — Pitching / Mandate Acquisition
+
+
+
+\## 1. Description
+
+
+
+This phase begins when the opportunity is sufficiently qualified to justify a formal pitch for advisory mandate.
+
+
+
+The objective is to convince the founder or shareholders that the firm is the right advisor.
+
+
+
+This phase is not just about presentation quality.
+
+
+
+It also depends on:
+
+
+
+\* trust
+
+\* perceived sector expertise
+
+\* valuation credibility
+
+\* execution confidence
+
+\* chemistry with management
+
+
+
+---
+
+
+
+\## 2. Objectives
+
+
+
+\* prepare a compelling pitch
+
+\* align internal view on deal strategy
+
+\* build trust with client stakeholders
+
+\* define proposed process structure
+
+\* win the mandate
+
+
+
+---
+
+
+
+\## 3. Active Workstreams
+
+
+
+\### Pitch Preparation
+
+
+
+Quality and readiness of pitch materials and arguments.
+
+
+
+\### Client Trust Building
+
+
+
+Confidence built with founder and key stakeholders.
+
+
+
+\### Deal Strategy Definition
+
+
+
+Clarity of approach, buyer universe logic, process design, and positioning.
+
+
+
+\### Internal Alignment
+
+
+
+Readiness of the advisory team to execute the process if mandate is won.
+
+
+
+\### Mandate Conversion
+
+
+
+Likelihood of mandate signature.
+
+
+
+---
+
+
+
+\## 4. Dependencies
+
+
+
+\### Hard Dependencies
+
+
+
+\* Pitch meeting cannot occur without minimum Pitch Preparation.
+
+\* Mandate signature cannot happen without minimum Client Trust Building.
+
+\* Deal Strategy Definition requires sufficient Origination data.
+
+
+
+\### Soft Dependencies
+
+
+
+\* weak valuation framing reduces credibility
+
+\* weak chemistry lowers mandate win rate
+
+\* internal overpromising increases future Risk Debt
+
+
+
+---
+
+
+
+\## 5. Gates
+
+
+
+Suggested gate for mandate win resolution:
+
+
+
+\* Pitch Preparation ≥ 60
+
+\* Client Trust Building ≥ 60
+
+\* Deal Strategy Definition ≥ 50
+
+\* Internal Alignment ≥ 40
+
+
+
+A hidden probability model then resolves whether mandate is won.
+
+
+
+---
+
+
+
+\## 6. Available Tasks
+
+
+
+Examples:
+
+
+
+\* Draft pitch deck
+
+\* Benchmark sector transactions
+
+\* Build valuation argument
+
+\* Prepare process roadmap
+
+\* Prepare founder objections
+
+\* Conduct internal rehearsal
+
+\* Refine buyer universe
+
+\* CFO alignment meeting
+
+\* Mandate terms discussion
+
+
+
+---
+
+
+
+\## 7. Typical Events
+
+
+
+Examples:
+
+
+
+\* founder asks for previous credentials
+
+\* rival advisor submits pitch
+
+\* founder questions fee proposal
+
+\* management wants more clarity on timeline
+
+\* founder asks for valuation range too early
+
+\* CFO challenges assumptions
+
+
+
+---
+
+
+
+\## 8. Key Decisions
+
+
+
+Examples:
+
+
+
+\* pitch premium positioning vs pragmatic positioning
+
+\* aggressive valuation promise vs disciplined framing
+
+\* generalist approach vs specialist angle
+
+\* low fee to win mandate vs defend pricing
+
+\* broad process proposal vs tightly curated process
+
+
+
+---
+
+
+
+\## 9. Failure Conditions
+
+
+
+Examples:
+
+
+
+\* mandate lost to competitor
+
+\* founder distrusts process
+
+\* valuation expectations become misaligned
+
+\* fee discussion breaks trust
+
+\* internal pitch quality too weak
+
+
+
+---
+
+
+
+\## 10. UI Notes
+
+
+
+The phase can use:
+
+
+
+\* a pitch readiness dashboard
+
+\* trust meter
+
+\* key stakeholder cards
+
+\* mandate probability indicator
+
+
+
+Simple bar UI is sufficient.
+
+
+
+No animation dependency required.
+
+
+
+---
+
+
+
+\# Phase 2 — Preparation
+
+
+
+\## 1. Description
+
+
+
+Once the mandate is signed, the deal enters Preparation.
+
+
+
+This is the phase in which the advisory team builds the foundations of the process.
+
+
+
+The quality of this phase strongly affects later outcomes.
+
+
+
+This is where weak discipline quietly creates future disaster.
+
+
+
+---
+
+
+
+\## 2. Objectives
+
+
+
+\* build high-quality deal materials
+
+\* gather financial and operational information
+
+\* prepare equity story
+
+\* organize process strategy
+
+\* align management
+
+
+
+---
+
+
+
+\## 3. Active Workstreams
+
+
+
+\### Information Collection
+
+
+
+Depth and completeness of internal company information.
+
+
+
+\### Financial Analysis
+
+
+
+Quality of financial understanding and normalization.
+
+
+
+\### Equity Story Development
+
+
+
+Strength of the narrative that will support buyer interest.
+
+
+
+\### Documentation Quality
+
+
+
+Robustness of materials produced.
+
+
+
+\### Management Alignment
+
+
+
+How aligned management is with the process and messaging.
+
+
+
+\### Process Structuring
+
+
+
+Readiness of timeline, buyer list logic, and execution plan.
+
+
+
+---
+
+
+
+\## 4. Dependencies
+
+
+
+\### Hard Dependencies
+
+
+
+\* teaser / IM drafting requires sufficient Information Collection
+
+\* buyer strategy requires Process Structuring progress
+
+\* strong equity story requires Financial Analysis and Management Alignment
+
+
+
+\### Soft Dependencies
+
+
+
+\* weak management alignment creates inconsistency later
+
+\* weak documentation increases Q\&A pain
+
+\* weak analysis creates DD retrades
+
+
+
+---
+
+
+
+\## 5. Gates
+
+
+
+Suggested gate for entering Marketing:
+
+
+
+\* Information Collection ≥ 65
+
+\* Financial Analysis ≥ 60
+
+\* Equity Story Development ≥ 60
+
+\* Documentation Quality ≥ 55
+
+\* Management Alignment ≥ 50
+
+\* Process Structuring ≥ 60
+
+
+
+---
+
+
+
+\## 6. Available Tasks
+
+
+
+Examples:
+
+
+
+\* management interviews
+
+\* financial normalization
+
+\* KPI analysis
+
+\* draft teaser
+
+\* draft information memorandum
+
+\* buyer list design
+
+\* equity story workshop
+
+\* management coaching
+
+\* data room architecture setup
+
+
+
+---
+
+
+
+\## 7. Typical Events
+
+
+
+Examples:
+
+
+
+\* management disagrees on positioning
+
+\* missing numbers delay materials
+
+\* founder pushes for inflated story
+
+\* analyst finds issue in revenue quality
+
+\* board asks to change process structure
+
+
+
+---
+
+
+
+\## 8. Key Decisions
+
+
+
+Examples:
+
+
+
+\* how ambitious the equity story should be
+
+\* whether to exclude certain buyers
+
+\* how much time to invest in material quality
+
+\* whether to disclose known weaknesses early
+
+\* whether to accelerate preparation to catch market window
+
+
+
+---
+
+
+
+\## 9. Failure Conditions
+
+
+
+Examples:
+
+
+
+\* mandate remains active but process stalls
+
+\* management misalignment damages preparation
+
+\* low-quality materials weaken launch
+
+\* hidden issues already build significant Risk Debt
+
+
+
+---
+
+
+
+\## 10. UI Notes
+
+
+
+Use:
+
+
+
+\* workstream bars
+
+\* material preparation checklist
+
+\* management alignment meter
+
+\* timeline readiness indicator
+
+
+
+---
+
+
+
+\# Phase 3 — Marketing / Outreach
+
+
+
+\## 1. Description
+
+
+
+The deal is launched to selected buyers.
+
+
+
+This is the phase in which market engagement begins and buyer interest is tested.
+
+
+
+A good process widens competitive tension without losing control.
+
+
+
+---
+
+
+
+\## 2. Objectives
+
+
+
+\* reach relevant buyers
+
+\* generate interest
+
+\* maintain confidentiality
+
+\* build process momentum
+
+\* maximize participation quality
+
+
+
+---
+
+
+
+\## 3. Active Workstreams
+
+
+
+\### Buyer Landscape
+
+
+
+Quality and coverage of targeted buyers.
+
+
+
+\### Outreach Execution
+
+
+
+How effectively the process is being launched.
+
+
+
+\### Buyer Engagement
+
+
+
+Depth of buyer participation and responsiveness.
+
+
+
+\### Confidentiality Control
+
+
+
+Protection of process secrecy.
+
+
+
+\### Deal Momentum
+
+
+
+Perception that the process is moving and worth prioritizing.
+
+
+
+---
+
+
+
+\## 4. Dependencies
+
+
+
+\### Hard Dependencies
+
+
+
+\* outreach requires materials from Preparation
+
+\* buyer engagement requires sufficient buyer targeting quality
+
+
+
+\### Soft Dependencies
+
+
+
+\* poor confidentiality control creates rumors
+
+\* weak momentum reduces bidder motivation
+
+\* poor buyer selection reduces offer quality
+
+
+
+---
+
+
+
+\## 5. Gates
+
+
+
+Suggested gate for entering Q\&A:
+
+
+
+\* Buyer Landscape ≥ 60
+
+\* Outreach Execution ≥ 60
+
+\* Buyer Engagement ≥ 50
+
+\* Confidentiality Control ≥ 50
+
+\* Deal Momentum ≥ 50
+
+
+
+---
+
+
+
+\## 6. Available Tasks
+
+
+
+Examples:
+
+
+
+\* send teaser
+
+\* manage NDAs
+
+\* buyer prioritization
+
+\* follow-up calls
+
+\* buyer FAQs
+
+\* confidentiality monitoring
+
+\* expand buyer pool
+
+\* remove weak buyers
+
+
+
+---
+
+
+
+\## 7. Typical Events
+
+
+
+Examples:
+
+
+
+\* buyer requests fast-track access
+
+\* rumor reaches market
+
+\* unexpected strategic buyer shows interest
+
+\* weak buyers go silent
+
+\* founder worries process is too visible
+
+
+
+---
+
+
+
+\## 8. Key Decisions
+
+
+
+Examples:
+
+
+
+\* broad vs selective outreach
+
+\* keep process slow and controlled vs accelerate
+
+\* admit extra bidder late vs preserve discipline
+
+\* disclose more to serious buyer vs keep level field
+
+
+
+---
+
+
+
+\## 9. Failure Conditions
+
+
+
+Examples:
+
+
+
+\* insufficient buyer interest
+
+\* leak damages founder confidence
+
+\* wrong buyer mix leads to weak participation
+
+\* process loses momentum
+
+
+
+---
+
+
+
+\## 10. UI Notes
+
+
+
+Good vanilla UI components:
+
+
+
+\* buyer list cards
+
+\* buyer status tags
+
+\* engagement score bar
+
+\* confidentiality alert indicators
+
+
+
+---
+
+
+
+\# Phase 4 — Q\&A / Data Room
+
+
+
+\## 1. Description
+
+
+
+Interested buyers begin requesting information and accessing the data room.
+
+
+
+This phase tests the quality of preparation and the advisory team’s ability to maintain credibility while managing asymmetric information.
+
+
+
+---
+
+
+
+\## 2. Objectives
+
+
+
+\* answer buyer questions efficiently
+
+\* maintain consistency across bidders
+
+\* preserve trust and process control
+
+\* surface issues early enough to manage them
+
+
+
+---
+
+
+
+\## 3. Active Workstreams
+
+
+
+\### Data Room Readiness
+
+
+
+Completeness and structure of shared information.
+
+
+
+\### Q\&A Responsiveness
+
+
+
+Speed and quality of responses.
+
+
+
+\### Information Consistency
+
+
+
+Whether answers and disclosures remain coherent.
+
+
+
+\### Buyer Trust
+
+
+
+Confidence in the credibility of the process.
+
+
+
+\### Issue Containment
+
+
+
+Ability to manage sensitive findings before they escalate.
+
+
+
+---
+
+
+
+\## 4. Dependencies
+
+
+
+\### Hard Dependencies
+
+
+
+\* Q\&A responsiveness depends on data room readiness
+
+\* buyer trust depends on information consistency
+
+
+
+\### Soft Dependencies
+
+
+
+\* low preparation quality makes Q\&A painful
+
+\* delayed answers reduce bidder motivation
+
+\* inconsistent disclosures increase DD risk later
+
+
+
+---
+
+
+
+\## 5. Gates
+
+
+
+Suggested gate for entering First Round Offers:
+
+
+
+\* Data Room Readiness ≥ 65
+
+\* Q\&A Responsiveness ≥ 60
+
+\* Information Consistency ≥ 60
+
+\* Buyer Trust ≥ 55
+
+\* Issue Containment ≥ 50
+
+
+
+---
+
+
+
+\## 6. Available Tasks
+
+
+
+Examples:
+
+
+
+\* upload documents
+
+\* draft Q\&A responses
+
+\* align management answers
+
+\* prioritize bidder questions
+
+\* run issue review
+
+\* create clarification notes
+
+
+
+---
+
+
+
+\## 7. Typical Events
+
+
+
+Examples:
+
+
+
+\* buyer identifies discrepancy
+
+\* CFO delays response
+
+\* sensitive legal document missing
+
+\* one bidder requests extra access
+
+\* management gives inconsistent answer
+
+
+
+---
+
+
+
+\## 8. Key Decisions
+
+
+
+Examples:
+
+
+
+\* answer fast vs answer perfectly
+
+\* disclose risk early vs defer
+
+\* provide equal treatment vs favor stronger bidder
+
+\* keep buyer in despite noise vs de-prioritize
+
+
+
+---
+
+
+
+\## 9. Failure Conditions
+
+
+
+Examples:
+
+
+
+\* bidder confidence drops sharply
+
+\* process becomes chaotic
+
+\* management loses patience
+
+\* material inconsistency creates major trust problem
+
+
+
+---
+
+
+
+\## 10. UI Notes
+
+
+
+Simple tables and cards work well:
+
+
+
+\* bidder question queue
+
+\* response status
+
+\* trust indicators
+
+\* outstanding issue tracker
+
+
+
+---
+
+
+
+\# Phase 5 — First Round Offers
+
+
+
+\## 1. Description
+
+
+
+Buyers submit indicative bids.
+
+
+
+The purpose of this phase is not only to collect numbers, but to assess seriousness, fit, and competitive dynamics.
+
+
+
+---
+
+
+
+\## 2. Objectives
+
+
+
+\* maximize participation
+
+\* secure credible offers
+
+\* compare bidders effectively
+
+\* preserve negotiating leverage
+
+
+
+---
+
+
+
+\## 3. Active Workstreams
+
+
+
+\### Offer Participation
+
+
+
+How many relevant bidders submit offers.
+
+
+
+\### Offer Quality
+
+
+
+Strength and credibility of bids.
+
+
+
+\### Competitive Tension
+
+
+
+Degree of bidder rivalry.
+
+
+
+\### Bidder Fit
+
+
+
+Strategic and execution fit of each bidder.
+
+
+
+\### Process Control
+
+
+
+Ability to keep timeline and comparisons disciplined.
+
+
+
+---
+
+
+
+\## 4. Dependencies
+
+
+
+\### Hard Dependencies
+
+
+
+\* offer quality depends on earlier buyer engagement and trust
+
+
+
+\### Soft Dependencies
+
+
+
+\* weak competition lowers valuation
+
+\* weak process control reduces leverage
+
+\* wrong bidder mix distorts results
+
+
+
+---
+
+
+
+\## 5. Gates
+
+
+
+Suggested gate for entering Management Presentations:
+
+
+
+\* Offer Participation ≥ 50
+
+\* Offer Quality ≥ 55
+
+\* Competitive Tension ≥ 50
+
+\* Process Control ≥ 55
+
+
+
+Also requires at least one viable bidder.
+
+
+
+---
+
+
+
+\## 6. Available Tasks
+
+
+
+Examples:
+
+
+
+\* manage bidder clarifications
+
+\* compare bids
+
+\* shortlist bidders
+
+\* request improved indicative offers
+
+\* build bidder comparison matrix
+
+\* advise founder on bidder selection
+
+
+
+---
+
+
+
+\## 7. Typical Events
+
+
+
+Examples:
+
+
+
+\* one bidder submits unexpectedly high bid
+
+\* strategic bidder bids low but with strong fit
+
+\* PE bidder requests exclusivity signal
+
+\* founder dislikes strongest bidder
+
+\* offers come below expectations
+
+
+
+---
+
+
+
+\## 8. Key Decisions
+
+
+
+Examples:
+
+
+
+\* optimize for price vs certainty
+
+\* keep more bidders alive vs narrow aggressively
+
+\* select strategic buyer vs PE
+
+\* signal preference vs preserve ambiguity
+
+
+
+---
+
+
+
+\## 9. Failure Conditions
+
+
+
+Examples:
+
+
+
+\* no credible bids
+
+\* founder rejects market reality
+
+\* bidders sense weak process and soften stance
+
+\* competition collapses
+
+
+
+---
+
+
+
+\## 10. UI Notes
+
+
+
+Vanilla-friendly components:
+
+
+
+\* offer table
+
+\* bidder comparison cards
+
+\* color-coded fit / price / certainty indicators
+
+
+
+---
+
+
+
+\# Phase 6 — Management Presentations
+
+
+
+\## 1. Description
+
+
+
+Management meets shortlisted bidders.
+
+
+
+This phase tests chemistry, strategic logic, confidence and credibility.
+
+
+
+Often, a technically good process can wobble here because humans remain gloriously inconvenient.
+
+
+
+---
+
+
+
+\## 2. Objectives
+
+
+
+\* present management strongly
+
+\* reinforce buyer conviction
+
+\* reduce execution concerns
+
+\* improve offer confidence
+
+
+
+---
+
+
+
+\## 3. Active Workstreams
+
+
+
+\### Management Performance
+
+
+
+Quality of presentation and interaction.
+
+
+
+\### Strategic Alignment
+
+
+
+How strongly buyer and target logic connect.
+
+
+
+\### Buyer Confidence
+
+
+
+Confidence in business, management and execution.
+
+
+
+\### Narrative Consistency
+
+
+
+Consistency between materials and live answers.
+
+
+
+\### Bidder Commitment
+
+
+
+Likelihood that bidder remains serious.
+
+
+
+---
+
+
+
+\## 4. Dependencies
+
+
+
+\### Hard Dependencies
+
+
+
+\* presentations require shortlist and management preparation
+
+
+
+\### Soft Dependencies
+
+
+
+\* weak chemistry reduces commitment
+
+\* inconsistent messaging increases DD intensity later
+
+\* poor presentation quality weakens competitive momentum
+
+
+
+---
+
+
+
+\## 5. Gates
+
+
+
+Suggested gate for entering Due Diligence:
+
+
+
+\* Management Performance ≥ 60
+
+\* Strategic Alignment ≥ 55
+
+\* Buyer Confidence ≥ 60
+
+\* Narrative Consistency ≥ 60
+
+\* Bidder Commitment ≥ 55
+
+
+
+---
+
+
+
+\## 6. Available Tasks
+
+
+
+Examples:
+
+
+
+\* presentation coaching
+
+\* Q\&A rehearsal
+
+\* management script alignment
+
+\* bidder briefing prep
+
+\* follow-up call planning
+
+
+
+---
+
+
+
+\## 7. Typical Events
+
+
+
+Examples:
+
+
+
+\* founder dominates meeting badly
+
+\* CFO answers brilliantly
+
+\* bidder CEO connects well with management
+
+\* buyer raises concern on product scalability
+
+\* management contradicts deck narrative
+
+
+
+---
+
+
+
+\## 8. Key Decisions
+
+
+
+Examples:
+
+
+
+\* scripted vs natural management approach
+
+\* reveal more operational detail vs stay high-level
+
+\* prioritize chemistry vs control
+
+\* keep multiple bidders close vs favor strongest one
+
+
+
+---
+
+
+
+\## 9. Failure Conditions
+
+
+
+Examples:
+
+
+
+\* management underperforms
+
+\* key bidder loses confidence
+
+\* live answers reveal hidden weaknesses
+
+\* founder becomes emotionally attached to wrong bidder
+
+
+
+---
+
+
+
+\## 10. UI Notes
+
+
+
+Suggested UI:
+
+
+
+\* shortlisted bidder cards
+
+\* management readiness meters
+
+\* bidder confidence bars
+
+\* post-meeting reaction summary
+
+
+
+---
+
+
+
+\# Phase 7 — Due Diligence
+
+
+
+\## 1. Description
+
+
+
+Buyers investigate the business in depth.
+
+
+
+This is where preparation quality and Risk Debt are tested brutally.
+
+
+
+Weak early work often resurfaces here through red flags, retrades and lost confidence.
+
+
+
+---
+
+
+
+\## 2. Objectives
+
+
+
+\* sustain buyer confidence
+
+\* manage findings
+
+\* contain issues
+
+\* preserve price and certainty
+
+
+
+---
+
+
+
+\## 3. Active Workstreams
+
+
+
+\### Information Accuracy
+
+
+
+Reliability of the disclosed information.
+
+
+
+\### DD Responsiveness
+
+
+
+Ability to manage requests quickly and coherently.
+
+
+
+\### Risk Containment
+
+
+
+Ability to prevent issues from escalating.
+
+
+
+\### Buyer Confidence
+
+
+
+Strength of bidder conviction.
+
+
+
+\### Price Defense
+
+
+
+Ability to protect valuation against retrades.
+
+
+
+---
+
+
+
+\## 4. Dependencies
+
+
+
+\### Hard Dependencies
+
+
+
+\* DD responsiveness depends on process readiness and team capacity
+
+
+
+\### Soft Dependencies
+
+
+
+\* high Risk Debt weakens price defense
+
+\* poor accuracy damages confidence
+
+\* slow DD handling reduces certainty
+
+
+
+---
+
+
+
+\## 5. Gates
+
+
+
+Suggested gate for entering SPA Negotiation:
+
+
+
+\* Information Accuracy ≥ 70
+
+\* DD Responsiveness ≥ 65
+
+\* Risk Containment ≥ 60
+
+\* Buyer Confidence ≥ 60
+
+\* Price Defense ≥ 55
+
+
+
+At least one bidder must remain viable.
+
+
+
+---
+
+
+
+\## 6. Available Tasks
+
+
+
+Examples:
+
+
+
+\* DD request triage
+
+\* issue memo drafting
+
+\* management clarification sessions
+
+\* legal coordination
+
+\* price defense preparation
+
+\* bidder reassurance calls
+
+
+
+---
+
+
+
+\## 7. Typical Events
+
+
+
+Examples:
+
+
+
+\* accounting discrepancy found
+
+\* customer concentration concern escalates
+
+\* legal issue discovered
+
+\* bidder requests retrade
+
+\* bidder internal IC delays decision
+
+
+
+---
+
+
+
+\## 8. Key Decisions
+
+
+
+Examples:
+
+
+
+\* concede early vs fight price pressure
+
+\* disclose full issue context vs narrow response
+
+\* prioritize certainty vs valuation
+
+\* keep backup bidder alive vs focus on lead bidder
+
+
+
+---
+
+
+
+\## 9. Failure Conditions
+
+
+
+Examples:
+
+
+
+\* bidder walks away
+
+\* retrade becomes unacceptable
+
+\* founder loses confidence
+
+\* multiple issues accumulate beyond recovery
+
+
+
+---
+
+
+
+\## 10. UI Notes
+
+
+
+Suggested UI:
+
+
+
+\* DD issue tracker
+
+\* buyer confidence indicator
+
+\* retrade pressure meter
+
+\* outstanding request queue
+
+
+
+---
+
+
+
+\# Phase 8 — SPA Negotiation
+
+
+
+\## 1. Description
+
+
+
+Commercial alignment is largely done, but now legal and risk allocation become central.
+
+
+
+This phase decides whether the negotiated deal can actually be signed.
+
+
+
+---
+
+
+
+\## 2. Objectives
+
+
+
+\* maintain commercial deal integrity
+
+\* negotiate acceptable legal terms
+
+\* balance price, risk and certainty
+
+\* reach signable documentation
+
+
+
+---
+
+
+
+\## 3. Active Workstreams
+
+
+
+\### Negotiation Leverage
+
+
+
+Strength of the seller’s position.
+
+
+
+\### Legal Clarity
+
+
+
+How clearly deal terms and liabilities are framed.
+
+
+
+\### Deal Certainty
+
+
+
+Probability that negotiations conclude successfully.
+
+
+
+\### Seller Protection
+
+
+
+How well the client is protected from post-closing exposure.
+
+
+
+\### Buyer Commitment
+
+
+
+Likelihood that the bidder stays committed to signing.
+
+
+
+---
+
+
+
+\## 4. Dependencies
+
+
+
+\### Hard Dependencies
+
+
+
+\* SPA negotiation requires one active bidder and advanced DD completion
+
+
+
+\### Soft Dependencies
+
+
+
+\* weak leverage increases concessions
+
+\* poor legal clarity creates delays
+
+\* low buyer commitment increases signing risk
+
+
+
+---
+
+
+
+\## 5. Gates
+
+
+
+Suggested gate for entering Signing \& Closing:
+
+
+
+\* Negotiation Leverage ≥ 50
+
+\* Legal Clarity ≥ 65
+
+\* Deal Certainty ≥ 65
+
+\* Buyer Commitment ≥ 60
+
+
+
+---
+
+
+
+\## 6. Available Tasks
+
+
+
+Examples:
+
+
+
+\* negotiate SPA mark-up
+
+\* prepare fallback positions
+
+\* align seller red lines
+
+\* coordinate legal advisors
+
+\* manage bidder pressure
+
+\* preserve alternative option leverage
+
+
+
+---
+
+
+
+\## 7. Typical Events
+
+
+
+Examples:
+
+
+
+\* buyer pushes hard on warranties
+
+\* indemnity cap dispute emerges
+
+\* locked-box leakage issue appears
+
+\* legal language causes founder concern
+
+\* buyer threatens timing pressure
+
+
+
+---
+
+
+
+\## 8. Key Decisions
+
+
+
+Examples:
+
+
+
+\* defend economics vs defend legal protections
+
+\* escalate to founder now vs shield management
+
+\* concede on cap vs price vs earn-out mechanics
+
+\* preserve optionality with backup bidder vs go all-in
+
+
+
+---
+
+
+
+\## 9. Failure Conditions
+
+
+
+Examples:
+
+
+
+\* legal deadlock
+
+\* founder refuses final terms
+
+\* buyer commitment weakens
+
+\* cumulative concessions destroy attractiveness
+
+
+
+---
+
+
+
+\## 10. UI Notes
+
+
+
+Suggested UI:
+
+
+
+\* negotiation tracker
+
+\* clause pressure indicators
+
+\* seller red-line panel
+
+\* certainty meter
+
+
+
+---
+
+
+
+\# Phase 9 — Signing \& Closing
+
+
+
+\## 1. Description
+
+
+
+Final execution phase.
+
+
+
+Even here, deals can still fail due to approvals, logistics, financing, regulatory issues or last-minute confidence collapse.
+
+
+
+The universe enjoys irony.
+
+
+
+---
+
+
+
+\## 2. Objectives
+
+
+
+\* coordinate final steps
+
+\* manage approvals and conditions precedent
+
+\* preserve commitment until funds move
+
+\* complete transaction successfully
+
+
+
+---
+
+
+
+\## 3. Active Workstreams
+
+
+
+\### Execution Coordination
+
+
+
+Alignment of all closing steps.
+
+
+
+\### Closing Readiness
+
+
+
+Preparedness of documents, parties and approvals.
+
+
+
+\### Regulatory / CP Completion
+
+
+
+Progress on conditions precedent.
+
+
+
+\### Commitment Stability
+
+
+
+Risk that one party wobbles late.
+
+
+
+\### Completion Certainty
+
+
+
+Probability of successful close.
+
+
+
+---
+
+
+
+\## 4. Dependencies
+
+
+
+\### Hard Dependencies
+
+
+
+\* signing requires final documents
+
+\* closing requires CP completion
+
+
+
+\### Soft Dependencies
+
+
+
+\* low commitment stability raises late-failure risk
+
+\* poor coordination creates delay and fatigue
+
+
+
+---
+
+
+
+\## 5. Gates
+
+
+
+Successful deal close requires:
+
+
+
+\* Execution Coordination ≥ 70
+
+\* Closing Readiness ≥ 70
+
+\* Regulatory / CP Completion ≥ 65
+
+\* Commitment Stability ≥ 60
+
+\* Completion Certainty ≥ 70
+
+
+
+---
+
+
+
+\## 6. Available Tasks
+
+
+
+Examples:
+
+
+
+\* CP tracking
+
+\* closing checklist coordination
+
+\* financing follow-up
+
+\* regulatory submission management
+
+\* final stakeholder alignment
+
+\* signature logistics
+
+
+
+---
+
+
+
+\## 7. Typical Events
+
+
+
+Examples:
+
+
+
+\* lender delay
+
+\* regulatory request
+
+\* document correction needed
+
+\* founder nerves spike
+
+\* bidder asks for final operational update
+
+
+
+---
+
+
+
+\## 8. Key Decisions
+
+
+
+Examples:
+
+
+
+\* push for speed vs preserve accuracy
+
+\* escalate problem publicly vs solve quietly
+
+\* keep pressure on counterparty vs maintain calm
+
+\* accept minor delay vs take execution risk
+
+
+
+---
+
+
+
+\## 9. Failure Conditions
+
+
+
+Examples:
+
+
+
+\* CP not satisfied
+
+\* financing breaks
+
+\* signing delayed into collapse
+
+\* final confidence shock derails close
+
+
+
+---
+
+
+
+\## 10. UI Notes
+
+
+
+Suggested UI:
+
+
+
+\* closing checklist
+
+\* CP tracker
+
+\* readiness bars
+
+\* final close probability indicator
+
+
+
+---
+
+
+
+\# Vanilla JavaScript Implementation Notes
+
+
+
+\## 1. Keep phase definitions static
+
+
+
+Store all phase definitions in plain JS objects or JSON-like modules.
+
+
+
+Example:
+
+
+
+```js
+
+const PHASES = {
+
+&nbsp; 0: { ... },
+
+&nbsp; 1: { ... },
+
+&nbsp; 2: { ... }
+
+};
+
+```
+
+
+
+---
+
+
+
+\## 2. Separate config from state
+
+
+
+Do not mix:
+
+
+
+\* what a phase is
+
+\* the current state of a deal
+
+
+
+Use:
+
+
+
+\* `phaseDefinitions`
+
+\* `gameState`
+
+\* `dealState`
+
+
+
+---
+
+
+
+\## 3. Render from state only
+
+
+
+The UI should read the current phase and render:
+
+
+
+\* phase title
+
+\* active workstreams
+
+\* available tasks
+
+\* gates
+
+\* events
+
+
+
+Avoid hardcoding phase-specific HTML.
+
+
+
+---
+
+
+
+\## 4. Use reusable components
+
+
+
+Even in vanilla JS, create reusable render functions:
+
+
+
+\* `renderWorkstreamBars()`
+
+\* `renderTaskList()`
+
+\* `renderEvents()`
+
+\* `renderGateStatus()`
+
+
+
+This will prevent the codebase from turning into a spaghetti opera.
+
+
+
+---
+
+
+
+\## 5. Use plain arrays for phase logic
+
+
+
+Each deal state can contain:
+
+
+
+```js
+
+deal = {
+
+&nbsp; phaseId: 2,
+
+&nbsp; workstreams: {
+
+&nbsp;   informationCollection: { progress: 45, quality: 60 },
+
+&nbsp;   financialAnalysis: { progress: 30, quality: 55 }
+
+&nbsp; },
+
+&nbsp; activeTasks: \[],
+
+&nbsp; eventQueue: \[],
+
+&nbsp; riskDebt: 12
+
+};
+
+```
+
+
+
+This is enough to drive the whole system.
+
+
+
+---
+
+
+
+\# Next Step
+
+
+
+The next step should be to define the \*\*detailed phase-by-phase design\*\*, starting with:
+
+
+
+\*\*Phase 0 — Deal Origination\*\*
+
+
+
+and, for that phase, specify:
+
+
+
+\* tasks
+
+\* workstream effects
+
+\* event pool
+
+\* decision logic
+
+\* gate logic
+
+\* failure logic
+
+\* state representation in vanilla JavaScript
+
+
+
+That will turn this architecture from a framework into an implementable game system.
+
+
+
+```
+
+
+
+---
+
+
+
+Este é o documento-base. O passo lógico seguinte é mesmo o mais útil: pegar na \*\*Fase 0\*\* e transformá-la já em algo quase implementável em vanilla JS, com:
+
+
+
+\- objeto de config da fase,
+
+\- lista de tasks,
+
+\- efeitos em workstreams,
+
+\- eventos possíveis,
+
+\- condições de gate,
+
+\- e mock de `dealState`.
+
+
+
+Posso fazer já isso no próximo.
+
+```
+
+
+
+===
+\# M\&A Dealmaker — Phase Architecture Specification
+
+\## Compatible with HTML, CSS and Vanilla JavaScript
+
+
+
+\## Purpose
+
+
+
+This document defines the \*\*Phase Architecture\*\* of the M\&A Dealmaker simulation.
+
+
+
+Its purpose is to translate the real-world sell-side M\&A process into a structure that is:
+
+
+
+\- operationally realistic
+
+\- narratively rich
+
+\- compatible with the simulation engine
+
+\- simple enough to implement in \*\*HTML, CSS and vanilla JavaScript\*\*
+
+
+
+This document assumes the game is built without frameworks.
+
+
+
+Therefore, the phase system must be:
+
+
+
+\- modular
+
+\- data-driven
+
+\- easy to render from JSON-like objects
+
+\- manageable with simple state objects and procedural update functions
+
+
+
+---
+
+
+
+\# Design Principle
+
+
+
+The game should not model each phase as a fixed linear sequence.
+
+
+
+Instead, each phase is represented by:
+
+
+
+\- a set of \*\*active workstreams\*\*
+
+\- a set of \*\*available tasks\*\*
+
+\- a set of \*\*phase-specific events\*\*
+
+\- a set of \*\*gates\*\*
+
+\- a set of \*\*failure conditions\*\*
+
+
+
+Each phase is therefore a \*\*state container\*\* with its own logic.
+
+
+
+This is especially important for vanilla JavaScript implementation, because it allows the game to operate through:
+
+
+
+\- one central state object
+
+\- phase configuration objects
+
+\- reusable rendering functions
+
+
+
+---
+
+
+
+\# High-Level Phase Model
+
+
+
+Each deal moves across 10 macro phases:
+
+
+
+0. Deal Origination  
+1. Pitch / Mandate Acquisition  
+2. Preparation  
+3. Market Outreach  
+4. IM Distribution & Bidder Engagement  
+5. NBO Analysis, Short Listing & DD Entry  
+6. Due Diligence  
+7. BO / BAFO  
+8. SPA Negotiation  
+9. Signing  
+10. Closing
+
+
+
+Each phase has:
+
+
+
+\- objectives
+
+\- workstreams
+
+\- gates
+
+\- risks
+
+\- tasks
+
+\- event pools
+
+
+
+---
+
+
+
+\# Recommended Vanilla JS Data Model
+
+
+
+Each phase should be defined as a plain object.
+
+
+
+Example structure:
+
+
+
+```js
+
+const phaseDefinition = {
+
+&nbsp; id: 0,
+
+&nbsp; name: "Deal Origination",
+
+&nbsp; objectives: \[],
+
+&nbsp; workstreams: \[],
+
+&nbsp; gates: \[],
+
+&nbsp; tasks: \[],
+
+&nbsp; events: \[],
+
+&nbsp; failConditions: \[]
+
+};
+
+````
+
+
+
+This should be kept in static config files or constant objects.
+
+
+
+The game engine should read from these definitions and update the main game state.
+
+
+
+---
+
+
+
+\# Core Rules for Phase Design
+
+
+
+\## 1. Phases are not timelines
+
+
+
+A phase is not a list of steps.
+
+
+
+A phase is a \*\*bundle of parallel progress systems\*\*.
+
+
+
+This is important both for realism and for implementation simplicity.
+
+
+
+---
+
+
+
+\## 2. Progress is not enough
+
+
+
+Each workstream must track:
+
+
+
+\* progress
+
+\* quality
+
+
+
+Because many M\&A problems arise not from lack of activity, but from low-quality execution.
+
+
+
+---
+
+
+
+\## 3. Early phases must be lightweight
+
+
+
+For vanilla JS implementation, early phases should avoid too many micro-systems at once.
+
+
+
+The player should understand:
+
+
+
+\* what the deal is
+
+\* what needs to happen
+
+\* what resources are available
+
+\* what might go wrong
+
+
+
+without facing overwhelming UI complexity.
+
+
+
+---
+
+
+
+\## 4. Later phases can become denser
+
+
+
+Complexity should increase as the deal advances.
+
+
+
+This mirrors real M\&A and makes the game easier to learn.
+
+
+
+---
+
+
+
+\# Universal Phase Structure
+
+
+
+Each phase should be designed using the following template.
+
+
+
+\## Phase Definition Template
+
+
+
+\### 1. Phase Description
+
+
+
+What this phase represents operationally.
+
+
+
+\### 2. Objectives
+
+
+
+What must be achieved to move forward.
+
+
+
+\### 3. Active Workstreams
+
+
+
+Which dimensions of progress matter in this phase.
+
+
+
+\### 4. Dependencies
+
+
+
+Hard and soft dependencies between workstreams.
+
+
+
+\### 5. Gates
+
+
+
+Thresholds required to advance.
+
+
+
+\### 6. Available Tasks
+
+
+
+Tasks the player can trigger.
+
+
+
+\### 7. Typical Events
+
+
+
+Narrative events likely to occur in this phase.
+
+
+
+\### 8. Key Decisions
+
+
+
+Strategic decisions that affect future outcomes.
+
+
+
+\### 9. Failure Conditions
+
+
+
+How the deal can stall or die.
+
+
+
+\### 10. UI Notes
+
+
+
+How this phase should be represented in vanilla HTML/CSS/JS.
+
+
+
+---
+
+
+
+\# Phase 0 — Deal Origination
+
+
+
+\## 1. Description
+
+
+
+Deal Origination is the phase in which the advisory firm identifies, qualifies and develops a potential sell-side opportunity before a formal mandate exists.
+
+
+
+At this stage:
+
+
+
+\* the company is not yet a client
+
+\* access is partial
+
+\* information is incomplete
+
+\* timing is uncertain
+
+\* competing advisors may exist
+
+
+
+The purpose of the phase is to transform a raw lead into a \*\*qualified pitch opportunity\*\*.
+
+
+
+---
+
+
+
+\## 2. Objectives
+
+
+
+Main objectives:
+
+
+
+\* understand the target sufficiently
+
+\* establish founder access
+
+\* assess whether the opportunity is worth pursuing
+
+\* frame an initial valuation view
+
+\* manage confidentiality
+
+\* become ready to enter Pitching
+
+
+
+---
+
+
+
+\## 3. Active Workstreams
+
+
+
+Recommended workstreams:
+
+
+
+\### Target Intelligence
+
+
+
+How well the advisory firm understands the company.
+
+
+
+\### Relationship Development
+
+
+
+How strong access and trust are with the founder or decision-maker.
+
+
+
+\### Qualification
+
+
+
+How clearly the opportunity has been assessed in terms of fit, timing, and probability of mandate conversion.
+
+
+
+\### Valuation Framing
+
+
+
+How robust the initial view on valuation and value drivers is.
+
+
+
+\### Confidentiality \& Conflicts
+
+
+
+How well confidentiality is being preserved and whether any conflict issues exist.
+
+
+
+\### Pitch Readiness
+
+
+
+How prepared the firm is to move into a formal pitch process.
+
+
+
+---
+
+
+
+\## 4. Dependencies
+
+
+
+\### Hard Dependencies
+
+
+
+\* Pitch Readiness cannot advance meaningfully without Qualification progress.
+
+\* Formal pitch cannot start if Confidentiality \& Conflicts is below minimum threshold.
+
+\* Valuation Framing requires minimum Target Intelligence.
+
+
+
+\### Soft Dependencies
+
+
+
+\* Weak Relationship Development reduces founder responsiveness.
+
+\* Weak Qualification increases Risk Debt.
+
+\* Weak Confidentiality control increases rumor probability.
+
+
+
+---
+
+
+
+\## 5. Gates
+
+
+
+Suggested gate for moving to Phase 1:
+
+
+
+\* Target Intelligence ≥ 40
+
+\* Relationship Development ≥ 60
+
+\* Qualification ≥ 50
+
+\* Valuation Framing ≥ 35
+
+\* Confidentiality \& Conflicts ≥ 30
+
+\* Pitch Readiness ≥ 40
+
+
+
+These values should be configurable in plain objects.
+
+
+
+---
+
+
+
+\## 6. Available Tasks
+
+
+
+Examples:
+
+
+
+\* Founder Research
+
+\* Sector Mapping
+
+\* Prepare Founder Meeting
+
+\* Founder Intro Call
+
+\* Qualification Analysis
+
+\* Conflict Check
+
+\* Preliminary Valuation Analysis
+
+\* Buyer Landscape Sketch
+
+\* Internal Go / No-Go Review
+
+
+
+Tasks should be stored as data objects and filtered by phase.
+
+
+
+---
+
+
+
+\## 7. Typical Events
+
+
+
+Examples:
+
+
+
+\* Founder replies to intro email
+
+\* Competing advisor appears
+
+\* Market rumor emerges
+
+\* Founder asks for valuation indication
+
+\* Sector news affects attractiveness
+
+\* Internal referral arrives
+
+\* Founder invites CFO to next call
+
+
+
+---
+
+
+
+\## 8. Key Decisions
+
+
+
+Examples:
+
+
+
+\* pursue or drop the lead
+
+\* aggressive vs conservative valuation framing
+
+\* broad relationship approach vs discreet approach
+
+\* invest more internal time vs outsource research
+
+\* accelerate toward pitch vs deepen qualification
+
+
+
+---
+
+
+
+\## 9. Failure Conditions
+
+
+
+Examples:
+
+
+
+\* founder disengages
+
+\* competing advisor wins access
+
+\* conflict issue kills opportunity
+
+\* confidentiality leak damages process
+
+\* opportunity timing disappears
+
+\* team cannot support pursuit
+
+
+
+---
+
+
+
+\## 10. UI Notes
+
+
+
+Vanilla implementation suggestion:
+
+
+
+\* left panel: inbox / events
+
+\* center panel: opportunity card + workstreams
+
+\* right panel: available tasks + resource allocation
+
+
+
+All rendered from state.
+
+
+
+No complex drag-and-drop required.
+
+
+
+Buttons and simple forms are sufficient.
+
+
+
+---
+
+
+
+\# Phase 1 — Pitching / Mandate Acquisition
+
+
+
+\## 1. Description
+
+
+
+This phase begins when the opportunity is sufficiently qualified to justify a formal pitch for advisory mandate.
+
+
+
+The objective is to convince the founder or shareholders that the firm is the right advisor.
+
+
+
+This phase is not just about presentation quality.
+
+
+
+It also depends on:
+
+
+
+\* trust
+
+\* perceived sector expertise
+
+\* valuation credibility
+
+\* execution confidence
+
+\* chemistry with management
+
+
+
+---
+
+
+
+\## 2. Objectives
+
+
+
+\* prepare a compelling pitch
+
+\* align internal view on deal strategy
+
+\* build trust with client stakeholders
+
+\* define proposed process structure
+
+\* win the mandate
+
+
+
+---
+
+
+
+\## 3. Active Workstreams
+
+
+
+\### Pitch Preparation
+
+
+
+Quality and readiness of pitch materials and arguments.
+
+
+
+\### Client Trust Building
+
+
+
+Confidence built with founder and key stakeholders.
+
+
+
+\### Deal Strategy Definition
+
+
+
+Clarity of approach, buyer universe logic, process design, and positioning.
+
+
+
+\### Internal Alignment
+
+
+
+Readiness of the advisory team to execute the process if mandate is won.
+
+
+
+\### Mandate Conversion
+
+
+
+Likelihood of mandate signature.
+
+
+
+---
+
+
+
+\## 4. Dependencies
+
+
+
+\### Hard Dependencies
+
+
+
+\* Pitch meeting cannot occur without minimum Pitch Preparation.
+
+\* Mandate signature cannot happen without minimum Client Trust Building.
+
+\* Deal Strategy Definition requires sufficient Origination data.
+
+
+
+\### Soft Dependencies
+
+
+
+\* weak valuation framing reduces credibility
+
+\* weak chemistry lowers mandate win rate
+
+\* internal overpromising increases future Risk Debt
+
+
+
+---
+
+
+
+\## 5. Gates
+
+
+
+Suggested gate for mandate win resolution:
+
+
+
+\* Pitch Preparation ≥ 60
+
+\* Client Trust Building ≥ 60
+
+\* Deal Strategy Definition ≥ 50
+
+\* Internal Alignment ≥ 40
+
+
+
+A hidden probability model then resolves whether mandate is won.
+
+
+
+---
+
+
+
+\## 6. Available Tasks
+
+
+
+Examples:
+
+
+
+\* Draft pitch deck
+
+\* Benchmark sector transactions
+
+\* Build valuation argument
+
+\* Prepare process roadmap
+
+\* Prepare founder objections
+
+\* Conduct internal rehearsal
+
+\* Refine buyer universe
+
+\* CFO alignment meeting
+
+\* Mandate terms discussion
+
+
+
+---
+
+
+
+\## 7. Typical Events
+
+
+
+Examples:
+
+
+
+\* founder asks for previous credentials
+
+\* rival advisor submits pitch
+
+\* founder questions fee proposal
+
+\* management wants more clarity on timeline
+
+\* founder asks for valuation range too early
+
+\* CFO challenges assumptions
+
+
+
+---
+
+
+
+\## 8. Key Decisions
+
+
+
+Examples:
+
+
+
+\* pitch premium positioning vs pragmatic positioning
+
+\* aggressive valuation promise vs disciplined framing
+
+\* generalist approach vs specialist angle
+
+\* low fee to win mandate vs defend pricing
+
+\* broad process proposal vs tightly curated process
+
+
+
+---
+
+
+
+\## 9. Failure Conditions
+
+
+
+Examples:
+
+
+
+\* mandate lost to competitor
+
+\* founder distrusts process
+
+\* valuation expectations become misaligned
+
+\* fee discussion breaks trust
+
+\* internal pitch quality too weak
+
+
+
+---
+
+
+
+\## 10. UI Notes
+
+
+
+The phase can use:
+
+
+
+\* a pitch readiness dashboard
+
+\* trust meter
+
+\* key stakeholder cards
+
+\* mandate probability indicator
+
+
+
+Simple bar UI is sufficient.
+
+
+
+No animation dependency required.
+
+
+
+---
+
+
+
+\# Phase 2 — Preparation
+
+
+
+\## 1. Description
+
+
+
+Once the mandate is signed, the deal enters Preparation.
+
+
+
+This is the phase in which the advisory team builds the foundations of the process.
+
+
+
+The quality of this phase strongly affects later outcomes.
+
+
+
+This is where weak discipline quietly creates future disaster.
+
+
+
+---
+
+
+
+\## 2. Objectives
+
+
+
+\* build high-quality deal materials
+
+\* gather financial and operational information
+
+\* prepare equity story
+
+\* organize process strategy
+
+\* align management
+
+
+
+---
+
+
+
+\## 3. Active Workstreams
+
+
+
+\### Information Collection
+
+
+
+Depth and completeness of internal company information.
+
+
+
+\### Financial Analysis
+
+
+
+Quality of financial understanding and normalization.
+
+
+
+\### Equity Story Development
+
+
+
+Strength of the narrative that will support buyer interest.
+
+
+
+\### Documentation Quality
+
+
+
+Robustness of materials produced.
+
+
+
+\### Management Alignment
+
+
+
+How aligned management is with the process and messaging.
+
+
+
+\### Process Structuring
+
+
+
+Readiness of timeline, buyer list logic, and execution plan.
+
+
+
+---
+
+
+
+\## 4. Dependencies
+
+
+
+\### Hard Dependencies
+
+
+
+\* teaser / IM drafting requires sufficient Information Collection
+
+\* buyer strategy requires Process Structuring progress
+
+\* strong equity story requires Financial Analysis and Management Alignment
+
+
+
+\### Soft Dependencies
+
+
+
+\* weak management alignment creates inconsistency later
+
+\* weak documentation increases Q\&A pain
+
+\* weak analysis creates DD retrades
+
+
+
+---
+
+
+
+\## 5. Gates
+
+
+
+Suggested gate for entering Marketing:
+
+
+
+\* Information Collection ≥ 65
+
+\* Financial Analysis ≥ 60
+
+\* Equity Story Development ≥ 60
+
+\* Documentation Quality ≥ 55
+
+\* Management Alignment ≥ 50
+
+\* Process Structuring ≥ 60
+
+
+
+---
+
+
+
+\## 6. Available Tasks
+
+
+
+Examples:
+
+
+
+\* management interviews
+
+\* financial normalization
+
+\* KPI analysis
+
+\* draft teaser
+
+\* draft information memorandum
+
+\* buyer list design
+
+\* equity story workshop
+
+\* management coaching
+
+\* data room architecture setup
+
+
+
+---
+
+
+
+\## 7. Typical Events
+
+
+
+Examples:
+
+
+
+\* management disagrees on positioning
+
+\* missing numbers delay materials
+
+\* founder pushes for inflated story
+
+\* analyst finds issue in revenue quality
+
+\* board asks to change process structure
+
+
+
+---
+
+
+
+\## 8. Key Decisions
+
+
+
+Examples:
+
+
+
+\* how ambitious the equity story should be
+
+\* whether to exclude certain buyers
+
+\* how much time to invest in material quality
+
+\* whether to disclose known weaknesses early
+
+\* whether to accelerate preparation to catch market window
+
+
+
+---
+
+
+
+\## 9. Failure Conditions
+
+
+
+Examples:
+
+
+
+\* mandate remains active but process stalls
+
+\* management misalignment damages preparation
+
+\* low-quality materials weaken launch
+
+\* hidden issues already build significant Risk Debt
+
+
+
+---
+
+
+
+\## 10. UI Notes
+
+
+
+Use:
+
+
+
+\* workstream bars
+
+\* material preparation checklist
+
+\* management alignment meter
+
+\* timeline readiness indicator
+
+
+
+---
+
+
+
+\# Phase 3 — Market Outreach
+
+
+
+\## 1. Description
+
+
+
+The deal is launched to test market reaction.
+
+
+
+This phase includes first buyer contacts, teaser distribution, and NDA signature. The Information Memorandum is **not yet distributed**. If Tier-1 buyers respond strongly, Tier-2 buyers may not be contacted.
+
+
+
+A good process widens competitive tension without losing control.
+
+
+
+---
+
+
+
+\## 2. Objectives
+
+
+
+\* reach relevant buyers
+
+\* generate interest
+
+\* maintain confidentiality
+
+\* build process momentum
+
+\* maximize participation quality
+
+
+
+---
+
+
+
+\## 3. Active Workstreams
+
+
+
+\### Buyer Landscape
+
+
+
+Quality and coverage of targeted buyers.
+
+
+
+\### Outreach Execution
+
+
+
+How effectively the process is being launched.
+
+
+
+\### Buyer Engagement
+
+
+
+Depth of buyer participation and responsiveness.
+
+
+
+\### Confidentiality Control
+
+
+
+Protection of process secrecy.
+
+
+
+\### Deal Momentum
+
+
+
+Perception that the process is moving and worth prioritizing.
+
+
+
+---
+
+
+
+\## 4. Dependencies
+
+
+
+\### Hard Dependencies
+
+
+
+\* outreach requires materials from Preparation
+
+\* buyer engagement requires sufficient buyer targeting quality
+
+
+
+\### Soft Dependencies
+
+
+
+\* poor confidentiality control creates rumors
+
+\* weak momentum reduces bidder motivation
+
+\* poor buyer selection reduces offer quality
+
+
+
+---
+
+
+
+\## 5. Gates
+
+
+
+Suggested gate for entering Q\&A:
+
+
+
+\* Buyer Landscape ≥ 60
+
+\* Outreach Execution ≥ 60
+
+\* Buyer Engagement ≥ 50
+
+\* Confidentiality Control ≥ 50
+
+\* Deal Momentum ≥ 50
+
+
+
+---
+
+
+
+\## 6. Available Tasks
+
+
+
+Examples:
+
+
+
+\* send teaser
+
+\* manage NDAs
+
+\* buyer prioritization
+
+\* follow-up calls
+
+\* buyer FAQs
+
+\* confidentiality monitoring
+
+\* expand buyer pool
+
+\* remove weak buyers
+
+
+
+---
+
+
+
+\## 7. Typical Events
+
+
+
+Examples:
+
+
+
+\* buyer requests fast-track access
+
+\* rumor reaches market
+
+\* unexpected strategic buyer shows interest
+
+\* weak buyers go silent
+
+\* founder worries process is too visible
+
+
+
+---
+
+
+
+\## 8. Key Decisions
+
+
+
+Examples:
+
+
+
+\* broad vs selective outreach
+
+\* keep process slow and controlled vs accelerate
+
+\* admit extra bidder late vs preserve discipline
+
+\* disclose more to serious buyer vs keep level field
+
+
+
+---
+
+
+
+\## 9. Failure Conditions
+
+
+
+Examples:
+
+
+
+\* insufficient buyer interest
+
+\* leak damages founder confidence
+
+\* wrong buyer mix leads to weak participation
+
+\* process loses momentum
+
+
+
+---
+
+
+
+\## 10. UI Notes
+
+
+
+Good vanilla UI components:
+
+
+
+\* buyer list cards
+
+\* buyer status tags
+
+\* engagement score bar
+
+\* confidentiality alert indicators
+
+
+
+---
+
+
+
+\# Phase 4 — IM Distribution \& Bidder Engagement
+
+
+
+\## 1. Description
+
+
+
+The Information Memorandum and data pack are shared with selected buyers.
+
+
+
+Initial Q&A occurs focused on the IM, and bidder engagement is managed. This phase may include early management meetings and ends with the receipt of indicative offers (NBOs).
+
+
+
+---
+
+
+
+\## 2. Objectives
+
+
+
+\* answer buyer questions efficiently
+
+\* maintain consistency across bidders
+
+\* preserve trust and process control
+
+\* surface issues early enough to manage them
+
+
+
+---
+
+
+
+\## 3. Active Workstreams
+
+
+
+\### Data Room Readiness
+
+
+
+Completeness and structure of shared information.
+
+
+
+\### Q\&A Responsiveness
+
+
+
+Speed and quality of responses.
+
+
+
+\### Information Consistency
+
+
+
+Whether answers and disclosures remain coherent.
+
+
+
+\### Buyer Trust
+
+
+
+Confidence in the credibility of the process.
+
+
+
+\### Issue Containment
+
+
+
+Ability to manage sensitive findings before they escalate.
+
+
+
+---
+
+
+
+\## 4. Dependencies
+
+
+
+\### Hard Dependencies
+
+
+
+\* Q\&A responsiveness depends on data room readiness
+
+\* buyer trust depends on information consistency
+
+
+
+\### Soft Dependencies
+
+
+
+\* low preparation quality makes Q\&A painful
+
+\* delayed answers reduce bidder motivation
+
+\* inconsistent disclosures increase DD risk later
+
+
+
+---
+
+
+
+\## 5. Gates
+
+
+
+Suggested gate for entering First Round Offers:
+
+
+
+\* Data Room Readiness ≥ 65
+
+\* Q\&A Responsiveness ≥ 60
+
+\* Information Consistency ≥ 60
+
+\* Buyer Trust ≥ 55
+
+\* Issue Containment ≥ 50
+
+
+
+---
+
+
+
+\## 6. Available Tasks
+
+
+
+Examples:
+
+
+
+\* upload documents
+
+\* draft Q\&A responses
+
+\* align management answers
+
+\* prioritize bidder questions
+
+\* run issue review
+
+\* create clarification notes
+
+
+
+---
+
+
+
+\## 7. Typical Events
+
+
+
+Examples:
+
+
+
+\* buyer identifies discrepancy
+
+\* CFO delays response
+
+\* sensitive legal document missing
+
+\* one bidder requests extra access
+
+\* management gives inconsistent answer
+
+
+
+---
+
+
+
+\## 8. Key Decisions
+
+
+
+Examples:
+
+
+
+\* answer fast vs answer perfectly
+
+\* disclose risk early vs defer
+
+\* provide equal treatment vs favor stronger bidder
+
+\* keep buyer in despite noise vs de-prioritize
+
+
+
+---
+
+
+
+\## 9. Failure Conditions
+
+
+
+Examples:
+
+
+
+\* bidder confidence drops sharply
+
+\* process becomes chaotic
+
+\* management loses patience
+
+\* material inconsistency creates major trust problem
+
+
+
+---
+
+
+
+\## 10. UI Notes
+
+
+
+Simple tables and cards work well:
+
+
+
+\* bidder question queue
+
+\* response status
+
+\* trust indicators
+
+\* outstanding issue tracker
+
+
+
+---
+
+
+
+\# Phase 5 — NBO Analysis, Short Listing \& DD Entry
+
+
+
+\## 1. Description
+
+
+
+Analysis of received indicative offers.
+
+
+
+The purpose of this phase is to compare NBOs, rank bidders, clarify terms, and define the formal shortlist of (typically 2–4) bidders to proceed into Due Diligence.
+
+
+
+---
+
+
+
+\## 2. Objectives
+
+
+
+\* maximize participation
+
+\* secure credible offers
+
+\* compare bidders effectively
+
+\* preserve negotiating leverage
+
+
+
+---
+
+
+
+\## 3. Active Workstreams
+
+
+
+\### Offer Participation
+
+
+
+How many relevant bidders submit offers.
+
+
+
+\### Offer Quality
+
+
+
+Strength and credibility of bids.
+
+
+
+\### Competitive Tension
+
+
+
+Degree of bidder rivalry.
+
+
+
+\### Bidder Fit
+
+
+
+Strategic and execution fit of each bidder.
+
+
+
+\### Process Control
+
+
+
+Ability to keep timeline and comparisons disciplined.
+
+
+
+---
+
+
+
+\## 4. Dependencies
+
+
+
+\### Hard Dependencies
+
+
+
+\* offer quality depends on earlier buyer engagement and trust
+
+
+
+\### Soft Dependencies
+
+
+
+\* weak competition lowers valuation
+
+\* weak process control reduces leverage
+
+\* wrong bidder mix distorts results
+
+
+
+---
+
+
+
+\## 5. Gates
+
+
+
+Suggested gate for entering Management Presentations:
+
+
+
+\* Offer Participation ≥ 50
+
+\* Offer Quality ≥ 55
+
+\* Competitive Tension ≥ 50
+
+\* Process Control ≥ 55
+
+
+
+Also requires at least one viable bidder.
+
+
+
+---
+
+
+
+\## 6. Available Tasks
+
+
+
+Examples:
+
+
+
+\* manage bidder clarifications
+
+\* compare bids
+
+\* shortlist bidders
+
+\* request improved indicative offers
+
+\* build bidder comparison matrix
+
+\* advise founder on bidder selection
+
+
+
+---
+
+
+
+\## 7. Typical Events
+
+
+
+Examples:
+
+
+
+\* one bidder submits unexpectedly high bid
+
+\* strategic bidder bids low but with strong fit
+
+\* PE bidder requests exclusivity signal
+
+\* founder dislikes strongest bidder
+
+\* offers come below expectations
+
+
+
+---
+
+
+
+\## 8. Key Decisions
+
+
+
+Examples:
+
+
+
+\* optimize for price vs certainty
+
+\* keep more bidders alive vs narrow aggressively
+
+\* select strategic buyer vs PE
+
+\* signal preference vs preserve ambiguity
+
+
+
+---
+
+
+
+\## 9. Failure Conditions
+
+
+
+Examples:
+
+
+
+\* no credible bids
+
+\* founder rejects market reality
+
+\* bidders sense weak process and soften stance
+
+\* competition collapses
+
+
+
+---
+
+
+
+\## 10. UI Notes
+
+
+
+Vanilla-friendly components:
+
+
+
+\* offer table
+
+\* bidder comparison cards
+
+\* color-coded fit / price / certainty indicators
+
+
+
+---
+
+
+
+\# Phase 6 — Due Diligence
+
+\## 1. Description
+
+This phase represents the grueling deep investigation stage of the transaction. Buyers deploy their third-party advisors (lawyers, accountants, tax experts) to audit the Information Memorandum claims.
+
+Strategically, the player must defend the valuation, manage the exhausting Q&A data room, and maintain buyer confidence even when skeletons are uncovered.
+
+
+
+---
+
+
+
+\## 2. Objectives
+
+
+
+\* present management strongly
+
+\* reinforce buyer conviction
+
+\* reduce execution concerns
+
+\* improve offer confidence
+
+
+
+---
+
+
+
+\## 3. Active Workstreams
+
+
+
+\### Management Performance
+
+
+
+Quality of presentation and interaction.
+
+
+
+\### Strategic Alignment
+
+
+
+How strongly buyer and target logic connect.
+
+
+
+\### Buyer Confidence
+
+
+
+Confidence in business, management and execution.
+
+
+
+\### Narrative Consistency
+
+
+
+Consistency between materials and live answers.
+
+
+
+\### Bidder Commitment
+
+
+
+Likelihood that bidder remains serious.
+
+
+
+---
+
+
+
+\## 4. Dependencies
+
+
+
+\### Hard Dependencies
+
+
+
+\* presentations require shortlist and management preparation
+
+
+
+\### Soft Dependencies
+
+
+
+\* weak chemistry reduces commitment
+
+\* inconsistent messaging increases DD intensity later
+
+\* poor presentation quality weakens competitive momentum
+
+
+
+---
+
+
+
+\## 5. Gates
+
+
+
+Suggested gate for entering Due Diligence:
+
+
+
+\* Management Performance ≥ 60
+
+\* Strategic Alignment ≥ 55
+
+\* Buyer Confidence ≥ 60
+
+\* Narrative Consistency ≥ 60
+
+\* Bidder Commitment ≥ 55
+
+
+
+---
+
+
+
+\## 6. Available Tasks
+
+
+
+Examples:
+
+
+
+\* presentation coaching
+
+\* Q\&A rehearsal
+
+\* management script alignment
+
+\* bidder briefing prep
+
+\* follow-up call planning
+
+
+
+---
+
+
+
+\## 7. Typical Events
+
+
+
+Examples:
+
+
+
+\* founder dominates meeting badly
+
+\* CFO answers brilliantly
+
+\* bidder CEO connects well with management
+
+\* buyer raises concern on product scalability
+
+\* management contradicts deck narrative
+
+
+
+---
+
+
+
+\## 8. Key Decisions
+
+
+
+Examples:
+
+
+
+\* scripted vs natural management approach
+
+\* reveal more operational detail vs stay high-level
+
+\* prioritize chemistry vs control
+
+\* keep multiple bidders close vs favor strongest one
+
+
+
+---
+
+
+
+\## 9. Failure Conditions
+
+
+
+Examples:
+
+
+
+\* management underperforms
+
+\* key bidder loses confidence
+
+\* live answers reveal hidden weaknesses
+
+\* founder becomes emotionally attached to wrong bidder
+
+
+
+---
+
+
+
+\## 10. UI Notes
+
+
+
+Suggested UI:
+
+
+
+\* shortlisted bidder cards
+
+\* management readiness meters
+
+\* bidder confidence bars
+
+\* post-meeting reaction summary
+
+
+
+---
+
+
+
+\# Phase 7 — BO / BAFO (Binding Offers)
+
+\## 1. Description
+
+This is the decisive competitive stage where remaining bidders submit their Binding Offers (BO) or Best and Final Offers (BAFO).
+
+This phase tests the advisor's ability to maintain maximum competitive tension, prevent buyers from dropping out, and ruthlessly negotiate the highest possible binding valuation before exclusivity is granted.
+
+
+
+---
+
+
+
+\## 2. Objectives
+
+
+
+\* sustain buyer confidence
+
+\* manage findings
+
+\* contain issues
+
+\* preserve price and certainty
+
+
+
+---
+
+
+
+\## 3. Active Workstreams
+
+
+
+\### Information Accuracy
+
+
+
+Reliability of the disclosed information.
+
+
+
+\### DD Responsiveness
+
+
+
+Ability to manage requests quickly and coherently.
+
+
+
+\### Risk Containment
+
+
+
+Ability to prevent issues from escalating.
+
+
+
+\### Buyer Confidence
+
+
+
+Strength of bidder conviction.
+
+
+
+\### Price Defense
+
+
+
+Ability to protect valuation against retrades.
+
+
+
+---
+
+
+
+\## 4. Dependencies
+
+
+
+\### Hard Dependencies
+
+
+
+\* DD responsiveness depends on process readiness and team capacity
+
+
+
+\### Soft Dependencies
+
+
+
+\* high Risk Debt weakens price defense
+
+\* poor accuracy damages confidence
+
+\* slow DD handling reduces certainty
+
+
+
+---
+
+
+
+\## 5. Gates
+
+
+
+Suggested gate for entering SPA Negotiation:
+
+
+
+\* Information Accuracy ≥ 70
+
+\* DD Responsiveness ≥ 65
+
+\* Risk Containment ≥ 60
+
+\* Buyer Confidence ≥ 60
+
+\* Price Defense ≥ 55
+
+
+
+At least one bidder must remain viable.
+
+
+
+---
+
+
+
+\## 6. Available Tasks
+
+
+
+Examples:
+
+
+
+\* DD request triage
+
+\* issue memo drafting
+
+\* management clarification sessions
+
+\* legal coordination
+
+\* price defense preparation
+
+\* bidder reassurance calls
+
+
+
+---
+
+
+
+\## 7. Typical Events
+
+
+
+Examples:
+
+
+
+\* accounting discrepancy found
+
+\* customer concentration concern escalates
+
+\* legal issue discovered
+
+\* bidder requests retrade
+
+\* bidder internal IC delays decision
+
+
+
+---
+
+
+
+\## 8. Key Decisions
+
+
+
+Examples:
+
+
+
+\* concede early vs fight price pressure
+
+\* disclose full issue context vs narrow response
+
+\* prioritize certainty vs valuation
+
+\* keep backup bidder alive vs focus on lead bidder
+
+
+
+---
+
+
+
+\## 9. Failure Conditions
+
+
+
+Examples:
+
+
+
+\* bidder walks away
+
+\* retrade becomes unacceptable
+
+\* founder loses confidence
+
+\* multiple issues accumulate beyond recovery
+
+
+
+---
+
+
+
+\## 10. UI Notes
+
+
+
+Suggested UI:
+
+
+
+\* DD issue tracker
+
+\* buyer confidence indicator
+
+\* retrade pressure meter
+
+\* outstanding request queue
+
+
+
+---
+
+
+
+\# Phase 8 — SPA Negotiation
+
+\## 1. Description
+
+This phase represents the intense legal and contractual negotiation of the Sale and Purchase Agreement (SPA) with a single, exclusive buyer. 
+
+The advisor must guide the seller through warranty thresholds, indemnities, and working capital peg mechanisms, fighting to protect the net cash the founder will actually receive.
+
+
+
+---
+
+
+
+\## 2. Objectives
+
+
+
+\* maintain commercial deal integrity
+
+\* negotiate acceptable legal terms
+
+\* balance price, risk and certainty
+
+\* reach signable documentation
+
+
+
+---
+
+
+
+\## 3. Active Workstreams
+
+
+
+\### Negotiation Leverage
+
+
+
+Strength of the seller’s position.
+
+
+
+\### Legal Clarity
+
+
+
+How clearly deal terms and liabilities are framed.
+
+
+
+\### Deal Certainty
+
+
+
+Probability that negotiations conclude successfully.
+
+
+
+\### Seller Protection
+
+
+
+How well the client is protected from post-closing exposure.
+
+
+
+\### Buyer Commitment
+
+
+
+Likelihood that the bidder stays committed to signing.
+
+
+
+---
+
+
+
+\## 4. Dependencies
+
+
+
+\### Hard Dependencies
+
+
+
+\* SPA negotiation requires one active bidder and advanced DD completion
+
+
+
+\### Soft Dependencies
+
+
+
+\* weak leverage increases concessions
+
+\* poor legal clarity creates delays
+
+\* low buyer commitment increases signing risk
+
+
+
+---
+
+
+
+\## 5. Gates
+
+
+
+Suggested gate for entering Signing \& Closing:
+
+
+
+\* Negotiation Leverage ≥ 50
+
+\* Legal Clarity ≥ 65
+
+\* Deal Certainty ≥ 65
+
+\* Buyer Commitment ≥ 60
+
+
+
+---
+
+
+
+\## 6. Available Tasks
+
+
+
+Examples:
+
+
+
+\* negotiate SPA mark-up
+
+\* prepare fallback positions
+
+\* align seller red lines
+
+\* coordinate legal advisors
+
+\* manage bidder pressure
+
+\* preserve alternative option leverage
+
+
+
+---
+
+
+
+\## 7. Typical Events
+
+
+
+Examples:
+
+
+
+\* buyer pushes hard on warranties
+
+\* indemnity cap dispute emerges
+
+\* locked-box leakage issue appears
+
+\* legal language causes founder concern
+
+\* buyer threatens timing pressure
+
+
+
+---
+
+
+
+\## 8. Key Decisions
+
+
+
+Examples:
+
+
+
+\* defend economics vs defend legal protections
+
+\* escalate to founder now vs shield management
+
+\* concede on cap vs price vs earn-out mechanics
+
+\* preserve optionality with backup bidder vs go all-in
+
+
+
+---
+
+
+
+\## 9. Failure Conditions
+
+
+
+Examples:
+
+
+
+\* legal deadlock
+
+\* founder refuses final terms
+
+\* buyer commitment weakens
+
+\* cumulative concessions destroy attractiveness
+
+
+
+---
+
+
+
+\## 10. UI Notes
+
+
+
+Suggested UI:
+
+
+
+\* negotiation tracker
+
+\* clause pressure indicators
+
+\* seller red-line panel
+
+\* certainty meter
+
+
+
+---
+
+
+
+\# Phase 9 — Signing
+
+\## 1. Description
+
+The formal legal commitment to the transaction. Both parties establish the finalized contracts but funds are not yet transferred.
+
+This phase is primarily administrative but carries severe bottleneck risks concerning regulatory clearances and final legal approvals.
+
+
+
+---
+
+
+
+\## 2. Objectives
+
+
+
+\* coordinate final steps
+
+\* manage approvals and conditions precedent
+
+\* preserve commitment until funds move
+
+\* complete transaction successfully
+
+
+
+---
+
+
+
+\## 3. Active Workstreams
+
+
+
+\### Execution Coordination
+
+
+
+Alignment of all closing steps.
+
+
+
+\### Closing Readiness
+
+
+
+Preparedness of documents, parties and approvals.
+
+
+
+\### Regulatory / CP Completion
+
+
+
+Progress on conditions precedent.
+
+
+
+\### Commitment Stability
+
+
+
+Risk that one party wobbles late.
+
+
+
+\### Completion Certainty
+
+
+
+Probability of successful close.
+
+
+
+---
+
+
+
+\## 4. Dependencies
+
+
+
+\### Hard Dependencies
+
+
+
+\* signing requires final documents
+
+\* closing requires CP completion
+
+
+
+\### Soft Dependencies
+
+
+
+\* low commitment stability raises late-failure risk
+
+\* poor coordination creates delay and fatigue
+
+
+
+---
+
+
+
+\## 5. Gates
+
+
+
+Successful deal close requires:
+
+
+
+\* Execution Coordination ≥ 70
+
+\* Closing Readiness ≥ 70
+
+\* Regulatory / CP Completion ≥ 65
+
+\* Commitment Stability ≥ 60
+
+\* Completion Certainty ≥ 70
+
+
+
+---
+
+
+
+\## 6. Available Tasks
+
+
+
+Examples:
+
+
+
+\* CP tracking
+
+\* closing checklist coordination
+
+\* financing follow-up
+
+\* regulatory submission management
+
+\* final stakeholder alignment
+
+\* signature logistics
+
+
+
+---
+
+
+
+\## 7. Typical Events
+
+
+
+Examples:
+
+
+
+\* lender delay
+
+\* regulatory request
+
+\* document correction needed
+
+\* founder nerves spike
+
+\* bidder asks for final operational update
+
+
+
+---
+
+
+
+\## 8. Key Decisions
+
+
+
+Examples:
+
+
+
+\* push for speed vs preserve accuracy
+
+\* escalate problem publicly vs solve quietly
+
+\* keep pressure on counterparty vs maintain calm
+
+\* accept minor delay vs take execution risk
+
+
+
+---
+
+
+
+\## 9. Failure Conditions
+
+
+
+Examples:
+
+
+
+\* CP not satisfied
+
+\* financing breaks
+
+\* signing delayed into collapse
+
+\* final confidence shock derails close
+
+
+
+---
+
+
+
+\## 10. UI Notes
+
+
+
+Suggested UI:
+
+
+
+\* closing checklist
+
+\* CP tracker
+
+\* readiness bars
+
+\* final close probability indicator
+
+
+
+---
+
+\# Phase 10 — Closing
+
+\## 1. Description
+
+The ultimate goal of the game: Transaction Completion. Funds are wired, keys are handed over, and the advisor collects their success fee.
+
+---
+
+\## 2. Objectives
+
+\* confirm funds received
+\* execute success fee invoice
+\* celebrate with client
+
+---
+
+\## 3. Active Workstreams
+
+\### Fund Transfer Coordination
+Monitoring the actual bank wires.
+
+\### Transaction Completion
+Final administrative wrap-up.
+
+---
+
+\## 4. Dependencies
+Requires Signing (Phase 9) and all CPs met.
+
+---
+
+\## 5. Gates
+Cash in bank.
+
+---
+
+\## 6. Available Tasks
+\* Chase buyer bank
+\* Send Success Fee invoice
+\* Order Tombstone
+
+---
+
+\## 7. Typical Events
+\* Bank compliance delay
+\* Founder emotional breakdown
+
+---
+
+\## 8. Key Decisions
+\* When to officially pop the champagne.
+
+---
+
+\## 9. Failure Conditions
+\* Extreme black swan event (e.g. buyer bankruptcy exactly during wire window).
+
+---
+
+\## 10. UI Notes
+Celebratory UI state. Score recap generated.
+
+---
+
+\# Vanilla JavaScript Implementation Notes
+
+
+
+\## 1. Keep phase definitions static
+
+
+
+Store all phase definitions in plain JS objects or JSON-like modules.
+
+
+
+Example:
+
+
+
+```js
+
+const PHASES = {
+
+&nbsp; 0: { ... },
+
+&nbsp; 1: { ... },
+
+&nbsp; 2: { ... }
+
+};
+
+```
+
+
+
+---
+
+
+
+\## 2. Separate config from state
+
+
+
+Do not mix:
+
+
+
+\* what a phase is
+
+\* the current state of a deal
+
+
+
+Use:
+
+
+
+\* `phaseDefinitions`
+
+\* `gameState`
+
+\* `dealState`
+
+
+
+---
+
+
+
+\## 3. Render from state only
+
+
+
+The UI should read the current phase and render:
+
+
+
+\* phase title
+
+\* active workstreams
+
+\* available tasks
+
+\* gates
+
+\* events
+
+
+
+Avoid hardcoding phase-specific HTML.
+
+
+
+---
+
+
+
+\## 4. Use reusable components
+
+
+
+Even in vanilla JS, create reusable render functions:
+
+
+
+\* `renderWorkstreamBars()`
+
+\* `renderTaskList()`
+
+\* `renderEvents()`
+
+\* `renderGateStatus()`
+
+
+
+This will prevent the codebase from turning into a spaghetti opera.
+
+
+
+---
+
+
+
+\## 5. Use plain arrays for phase logic
+
+
+
+Each deal state can contain:
+
+
+
+```js
+
+deal = {
+
+&nbsp; phaseId: 2,
+
+&nbsp; workstreams: {
+
+&nbsp;   informationCollection: { progress: 45, quality: 60 },
+
+&nbsp;   financialAnalysis: { progress: 30, quality: 55 }
+
+&nbsp; },
+
+&nbsp; activeTasks: \[],
+
+&nbsp; eventQueue: \[],
+
+&nbsp; riskDebt: 12
+
+};
+
+```
+
+
+
+This is enough to drive the whole system.
+
+
+
+---
+
+
+
+\# Next Step
+
+
+
+The next step should be to define the \*\*detailed phase-by-phase design\*\*, starting with:
+
+
+
+\*\*Phase 0 — Deal Origination\*\*
+
+
+
+and, for that phase, specify:
+
+
+
+\* tasks
+
+\* workstream effects
+
+\* event pool
+
+\* decision logic
+
+\* gate logic
+
+\* failure logic
+
+\* state representation in vanilla JavaScript
+
+
+
+That will turn this architecture from a framework into an implementable game system.
+
+
+
+```
+
+
+
+---
+
+
+
+Este é o documento-base. O passo lógico seguinte é mesmo o mais útil: pegar na \*\*Fase 0\*\* e transformá-la já em algo quase implementável em vanilla JS, com:
+
+
+
+\- objeto de config da fase,
+
+\- lista de tasks,
+
+\- efeitos em workstreams,
+
+\- eventos possíveis,
+
+\- condições de gate,
+
+\- e mock de `dealState`.
+
+
+
+Posso fazer já isso no próximo.
+
+```
+
+
+
+```
+```

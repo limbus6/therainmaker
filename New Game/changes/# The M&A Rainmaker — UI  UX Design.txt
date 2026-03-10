@@ -1,0 +1,322 @@
+# The M&A Rainmaker — UI / UX Design System
+
+## 1. Design Philosophy
+
+The interface should simulate the experience of running a live M&A process.
+
+The player is not only managing actions but operating inside a dynamic professional environment where:
+
+* emails arrive
+* buyers react
+* partners comment
+* news appears
+* the market moves
+
+The interface should therefore resemble a **professional digital workspace**, inspired by:
+
+Outlook
+Slack
+DealCloud
+Football career mode dashboards
+
+The goal is to create a feeling that the player is **inside an investment banking workflow**.
+
+---
+
+# 2. Core Interface Structure
+
+The main interface is divided into five persistent zones.
+
+Top Navigation Bar
+Deal Status Panel
+Main Workspace
+Communication Center
+News & Market Feed
+
+---
+
+# 3. Top Navigation Bar
+
+The top navigation bar represents the control layer of the game.
+
+Displayed elements:
+
+Current Phase
+Week / Timeline
+Deal Momentum
+Risk Level
+Team Morale
+Budget Remaining
+Team Capacity
+
+Example:
+
+Phase: Preparation
+Week 3
+Momentum: Medium
+Risk: Low
+Budget: 38
+Team Capacity: 12
+
+---
+
+# 4. Deal Status Panel
+
+A persistent panel showing the key metrics of the process.
+
+Displayed variables:
+
+Client Trust
+Buyer Interest
+Valuation Potential
+Preparation Progress
+Risk
+Team Morale
+Deal Momentum
+
+These variables are affected by actions and events.
+
+---
+
+# 5. Main Workspace
+
+The central area where the player performs actions.
+
+It shows:
+
+Available Actions
+Action Categories
+Current Tasks
+Cascade Tasks
+
+Each action card shows:
+
+Action Name
+Cost
+Work
+Complexity
+Effect Summary
+
+Example card:
+
+Draft Information Memorandum
+
+Cost: 12
+Work: 30
+Complexity: High
+
+Effects:
+
+Buyer Interest +10
+Preparation Progress +15
+
+---
+
+# 6. Communication Center (Email System)
+
+The communication center is one of the most important narrative tools.
+
+The interface should resemble an **Outlook-like inbox**.
+
+Messages arrive from:
+
+Clients
+Partners
+Buyers
+Team Members
+Advisors
+
+The player can open emails and choose responses.
+
+Example email:
+
+Subject: Quick question on the financial model
+
+Sender: CFO
+
+Message:
+
+"We noticed the growth assumptions in the model are higher than expected.
+Can you walk us through the logic?"
+
+Player responses:
+
+Explain assumptions
+Revise model
+Escalate to partner
+
+Each response triggers different outcomes.
+
+---
+
+# 7. Decision Emails
+
+Some emails require immediate decisions.
+
+Examples:
+
+Buyer requests early access
+Client pushes for higher valuation
+Partner questions process strategy
+
+The player must respond.
+
+These responses influence:
+
+Risk
+Client trust
+Buyer interest
+
+---
+
+# 8. News & Market Feed
+
+A secondary feed shows external developments.
+
+These appear as **financial press headlines**.
+
+Examples:
+
+"Private Equity Fund Raises €2B Technology Fund"
+
+"Strategic Buyer Announces Acquisition Program"
+
+"Comparable SaaS Company Sold at 12x EBITDA"
+
+These events influence the environment but do not require direct action.
+
+They act as passive modifiers to the deal.
+
+---
+
+# 9. Event Notifications
+
+Short notifications appear when something unexpected happens.
+
+Examples:
+
+Hidden workload triggered
+Buyer expresses interest
+Team fatigue event
+Internal partner intervention
+
+These notifications appear as quick banners.
+
+---
+
+# 10. Inbox Event Types
+
+Emails can belong to different categories.
+
+Client communication
+Internal team messages
+Buyer inquiries
+Advisory input
+Market intelligence
+
+This allows filtering inside the inbox.
+
+---
+
+# 11. Narrative Feedback
+
+After important actions the system generates narrative feedback.
+
+Example:
+
+"The Information Memorandum is shaping into a compelling narrative.
+Several buyers are likely to show interest once the process launches."
+
+These messages reinforce immersion.
+
+---
+
+# 12. News Headlines System
+
+Headlines appear at random intervals.
+
+They simulate:
+
+market sentiment
+industry developments
+macro events
+
+Example headlines:
+
+"Tech valuations begin recovering after volatile quarter."
+
+"Strategic consolidation accelerates in the payments sector."
+
+These may subtly influence:
+
+Buyer interest
+Valuation potential
+Deal momentum
+
+---
+
+# 13. Phase Transitions
+
+At the end of each phase the interface shows a **Deal Progress Report**.
+
+Example report:
+
+Preparation Phase Complete
+
+Buyer Universe: 34
+Equity Story Strength: Strong
+Data Quality: High
+
+Projected Valuation Range: €120m–€150m
+
+The player then moves to the next phase.
+
+---
+
+# 14. Interface Style
+
+The visual tone should resemble a professional platform.
+
+Colours:
+
+Deep navy (finance / professionalism)
+Muted gold accents (success / prestige)
+Light neutral backgrounds
+
+Typography should feel like a financial dashboard rather than a game HUD.
+
+---
+
+# 15. Player Identity
+
+The player is positioned as:
+
+"The M&A Rainmaker"
+
+The interface should occasionally reference this role.
+
+Examples:
+
+"Your reputation as a rainmaker attracts additional buyers."
+
+"Partners expect strong execution."
+
+This reinforces the career fantasy of building a reputation in the M&A market.
+
+---
+
+# 16. Long-Term UI Goals
+
+Future expansions may include:
+
+Career mode
+Deal reputation system
+Buyer relationship memory
+League tables
+Advisory firm growth
+
+These systems should integrate into the same workspace interface.
+
+---
+
+# End of Document

@@ -1,0 +1,423 @@
+# M&A Dealmaker — Phase 5 Implementation Pack
+## Due Diligence (DD)
+## Compatible with HTML, CSS and Vanilla JavaScript
+
+## Purpose
+This document turns **Phase 5 — Due Diligence** into an implementable game system. It is designed to be sufficiently concrete for direct implementation in HTML, CSS, and vanilla JavaScript using procedural state updates.
+
+The goal of this phase is to answer the question:
+“How do we manage scrutiny, control issue emergence, and preserve enough credible buyers to reach a strong final-offer phase?”
+
+At this stage:
+- the buyer pool has been selectively compressed
+- the Virtual Data Room (VDR) is fully opened
+- internal company management is exposed to direct buyer questioning
+- the narrative built in Phase 1 is subjected to hostile analytical testing
+- the player must manage multiple competing investigation streams simultaneously
+
+This phase stops being interpretative and becomes intensely operational. It simulates the grueling attrition of M&A execution—the conflict between *issue emergence* (where buyers find things they don't like) and *issue containment* (where the advisor prevents those findings from destroying value).
+
+---
+
+# 1. Operational Purpose of Phase 5
+Phase 5 is the structural crucible of the deal. The advisor's priority is no longer marketing; it is defense. 
+
+Buyers will deploy armies of accountants, lawyers, and consultants to audit the asset. They are financially incentivized to find flaws (known as "Issues") to justify lowering the price they offered in Phase 4 (NBO). The operational goal is to sequence information, answer questions quickly to prevent paranoia, rehearse management so they don't contradict the data, and drag at least 2 buyers across the finish line so you retain competitive leverage in Phase 6.
+
+# 2. Phase 5 Core Player Experience
+The intended player feeling during Phase 5 should emphasize:
+- **Operational pressure under close scrutiny**: The feeling of spinning plates while someone throws rocks at them.
+- **Truth-testing of prior preparation**: The horrifying realization that skipping the "Working Capital Review" in Phase 1 just spawned a massive DD crisis.
+- **Selective disclosure and sequencing**: The tactical game of deciding *when* to release the bad news.
+- **Attrition risk**: The silent terror that buyers are losing confidence, not because of a single big issue, but due to a dozen small, annoying delays.
+- **Tension between transparency and process control**: Answering every question instantly is impossible; deflecting every question destroys trust.
+
+# 3. Phase 5 Workstreams
+Workstreams track the structural survival of the process.
+
+## Diligence Coordination
+- **Measures**: The administrative traffic control of parallel DD streams.
+- **Low progress means**: Q&A trackers are piling up unanswered.
+- **Low quality means**: We sent Buyer A's proprietary data request to Buyer B by mistake.
+
+## Issue Containment
+- **Measures**: The active mitigation of newly discovered flaws.
+- **Low progress means**: We are ignoring the buyers' concerns.
+- **Low quality means**: Our explanations are mathematically unconvincing.
+
+## Q&A Responsiveness
+- **Measures**: Speed of returning credible answers.
+- **Low progress means**: Buyers are waiting 5 days for basic revenue data.
+- **Low quality means**: The answers we provide conflict with the Information Memorandum.
+
+## Data Room Control
+- **Measures**: The hygiene and structured unrolling of the VDR.
+- **Low progress means**: The room is empty.
+- **Low quality means**: Documents are misnamed, duplicated, or missing redactions.
+
+## Buyer Endurance Management
+- **Measures**: Tracking the psychological fatigue of each bidder.
+- **Low progress means**: We are letting the buyers burn themselves out on useless rabbit holes.
+- **Low quality means**: We pushed them too hard on timeline and they are threatening to walk.
+
+## Management Preparation
+- **Measures**: Up-skilling the CEO and CFO to survive hostile Q&A.
+- **Low progress means**: Management is flying blind into a 6-hour diligence session.
+- **Low quality means**: The CFO gets defensive and angry when challenged by Private Equity associates.
+
+## Information Symmetry Control
+- **Measures**: Ensuring all advancing buyers receive the same baseline data to keep bids comparable.
+- **Low progress means**: One buyer is massively ahead of the others in DD depth.
+- **Low quality means**: The slow buyer uses "lack of data" as an excuse to drop their final bid.
+
+## Final Offer Readiness
+- **Measures**: Preparation of the definitive SPA (Sale and Purchase Agreement) mark-up instructions for Phase 6.
+- **Low progress means**: We haven't told them how to submit their final legal bids.
+- **Low quality means**: The legal instructions are so aggressive nobody will sign them.
+
+---
+
+# 4. Phase 5 Deal Variables
+Dynamic variables specific to survival under scrutiny.
+
+* `ddBurden`: The massive aggregate Work load generated by the surviving buyers. Directly proportional to `nboVolume` advanced from Phase 4.
+* `ddPressure`: Current outstanding Q&A divided by the team's ability to answer them.
+* `issueEmergence`: The velocity at which new problems are spawning in the process.
+* `issueContainment`: Global modifier mitigating the damage of emerged issues.
+* `buyerFatigue`: Tracks how sick of this process the buyers are becoming. If this maxes out, they drop.
+* `buyerConfidence`: Drops when `ddPressure` is high (they assume you are hiding things) or when `issueEmergence` spikes.
+* `retradeRisk`: An invisible accumulator. The higher it gets, the deeper the valuation cut Phase 6 will deliver.
+* `informationControl`: Drops if the Data Room is messy.
+* `processStability`: A blended metric of confidence and containment.
+* `fieldSurvival`: Tracks how many of the original Phase 4 advancers are still answering emails.
+* `trustResilience`: The client's willingness to believe you have this under control.
+
+# 5. Firm-Level Variables Relevant to Phase 5
+Due Diligence is the phase where team burnout historically destroys deals.
+
+* `teamWorkload`: Peaks here. Managing 4 buyers in DD is mathematically 400% more work than managing 1.
+* `availableCapacity`: The ultimate throttle. If `Capacity` < `ddBurden`, the system begins automatically decaying `buyerConfidence`.
+* `analyticalConfidence`: Determines the success rate of `Issue Containment` tasks.
+* `clientTrust`: Drains rapidly every time an `issueEmergence` event triggers, as the client blames the advisor for "bad marketing."
+
+---
+
+# 6. Phase 5 Gates
+To successfully complete Phase 5 and transition to Phase 6 (Final Offers), the engine checks the following:
+
+**Logical Conditions:**
+* A `Final Process Letter` and `Draft SPA` have been issued to the survivors.
+* The VDR has been formally marked "Closed to New Questions."
+
+**Configurable Workstream Thresholds:**
+* Final Offer Readiness.progress = 100
+* Management Preparation.quality >= 70
+* Issue Containment.progress >= 80
+
+*Hard Failure Gate*: If `fieldSurvival` drops to 0 (all buyers withdraw), the game ends instantly.
+
+---
+
+# 7. Hard and Soft Dependencies
+* **DD Burden = Function of NBO Selectivity**: If the player advanced 6 buyers from Phase 4, the initial `ddBurden` is structurally unmanageable without extreme Budget spend on Temporary Analysts.
+* **Phase 1 Preparation Echo**: If `Information Collection.quality` was Low in Phase 1, the baseline probability of `issueEmergence` in Phase 5 doubles.
+* **Phase 2 Noise Trap**: If a `Noisy Defensive Bid` was mistakenly advanced, they will consume 30% of global Team Capacity asking irrelevant questions before dropping out in week 3.
+
+---
+
+# 8. Risk Debt in Phase 5
+Phase 5 converts all hidden past sins into active gameplay threats, while generating new ones.
+
+* **Poor Issue Containment**: Attempting to "sweep an issue under the rug" rather than executing a formal Mitigation task temporarily solves the `ddPressure`, but multiplies the hidden `retradeRisk` factor by 3x for Phase 6.
+* **Carrying Zombies**: Keeping a buyer alive who has dropped to `Silent Decliner` status drains Team Capacity, starving the serious buyers of Q&A attention, which lowers the serious buyers' `buyerConfidence`.
+* **Weak Management Prep**: If the "Prepare Management" task is skipped before a major milestone event, the CEO will contradict the IM, causing massive permanent `buyerConfidence` damage across all lanes.
+
+---
+
+# 9. Resource Model for Phase 5
+Phase 5 introduces **Parallel Attrition Drain**.
+Tasks no longer exist in a single global vacuum. Many DD tasks are *Buyer-Specific*. 
+
+Executing "Respond to Buyer Question Pack" for *ApexCloud* costs 10 Work Units. 
+Executing it for *Silverline Tech* costs 10 Work Units. 
+
+If your team only has 15 Weekly Capacity, you conceptually cannot service both buyers. The player must choose who suffers a delay. This resource scarcity forces the player to prioritize `Price Leaders` over `Backup Options`, risking the loss of the backup.
+
+# 10. Pressure and Hidden Workload Model
+Hidden workload in DD is violent and unpredictable.
+
+* **Low Complexity Tasks** (e.g. Clean up inconsistent documents): 10% chance to discover a missing commercial contract, spawning an `Operational Issue`.
+* **High Complexity Tasks** (e.g. Escalate critical diligence issue): 50% chance the escalation requires bringing in Big 4 accounting consultants, instantly draining massive Budget to solve.
+
+**Burst Mechanics:** If `Pressure > 1.2`, the simple act of "Passing Time" generates a base 30% chance for a spontaneous `Data Chaos` event, as the overwhelmed firm associates upload the wrong files to the wrong folders.
+
+---
+
+# 11. Issue Taxonomy
+Issues are the primary enemies of Phase 5. They spawn dynamically and attach themselves to the `dealState.issues` array.
+
+* **Analytical Issue**: Disagreement on EBITDA normalization. *Impact*: Lowers `Price Potential`. *Cure*: High Work analytical defense.
+* **Data Quality Issue**: The raw data provided doesn’t tie out to the GL. *Impact*: Destroys `buyerConfidence`. *Cure*: Massive Capacity drain to rebuild the tapes.
+* **Commercial Issue**: Customer churn is higher than disclosed. *Impact*: Increases `retradeRisk` severely. *Cure*: Almost impossible to cure; must be mitigated narratively.
+* **Operational Issue**: A key supplier contract lacks a change-of-control clause. *Impact*: Blocks deal closure (Certainty damage). *Cure*: Requires Legal Budget.
+* **Legal / Structural Issue**: Historical tax liabilities discovered. *Impact*: Buyers demand indemnities in Phase 6.
+* **Management Credibility Issue**: The CEO cannot explain unit economics. *Impact*: Global multiplier reducing all offer values.
+
+---
+
+# 12. Issue Emergence vs Issue Containment System
+Phase 5 constantly simulates a battle between two vectors.
+
+1. **Emergence**: Every cycle, the engine rolls against `ddPressure`, `buyerScrutinyLevel`, and inherited `Preparation Risk Debt` to spawn new Issues.
+2. **Containment**: The player executes "Investigate Event" and "Build Mitigation Pack" tasks. 
+
+If an Issue is "Active," it bleeds `buyerConfidence` every cycle. Once it has been "Contained" (resolved via a task), the bleeding stops, but a permanent scar of `retradeRisk` remains depending on the Issue Severity. 
+
+*A process with 10 Low-Severity Issues handled quickly survives perfectly. A process with 2 High-Severity Issues left uncontained for 3 cycles collapses.*
+
+---
+
+# 13. DD Lane Management
+The overall `buyerSet` from Phase 4 is split into individual `DD Lanes`.
+
+The player manages access asymmetrically. 
+If *Strategic Buyer A* is moving slowly, the player might use the "Sequence Buyer Access Lane" task to pause their Q&A limit, allowing the firm's Capacity to focus entirely on *Sponsor B*, who is moving at lightning speed. 
+
+Poor lane management—granting 4 buyers identical access to the raw data all at once—generates an unmanageable tsunami of specific questions within 48 hours, instantly paralyzing the firm.
+
+---
+
+# 14. Buyer Survival / Attrition Logic
+Every cycle under DD pressure forces buyers to recalculate their intent to stay in the process.
+
+**Visible UI Survival States:**
+* `Stable Survivor`: Actively digesting data, satisfied with Q&A speed.
+* `Serious but Stressed`: High intent, but their internal teams are frustrated by messy data. High `retradeRisk` brewing.
+* `Conditional Survivor`: Found a major `Commercial Issue`. They are staying in, but they have mentally already cut their price by 20%.
+* `Trust-Damaged Buyer`: Caught the advisor in a lie or a massive data contradiction. Will likely drop.
+* `Attrition Risk`: Hasn't logged into the VDR in 4 days.
+* `Silent Decliner`: They have internally killed the deal but haven't told the advisor yet because they want to keep reading free market data.
+* `Formal Drop`: Formally exits the Phase 5 array.
+
+---
+
+# 15. Retrade Risk Build-Up
+Retrade Risk is the invisible poison that Phase 5 feeds into Phase 6.
+
+A buyer does not drop out when they find a `$5M tax liability`. They stay in the process, smile at management, finish Due Diligence, and then on the very last day of Phase 6, they submit a Final Offer saying: *"We love the business, but due to the tax issue, our $100M NBO is now $85M."*
+
+Every `Issue` left pending in the UI for more than 1 cycle adds to that buyer's specific `retradeRisk` modifier. The player must contain issues instantly, or accept that the Phase 4 NBO number is no longer real.
+
+---
+
+# 16. Phase 5 Task Library
+
+## Diligence Coordination Tasks
+* **Launch Structured Q&A Tracker**: (Work: 15, Cost: 0, Complexity: Low). Structural baseline. Prevents chaotic email questions.
+* **Triage Incoming DD Requests**: (Work: 10, Cost: 0, Complexity: Medium). Groups similar buyer questions together to save future response capacity.
+* **Sequence Buyer Access Lanes**: (Work: 5, Cost: 0, Complexity: Low). Throttles a specific buyer to buy the team breathing room.
+* **Assign Specialist Support**: (Work: 0, Cost: 20, Complexity: Low). Spends massive Budget to instantly reduce `ddPressure` on Legal/Financial issues.
+
+## Issue Handling Tasks
+* **Investigate Emerging Issue**: (Work: 10, Cost: 0, Complexity: Medium). The first response to an event spawn. Reveals the True Severity.
+* **Draft Issue Response Memo**: (Work: 15, Cost: 0, Complexity: High). The standard containment action for medium issues.
+* **Reframe Non-Critical Concern**: (Work: 10, Cost: 0, Complexity: Medium). Attempts to dismiss a Low Severity issue without deep work. 30% chance to anger the buyer and upgrade the issue.
+* **Build Mitigation Pack**: (Work: 25, Cost: 0, Complexity: High). Massive capacity drain but the only way to contain a `Commercial Issue` without severe `retradeRisk` accumulating.
+* **Update Buyer-Specific Issue Log**: (Work: 5, Cost: 0, Complexity: Low). Mechanical hygiene.
+
+## Data Room and Responsiveness Tasks
+* **Refresh Data Room Materials**: (Work: 10, Cost: 0, Complexity: Low). 
+* **Respond to Buyer Question Pack**: (Work: [Variable 10-30 based on Lane Size], Cost: 0, Complexity: High). The core heartbeat task. Drains the `pendingQuestions` queue.
+* **Prioritise High-Value Buyer Queries**: (Work: 5, Cost: 0, Complexity: Low). Shuffles the Q&A queue, servicing the `Price Leader` first.
+* **Close Stale Open Questions**: (Work: 5, Cost: 0, Complexity: Low). Forces arbitrary closure of minor questions, boosting `qnaResponsiveness` but mildly ticking off junior buyer associates.
+
+## Management and Communication Tasks
+* **Prepare Management for DD Session**: (Work: 20, Cost: 0, Complexity: High). Critical defense before a milestone meeting event.
+* **Run Internal Issue Rehearsal**: (Work: 10, Cost: 0, Complexity: Low). 
+* **Align Client on Disclosure Posture**: (Work: 10, Cost: 0, Complexity: Medium). Getting the founder to agree to reveal bad news early rather than hiding it.
+* **Support High-Pressure Buyer Call**: (Work: 15, Cost: 0, Complexity: High). 
+
+## Field-Survival Tasks
+* **Retain Shaky but Valuable Bidder**: (Work: 15, Cost: 0, Complexity: High). Intense hand-holding to stop a `Certainty Anchor` from dropping out over an issue.
+* **De-prioritise Low-Value DD-Heavy Buyer**: (Work: 5, Cost: 0, Complexity: Low). Tactically ignores a `Noisy Survivor`, effectively pushing them to drop out to save Capacity.
+* **Manage Selective Disclosure Timing**: (Work: 10, Cost: 0, Complexity: High). Defines *when* the worst data drops into the VDR.
+* **Final DD Readiness Review**: (Work: 15, Cost: 0, Complexity: Low). Prepares the gate to Phase 6.
+
+---
+
+# 17. Integrated World Content Layer
+
+### 17.1 DD-Stage Buyer Identity Pools
+Buyers surviving from Phase 4 inherit extreme behavioral archetypes.
+* **ApexCloud Systems**: The `Prestige Strategic` deploys an agonizingly slow, bureaucratic DD process. They ask the same questions three times. 
+* **Silverline Tech Partners**: The `Sponsor Anchor` moves brutally fast. They hire Big 4 transaction services to rip your financial model apart within 48 hours.
+
+### 17.2 Buyer-Contact Identity Pools
+Messages in DD come from the operational trench workers.
+* `Julian Mercer, KMPG Transaction Services (Advising Silverline)`: Ruthlessly mathematical, zeroes in on working capital gaps.
+* `Sarah Jenkins, External Legal Counsel (Advising Apex)`: Floods the VDR with 140-point legal checklists.
+
+### 17.3 Buyer Tone Library (DD Intensity)
+* **Structured Question Flow**: *"Please see attached Tracker V3. We note 45 items remain 'Pending Advisor Review'. Kindly provide an ETA."*
+* **Concern Escalation**: *"The Q3 revenue cohort data provided in Folder 4.2 directly contradicts the bridge in the management presentation. We require a reconciliation call immediately."*
+* **Polite Frustration**: *"We asked for the employee retention schedules last Tuesday. We cannot clear our IC hurdle without them. Are they coming?"*
+* **Quiet Cooling**: *"Understood. We will digest the revised numbers and circle back."* (A lethal signal of impending attrition).
+
+### 17.4 Internal Team Note Library
+* **Overload Risk**: *"I have 400 lines of Q&A open across three buyers. If we don't buy legal budget to outsource the HR block, I'm going to drop the ball on the financials."*
+* **Issue Containment**: *"We managed to explain the margin dip as a one-off Capex event. Silverline bought it, but Vektor is still digging."*
+
+### 17.5 Client Message Library
+* **Frustration with DD**: *"Why does Silverline need my employment contract from 2018? Tell them to focus on the business."*
+* **Confidence after Containment**: *"Great job handling the EBITDA reconciliation. I thought we were losing them there."*
+
+### 17.6 Headline / Market Context Library
+* *"QofE Standards Tighten Following High-Profile Deal Collapse"* (Ratchets up global `buyerScrutinyLevel`).
+* *"M&A Insurance Premiums Spike"* (Makes resolving `Legal / Structural Issues` harder).
+
+### 17.7 Event Labels and DD-Card Microcopy
+* `[Toxic Issue Emerged]`
+* `[Waiting on Client]`
+* `[Flight Risk - 48h Warning]`
+
+---
+
+# 18. Phase 5 Event Pool
+
+* **Critical Issue Emerges (The QofE Bomb)**
+  * *Trigger*: Inherited from a rushed `Build Financial Model` task in Phase 1.
+  * *Effect*: Suddenly spawns an `Analytical Issue`. All buyers instantly pause progress until a `Mitigation Pack` is built. `buyerConfidence` bleeds heavily.
+* **Buyer Questions Multiply**
+  * *Trigger*: Providing a sloppy answer to a basic question.
+  * *Effect*: Spawns 3x the normal workload in that specific buyer's lane. 
+* **Management Session Strengthens Confidence**
+  * *Trigger*: Milestone Management Presentation completes AFTER the "Prepare Management" task was successfully executed.
+  * *Effect*: Massive global boost to `buyerConfidence`. Neutralizes 20% of `retradeRisk`.
+* **Data Room Weakness Reopens Concern**
+  * *Trigger*: `informationControl` < 50.
+  * *Effect*: Buyers discover an old, un-redacted board deck. Spawns a `Commercial Issue`.
+* **Sponsor Becomes Retrade-Prone**
+  * *Trigger*: `ddPressure` stays high for 2 cycles; the Sponsor feels the advisor is hiding things.
+  * *Effect*: Mechanically locks in a 10% valuation haircut for Phase 6.
+* **Strategic Buyer Quietly Cools**
+  * *Trigger*: Taking > 3 cycles to respond to a major strategic question.
+  * *Effect*: Drops to `Silent Decliner`. Will drop out formally in 2 cycles if not "Retained."
+* **Weak Buyer Consumes Excessive Capacity**
+  * *Trigger*: Allowing a `Noisy Survivor` to submit a Q&A pack.
+  * *Effect*: They consume 40 Work Units asking about office stationery suppliers. Drives you insane.
+
+---
+
+# 19. Failure Conditions in Phase 5
+* **Hard Failure (Field Collapse)**: `fieldSurvival` hits 0. Every buyer drops out due to uncontained issues or excruciating delays. The deal is dead.
+* **Hard Failure (Management Implosion)**: The CEO completely breaks under a hostile buyer session, insulting the buyers. Trust goes to 0, process ends.
+* **Soft Failure (Single Survivor)**: You survive, but 3 out of 4 buyers dropped out. You enter Phase 6 with only 1 bidder. They know they are alone. They will dictate the final price.
+* **Soft Failure (The Death of a Thousand Cuts)**: You drag 4 buyers to Phase 6, but `retradeRisk` is maxed out because you ignored every issue. The final bids will arrive at 60% of their NBO value.
+
+---
+
+# 20. Decay Rules for Phase 5
+* `buyerConfidence`: Decays naturally the longer Phase 5 drags on. Time kills all deals. By Week 6 of DD, everyone wants out.
+* `trustResilience`: The client's patience decays as the legal bills and intrusive questions stack up.
+* `informationControl`: Entropy increases in the Data Room every cycle unless "Refresh Data Room" tasks are run.
+
+---
+
+# 21. UI Layout Recommendations for Vanilla JS
+* **Left Panel (The Panic Room)**: High volume of inbound alerts. Issue spawns, furious client texts, and Q&A logs. Needs a visual triage system (Red/Yellow/Green flags).
+* **Center (The Attrition Lanes)**: The buyers are displayed physically segregated in parallel lanes. Each lane shows their specific `pendingQ&A` volume, their current `Visible Survival State`, and the `Issues` they currently care about.
+* **Right Panel (Command Center)**: The global firm capacity bar (which will be red most of the time), active Issue containment trackers, and the overall `Retrade Risk` thermometer.
+* **Lower Overlay (The Graveyard)**: A log of buyers who formally dropped out and the structural reason why.
+
+---
+
+# 22. Recommended Deal State Shape for Phase 5
+```js
+const dealState = {
+  id: "deal_005",
+  phaseId: 5,
+  
+  resources: {
+    budget: 50, // Rapidly depleting fighting issues
+    maxCapacity: 60,
+    usedCapacity: 85, // Operating in the red
+  },
+
+  variables: {
+    ddPressure: 140, // High stress
+    issueEmergenceRate: 0.3, // 30% chance per cycle
+    globalRetradeRisk: 25,
+    fieldSurvival: 3,
+    processStability: 40,
+    clientTrust: 65,
+    finalOfferReadiness: 20
+  },
+
+  workstreams: {
+    diligenceCoordination: { progress: 80, quality: 60 },
+    issueContainment: { progress: 40, quality: 50 },
+    qnaResponsiveness: { progress: 40, quality: 40 }, // Slipping
+    buyerEndurance: { progress: 60, quality: 50 },
+    managementPrep: { progress: 80, quality: 80 }
+  },
+
+  activeIssues: [
+    {
+      id: "iss_01",
+      type: "Analytical Issue",
+      description: "Q3 Margin Dip completely unexplained.",
+      severity: "High",
+      contained: false,
+      discoveringBuyer: "buy_02",
+      damageAccumulator: 5 // Bleeding into retradeRisk
+    }
+  ],
+
+  ddLanes: [
+    {
+      buyerId: "buy_02", // Silverline
+      visibleState: "Serious but Stressed",
+      pendingQNA: 45, // Massive workload
+      laneThrottled: false,
+      specificRetradeRisk: 15
+    },
+    {
+      buyerId: "buy_01", // ApexCloud
+      visibleState: "Silent Decliner",
+      pendingQNA: 2,
+      laneThrottled: false,
+      specificRetradeRisk: 0
+    }
+  ],
+  
+  riskDebt: 45,
+  activeTasks: ["task_investigate_issue", "task_respond_qna_buy02"],
+  eventQueue: []
+};
+```
+
+# 23. Recommended Core Functions for Vanilla JavaScript
+* `getAvailablePhase5Tasks(dealState)`
+* `spawnDiligenceRequest(dealState, buyerId)` -> Asynchronous loop generating incoming work.
+* `classifyIssueType(dealState)` -> Pure function determining the flavor of a spawned event.
+* `calculateIssueEmergence(dealState)` -> The RNG engine reading Phase 1 weakness to spawn bombs.
+* `calculateIssueContainment(dealState, issueId)` -> Determines if a mitigation task succeeded based on `analyticalConfidence`.
+* `updateDDLaneState(buyerId, parameter, value)` -> Adds limits to specific lanes.
+* `updateBuyerSurvivalState(buyerId)` -> Engine loop shifting a buyer from "Stable" to "Stressed" to "Drop" based on unanswered Q&A time limits.
+* `updateRetradeRisk(dealState)` -> Sums the `damageAccumulator` of all active uncontained issues.
+* `checkPhase5Gate(dealState)` -> Validates that at least 1 buyer remains active and the VDR is closed.
+* `generateDDMessage()`
+* `renderPhase5UI()` -> Repaints the multi-lane chaos in CSS grid.
+
+# 24. Recommended First Prototype Scope
+To build the functional MVP of Phase 5:
+1. Hard-code **3 DD Lanes**.
+2. Build the **Q&A Spawner**: Clicking "Next Turn" randomly adds between 5 and 15 `pendingQNA` units to each buyer.
+3. Build the **"Respond to Q&A"** button. It consumes 10 Work Capacity to drop `pendingQNA` by 15. If a buyer's `pendingQNA` exceeds 30, their UI status turns red ("Stressed"). If it exceeds 50, they Drop. 
+4. Hard-code **One Issue Spawn**: On Turn 3, a "Tax Liability" issue spawns. It adds +5 to global `retradeRisk` every turn until the player clicks the **"Mitigate Issue"** task (costs 20 Work).
+5. Gate transition to Phase 6 upon surviving 8 turns with at least 1 buyer remaining.
+
+# 25. Design Philosophy for Phase 5
+This phase teaches the player that *Due Diligence is not just a test of the target asset; it is a test of process control*. 
+
+A process can survive terrifying accounting issues if they are contained quickly and managed transparently. A flawless company can have a busted process if the advisor leaves 300 simple questions unanswered for two weeks, destroying buyer trust. The point of DD is not to perfectly avoid scrutiny—that is impossible. The point is to prioritize the right buyers, feed them the right data, contain the fires efficiently, and drag at least two bidders, battered but still breathing, into the Final Offer arena so you can force them to bid against each other. Activity does not equal control.

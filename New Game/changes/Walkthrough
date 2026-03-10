@@ -1,0 +1,48 @@
+# Verification Walkthrough
+
+## Verified Steps & File Diff Summary
+
+All game architecture and specific phase documentation files inside `playground/new game` have been updated to reflect the new 11-step sell-side M&A process logic.
+
+### Structural Updates: The 11-Phase Sequence
+- **c:\antigravity\AG-P003\playground\new game\01_MA_Game_Narrative_Context.md**
+  - Updated the *Macro Phases of the M&A Process* list to properly delineate phases 0 through 10. `Pitching / Mandate Acquisition` is Phase 1 and `Closing` correctly lands at Phase 10.
+- **c:\antigravity\AG-P003\playground\new game\06_MA_Game_Phase_Architecture.md**
+  - Updated the *High-Level Phase Model* list.
+  - Updated the sub-headers for Phases 3, 4, and 5 to their new names (`Market Outreach`, `IM Distribution & Bidder Engagement`, `NBO Analysis, Short Listing & DD Entry`).
+  - Adjusted the descriptions inside Phases 3, 4, and 5 confirming that the Information Memorandum is distributed in Phase 4 and not Phase 3, and that NBOs are generated/received at the end of Phase 4 and analyzed in Phase 5.
+
+### Sub-System Realignment
+- **c:\antigravity\AG-P003\playground\new game\02_MA_Game_Task_System.md**
+  - Created explicit explicit phase dependencies resolving:
+    - Send Teaser → requires Phase 3
+    - Send IM → requires Phase 4
+    - Receive NBOs → requires end of Phase 4
+    - Analyse Offers → requires Phase 5
+    - Short List Bidders for DD → requires Phase 5
+- **c:\antigravity\AG-P003\playground\new game\03_MA_Game_Workstreams_System.md**
+  - Relabeled the specific operational workstreams for Phase 3, Phase 4, and Phase 5 to reflect their actual purposes (e.g. `Teaser Distribution & NDA Signature` in Phase 3, `IM & Data Pack Disclosure` in Phase 4).
+- **c:\antigravity\AG-P003\playground\new game\04_MA_Game_Event_System.md**
+  - This file describes isolated narrative Event categories (e.g., *Market Events*, *Buyer Events*). Since it intentionally models phase-agnostic events decoupled from timeline references, it naturally complies with the new architecture without requiring phase relocations.
+- **c:\antigravity\AG-P003\playground\new game\05_MA_Game_Risk_Outcome_System.md**
+  - Integrated the fully fleshed out **Mathematical NBO Generation Model** describing exactly how standard variables like `CompetitionFactor`, `PreparationQuality`, `InformationConfidence`, `MarketTemperature`, and `ExpectationAnchor` synthesize the `ExpectedMultiple` factor multiplier.
+
+### Phase specific details
+- **c:\antigravity\AG-P003\playground\new game\By Phase\MA_Game_PHASE_0.md & MA_Game_PHASE_1.md**
+  - Verified they contained no older narrative dependencies related to later sequence timing.
+- **c:\antigravity\AG-P003\playground\new game\By Phase\MA_Game_PHASE_2.md**
+  - Enhanced the Information Memorandum details to clarify that it is solely prepared during Phase 2 but **not yet sent to buyers**, establishing an accurate barrier between Prep and Outreach.
+  - Updated phase progression references to confirm standardizing the transition out of Phase 2 moves players to *Phase 3 - Market Outreach*.
+
+## Remaining Ambiguities or Inconsistencies
+- With the mathematical layout firmly established in `05_MA_Game_Risk_Outcome_System.md`, there isn't yet explicit math resolving *how the RandomNoise and BuyerBias factors* define their probability distribution bounding. We may want to specify whether it functions with gaussian variance or capped scalars in another planning cycle. 
+- The base thresholds on gates mapping into and out of newly defined internal stages for Phases 3 through 5 are loosely inherited from previous references, and they may need specific number rebalancing depending on the overarching engine logic implemented next.
+
+```diff
+render_diffs(file:///c:/antigravity/AG-P003/playground/new%20game/01_MA_Game_Narrative_Context.md)
+render_diffs(file:///c:/antigravity/AG-P003/playground/new%20game/02_MA_Game_Task_System.md)
+render_diffs(file:///c:/antigravity/AG-P003/playground/new%20game/03_MA_Game_Workstreams_System.md)
+render_diffs(file:///c:/antigravity/AG-P003/playground/new%20game/05_MA_Game_Risk_Outcome_System.md)
+render_diffs(file:///c:/antigravity/AG-P003/playground/new%20game/06_MA_Game_Phase_Architecture.md)
+render_diffs(file:///c:/antigravity/AG-P003/playground/new%20game/By%20Phase/MA_Game_PHASE_2.md)
+```
