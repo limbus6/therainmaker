@@ -1,0 +1,80 @@
+.app-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  gap: 0.75rem;
+  padding: 0.75rem;
+}
+
+.topbar,
+.toolbar-row,
+.panel,
+.bottom-log {
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--panel-2) 0%, var(--panel) 100%);
+  border-radius: 10px;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.75rem;
+}
+
+.topbar-left,
+.topbar-right {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.toolbar-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 0.6rem;
+}
+
+.workspace-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr 1fr;
+  gap: 0.75rem;
+}
+
+.panel {
+  padding: 0.75rem;
+  min-height: 450px;
+  overflow: auto;
+}
+
+.task-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.workstream-grid {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.bottom-log {
+  padding: 0.75rem;
+}
+
+@media (max-width: 1100px) {
+  .workspace-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .panel {
+    min-height: 320px;
+  }
+
+  .task-columns {
+    grid-template-columns: 1fr;
+  }
+}

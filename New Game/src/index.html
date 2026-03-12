@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>The M&A Rainmaker - Prototype</title>
+    <link rel="stylesheet" href="./css/styles.css" />
+    <link rel="stylesheet" href="./css/layout.css" />
+    <link rel="stylesheet" href="./css/components.css" />
+  </head>
+  <body>
+    <div id="app" class="app-shell">
+      <header class="topbar">
+        <div class="topbar-left">
+          <h1>The M&A Rainmaker</h1>
+          <span id="phaseLabel" class="pill">Phase 0</span>
+          <span id="weekLabel" class="pill">Week 1</span>
+        </div>
+        <div class="topbar-right">
+          <span id="budgetLabel" class="kpi">Budget: 0</span>
+          <span id="capacityLabel" class="kpi">Capacity: 0/0</span>
+          <span id="pressureLabel" class="kpi">Pressure: 0.00</span>
+          <span id="moraleLabel" class="kpi">Morale: 0</span>
+        </div>
+      </header>
+
+      <div class="toolbar-row">
+        <button id="newGameBtn" class="btn">New Game</button>
+        <button id="saveBtn" class="btn">Save</button>
+        <button id="loadBtn" class="btn">Load</button>
+        <button id="resetBtn" class="btn btn-danger">Reset Save</button>
+        <button id="advanceWeekBtn" class="btn btn-primary">Resolve Week</button>
+      </div>
+
+      <main class="workspace-grid">
+        <aside class="panel">
+          <h2>Inbox</h2>
+          <ul id="inboxList" class="list"></ul>
+          <h3>Headlines</h3>
+          <ul id="headlineList" class="list"></ul>
+        </aside>
+
+        <section class="panel">
+          <h2>Tasks</h2>
+          <p id="phaseObjective" class="muted"></p>
+          <div class="row">
+            <button id="strategyGuideBtn" class="btn" data-intent="toggleStrategy" hidden>
+              Show Recommended Strategy
+            </button>
+            <button id="resultsBoardBtn" class="btn" data-intent="toggleResultsBoard" hidden>
+              Show Results Board
+            </button>
+          </div>
+          <div id="strategyGuidePanel" class="note strategy-guide" hidden></div>
+          <section id="resultsBoardPanel" class="results-board" hidden></section>
+          <div class="task-columns">
+            <div>
+              <h3>Available</h3>
+              <ul id="availableTasks" class="list"></ul>
+            </div>
+            <div>
+              <h3>Queued For Week</h3>
+              <ul id="queuedTasks" class="list"></ul>
+            </div>
+          </div>
+          <h3>Workstreams</h3>
+          <div id="workstreamGrid" class="workstream-grid"></div>
+        </section>
+
+        <aside class="panel">
+          <h2>State</h2>
+          <div id="gateStatus" class="note"></div>
+          <ul id="gateChecks" class="list"></ul>
+          <div id="eventStatus" class="note"></div>
+          <h3>Buyer Funnel</h3>
+          <ul id="buyerSnapshot" class="list"></ul>
+          <h3>Offer Matrix</h3>
+          <ul id="offerSnapshot" class="list"></ul>
+          <h3>Weekly Summary</h3>
+          <pre id="weeklySummary" class="json-block"></pre>
+          <h3>Debug Snapshot</h3>
+          <pre id="debugState" class="json-block"></pre>
+        </aside>
+      </main>
+
+      <footer class="bottom-log">
+        <h2>History</h2>
+        <ul id="historyList" class="list"></ul>
+      </footer>
+    </div>
+
+    <script type="module" src="./js/main.js"></script>
+  </body>
+</html>
+
+
+

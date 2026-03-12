@@ -1,0 +1,47 @@
+:root {
+  --bg: #0c1020;
+  --panel: #141a31;
+  --panel-2: #1a2240;
+  --text: #e9ecff;
+  --muted: #a7b0db;
+  --line: #2b3564;
+  --accent: #ff5ac3;
+  --accent-2: #62d2ff;
+  --danger: #ff6b6b;
+  --success: #6ee7a2;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  color: var(--text);
+  background: radial-gradient(circle at 20% 0%, #182347 0%, var(--bg) 45%, #090c18 100%);
+  font-family: "Segoe UI", Tahoma, sans-serif;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0 0 0.6rem;
+  font-weight: 600;
+}
+
+h1 {
+  font-size: 1.1rem;
+}
+
+h2 {
+  font-size: 1rem;
+}
+
+h3 {
+  font-size: 0.9rem;
+  color: var(--accent-2);
+}
+
+.muted {
+  color: var(--muted);
+}
