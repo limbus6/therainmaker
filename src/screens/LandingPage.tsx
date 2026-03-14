@@ -55,7 +55,7 @@ export default function LandingPage() {
 
         {/* Name entry form */}
         {showNameForm ? (
-          <div className="w-full max-w-sm space-y-4 relative -mt-64 z-20 bg-bg-secondary/95 p-6 rounded-2xl border-2 border-border-subtle backdrop-blur-md shadow-2xl">
+          <div className="w-full max-w-sm space-y-4 relative -mt-48 z-20 bg-bg-secondary/95 p-6 rounded-2xl border-2 border-border-subtle backdrop-blur-md shadow-2xl">
             <div className="space-y-2">
               <label className="block text-[11px] font-mono uppercase tracking-widest text-text-muted text-left font-bold border-b border-border-subtle/30 pb-1 mb-2">
                 Identity
@@ -90,7 +90,7 @@ export default function LandingPage() {
 
         ) : hasSavedGame ? (
           /* Returning player — show save card + options */
-          <div className="w-full max-w-sm space-y-2 relative -mt-64 z-20">
+          <div className="w-full max-w-sm space-y-2 relative -mt-48 z-20">
             {/* Save card */}
             <div className="rounded-xl border-2 border-border-subtle bg-bg-secondary/90 overflow-hidden backdrop-blur-md shadow-2xl">
               <div className="px-3 py-1.5 border-b border-border-subtle/50 bg-accent-primary/10">
@@ -128,7 +128,7 @@ export default function LandingPage() {
 
         ) : (
           /* First-time player */
-          <div className="relative -mt-72 z-20">
+          <div className="relative -mt-54 z-20">
             <button
               onClick={handleEnterClick}
               className="px-8 py-5 text-xl md:text-2xl font-black tracking-tight text-text-primary rounded-2xl bg-accent-primary hover:bg-accent-primary/90 active:scale-95 transition-all duration-300 shadow-[0_0_40px_rgba(100,100,255,0.2)] border-2 border-accent-primary/50 backdrop-blur-xl group"
