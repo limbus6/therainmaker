@@ -55,8 +55,8 @@ export default function LandingPage() {
       <div className="relative z-10 flex flex-col items-center justify-center gap-10 px-4 text-center">
 
         {/* Logo */}
-        <div className="w-56 h-56 md:w-80 md:h-80 lg:w-[40rem] lg:h-[40rem] flex items-center justify-center">
-          <img src="/logo-game.png" alt="M&A Rainmaker Logo" className="w-full h-full object-contain drop-shadow-2xl" />
+        <div className="w-48 h-48 md:w-72 md:h-72 lg:w-96 lg:h-96 flex items-center justify-center -mb-4">
+          <img src="./logo-game.png" alt="M&A Rainmaker Logo" className="w-full h-full object-contain drop-shadow-2xl" />
         </div>
 
         {/* Title */}
