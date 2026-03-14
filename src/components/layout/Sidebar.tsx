@@ -53,7 +53,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     pendingTasks: tasks.filter((t) => t.status === 'available' || t.status === 'recommended').length,
   };
 
-  const visibleNavItems = [
+  const visibleNavItems: NavEntry[] = [
     ...NAV_ITEMS,
     ...(phase >= 5 ? [{ to: '/dataroom', label: 'Data Room', icon: <Database size={18} /> }] : []),
     ...(phase >= 7 ? [{ to: '/final-offers', label: 'Final Offers', icon: <Trophy size={18} /> }] : []),

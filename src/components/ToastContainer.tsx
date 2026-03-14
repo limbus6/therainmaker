@@ -14,7 +14,13 @@ export default function ToastContainer() {
   );
 }
 
-function Toast({ toast, onClose }: { toast: ReturnType<typeof useGameStore>['toasts'][0]; onClose: () => void }) {
+export interface ToastMessage {
+  id: string;
+  message: string;
+  type: 'success' | 'warning' | 'danger' | 'info';
+}
+
+function Toast({ toast, onClose }: { toast: ToastMessage; onClose: () => void }) {
   useEffect(() => {
     const timer = setTimeout(onClose, 3000);
     return () => clearTimeout(timer);

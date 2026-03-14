@@ -9,6 +9,7 @@ import type {
   PhaseId,
   Buyer,
   BuyerInterest,
+  TempCapacityAllocation,
 } from '../types/game';
 
 // ============================================

@@ -28,11 +28,9 @@ import type {
   FinalOffer,
   DataroomCategory,
   DataroomAccessLevel,
-  SPANegotiation,
   SPABuyerState,
   SPARound,
   SPATerms,
-  WarrantyScope,
 } from '../types/game';
 import { resolveWeek, checkPhaseGate, unlockTasks, checkDealCollapse } from '../engine/weekEngine';
 import type { WeekResult, PhaseGateResult } from '../engine/weekEngine';
@@ -578,7 +576,7 @@ function evaluateSPARound(
   terms: Pick<SPARound, 'playerWarrantyScope' | 'playerWarrantyCap' | 'playerEscrowPercent' | 'playerSpecificIndemnity'>,
   buyerState: SPABuyerState,
   round: number,
-  resources: import('../types/game').PlayerResources
+  _resources: import('../types/game').PlayerResources
 ): Omit<SPARound, 'round' | 'playerWarrantyScope' | 'playerWarrantyCap' | 'playerEscrowPercent' | 'playerSpecificIndemnity'> {
 
   // Scope reaction

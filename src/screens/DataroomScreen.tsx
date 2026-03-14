@@ -121,8 +121,6 @@ export default function DataroomScreen() {
 
           {dataroomCategories.map((cat) => {
             const sensConfig = SENSITIVITY_CONFIG[cat.sensitivity];
-            const currentIdx = ACCESS_LEVELS.findIndex((a) => a.level === cat.accessLevel);
-            const currentAccess = ACCESS_LEVELS[currentIdx];
 
             return (
               <Panel key={cat.id} variant="default" className="p-0 overflow-hidden">
