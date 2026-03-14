@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd \"C:/antigravity/AG-P004/app\" && npx tsc --noEmit 2>&1 | head -50)",
+      "Bash(cd \"C:/antigravity/AG-P004/app\" && npx tsc --noEmit 2>&1)"
+    ]
+  }
+}

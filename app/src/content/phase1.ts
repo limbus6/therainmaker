@@ -1,0 +1,208 @@
+import type { GameTask, Email, Deliverable, Risk, Headline } from '../types/game';
+
+// ============================================
+// Phase 1: Pitch & Mandate
+// Win the engagement — build the investment case,
+// map the buyer universe, propose fees, secure mandate
+// ============================================
+
+export const phase1Tasks: GameTask[] = [
+  {
+    id: 'task-10', name: 'Build Preliminary Investment Case',
+    description: 'Develop the initial investment thesis: key messages around Solara\'s growth story, market position, technology moat, and scalability. This forms the backbone of the pitch.',
+    phase: 1, category: 'deliverable', status: 'recommended', cost: 5, work: 10, complexity: 'medium',
+    effectSummary: '+8 momentum, +5 trust, unlocks pitch deck',
+    workstreamId: 'preparation',
+    linkedDeliverableId: 'del-01',
+  },
+  {
+    id: 'task-11', name: 'Preliminary Buyer Universe Mapping',
+    description: 'Identify categories of potential acquirers: strategic industrials, PE platforms with bolt-on thesis, infrastructure tech buyers, and cross-border players. Build a long list of 30-50 names.',
+    phase: 1, category: 'market', status: 'available', cost: 4, work: 8, complexity: 'medium',
+    effectSummary: '+6 momentum, informs process strategy',
+    workstreamId: 'buyer_outreach',
+  },
+  {
+    id: 'task-12', name: 'Comparable Transaction Analysis',
+    description: 'Research recent M&A transactions in industrial IoT, energy tech, and predictive maintenance. Build a comps table with EV/Revenue and EV/EBITDA multiples to anchor valuation expectations.',
+    phase: 1, category: 'deliverable', status: 'available', cost: 3, work: 7, complexity: 'medium',
+    effectSummary: 'Valuation credibility, +4 trust',
+    workstreamId: 'financials',
+    linkedDeliverableId: 'del-02',
+  },
+  {
+    id: 'task-13', name: 'Process Strategy Design',
+    description: 'Define the recommended sell-side process: broad vs. targeted auction, timeline considerations, information-sharing approach. Tailor to Solara\'s specific situation and Ricardo\'s preferences.',
+    phase: 1, category: 'strategic', status: 'locked', cost: 2, work: 5, complexity: 'medium',
+    effectSummary: '+5 momentum, +5 trust, shapes process',
+    dependencies: ['task-10', 'task-11'],
+  },
+  {
+    id: 'task-14', name: 'Fee Proposal & Engagement Terms',
+    description: 'Draft the fee proposal: monthly retainer, tiered success fee structure, exclusivity terms, and mandate duration. Balance competitiveness with appropriate advisory economics.',
+    phase: 1, category: 'relationship', status: 'locked', cost: 2, work: 4, complexity: 'high',
+    effectSummary: 'Critical — secures mandate or loses it',
+    dependencies: ['task-10', 'task-13'],
+    linkedDeliverableId: 'del-03',
+  },
+  {
+    id: 'task-15', name: 'Prepare Pitch Deck',
+    description: 'Assemble the pitch presentation: market context, investment highlights, preliminary valuation view, indicative buyer universe, process recommendation, team credentials, and proposed terms.',
+    phase: 1, category: 'deliverable', status: 'locked', cost: 4, work: 8, complexity: 'high',
+    effectSummary: 'Core deliverable — pitch to client',
+    dependencies: ['task-10', 'task-12'],
+    workstreamId: 'marketing_materials',
+    linkedDeliverableId: 'del-04',
+  },
+  {
+    id: 'task-16', name: 'Deliver Pitch to Client',
+    description: 'Present the full pitch to Ricardo Mendes. Cover the investment case, valuation framework, buyer landscape, process strategy, and fee proposal. This is the mandate decision moment.',
+    phase: 1, category: 'relationship', status: 'locked', cost: 1, work: 3, complexity: 'high',
+    effectSummary: 'Mandate decision — gate to Phase 2',
+    dependencies: ['task-15', 'task-14'],
+  },
+  {
+    id: 'task-17', name: 'Industry Expert Conversations',
+    description: 'Hold discreet conversations with sector specialists to validate the investment thesis and test buyer appetite. Enhances pitch credibility.',
+    phase: 1, category: 'market', status: 'available', cost: 3, work: 5, complexity: 'low',
+    effectSummary: '+4 reputation, strengthens investment case',
+  },
+  {
+    id: 'task-18', name: 'Team Capacity Planning',
+    description: 'Assess internal bandwidth. Confirm Ana, James, and Sofia can commit for the full engagement. Flag any resource conflicts with other active mandates.',
+    phase: 1, category: 'internal', status: 'available', cost: 1, work: 2, complexity: 'low',
+    effectSummary: '+5 capacity, de-risks execution',
+  },
+];
+
+export const phase1Emails: Email[] = [
+  {
+    id: 'email-10',
+    week: 4,
+    phase: 1,
+    sender: 'Marcus Aldridge',
+    senderRole: 'Managing Partner',
+    subject: 'Green light on Solara — build the pitch',
+    body: 'Good work on the origination assessment. I agree this is worth pursuing. Solara fits our sweet spot — founder-led, strong unit economics, sector tailwinds.\n\nNow win the mandate. I want to see:\n1. A compelling investment case\n2. A credible buyer universe\n3. A clear process recommendation\n4. A fee proposal that\'s competitive but protects our economics\n\nRicardo is talking to at least one other advisor. We need to move with purpose. Present within three weeks.',
+    preview: 'Green light — build the pitch and win the mandate',
+    category: 'partner',
+    state: 'unread',
+    priority: 'high',
+    timestamp: 'Week 4, Monday',
+    responseOptions: [
+      { id: 'r1', label: 'Understood — we\'ll have the pitch ready in two weeks', effects: '+5 momentum (ambitious)', resourceEffects: { dealMomentum: 5 } },
+      { id: 'r2', label: 'We\'ll aim for week 7 — quality over speed', effects: '+3 reputation (thorough)', resourceEffects: { reputation: 3 } },
+    ],
+  },
+  {
+    id: 'email-11',
+    week: 4,
+    phase: 1,
+    sender: 'Ricardo Mendes',
+    senderRole: 'Founder & CEO, Solara Systems',
+    subject: 'Re: Next steps',
+    body: 'I appreciate the thoroughness of your initial assessment. The questions you asked showed you understand the energy tech space, which was a pleasant surprise.\n\nI should mention — I\'ve had an introductory meeting with another advisory firm. They\'re a bigger name but felt generic. I\'m more interested in a team that truly understands our market.\n\nI\'d like to see your formal proposal. What would a process look like, and what would it cost?',
+    preview: 'Ricardo wants to see the formal proposal...',
+    category: 'client',
+    state: 'unread',
+    priority: 'high',
+    timestamp: 'Week 4, Tuesday',
+    responseOptions: [
+      { id: 'r1', label: 'We\'ll have a tailored proposal for you by end of week', effects: '+5 trust, +3 momentum', resourceEffects: { clientTrust: 5, dealMomentum: 3 } },
+      { id: 'r2', label: 'Let\'s schedule a detailed session — we want to get this right', effects: '+3 trust, shows diligence', resourceEffects: { clientTrust: 3, reputation: 2 } },
+      { id: 'r3', label: 'Can you share more about the other firm\'s approach?', effects: '+5 momentum, -2 trust (competitive)', resourceEffects: { dealMomentum: 5, clientTrust: -2 } },
+    ],
+  },
+  {
+    id: 'email-12',
+    week: 5,
+    phase: 1,
+    sender: 'Ana Ferreira',
+    senderRole: 'Vice President',
+    subject: 'Comps analysis — interesting findings',
+    body: 'James and I pulled the comparable transactions. Three things stand out:\n\n1. Industrial IoT multiples have expanded — the last two deals closed at 14-16x EBITDA\n2. Strategic buyers are paying significantly more than PE — 20-30% premium\n3. There\'s a cluster of deals in the €100-200M range, which is right where Solara would land\n\nThis is good ammunition for the pitch. Ricardo\'s 10-12x expectation might actually be conservative given current market conditions. Do we tell him that, or anchor low and deliver upside?',
+    preview: 'Comps show strong multiples — strategic implications for pitch...',
+    category: 'internal',
+    state: 'unread',
+    priority: 'normal',
+    timestamp: 'Week 5, Wednesday',
+    responseOptions: [
+      { id: 'r1', label: 'Present the full range — build trust through transparency', effects: '+8 trust, +3 momentum', resourceEffects: { clientTrust: 8, dealMomentum: 3 } },
+      { id: 'r2', label: 'Anchor conservatively — manage expectations, deliver upside', effects: '+5 reputation, +3 momentum', resourceEffects: { reputation: 5, dealMomentum: 3 } },
+      { id: 'r3', label: 'Show the upside case to differentiate from the competing advisor', effects: '+6 momentum, -2 reputation (risky)', resourceEffects: { dealMomentum: 6, reputation: -2 } },
+    ],
+  },
+];
+
+export const phase1Deliverables: Deliverable[] = [
+  {
+    id: 'del-01',
+    name: 'Preliminary Investment Case',
+    phase: 1,
+    status: 'not_started',
+    completion: 0,
+    quality: 'adequate',
+    dependencies: ['task-10'],
+  },
+  {
+    id: 'del-02',
+    name: 'Comparable Transaction Analysis',
+    phase: 1,
+    status: 'not_started',
+    completion: 0,
+    quality: 'adequate',
+    dependencies: ['task-12'],
+  },
+  {
+    id: 'del-03',
+    name: 'Fee Proposal & Engagement Letter',
+    phase: 1,
+    status: 'not_started',
+    completion: 0,
+    quality: 'adequate',
+    dependencies: ['task-14'],
+  },
+  {
+    id: 'del-04',
+    name: 'Pitch Deck',
+    phase: 1,
+    status: 'not_started',
+    completion: 0,
+    quality: 'adequate',
+    dependencies: ['task-15'],
+    deadline: 7,
+  },
+];
+
+export const phase1Risks: Risk[] = [
+  {
+    id: 'risk-10',
+    name: 'Competing Advisor',
+    description: 'Another advisory firm is pitching Ricardo. If their proposal is more compelling or they have stronger sector credentials, we lose the mandate.',
+    category: 'client',
+    severity: 'high',
+    probability: 40,
+    mitigated: false,
+    surfacedWeek: 4,
+    surfacedPhase: 1,
+  },
+  {
+    id: 'risk-11',
+    name: 'Valuation Misalignment',
+    description: 'If our valuation view diverges significantly from Ricardo\'s expectations (too low = lose mandate, too high = credibility risk with buyers later).',
+    category: 'client',
+    severity: 'medium',
+    probability: 25,
+    mitigated: false,
+    surfacedWeek: 4,
+    surfacedPhase: 1,
+  },
+];
+
+export const phase1Headlines: Headline[] = [
+  { id: 'hl-10', week: 4, text: 'Major PE firm raises €2.5B fund targeting European tech buyouts.', category: 'macro' },
+  { id: 'hl-11', week: 4, text: 'Siemens acquires predictive maintenance startup for €180M — 15x revenue.', category: 'comparable' },
+  { id: 'hl-12', week: 5, text: 'Energy transition accelerates demand for industrial IoT solutions.', category: 'sector' },
+  { id: 'hl-13', week: 5, text: 'Mid-market M&A advisory fees under pressure as boutiques proliferate.', category: 'sector' },
+  { id: 'hl-14', week: 6, text: 'Cross-border deal activity in Southern Europe hits five-year high.', category: 'macro' },
+];
