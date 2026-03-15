@@ -26,7 +26,7 @@ type ModalId = 'budget' | 'board' | 'staffing' | 'pitch' | 'fee' | 'spa' | null;
 
 export default function DashboardScreen() {
   const {
-    phase, week, resources, emails, tasks, workstreams, buyers, risks, deliverables, headlines,
+    phase, day, week, resources, emails, tasks, workstreams, buyers, risks, deliverables, headlines,
     advanceWeek, isWeekInProgress, weekHistory,
     budgetRequests, boardSubmission, feeNegotiation, agreedFeeTerms, competitorThreats, advancePhase,
   } = useGameStore();
@@ -70,7 +70,7 @@ export default function DashboardScreen() {
         <div>
           <h1 className="text-2xl font-display font-semibold text-text-primary">Dashboard</h1>
           <p className="text-[12px] text-text-muted mt-1">
-            Phase {phase}: {PHASE_NAMES[phase]} — Week {week}
+            Phase {phase}: {PHASE_NAMES[phase]} — Day {day} <span className="opacity-50">(Week {week})</span>
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -81,13 +81,13 @@ export default function DashboardScreen() {
           >
             <Users size={13} /> Staffing
           </button>
-          {/* Advance Week */}
+          {/* Advance */}
           <button
             onClick={advanceWeek}
             disabled={isWeekInProgress}
             className="flex items-center gap-2 px-4 py-2 bg-accent-primary hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-white text-[13px] font-semibold rounded-[var(--radius-md)] transition-colors duration-150 shadow-[var(--shadow-glow-soft)]"
           >
-            Advance Week
+            Advance
             <ArrowRight size={14} />
           </button>
         </div>
@@ -422,11 +422,11 @@ export default function DashboardScreen() {
 
       {/* Week History */}
       {weekHistory.length > 0 && (
-        <Panel title="Recent Activity" subtitle="Week-by-week log">
+        <Panel title="Recent Activity" subtitle="Day-by-day log">
           <div className="space-y-2">
             {weekHistory.slice(-5).reverse().map((entry) => (
-              <div key={entry.week} className="flex items-start gap-3 p-2 rounded-[var(--radius-md)] bg-surface-default">
-                <div className="text-[10px] font-mono text-text-muted shrink-0 w-14 pt-0.5">Week {entry.week}</div>
+              <div key={entry.day} className="flex items-start gap-3 p-2 rounded-[var(--radius-md)] bg-surface-default">
+                <div className="text-[10px] font-mono text-text-muted shrink-0 w-14 pt-0.5">Day {entry.day}</div>
                 <p className="text-[12px] text-text-secondary leading-relaxed">{entry.summary}</p>
               </div>
             ))}

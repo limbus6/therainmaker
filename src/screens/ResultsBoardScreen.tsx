@@ -288,7 +288,7 @@ export default function ResultsBoardScreen() {
       {/* Deal Summary */}
       <div className="bg-bg-panel/60 border border-border-subtle rounded-[var(--radius-lg)] p-6 text-center">
         <p className="text-[12px] text-text-muted">
-          Completed in {state.totalWeeks} weeks across {state.phase + 1} phases
+          Completed in {state.totalDays} days (Week {state.week}) across {state.phase + 1} phases
           {' '}— {state.tasks.filter((t) => t.status === 'completed').length} tasks completed
           {' '}— {state.buyers.length} buyers engaged
         </p>

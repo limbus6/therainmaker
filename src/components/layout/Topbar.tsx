@@ -19,7 +19,7 @@ function KpiPill({ label, value, color }: { label: string; value: string | numbe
 }
 
 export default function Topbar({ onMenuToggle }: { onMenuToggle: () => void }) {
-  const { phase, week, resources, emails } = useGameStore();
+  const { phase, day, week, resources, emails } = useGameStore();
   const unreadCount = emails.filter((e) => e.state === 'unread').length;
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -43,8 +43,9 @@ export default function Topbar({ onMenuToggle }: { onMenuToggle: () => void }) {
           <span className="hidden lg:inline text-[12px] text-text-secondary">{PHASE_NAMES[phase]}</span>
           <div className="h-4 w-px bg-border-subtle" />
           <span className="text-[12px] font-mono text-text-muted">
-            WK <span className="text-text-primary font-semibold">{String(week).padStart(2, '0')}</span>
+            DAY <span className="text-text-primary font-semibold">{String(day).padStart(2, '0')}</span>
           </span>
+          <span className="text-[11px] font-mono text-text-muted/60">WK {week}</span>
         </div>
       </div>
 

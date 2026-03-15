@@ -30,6 +30,8 @@ export interface WeekResult {
   phaseProgressDelta: number;
   resolvedBudgetRequests: { id: string; approved: boolean; amount: number }[];
   resolvedBoardSubmission: { approved: boolean; notes: string } | null;
+  /** How many calendar days this advance covered (1–7) */
+  daysAdvanced: number;
   /** Internal: updated buyer array for store to apply */
   _updatedBuyers: Buyer[];
 }
@@ -41,19 +43,25 @@ export interface BuyerChange {
   to: string;
 }
 
-// Determine if a task completes this week or needs more time
-function resolveTaskProgress(task: GameTask, _week: number, tempAllocations: TempCapacityAllocation[] = []): 'completed' | 'progressed' {
-  // Apply speed multiplier from active contractor allocation for this task
+// Determine if a task completes in the given number of days
+// Uses per-day probability derived from weekly baseline:
+//   medium weekly = 60% → per-day = 1 - 0.4^(1/7) ≈ 12.9%
+//   high weekly   = 40% → per-day = 1 - 0.6^(1/7) ≈ 8.0%
+// In N days: P(complete) = 1 - (1-weeklyP)^(N/7)
+function resolveTaskProgress(task: GameTask, _week: number, tempAllocations: TempCapacityAllocation[] = [], daysToAdvance: number = 7): 'completed' | 'progressed' {
   const alloc = tempAllocations.find((a) => a.taskId === task.id);
   const boost = alloc ? alloc.speedMultiplier : 1.0;
+  const ratio = (daysToAdvance / 7) * boost;
 
   if (task.complexity === 'low') return 'completed';
   if (task.complexity === 'medium') {
-    // 60% base chance; contractor boosts completion probability
-    return Math.random() < Math.min(0.95, 0.6 * boost) ? 'completed' : 'progressed';
+    // 1 - (1 - 0.6)^ratio = 1 - 0.4^ratio
+    const prob = 1 - Math.pow(0.4, ratio);
+    return Math.random() < Math.min(0.97, prob) ? 'completed' : 'progressed';
   }
-  // High complexity: 40% base chance
-  return Math.random() < Math.min(0.90, 0.4 * boost) ? 'completed' : 'progressed';
+  // High: 1 - (1 - 0.4)^ratio = 1 - 0.6^ratio
+  const prob = 1 - Math.pow(0.6, ratio);
+  return Math.random() < Math.min(0.92, prob) ? 'completed' : 'progressed';
 }
 
 // Hidden workload check — some tasks trigger surprise extra work
@@ -78,45 +86,45 @@ function checkHiddenWorkload(completedTasks: GameTask[]): WeekResult['hiddenWork
   return null;
 }
 
-// Calculate resource consumption for a week
+// Calculate resource consumption, scaled to the number of days advanced
 function calculateResourceConsumption(
   inProgressTasks: GameTask[],
   resources: PlayerResources,
   tempCapacityAllocations: TempCapacityAllocation[] = [],
+  daysToAdvance: number = 7,
 ): Partial<PlayerResources> {
+  const scale = daysToAdvance / 7;
   let budgetSpent = 0;
   let workLoad = 0;
 
   for (const task of inProgressTasks) {
-    // Spread cost over expected duration
     const weeklyBudget = task.complexity === 'low' ? task.cost : Math.ceil(task.cost / 2);
     const weeklyWork = task.complexity === 'low' ? task.work : Math.ceil(task.work / 2);
-    budgetSpent += weeklyBudget;
-    workLoad += weeklyWork;
+    budgetSpent += weeklyBudget * scale;
+    workLoad += weeklyWork * scale;
   }
 
-  // Deduct contractor weekly rates for active task allocations
+  // Deduct contractor rates pro-rated for days elapsed
   for (const alloc of tempCapacityAllocations) {
     if (inProgressTasks.some((t) => t.id === alloc.taskId)) {
-      budgetSpent += alloc.weeklyRate;
+      budgetSpent += alloc.weeklyRate * scale;
     }
   }
 
-  // Capacity impact: workLoad as % of max
-  const capacityUsed = Math.min(workLoad, 25); // Cap weekly drain
+  const capacityUsed = Math.min(workLoad, 25 * scale);
   const newCapacity = Math.max(0, resources.teamCapacity - capacityUsed);
 
-  // Morale: drops if overworked, recovers on lighter weeks
-  const moraleDelta = workLoad > 25 ? -4
-    : workLoad > 18 ? -2
-    : workLoad > 10 ? 0
-    : workLoad > 0 ? 2
-    : 3; // idle week = good recovery
+  // Morale thresholds scale with days so feel is proportional
+  const moraleDelta = workLoad > 25 * scale ? -4 * scale
+    : workLoad > 18 * scale ? -2 * scale
+    : workLoad > 10 * scale ? 0
+    : workLoad > 0 ? 2 * scale
+    : 3 * scale; // idle = recovery
 
   return {
-    budget: Math.max(0, resources.budget - budgetSpent),
-    teamCapacity: Math.min(resources.teamCapacityMax, newCapacity + 8), // Healthier weekly recovery
-    morale: Math.max(0, Math.min(100, resources.morale + moraleDelta)),
+    budget: Math.max(0, resources.budget - Math.round(budgetSpent)),
+    teamCapacity: Math.min(resources.teamCapacityMax, newCapacity + 8 * scale),
+    morale: Math.max(0, Math.min(100, Math.round(resources.morale + moraleDelta))),
   };
 }
 
@@ -998,16 +1006,17 @@ function rollEvents(state: GameState): {
 // Main Week Resolution Function
 // ============================================
 
-export function resolveWeek(state: GameState): WeekResult {
+export function resolveWeek(state: GameState, daysToAdvance: number = 7): WeekResult {
   const inProgressTasks = state.tasks.filter((t) => t.status === 'in_progress');
-  const newWeek = state.week + 1;
+  const newDay = state.day + daysToAdvance;
+  const newWeek = Math.ceil(newDay / 7);
 
   // 1. Resolve task progress
   const tasksCompleted: GameTask[] = [];
   const tasksProgressed: GameTask[] = [];
 
   for (const task of inProgressTasks) {
-    const outcome = resolveTaskProgress(task, newWeek, state.tempCapacityAllocations);
+    const outcome = resolveTaskProgress(task, newWeek, state.tempCapacityAllocations, daysToAdvance);
     if (outcome === 'completed') {
       tasksCompleted.push(task);
     } else {
@@ -1016,7 +1025,7 @@ export function resolveWeek(state: GameState): WeekResult {
   }
 
   // 2. Calculate resource consumption
-  const resourceConsumption = calculateResourceConsumption(inProgressTasks, state.resources, state.tempCapacityAllocations);
+  const resourceConsumption = calculateResourceConsumption(inProgressTasks, state.resources, state.tempCapacityAllocations, daysToAdvance);
 
   // 3. Calculate state changes from completions
   const stateChanges = calculateStateChanges(tasksCompleted, state.resources);
@@ -1135,11 +1144,58 @@ export function resolveWeek(state: GameState): WeekResult {
     phaseProgressDelta,
     resolvedBudgetRequests: resolvedRequests,
     resolvedBoardSubmission,
+    daysAdvanced: daysToAdvance,
   };
 
   const narrativeSummary = generateSummary(partialResult, newWeek);
 
-  return { ...partialResult, narrativeSummary, _updatedBuyers: buyerResult.buyers };
+  return { ...partialResult, daysAdvanced: daysToAdvance, narrativeSummary, _updatedBuyers: buyerResult.buyers };
+}
+
+// ============================================
+// Calculate Days to Next Meaningful Event
+// ============================================
+
+export function calcDaysToAdvance(state: GameState): number {
+  let days = 7; // default: advance a full week if nothing is urgent
+
+  // Urgent unread emails: check inbox tomorrow
+  if (state.emails.some((e) => e.priority === 'urgent' && e.state === 'unread')) {
+    days = Math.min(days, 1);
+  }
+
+  // Low complexity tasks: complete in 1 day
+  const inProgress = state.tasks.filter((t) => t.status === 'in_progress');
+  if (inProgress.some((t) => t.complexity === 'low')) {
+    days = Math.min(days, 1);
+  }
+
+  // Medium complexity tasks: 2-3 days
+  if (inProgress.some((t) => t.complexity === 'medium')) {
+    days = Math.min(days, 2 + Math.floor(Math.random() * 2));
+  }
+
+  // High complexity tasks: 3-5 days (give the team time to work)
+  if (inProgress.some((t) => t.complexity === 'high') && days > 3) {
+    days = Math.min(days, 3 + Math.floor(Math.random() * 3));
+  }
+
+  // Pending board submission: board convenes in 2-3 days
+  if (state.boardSubmission?.status === 'pending') {
+    days = Math.min(days, 2 + Math.floor(Math.random() * 2));
+  }
+
+  // Pending budget request: IC responds in 2 days
+  if (state.budgetRequests.some((r) => r.status === 'pending')) {
+    days = Math.min(days, 2);
+  }
+
+  // Active competitor threat: urgent counter-action needed
+  if (state.competitorThreats.some((t) => !t.resolved)) {
+    days = Math.min(days, 2 + Math.floor(Math.random() * 2));
+  }
+
+  return Math.max(1, Math.min(7, days));
 }
 
 // ============================================

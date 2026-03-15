@@ -5,6 +5,7 @@ import { CheckCircle2, Clock, AlertTriangle, TrendingUp, TrendingDown, ArrowRigh
 
 export default function WeekSummaryOverlay() {
   const result = useGameStore((s) => s.lastWeekResult);
+  const day = useGameStore((s) => s.day);
   const week = useGameStore((s) => s.week);
   const resources = useGameStore((s) => s.resources);
   const phaseGate = useGameStore((s) => s.phaseGate);
@@ -25,8 +26,11 @@ export default function WeekSummaryOverlay() {
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-border-subtle">
           <div>
-            <div className="text-[10px] font-mono uppercase tracking-widest text-text-muted">Week {week} Complete</div>
-            <h2 className="text-lg font-display font-semibold text-text-primary mt-1">Weekly Summary</h2>
+            <div className="text-[10px] font-mono uppercase tracking-widest text-text-muted">
+              {result?.daysAdvanced === 1 ? '1 Day Advanced' : `${result?.daysAdvanced ?? '?'} Days Advanced`}
+              <span className="ml-2 text-text-muted/50">· Day {day} · Week {week}</span>
+            </div>
+            <h2 className="text-lg font-display font-semibold text-text-primary mt-1">Situation Report</h2>
           </div>
           <button onClick={dismiss} className="p-1.5 rounded-[var(--radius-sm)] hover:bg-surface-hover transition-colors">
             <X size={16} className="text-text-muted" />

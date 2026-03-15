@@ -32,7 +32,7 @@ import type {
   SPARound,
   SPATerms,
 } from '../types/game';
-import { resolveWeek, checkPhaseGate, unlockTasks, checkDealCollapse } from '../engine/weekEngine';
+import { resolveWeek, checkPhaseGate, unlockTasks, checkDealCollapse, calcDaysToAdvance } from '../engine/weekEngine';
 import type { WeekResult, PhaseGateResult } from '../engine/weekEngine';
 import { PHASE_BASE_BUDGETS, STAFF_PROFILES, CONTRACTOR_PROFILES, MITIGATION_ACTIONS } from '../config/phaseBudgets';
 
@@ -645,8 +645,9 @@ function evaluateSPARound(
 export const useGameStore = create<GameStore>()(persist((set, get) => ({
   // State
   phase: 0 as PhaseId,
+  day: 1,
   week: 1,
-  totalWeeks: 1,
+  totalDays: 1,
   resources: initialResources,
   client: initialClient,
   team: initialTeam,
@@ -700,8 +701,11 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
   advanceWeek: () => {
     const state = get();
 
-    // Run the week engine
-    const result = resolveWeek(state);
+    // Determine how many days to advance before the next meaningful event
+    const daysToAdvance = calcDaysToAdvance(state);
+
+    // Run the week engine for the calculated number of days
+    const result = resolveWeek(state, daysToAdvance);
 
     // Apply task status changes
     const updatedTasks = state.tasks.map((t) => {
@@ -761,7 +765,8 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     // Auto-generate qualification notes when key Phase 0 tasks complete
     const completedTaskIds = new Set(result.tasksCompleted.map((t) => t.id));
     const newQualNotes = [...state.qualificationNotes];
-    const newWeekNum = state.week + 1;
+    const newDay = state.day + daysToAdvance;
+    const newWeekNum = Math.ceil(newDay / 7);
     if (state.phase === 0) {
       if (completedTaskIds.has('task-01') && !newQualNotes.some((n) => n.source === 'team_research' && n.content.includes('screening'))) {
         newQualNotes.push({
@@ -840,8 +845,9 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     }
 
     set({
+      day: newDay,
       week: newWeekNum,
-      totalWeeks: state.totalWeeks + 1,
+      totalDays: state.totalDays + daysToAdvance,
       resources: newResources,
       tasks: unlockedTasks,
       workstreams: updatedWorkstreams,
@@ -869,7 +875,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
         return req;
       }),
       weekSummary: result.narrativeSummary,
-      weekHistory: [...state.weekHistory, { week: newWeekNum, summary: result.narrativeSummary, phase: state.phase }],
+      weekHistory: [...state.weekHistory, { day: newDay, week: newWeekNum, daysAdvanced: daysToAdvance, summary: result.narrativeSummary, phase: state.phase }],
       isWeekInProgress: true,
       savedAt: new Date().toISOString(),
       lastWeekResult: result,

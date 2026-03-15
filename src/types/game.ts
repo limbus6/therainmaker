@@ -453,8 +453,11 @@ export interface CompetitorThreat {
 
 export interface GameState {
   phase: PhaseId;
+  /** Total calendar days elapsed (primary time counter, starts at 1) */
+  day: number;
+  /** Derived: Math.ceil(day / 7) — used by event system and email timestamps */
   week: number;
-  totalWeeks: number;
+  totalDays: number;
   resources: PlayerResources;
   client: Client;
   team: TeamMember[];
@@ -467,7 +470,7 @@ export interface GameState {
   events: GameEvent[];
   headlines: Headline[];
   weekSummary: string | null;
-  weekHistory: { week: number; summary: string; phase: PhaseId }[];
+  weekHistory: { day: number; week: number; summary: string; phase: PhaseId; daysAdvanced: number }[];
   isWeekInProgress: boolean;
   playerName: string;
   savedAt: string | null;
