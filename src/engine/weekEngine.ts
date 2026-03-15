@@ -28,6 +28,8 @@ export interface WeekResult {
   hiddenWorkload: { taskId: string; description: string; extraWork: number } | null;
   narrativeSummary: string;
   phaseProgressDelta: number;
+  resolvedBudgetRequests: { id: string; approved: boolean; amount: number }[];
+  resolvedBoardSubmission: { approved: boolean; notes: string } | null;
   /** Internal: updated buyer array for store to apply */
   _updatedBuyers: Buyer[];
 }
@@ -40,16 +42,18 @@ export interface BuyerChange {
 }
 
 // Determine if a task completes this week or needs more time
-function resolveTaskProgress(task: GameTask, _week: number): 'completed' | 'progressed' {
-  // Simple model: tasks complete after work/capacity ratio weeks
-  // Low complexity: 1 week, Medium: 1-2 weeks, High: 2-3 weeks
+function resolveTaskProgress(task: GameTask, _week: number, tempAllocations: TempCapacityAllocation[] = []): 'completed' | 'progressed' {
+  // Apply speed multiplier from active contractor allocation for this task
+  const alloc = tempAllocations.find((a) => a.taskId === task.id);
+  const boost = alloc ? alloc.speedMultiplier : 1.0;
+
   if (task.complexity === 'low') return 'completed';
   if (task.complexity === 'medium') {
-    // 60% chance of completing in one week
-    return Math.random() < 0.6 ? 'completed' : 'progressed';
+    // 60% base chance; contractor boosts completion probability
+    return Math.random() < Math.min(0.95, 0.6 * boost) ? 'completed' : 'progressed';
   }
-  // High complexity: 40% chance per week
-  return Math.random() < 0.4 ? 'completed' : 'progressed';
+  // High complexity: 40% base chance
+  return Math.random() < Math.min(0.90, 0.4 * boost) ? 'completed' : 'progressed';
 }
 
 // Hidden workload check — some tasks trigger surprise extra work
@@ -1003,7 +1007,7 @@ export function resolveWeek(state: GameState): WeekResult {
   const tasksProgressed: GameTask[] = [];
 
   for (const task of inProgressTasks) {
-    const outcome = resolveTaskProgress(task, newWeek);
+    const outcome = resolveTaskProgress(task, newWeek, state.tempCapacityAllocations);
     if (outcome === 'completed') {
       tasksCompleted.push(task);
     } else {
@@ -1036,7 +1040,69 @@ export function resolveWeek(state: GameState): WeekResult {
   // 9. Event system
   const eventResult = rollEvents(state);
 
-  // Merge event resource effects into main resource changes
+  // 9b. Resolve pending budget requests (Board decision)
+  const resolvedRequests: { id: string; approved: boolean; amount: number; justification: string }[] = [];
+  for (const req of state.budgetRequests) {
+    if (req.status === 'pending') {
+      // Logic: Higher client trust and reasonable amount increases approval chance
+      // Max approval chance 90% at 100 trust; Min 10%
+      const approvalChance = (state.resources.clientTrust / 100) * 0.8 + 0.1;
+      const approved = Math.random() < approvalChance;
+      const approvedAmount = approved ? req.amount : 0;
+      
+      resolvedRequests.push({ id: req.id, approved, amount: approvedAmount, justification: req.justification });
+      
+      // Generate email from "The Board"
+      eventResult.emails.push({
+        id: `email-budget-${req.id}`,
+        week: newWeek,
+        phase: state.phase,
+        sender: 'Investment Committee',
+        senderRole: 'Clearwater Partners',
+        subject: approved ? 'Budget Request Approved' : 'Budget Request Declined',
+        body: approved 
+          ? `The Board has reviewed your request for €${req.amount}k regarding: "${req.justification}". \n\nGiven the current deal trajectory, we have approved this additional allocation. Spend it wisely.`
+          : `We have reviewed your request for extra budget. At this stage, the Committee is not convinced that additional spend is justified. Focus on the core workstreams.`,
+        preview: approved ? 'Budget request approved...' : 'Budget request declined...',
+        category: 'partner',
+        state: 'unread',
+        priority: approved ? 'high' : 'urgent',
+        timestamp: `Week ${newWeek}, Monday`,
+      });
+
+      if (approved) {
+        resourceChanges.budget = (resourceChanges.budget ?? state.resources.budget) + approvedAmount;
+      }
+    }
+  }
+
+  // 9c. Resolve pending board submission (Phase 0)
+  let resolvedBoardSubmission: WeekResult['resolvedBoardSubmission'] | null = null;
+  if (state.phase === 0 && state.boardSubmission && state.boardSubmission.status === 'pending') {
+    // Chance based on deal momentum and reputation
+    const approvalChance = (state.resources.dealMomentum / 100) * 0.6 + (state.resources.reputation / 100) * 0.3 + 0.1;
+    const approved = Math.random() < approvalChance;
+    const notes = approved
+      ? "The Investment Committee has reviewed the Solara opportunity. Given the sector tailwinds and founder profile, we approve the mandate. Proceed to formal pitch."
+      : "The Committee remains concerned about the founder's valuation expectations and current deal momentum. We are not prepared to release further resources at this stage. Strengthen the investment case.";
+    
+    resolvedBoardSubmission = { approved, notes };
+
+    eventResult.emails.push({
+      id: `email-board-decision-${state.week}`,
+      week: newWeek,
+      phase: 0,
+      sender: 'Marcus Aldridge',
+      senderRole: 'Managing Partner',
+      subject: approved ? 'Solara Mandate: APPROVED' : 'Solara Mandate: DECLINED',
+      body: notes,
+      preview: approved ? 'Mandate approved by IC...' : 'Mandate declined by IC...',
+      category: 'partner',
+      state: 'unread',
+      priority: 'urgent',
+      timestamp: `Week ${newWeek}, Monday`,
+    });
+  }
   for (const [key, value] of Object.entries(eventResult.resourceEffects)) {
     const k = key as keyof PlayerResources;
     if (k === 'budget') {
@@ -1067,6 +1133,8 @@ export function resolveWeek(state: GameState): WeekResult {
     buyerChanges: buyerResult.changes,
     hiddenWorkload,
     phaseProgressDelta,
+    resolvedBudgetRequests: resolvedRequests,
+    resolvedBoardSubmission,
   };
 
   const narrativeSummary = generateSummary(partialResult, newWeek);
@@ -1163,15 +1231,18 @@ export function checkPhaseGate(state: GameState): PhaseGateResult {
       const clientAssessed = tasks.find((t) => t.id === 'task-03')?.status === 'completed';
       const internalReview = tasks.find((t) => t.id === 'task-05')?.status === 'completed';
       const marketRead = tasks.find((t) => t.id === 'task-04')?.status === 'completed';
+      const boardApproved = state.boardSubmission?.status === 'approved';
+      const hasQualNotes = (state.qualificationNotes?.length ?? 0) >= 1;
 
       return {
-        canTransition: !!screeningDone && !!clientAssessed && !!internalReview,
+        canTransition: !!screeningDone && !!clientAssessed && !!internalReview && boardApproved,
         requirements: [
           { label: 'Company screening completed', met: !!screeningDone },
           { label: 'Client motivation assessed', met: !!clientAssessed },
           { label: 'Quick market read completed', met: !!marketRead },
           { label: 'Internal opportunity review approved', met: !!internalReview },
-          { label: 'Client trust above 50', met: resources.clientTrust >= 50 },
+          { label: 'Qualification notes gathered', met: hasQualNotes },
+          { label: 'Board submission approved', met: boardApproved },
         ],
         nextPhase: 1,
       };
@@ -1179,13 +1250,15 @@ export function checkPhaseGate(state: GameState): PhaseGateResult {
 
     case 1: { // Pitch & Mandate → Preparation
       const completionRatio = totalCount > 0 ? completedCount / totalCount : 0;
+      const pitchPresented = state.feeNegotiation?.pitchPresented === true;
+      const feeAgreed = state.feeNegotiation?.status === 'agreed' || state.agreedFeeTerms !== null;
       return {
-        canTransition: completionRatio >= 0.7 && resources.clientTrust >= 60,
+        canTransition: completionRatio >= 0.7 && resources.clientTrust >= 60 && pitchPresented && feeAgreed,
         requirements: [
           { label: `Phase tasks completed (${completedCount}/${totalCount})`, met: completionRatio >= 0.7 },
           { label: 'Client trust above 60 (mandate confidence)', met: resources.clientTrust >= 60 },
-          { label: 'Investment case prepared', met: tasks.some((t) => t.phase === 1 && t.category === 'deliverable' && t.status === 'completed') },
-          { label: 'Fee proposal submitted', met: tasks.some((t) => t.phase === 1 && t.name.toLowerCase().includes('fee') && t.status === 'completed') },
+          { label: 'Pitch presented to client', met: pitchPresented },
+          { label: 'Fee terms agreed', met: feeAgreed },
         ],
         nextPhase: 2,
       };

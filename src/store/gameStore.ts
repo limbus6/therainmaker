@@ -747,7 +747,6 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     const newCompetitorThreats = [...state.competitorThreats];
     for (const event of result.newEvents) {
       if (event.title?.includes('Competing Advisor')) {
-        // Extract advisor name or use generic
         const advisorName = event.description?.includes('firm') ? 'Competing Advisory Firm' : 'Rival Advisor';
         newCompetitorThreats.push({
           id: `threat-${event.id}`,
@@ -759,13 +758,60 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       }
     }
 
-    // Check phase gate
+    // Auto-generate qualification notes when key Phase 0 tasks complete
+    const completedTaskIds = new Set(result.tasksCompleted.map((t) => t.id));
+    const newQualNotes = [...state.qualificationNotes];
+    const newWeekNum = state.week + 1;
+    if (state.phase === 0) {
+      if (completedTaskIds.has('task-01') && !newQualNotes.some((n) => n.source === 'team_research' && n.content.includes('screening'))) {
+        newQualNotes.push({
+          id: `qn-${Date.now()}-01`,
+          week: newWeekNum,
+          source: 'team_research',
+          content: 'Initial company screening complete. Solara Systems financials and growth metrics verified. Deal fundamentals look credible.',
+          sentiment: 'positive',
+        });
+      }
+      if (completedTaskIds.has('task-03') && !newQualNotes.some((n) => n.source === 'meeting' && n.content.includes('motivation'))) {
+        const trustLevel = newResources.clientTrust;
+        newQualNotes.push({
+          id: `qn-${Date.now()}-03`,
+          week: newWeekNum,
+          source: 'meeting',
+          content: trustLevel >= 50
+            ? 'Client motivation assessment complete. Ricardo is committed to a full exit and timeline is realistic. Mandate opportunity confirmed.'
+            : 'Client motivation assessment complete. Ricardo appears committed but some ambiguity remains around timeline and valuation expectations.',
+          sentiment: trustLevel >= 50 ? 'positive' : 'neutral',
+        });
+      }
+    }
+
+    // Auto-release temp capacity allocations for tasks that completed this week
+    const releasedAllocations = state.tempCapacityAllocations.filter(
+      (alloc) => completedTaskIds.has(alloc.taskId)
+    );
+    const updatedTempAllocations = state.tempCapacityAllocations.filter(
+      (alloc) => !completedTaskIds.has(alloc.taskId)
+    );
+
+    // Apply resolved board submission (for accurate phase gate check this week)
+    const resolvedBoardSub = result.resolvedBoardSubmission
+      ? {
+          ...state.boardSubmission!,
+          status: result.resolvedBoardSubmission.approved ? 'approved' as const : 'rejected' as const,
+          boardNotes: result.resolvedBoardSubmission.notes,
+        }
+      : state.boardSubmission;
+
+    // Check phase gate (with resolved board submission so gate reflects this week's board decision)
     const nextState = {
       ...state,
-      week: state.week + 1,
+      week: newWeekNum,
       tasks: unlockedTasks,
       resources: newResources,
       buyers: updatedBuyers,
+      boardSubmission: resolvedBoardSub,
+      qualificationNotes: newQualNotes,
     } as GameState;
     const gate = checkPhaseGate(nextState);
 
@@ -775,8 +821,26 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     // Check for deal collapse (failure)
     const collapse = checkDealCollapse(nextState);
 
+    // Generate release emails for freed contractors
+    for (const freed of releasedAllocations) {
+      newEmails.push({
+        id: `email-contractor-released-${freed.id}`,
+        week: newWeekNum,
+        phase: state.phase,
+        sender: 'James Wu',
+        senderRole: 'Associate',
+        subject: 'Contractor engagement concluded',
+        body: `The contractor engagement for task completion has been wrapped up. The ${freed.profile.replace(/_/g, ' ')} has been released as the linked task is now complete.`,
+        preview: 'Contractor engagement concluded...',
+        category: 'internal',
+        state: 'unread',
+        priority: 'low',
+        timestamp: `Week ${newWeekNum}, Monday`,
+      });
+    }
+
     set({
-      week: state.week + 1,
+      week: newWeekNum,
       totalWeeks: state.totalWeeks + 1,
       resources: newResources,
       tasks: unlockedTasks,
@@ -790,8 +854,22 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       buyers: updatedBuyers,
       events: newEvents,
       competitorThreats: newCompetitorThreats,
+      qualificationNotes: newQualNotes,
+      tempCapacityAllocations: updatedTempAllocations,
+      boardSubmission: resolvedBoardSub,
+      budgetRequests: state.budgetRequests.map((req) => {
+        const resolved = result.resolvedBudgetRequests.find((r) => r.id === req.id);
+        if (resolved) {
+          return {
+            ...req,
+            status: resolved.approved ? 'approved' as const : 'rejected' as const,
+            approvedAmount: resolved.approved ? resolved.amount : 0,
+          };
+        }
+        return req;
+      }),
       weekSummary: result.narrativeSummary,
-      weekHistory: [...state.weekHistory, { week: state.week + 1, summary: result.narrativeSummary, phase: state.phase }],
+      weekHistory: [...state.weekHistory, { week: newWeekNum, summary: result.narrativeSummary, phase: state.phase }],
       isWeekInProgress: true,
       savedAt: new Date().toISOString(),
       lastWeekResult: result,
@@ -1423,11 +1501,13 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     if (state.resources.budget < cfg.budgetCost) return {};
     const effects = cfg.effects;
     return {
-      competitorThreats: state.competitorThreats.map((t) =>
-        t.id === threatId
-          ? { ...t, usedActions: [...t.usedActions, action] }
-          : t
-      ),
+      competitorThreats: state.competitorThreats.map((t) => {
+        if (t.id !== threatId) return t;
+        const updatedActions = [...t.usedActions, action];
+        // Threat is resolved once 2+ mitigation actions have been used
+        const resolved = updatedActions.length >= 2;
+        return { ...t, usedActions: updatedActions, resolved };
+      }),
       resources: {
         ...state.resources,
         budget: state.resources.budget - cfg.budgetCost,
