@@ -46,16 +46,15 @@ export default function LandingPage() {
       <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-accent-primary to-transparent opacity-10 pointer-events-none" />
 
       <div className="relative z-10 flex flex-col items-center justify-center gap-0 px-4 text-center w-full max-w-5xl mx-auto">
-        
+
         {/* Logo */}
-        <div className="w-[18rem] h-[18rem] md:w-[28rem] md:h-[28rem] lg:w-[38rem] lg:h-[38rem] flex items-center justify-center pointer-events-none -mt-48">
+        <div className="w-[14rem] h-[14rem] sm:w-[20rem] sm:h-[20rem] md:w-[28rem] md:h-[28rem] lg:w-[38rem] lg:h-[38rem] flex items-center justify-center pointer-events-none md:-mt-48">
           <img src="./logo-game.png" alt="M&A Rainmaker Logo" className="w-full h-full object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.5)]" />
         </div>
 
-
         {/* Name entry form */}
         {showNameForm ? (
-          <div className="w-full max-w-sm space-y-4 relative -mt-48 z-20 bg-bg-secondary/95 p-6 rounded-2xl border-2 border-border-subtle backdrop-blur-md shadow-2xl">
+          <div className="w-full max-w-sm space-y-4 relative mt-4 md:-mt-48 z-20 bg-bg-secondary/95 p-6 rounded-2xl border-2 border-border-subtle backdrop-blur-md shadow-2xl">
             <div className="space-y-2">
               <label className="block text-[11px] font-mono uppercase tracking-widest text-text-muted text-left font-bold border-b border-border-subtle/30 pb-1 mb-2">
                 Identity
@@ -90,7 +89,7 @@ export default function LandingPage() {
 
         ) : hasSavedGame ? (
           /* Returning player — show save card + options */
-          <div className="w-full max-w-sm space-y-2 relative -mt-48 z-20">
+          <div className="w-full max-w-sm space-y-2 relative mt-4 md:-mt-48 z-20">
             {/* Save card */}
             <div className="rounded-xl border-2 border-border-subtle bg-bg-secondary/90 overflow-hidden backdrop-blur-md shadow-2xl">
               <div className="px-3 py-1.5 border-b border-border-subtle/50 bg-accent-primary/10">
@@ -128,7 +127,7 @@ export default function LandingPage() {
 
         ) : (
           /* First-time player */
-          <div className="relative -mt-54 z-20">
+          <div className="relative mt-4 md:-mt-[13.5rem] z-20">
             <button
               onClick={handleEnterClick}
               className="px-8 py-5 text-xl md:text-2xl font-black tracking-tight text-text-primary rounded-2xl bg-accent-primary hover:bg-accent-primary/90 active:scale-95 transition-all duration-300 shadow-[0_0_40px_rgba(100,100,255,0.2)] border-2 border-accent-primary/50 backdrop-blur-xl group"
