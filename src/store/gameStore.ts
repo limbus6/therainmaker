@@ -39,16 +39,7 @@ import { PHASE_BASE_BUDGETS, STAFF_PROFILES, CONTRACTOR_PROFILES, MITIGATION_ACT
 import { getRiskMitigationPlans } from '../config/riskMitigation';
 import { round2 } from '../utils/numberFormat';
 
-import { phase1Tasks, phase1Emails, phase1Deliverables, phase1Risks, phase1Headlines } from '../content/phase1';
-import { phase2Tasks, phase2Emails, phase2Deliverables, phase2Risks, phase2Headlines, phase2Buyers } from '../content/phase2';
-import { phase3Tasks, phase3Emails, phase3Deliverables, phase3Risks, phase3Headlines } from '../content/phase3';
-import { phase4Tasks, phase4Emails, phase4Deliverables, phase4Risks, phase4Headlines } from '../content/phase4';
-import { phase5Tasks, phase5Emails, phase5Deliverables, phase5Risks, phase5Headlines } from '../content/phase5';
-import { phase6Tasks, phase6Emails, phase6Deliverables, phase6Risks, phase6Headlines } from '../content/phase6';
-import { phase7Tasks, phase7Emails, phase7Deliverables, phase7Risks, phase7Headlines } from '../content/phase7';
-import { phase8Tasks, phase8Emails, phase8Deliverables, phase8Risks, phase8Headlines } from '../content/phase8';
-import { phase9Tasks, phase9Emails, phase9Deliverables, phase9Risks, phase9Headlines } from '../content/phase9';
-import { phase10Tasks, phase10Emails, phase10Deliverables, phase10Risks, phase10Headlines } from '../content/phase10';
+import { loadPhaseContent } from '../content/loadPhaseContent';
 
 // ============================================
 // Initial Phase 0: Deal Origination Seed Data
@@ -397,7 +388,7 @@ function generateClientNote(
 
 interface GameActions {
   advanceWeek: () => void;
-  advancePhase: () => void;
+  advancePhase: () => Promise<void>;
   updateResources: (partial: Partial<PlayerResources>) => void;
   markEmailRead: (emailId: string) => void;
   flagEmail: (emailId: string) => void;
@@ -1062,10 +1053,10 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     });
   },
 
-  advancePhase: () => set((state) => {
+  advancePhase: async () => {
+    const state = get();
     const nextPhase = Math.min(state.phase + 1, 10) as PhaseId;
-
-    // Stamp phase emails with current game day so timestamps are accurate
+    // Stamp phase emails with current game day so timestamps are accurate.
     const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
     function stampEmails(emails: Email[]): Email[] {
       return emails.map((e, i) => ({
@@ -1075,8 +1066,6 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
         timestamp: `Day ${state.day + i} (Week ${state.week}), ${DAY_NAMES[(state.day + i - 1) % 5]}`,
       }));
     }
-
-    // Load phase-specific content
     let newTasks = state.tasks;
     let newEmails = state.emails;
     let newDeliverables = state.deliverables;
@@ -1084,13 +1073,18 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     let newHeadlines = state.headlines;
     let newWorkstreams = state.workstreams;
     let newBuyers = state.buyers;
-
+    if (nextPhase >= 1) {
+      const phaseContent = await loadPhaseContent(nextPhase as Exclude<PhaseId, 0>);
+      newTasks = [...state.tasks, ...phaseContent.tasks];
+      newEmails = [...state.emails, ...stampEmails(phaseContent.emails)];
+      newDeliverables = [...state.deliverables, ...phaseContent.deliverables];
+      newRisks = [...state.risks, ...phaseContent.risks];
+      newHeadlines = [...state.headlines, ...phaseContent.headlines];
+      if (phaseContent.buyers) {
+        newBuyers = [...state.buyers, ...phaseContent.buyers];
+      }
+    }
     if (nextPhase === 1) {
-      newTasks = [...state.tasks, ...phase1Tasks];
-      newEmails = [...state.emails, ...stampEmails(phase1Emails)];
-      newDeliverables = [...state.deliverables, ...phase1Deliverables];
-      newRisks = [...state.risks, ...phase1Risks];
-      newHeadlines = [...state.headlines, ...phase1Headlines];
       newWorkstreams = state.workstreams.map((ws) => {
         if (['financials', 'marketing_materials', 'buyer_outreach'].includes(ws.id)) {
           return { ...ws, active: true };
@@ -1098,99 +1092,50 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
         return ws;
       });
     } else if (nextPhase === 2) {
-      newTasks = [...state.tasks, ...phase2Tasks];
-      newEmails = [...state.emails, ...stampEmails(phase2Emails)];
-      newDeliverables = [...state.deliverables, ...phase2Deliverables];
-      newRisks = [...state.risks, ...phase2Risks];
-      newHeadlines = [...state.headlines, ...phase2Headlines];
-      newBuyers = [...state.buyers, ...phase2Buyers];
       newWorkstreams = state.workstreams.map((ws) => {
         if (ws.id === 'management' || ws.id === 'due_diligence') {
           return { ...ws, active: true };
         }
         return ws;
       });
-    } else if (nextPhase === 3) {
-      newTasks = [...state.tasks, ...phase3Tasks];
-      newEmails = [...state.emails, ...stampEmails(phase3Emails)];
-      newDeliverables = [...state.deliverables, ...phase3Deliverables];
-      newRisks = [...state.risks, ...phase3Risks];
-      newHeadlines = [...state.headlines, ...phase3Headlines];
     } else if (nextPhase === 4) {
-      newTasks = [...state.tasks, ...phase4Tasks];
-      newEmails = [...state.emails, ...stampEmails(phase4Emails)];
-      newDeliverables = [...state.deliverables, ...phase4Deliverables];
-      newRisks = [...state.risks, ...phase4Risks];
-      newHeadlines = [...state.headlines, ...phase4Headlines];
       newWorkstreams = state.workstreams.map((ws) => {
-        if (ws.id === 'negotiation') return { ...ws, active: true };
+        if (ws.id === 'negotiation') {
+          return { ...ws, active: true };
+        }
         return ws;
       });
-    } else if (nextPhase === 5) {
-      newTasks = [...state.tasks, ...phase5Tasks];
-      newEmails = [...state.emails, ...stampEmails(phase5Emails)];
-      newDeliverables = [...state.deliverables, ...phase5Deliverables];
-      newRisks = [...state.risks, ...phase5Risks];
-      newHeadlines = [...state.headlines, ...phase5Headlines];
     } else if (nextPhase === 6) {
-      newTasks = [...state.tasks, ...phase6Tasks];
-      newEmails = [...state.emails, ...stampEmails(phase6Emails)];
-      newDeliverables = [...state.deliverables, ...phase6Deliverables];
-      newRisks = [...state.risks, ...phase6Risks];
-      newHeadlines = [...state.headlines, ...phase6Headlines];
       newWorkstreams = state.workstreams.map((ws) => {
-        if (ws.id === 'due_diligence') return { ...ws, active: true };
+        if (ws.id === 'due_diligence') {
+          return { ...ws, active: true };
+        }
         return ws;
       });
-    } else if (nextPhase === 7) {
-      newTasks = [...state.tasks, ...phase7Tasks];
-      newEmails = [...state.emails, ...stampEmails(phase7Emails)];
-      newDeliverables = [...state.deliverables, ...phase7Deliverables];
-      newRisks = [...state.risks, ...phase7Risks];
-      newHeadlines = [...state.headlines, ...phase7Headlines];
     } else if (nextPhase === 8) {
-      newTasks = [...state.tasks, ...phase8Tasks];
-      newEmails = [...state.emails, ...stampEmails(phase8Emails)];
-      newDeliverables = [...state.deliverables, ...phase8Deliverables];
-      newRisks = [...state.risks, ...phase8Risks];
-      newHeadlines = [...state.headlines, ...phase8Headlines];
       newWorkstreams = state.workstreams.map((ws) => {
-        if (ws.id === 'negotiation') return { ...ws, active: true };
+        if (ws.id === 'negotiation') {
+          return { ...ws, active: true };
+        }
         return ws;
       });
-    } else if (nextPhase === 9) {
-      newTasks = [...state.tasks, ...phase9Tasks];
-      newEmails = [...state.emails, ...stampEmails(phase9Emails)];
-      newDeliverables = [...state.deliverables, ...phase9Deliverables];
-      newRisks = [...state.risks, ...phase9Risks];
-      newHeadlines = [...state.headlines, ...phase9Headlines];
     } else if (nextPhase === 10) {
-      newTasks = [...state.tasks, ...phase10Tasks];
-      newEmails = [...state.emails, ...stampEmails(phase10Emails)];
-      newDeliverables = [...state.deliverables, ...phase10Deliverables];
-      newRisks = [...state.risks, ...phase10Risks];
-      newHeadlines = [...state.headlines, ...phase10Headlines];
       newWorkstreams = state.workstreams.map((ws) => {
-        if (ws.id === 'closing') return { ...ws, active: true };
+        if (ws.id === 'closing') {
+          return { ...ws, active: true };
+        }
         return ws;
       });
     }
-
-    // Accumulate total budget spent before resetting
     const phaseSpent = Math.max(0, state.resources.budgetMax - state.resources.budget);
     const newTotalBudgetSpent = state.totalBudgetSpent + phaseSpent;
-
-    // Inject phase budget on advance
     const carryover = Math.max(0, state.resources.budget);
     const phaseBase = PHASE_BASE_BUDGETS[nextPhase] ?? 0;
     const newBudget = carryover + phaseBase;
-
-    // Generate Final Offers when entering Phase 7
     const newFinalOffers = nextPhase === 7
       ? generateFinalOffers(newBuyers, state.resources.dealMomentum, state.week + 1)
       : state.finalOffers;
-
-    return {
+    set({
       phase: nextPhase,
       tasks: unlockTasks(newTasks),
       emails: newEmails,
@@ -1203,15 +1148,15 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       resources: normalizeResources({
         ...state.resources,
         budget: newBudget,
-        budgetMax: newBudget, // Reset max to this phase's allocation
+        budgetMax: newBudget,
       }),
       totalBudgetSpent: newTotalBudgetSpent,
       phaseBudget: { phaseBase, carryover },
       feeNegotiation: null,
       finalOffers: newFinalOffers,
       preferredBidderId: null,
-    };
-  }),
+    });
+  },
 
   updateResources: (partial) => set((state) => ({
     resources: normalizeResources({ ...state.resources, ...partial }),
@@ -1948,3 +1893,6 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     return persisted;
   },
 }));
+
+
+
