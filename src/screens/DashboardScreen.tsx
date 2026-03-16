@@ -33,6 +33,19 @@ export default function DashboardScreen() {
 
   const phaseBudget = useGameStore((s) => s.phaseBudget);
   const phaseGate = useGameStore((s) => s.phaseGate);
+
+  // Deterministic preview of days-to-advance (no Math.random — just shows the floor)
+  const daysPreview = useGameStore((s) => {
+    if (s.emails.some((e) => e.priority === 'urgent' && e.state === 'unread')) return 1;
+    const inProg = s.tasks.filter((t) => t.status === 'in_progress');
+    if (inProg.some((t) => t.complexity === 'low')) return 1;
+    if (inProg.some((t) => t.complexity === 'medium')) return 2;
+    if (inProg.some((t) => t.complexity === 'high')) return 3;
+    if (s.boardSubmission?.status === 'pending') return 2;
+    if (s.budgetRequests.some((r) => r.status === 'pending')) return 2;
+    if (s.competitorThreats.some((t) => !t.resolved)) return 2;
+    return 7;
+  });
   const preferredBidderId = useGameStore((s) => s.preferredBidderId);
   const spaNegotiation = useGameStore((s) => s.spaNegotiation);
   const agreedSPATerms = useGameStore((s) => s.agreedSPATerms);
@@ -88,6 +101,9 @@ export default function DashboardScreen() {
             className="flex items-center gap-2 px-4 py-2 bg-accent-primary hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-white text-[13px] font-semibold rounded-[var(--radius-md)] transition-colors duration-150 shadow-[var(--shadow-glow-soft)]"
           >
             Advance
+            <span className="text-[11px] font-mono opacity-70">
+              ~{daysPreview}d
+            </span>
             <ArrowRight size={14} />
           </button>
         </div>

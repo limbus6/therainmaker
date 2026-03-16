@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import type { RetainerType, ComponentReaction } from '../types/game';
-import { X, TrendingUp, Shield, BarChart2, ChevronRight, HandshakeIcon } from 'lucide-react';
+import { X, TrendingUp, Shield, BarChart2, ChevronRight, HandshakeIcon, Lock, Lightbulb } from 'lucide-react';
 
 interface Props {
   onClose: () => void;
@@ -88,11 +88,15 @@ export default function FeeNegotiationModal({ onClose }: Props) {
     else setRetainerAmount(RETAINER_RANGES[t].min);
   };
 
+  const isRetainerLocked = clientState.lockedComponents.includes('retainer');
+  const isSuccessFeeLocked = clientState.lockedComponents.includes('successFee');
+  const isRatchetLocked = clientState.lockedComponents.includes('ratchet');
+
   const handleSubmit = () => {
     submitFeeRound({
-      playerRetainerType: retainerType,
-      playerRetainerAmount: retainerAmount,
-      playerSuccessFeePercent: successFeePercent,
+      playerRetainerType: isRetainerLocked ? (clientState.lockedRetainerType ?? retainerType) : retainerType,
+      playerRetainerAmount: isRetainerLocked ? (clientState.lockedRetainerAmount ?? retainerAmount) : retainerAmount,
+      playerSuccessFeePercent: isSuccessFeeLocked ? (clientState.lockedSuccessFeePercent ?? successFeePercent) : successFeePercent,
       playerRatchetEnabled: ratchetEnabled,
       playerRatchetThresholdEV: ratchetEnabled ? ratchetThresholdEV : undefined,
       playerRatchetBonusPercent: ratchetEnabled ? ratchetBonusPercent : undefined,
@@ -276,6 +280,20 @@ export default function FeeNegotiationModal({ onClose }: Props) {
                 </div>
               </div>
 
+              {/* Revealed signals */}
+              {clientState.revealedHints.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-[10px] text-text-muted uppercase tracking-widest flex items-center gap-1">
+                    <Lightbulb size={10} /> Signals
+                  </p>
+                  {clientState.revealedHints.map((hint, i) => (
+                    <div key={i} className="p-2 bg-yellow-500/5 border border-yellow-500/20 rounded-[var(--radius-sm)]">
+                      <p className="text-[11px] text-yellow-300 leading-relaxed">{hint}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {/* Client quote */}
               {latestRound && (
                 <div className="p-3 bg-bg-primary rounded-[var(--radius-md)] border border-border-subtle/50">
@@ -329,81 +347,102 @@ export default function FeeNegotiationModal({ onClose }: Props) {
               {!showReactions && (
                 <>
                   {/* Retainer */}
-                  <div>
+                  <div className={isRetainerLocked ? 'opacity-60 pointer-events-none' : ''}>
                     <div className="flex items-center gap-1.5 text-[11px] font-semibold text-text-muted uppercase tracking-widest mb-2">
                       <Shield size={11} />
                       Retainer Structure
+                      {isRetainerLocked && (
+                        <span className="ml-auto flex items-center gap-1 text-green-400 normal-case text-[10px] font-normal">
+                          <Lock size={10} /> Agreed — {clientState.lockedRetainerType === 'none' ? 'None' : `€${clientState.lockedRetainerAmount}k (${clientState.lockedRetainerType?.replace('_', ' ')})`}
+                        </span>
+                      )}
                     </div>
-                    <div className="grid grid-cols-2 gap-2 mb-3">
-                      {(['none', 'monthly', 'per_phase', 'upfront'] as RetainerType[]).map((t) => (
-                        <button
-                          key={t}
-                          onClick={() => handleChangeRetainerType(t)}
-                          className={`py-2 px-3 text-[11px] rounded-[var(--radius-md)] border text-left transition-all ${
-                            retainerType === t
-                              ? 'border-accent-primary/40 bg-accent-soft text-text-accent'
-                              : 'border-border-subtle text-text-muted hover:border-border-subtle/80 hover:text-text-secondary'
-                          }`}
-                        >
-                          {RETAINER_LABELS[t]}
-                        </button>
-                      ))}
-                    </div>
-                    {retainerType !== 'none' && (
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="range"
-                          min={retainerRange.min}
-                          max={retainerRange.max}
-                          step={retainerRange.step}
-                          value={retainerAmount}
-                          onChange={(e) => setRetainerAmount(Number(e.target.value))}
-                          className="flex-1 accent-[var(--color-accent-primary)]"
-                        />
-                        <span className="font-mono text-[13px] text-text-accent w-16 text-right">€{retainerAmount}k</span>
-                      </div>
+                    {!isRetainerLocked && (
+                      <>
+                        <div className="grid grid-cols-2 gap-2 mb-3">
+                          {(['none', 'monthly', 'per_phase', 'upfront'] as RetainerType[]).map((t) => (
+                            <button
+                              key={t}
+                              onClick={() => handleChangeRetainerType(t)}
+                              className={`py-2 px-3 text-[11px] rounded-[var(--radius-md)] border text-left transition-all ${
+                                retainerType === t
+                                  ? 'border-accent-primary/40 bg-accent-soft text-text-accent'
+                                  : 'border-border-subtle text-text-muted hover:border-border-subtle/80 hover:text-text-secondary'
+                              }`}
+                            >
+                              {RETAINER_LABELS[t]}
+                            </button>
+                          ))}
+                        </div>
+                        {retainerType !== 'none' && (
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="range"
+                              min={retainerRange.min}
+                              max={retainerRange.max}
+                              step={retainerRange.step}
+                              value={retainerAmount}
+                              onChange={(e) => setRetainerAmount(Number(e.target.value))}
+                              className="flex-1 accent-[var(--color-accent-primary)]"
+                            />
+                            <span className="font-mono text-[13px] text-text-accent w-16 text-right">€{retainerAmount}k</span>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
 
                   {/* Success Fee */}
-                  <div>
+                  <div className={isSuccessFeeLocked ? 'opacity-60 pointer-events-none' : ''}>
                     <div className="flex items-center gap-1.5 text-[11px] font-semibold text-text-muted uppercase tracking-widest mb-2">
                       <TrendingUp size={11} />
                       Success Fee
-                    </div>
-                    <div className="relative">
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="range"
-                          min={1}
-                          max={10}
-                          step={0.5}
-                          value={successFeePercent}
-                          onChange={(e) => setSuccessFeePercent(Number(e.target.value))}
-                          className="flex-1 accent-[var(--color-accent-primary)]"
-                        />
-                        <span className="font-mono font-bold text-[14px] text-text-accent w-14 text-right">{successFeePercent}%</span>
-                      </div>
-                      <div className="flex justify-between text-[9px] text-text-muted mt-1">
-                        <span>1% (floor)</span>
-                        <span className="text-yellow-500/70">5% (soft ceiling)</span>
-                        <span>10% (hard cap)</span>
-                      </div>
-                      {successFeePercent > 5 && (
-                        <p className="text-[10px] text-yellow-400 mt-1">⚠ Above typical range — most clients resist &gt;5%</p>
+                      {isSuccessFeeLocked && (
+                        <span className="ml-auto flex items-center gap-1 text-green-400 normal-case text-[10px] font-normal">
+                          <Lock size={10} /> Agreed — {clientState.lockedSuccessFeePercent}%
+                        </span>
                       )}
-                      <p className="text-[11px] text-text-muted mt-1">
-                        Base fee at €{ev}M EV: <span className="font-mono text-text-accent">€{baseFee.toFixed(1)}M</span>
-                      </p>
                     </div>
+                    {!isSuccessFeeLocked && (
+                      <div className="relative">
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="range"
+                            min={1}
+                            max={10}
+                            step={0.5}
+                            value={successFeePercent}
+                            onChange={(e) => setSuccessFeePercent(Number(e.target.value))}
+                            className="flex-1 accent-[var(--color-accent-primary)]"
+                          />
+                          <span className="font-mono font-bold text-[14px] text-text-accent w-14 text-right">{successFeePercent}%</span>
+                        </div>
+                        <div className="flex justify-between text-[9px] text-text-muted mt-1">
+                          <span>1% (floor)</span>
+                          <span className="text-yellow-500/70">5% (soft ceiling)</span>
+                          <span>10% (hard cap)</span>
+                        </div>
+                        {successFeePercent > 5 && (
+                          <p className="text-[10px] text-yellow-400 mt-1">⚠ Above typical range — most clients resist &gt;5%</p>
+                        )}
+                        <p className="text-[11px] text-text-muted mt-1">
+                          Base fee at €{ev}M EV: <span className="font-mono text-text-accent">€{baseFee.toFixed(1)}M</span>
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   {/* Ratchet */}
-                  <div>
+                  <div className={isRatchetLocked ? 'opacity-60 pointer-events-none' : ''}>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-1.5 text-[11px] font-semibold text-text-muted uppercase tracking-widest">
                         <BarChart2 size={11} />
                         Ratchet / Premio
+                        {isRatchetLocked && (
+                          <span className="flex items-center gap-1 text-green-400 normal-case text-[10px] font-normal">
+                            <Lock size={10} /> Agreed
+                          </span>
+                        )}
                       </div>
                       <label className="flex items-center gap-2 cursor-pointer">
                         <span className="text-[11px] text-text-muted">{ratchetEnabled ? 'Enabled' : 'Disabled'}</span>

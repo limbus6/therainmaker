@@ -29,12 +29,15 @@ import type {
   DataroomCategory,
   DataroomAccessLevel,
   SPABuyerState,
+  SPABuyerProfile,
   SPARound,
   SPATerms,
 } from '../types/game';
 import { resolveWeek, checkPhaseGate, unlockTasks, checkDealCollapse, calcDaysToAdvance } from '../engine/weekEngine';
 import type { WeekResult, PhaseGateResult } from '../engine/weekEngine';
 import { PHASE_BASE_BUDGETS, STAFF_PROFILES, CONTRACTOR_PROFILES, MITIGATION_ACTIONS } from '../config/phaseBudgets';
+import { getRiskMitigationPlans } from '../config/riskMitigation';
+import { round2 } from '../utils/numberFormat';
 
 import { phase1Tasks, phase1Emails, phase1Deliverables, phase1Risks, phase1Headlines } from '../content/phase1';
 import { phase2Tasks, phase2Emails, phase2Deliverables, phase2Risks, phase2Headlines, phase2Buyers } from '../content/phase2';
@@ -211,7 +214,7 @@ function buildClientNegotiationState(
   profile: ClientNegotiationProfile,
   expectedEV: number
 ): ClientNegotiationState {
-  const configs: Record<ClientNegotiationProfile, Omit<ClientNegotiationState, 'patienceRemaining'>> = {
+  const configs: Record<ClientNegotiationProfile, Omit<ClientNegotiationState, 'patienceRemaining' | 'lockedComponents' | 'revealedHints' | 'lockedRetainerType' | 'lockedRetainerAmount' | 'lockedSuccessFeePercent'>> = {
     serious_reasonable: {
       profile,
       reservationSuccessFeeMin: 1.5,
@@ -250,7 +253,19 @@ function buildClientNegotiationState(
       priorityRatchet: 1,
     },
   };
-  return { ...configs[profile], patienceRemaining: 100 };
+  const isRetainerAverse = profile === 'unsure_reluctant' || profile === 'unsure_optimistic';
+  return {
+    ...configs[profile],
+    patienceRemaining: 100,
+    lockedComponents: isRetainerAverse ? ['retainer'] : [],
+    revealedHints: isRetainerAverse
+      ? [profile === 'unsure_reluctant'
+          ? "No upfront fees — our commitment hinges entirely on what we achieve at closing."
+          : "We're not interested in a retainer structure. Performance alignment is what matters to us."]
+      : [],
+    lockedRetainerType: isRetainerAverse ? 'none' : undefined,
+    lockedRetainerAmount: isRetainerAverse ? 0 : undefined,
+  };
 }
 
 function resolveRetainerReaction(
@@ -385,10 +400,13 @@ interface GameActions {
   advancePhase: () => void;
   updateResources: (partial: Partial<PlayerResources>) => void;
   markEmailRead: (emailId: string) => void;
+  flagEmail: (emailId: string) => void;
+  escalateEmail: (emailId: string) => void;
   respondToEmail: (emailId: string, responseId: string) => void;
   startTask: (taskId: string) => void;
   completeTask: (taskId: string) => void;
   mitigateRisk: (riskId: string) => void;
+  executeRiskMitigationPlan: (riskId: string, planId: string) => void;
   setPlayerName: (name: string) => void;
   markOnboardingSeen: () => void;
   saveGame: () => void;
@@ -469,6 +487,21 @@ function syncClient(client: Client, resources: PlayerResources): Client {
     ...client,
     trust: resources.clientTrust,
     confidence: Math.min(100, Math.round(resources.clientTrust * 0.8 + resources.dealMomentum * 0.2)),
+  };
+}
+
+function normalizeResources(resources: PlayerResources): PlayerResources {
+  return {
+    ...resources,
+    budget: Math.max(0, round2(resources.budget)),
+    budgetMax: Math.max(0, round2(resources.budgetMax)),
+    teamCapacity: Math.max(0, Math.min(resources.teamCapacityMax, round2(resources.teamCapacity))),
+    teamCapacityMax: Math.max(0, round2(resources.teamCapacityMax)),
+    morale: Math.max(0, Math.min(100, round2(resources.morale))),
+    clientTrust: Math.max(0, Math.min(100, round2(resources.clientTrust))),
+    dealMomentum: Math.max(0, Math.min(100, round2(resources.dealMomentum))),
+    riskLevel: Math.max(0, Math.min(100, round2(resources.riskLevel))),
+    reputation: Math.max(0, Math.min(100, round2(resources.reputation))),
   };
 }
 
@@ -566,7 +599,144 @@ function generateSPABuyerState(buyer: import('../types/game').Buyer): SPABuyerSt
     priorityEscrow: base.pe,
     priorityIndemnity: base.pi,
     patienceRemaining: 100,
+    lockedComponents: [],
+    revealedHints: [],
   };
+}
+
+// ============================================
+// Helper: progressive component locking — Fee
+// ============================================
+type FeeComponent = 'retainer' | 'successFee' | 'ratchet';
+type SPAComponent = 'scope' | 'cap' | 'escrow' | 'indemnity';
+
+const FEE_LOCK_ORDER: Record<ClientNegotiationProfile, FeeComponent[]> = {
+  serious_demanding:  ['successFee', 'retainer', 'ratchet'],
+  unsure_optimistic:  ['ratchet', 'successFee', 'retainer'],
+  unsure_reluctant:   ['successFee', 'ratchet', 'retainer'],
+  serious_reasonable: ['successFee', 'ratchet', 'retainer'],
+};
+
+const FEE_LOCK_HINTS: Record<string, string> = {
+  'serious_demanding/successFee->retainer':  "Good — the success fee is settled. Now let's find a retainer structure that works.",
+  'serious_demanding/retainer->ratchet':     "Retainer agreed. The performance ratchet is the final piece.",
+  'unsure_optimistic/ratchet->successFee':   "Ratchet aligned — now let's agree a base fee that reflects our shared upside.",
+  'unsure_optimistic/successFee->retainer':  "Base fee settled. As discussed, no retainer — we pay on results.",
+  'unsure_reluctant/successFee->ratchet':    "Success fee agreed. Whether a ratchet makes sense depends on your deal conviction.",
+  'unsure_reluctant/ratchet->retainer':      "Ratchet is off the table. The retainer remains a firm no from us.",
+  'serious_reasonable/successFee->ratchet':  "Success fee looks fair. A modest ratchet above the target EV would be welcome.",
+  'serious_reasonable/ratchet->retainer':    "Ratchet agreed. On retainer — we'd prefer upfront if you need a commitment signal.",
+};
+
+const FEE_REACTION_HINTS: Record<string, Record<ComponentReaction, string>> = {
+  successFee: {
+    yellow: "The success fee is borderline — try coming down 0.5% and we might be there.",
+    red:    "That fee level is too high. A meaningful reduction is needed before we can move forward.",
+    green:  '',
+  },
+  retainer: {
+    yellow: "The retainer is acceptable in principle, but the amount feels steep.",
+    red:    "We're not comfortable with this retainer structure. Reconsider the type or amount.",
+    green:  '',
+  },
+  ratchet: {
+    yellow: "The ratchet bonus is in range, but we'd want it higher above the target EV.",
+    red:    "The ratchet structure needs a meaningful increase in the upside bonus.",
+    green:  '',
+  },
+};
+
+function applyFeeProgressiveLocking(
+  clientState: ClientNegotiationState,
+  terms: Pick<NegotiationRound, 'playerRetainerType' | 'playerRetainerAmount' | 'playerSuccessFeePercent'>,
+  reactions: { retainer: ComponentReaction; successFee: ComponentReaction; ratchet: ComponentReaction }
+): Partial<ClientNegotiationState> {
+  const order = FEE_LOCK_ORDER[clientState.profile];
+  const newLocked = [...clientState.lockedComponents];
+  const newHints = [...clientState.revealedHints];
+  const updates: Partial<ClientNegotiationState> = {};
+
+  const nextToLock = order.find(c => !newLocked.includes(c));
+  if (!nextToLock) return {};
+
+  if (reactions[nextToLock] === 'green') {
+    newLocked.push(nextToLock);
+    if (nextToLock === 'retainer') {
+      updates.lockedRetainerType = terms.playerRetainerType;
+      updates.lockedRetainerAmount = terms.playerRetainerAmount;
+    } else if (nextToLock === 'successFee') {
+      updates.lockedSuccessFeePercent = terms.playerSuccessFeePercent;
+    }
+    const remaining = order.filter(c => !newLocked.includes(c));
+    if (remaining.length > 0) {
+      const key = `${clientState.profile}/${nextToLock}->${remaining[0]}`;
+      if (FEE_LOCK_HINTS[key]) newHints.push(FEE_LOCK_HINTS[key]);
+    }
+  } else {
+    const hint = FEE_REACTION_HINTS[nextToLock]?.[reactions[nextToLock]];
+    if (hint && !newHints.includes(hint)) newHints.push(hint);
+  }
+
+  return { ...updates, lockedComponents: newLocked, revealedHints: newHints };
+}
+
+// ============================================
+// Helper: progressive component locking — SPA
+// ============================================
+const SPA_LOCK_ORDER: Record<SPABuyerProfile, SPAComponent[]> = {
+  aggressive_buyer:   ['indemnity', 'escrow', 'cap', 'scope'],
+  reasonable_buyer:   ['indemnity', 'scope', 'escrow', 'cap'],
+  conservative_buyer: ['scope', 'indemnity', 'escrow', 'cap'],
+};
+
+const SPA_LOCK_HINTS: Record<string, string> = {
+  'aggressive_buyer/indemnity->escrow':   "Indemnity agreed. Now let's align on escrow — retention protection is critical for us.",
+  'aggressive_buyer/escrow->cap':         "Escrow locked. The warranty cap is the main remaining point — we need strong coverage.",
+  'aggressive_buyer/cap->scope':          "Cap agreed. Fundamental warranty scope is the last piece for a PE buyer.",
+  'reasonable_buyer/indemnity->scope':    "Indemnity settled. Warranty scope is important — standard is the minimum we'd accept.",
+  'reasonable_buyer/scope->escrow':       "Scope agreed. Let's finalise the escrow — we need some comfort on the retention.",
+  'reasonable_buyer/escrow->cap':         "Escrow locked. A fair cap protects both sides — let's find common ground.",
+  'conservative_buyer/scope->indemnity':  "Scope is fine. The indemnity is a smaller point — we appreciate the flexibility here.",
+  'conservative_buyer/indemnity->escrow': "Indemnity settled. Let's resolve the escrow percentage.",
+  'conservative_buyer/escrow->cap':       "Escrow agreed. The cap is where we need to land now.",
+};
+
+const SPA_REACTION_HINTS: Record<string, Record<ComponentReaction, string>> = {
+  scope:     { yellow: "Warranty scope is borderline — standard is the minimum we'd accept.", red: "Limited scope is a problem for us. We need proper rep coverage.", green: '' },
+  cap:       { yellow: "The cap is low. Bring it up and we're closer to a deal.", red: "That cap level isn't acceptable. We need meaningfully more protection.", green: '' },
+  escrow:    { yellow: "The escrow is slightly below our expectation. A small increase would help.", red: "We need a more substantial escrow to feel protected post-close.", green: '' },
+  indemnity: { yellow: "The indemnity ask is reasonable — consider agreeing as a gesture of good faith.", red: "The specific indemnity is important to us on the identified exposure.", green: '' },
+};
+
+function applySPAProgressiveLocking(
+  buyerState: SPABuyerState,
+  terms: Pick<SPARound, 'playerWarrantyScope' | 'playerWarrantyCap' | 'playerEscrowPercent'>,
+  reactions: { scope: ComponentReaction; cap: ComponentReaction; escrow: ComponentReaction; indemnity: ComponentReaction }
+): Partial<SPABuyerState> {
+  const order = SPA_LOCK_ORDER[buyerState.profile];
+  const newLocked = [...buyerState.lockedComponents];
+  const newHints = [...buyerState.revealedHints];
+  const updates: Partial<SPABuyerState> = {};
+
+  const nextToLock = order.find(c => !newLocked.includes(c));
+  if (!nextToLock) return {};
+
+  if (reactions[nextToLock] === 'green') {
+    newLocked.push(nextToLock);
+    if (nextToLock === 'scope') updates.lockedWarrantyScope = terms.playerWarrantyScope;
+    else if (nextToLock === 'cap') updates.lockedWarrantyCap = terms.playerWarrantyCap;
+    else if (nextToLock === 'escrow') updates.lockedEscrowPercent = terms.playerEscrowPercent;
+    const remaining = order.filter(c => !newLocked.includes(c));
+    if (remaining.length > 0) {
+      const key = `${buyerState.profile}/${nextToLock}->${remaining[0]}`;
+      if (SPA_LOCK_HINTS[key]) newHints.push(SPA_LOCK_HINTS[key]);
+    }
+  } else {
+    const hint = SPA_REACTION_HINTS[nextToLock]?.[reactions[nextToLock]];
+    if (hint && !newHints.includes(hint)) newHints.push(hint);
+  }
+
+  return { ...updates, lockedComponents: newLocked, revealedHints: newHints };
 }
 
 // ============================================
@@ -844,16 +1014,18 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       });
     }
 
+    const normalizedResources = normalizeResources(newResources);
+
     set({
       day: newDay,
       week: newWeekNum,
       totalDays: state.totalDays + daysToAdvance,
-      resources: newResources,
+      resources: normalizedResources,
       tasks: unlockedTasks,
       workstreams: updatedWorkstreams,
       deliverables: syncDeliverables(state.deliverables, unlockedTasks),
       team: syncTeamLoad(state.team, unlockedTasks),
-      client: syncClient(state.client, newResources),
+      client: syncClient(state.client, normalizedResources),
       risks: newRisks,
       emails: newEmails,
       headlines: newHeadlines,
@@ -893,6 +1065,17 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
   advancePhase: () => set((state) => {
     const nextPhase = Math.min(state.phase + 1, 10) as PhaseId;
 
+    // Stamp phase emails with current game day so timestamps are accurate
+    const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+    function stampEmails(emails: Email[]): Email[] {
+      return emails.map((e, i) => ({
+        ...e,
+        week: state.week,
+        day: state.day + i,
+        timestamp: `Day ${state.day + i} (Week ${state.week}), ${DAY_NAMES[(state.day + i - 1) % 5]}`,
+      }));
+    }
+
     // Load phase-specific content
     let newTasks = state.tasks;
     let newEmails = state.emails;
@@ -904,7 +1087,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
 
     if (nextPhase === 1) {
       newTasks = [...state.tasks, ...phase1Tasks];
-      newEmails = [...state.emails, ...phase1Emails];
+      newEmails = [...state.emails, ...stampEmails(phase1Emails)];
       newDeliverables = [...state.deliverables, ...phase1Deliverables];
       newRisks = [...state.risks, ...phase1Risks];
       newHeadlines = [...state.headlines, ...phase1Headlines];
@@ -916,7 +1099,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       });
     } else if (nextPhase === 2) {
       newTasks = [...state.tasks, ...phase2Tasks];
-      newEmails = [...state.emails, ...phase2Emails];
+      newEmails = [...state.emails, ...stampEmails(phase2Emails)];
       newDeliverables = [...state.deliverables, ...phase2Deliverables];
       newRisks = [...state.risks, ...phase2Risks];
       newHeadlines = [...state.headlines, ...phase2Headlines];
@@ -929,13 +1112,13 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       });
     } else if (nextPhase === 3) {
       newTasks = [...state.tasks, ...phase3Tasks];
-      newEmails = [...state.emails, ...phase3Emails];
+      newEmails = [...state.emails, ...stampEmails(phase3Emails)];
       newDeliverables = [...state.deliverables, ...phase3Deliverables];
       newRisks = [...state.risks, ...phase3Risks];
       newHeadlines = [...state.headlines, ...phase3Headlines];
     } else if (nextPhase === 4) {
       newTasks = [...state.tasks, ...phase4Tasks];
-      newEmails = [...state.emails, ...phase4Emails];
+      newEmails = [...state.emails, ...stampEmails(phase4Emails)];
       newDeliverables = [...state.deliverables, ...phase4Deliverables];
       newRisks = [...state.risks, ...phase4Risks];
       newHeadlines = [...state.headlines, ...phase4Headlines];
@@ -945,13 +1128,13 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       });
     } else if (nextPhase === 5) {
       newTasks = [...state.tasks, ...phase5Tasks];
-      newEmails = [...state.emails, ...phase5Emails];
+      newEmails = [...state.emails, ...stampEmails(phase5Emails)];
       newDeliverables = [...state.deliverables, ...phase5Deliverables];
       newRisks = [...state.risks, ...phase5Risks];
       newHeadlines = [...state.headlines, ...phase5Headlines];
     } else if (nextPhase === 6) {
       newTasks = [...state.tasks, ...phase6Tasks];
-      newEmails = [...state.emails, ...phase6Emails];
+      newEmails = [...state.emails, ...stampEmails(phase6Emails)];
       newDeliverables = [...state.deliverables, ...phase6Deliverables];
       newRisks = [...state.risks, ...phase6Risks];
       newHeadlines = [...state.headlines, ...phase6Headlines];
@@ -961,13 +1144,13 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       });
     } else if (nextPhase === 7) {
       newTasks = [...state.tasks, ...phase7Tasks];
-      newEmails = [...state.emails, ...phase7Emails];
+      newEmails = [...state.emails, ...stampEmails(phase7Emails)];
       newDeliverables = [...state.deliverables, ...phase7Deliverables];
       newRisks = [...state.risks, ...phase7Risks];
       newHeadlines = [...state.headlines, ...phase7Headlines];
     } else if (nextPhase === 8) {
       newTasks = [...state.tasks, ...phase8Tasks];
-      newEmails = [...state.emails, ...phase8Emails];
+      newEmails = [...state.emails, ...stampEmails(phase8Emails)];
       newDeliverables = [...state.deliverables, ...phase8Deliverables];
       newRisks = [...state.risks, ...phase8Risks];
       newHeadlines = [...state.headlines, ...phase8Headlines];
@@ -977,13 +1160,13 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       });
     } else if (nextPhase === 9) {
       newTasks = [...state.tasks, ...phase9Tasks];
-      newEmails = [...state.emails, ...phase9Emails];
+      newEmails = [...state.emails, ...stampEmails(phase9Emails)];
       newDeliverables = [...state.deliverables, ...phase9Deliverables];
       newRisks = [...state.risks, ...phase9Risks];
       newHeadlines = [...state.headlines, ...phase9Headlines];
     } else if (nextPhase === 10) {
       newTasks = [...state.tasks, ...phase10Tasks];
-      newEmails = [...state.emails, ...phase10Emails];
+      newEmails = [...state.emails, ...stampEmails(phase10Emails)];
       newDeliverables = [...state.deliverables, ...phase10Deliverables];
       newRisks = [...state.risks, ...phase10Risks];
       newHeadlines = [...state.headlines, ...phase10Headlines];
@@ -1017,11 +1200,11 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       workstreams: newWorkstreams,
       buyers: newBuyers,
       phaseGate: null,
-      resources: {
+      resources: normalizeResources({
         ...state.resources,
         budget: newBudget,
         budgetMax: newBudget, // Reset max to this phase's allocation
-      },
+      }),
       totalBudgetSpent: newTotalBudgetSpent,
       phaseBudget: { phaseBase, carryover },
       feeNegotiation: null,
@@ -1031,7 +1214,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
   }),
 
   updateResources: (partial) => set((state) => ({
-    resources: { ...state.resources, ...partial },
+    resources: normalizeResources({ ...state.resources, ...partial }),
   })),
 
   markEmailRead: (emailId) => set((state) => ({
@@ -1040,11 +1223,79 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     ),
   })),
 
+  flagEmail: (emailId) => set((state) => ({
+    emails: state.emails.map((e) =>
+      e.id === emailId ? { ...e, flagged: !e.flagged } : e
+    ),
+  })),
+
+  escalateEmail: (emailId) => set((state) => {
+    const email = state.emails.find((e) => e.id === emailId);
+    if (!email || email.escalated) return {};
+
+    // Context-aware advice from Marcus Aldridge
+    const advice: Record<string, { subject: string; body: string }> = {
+      client: {
+        subject: `Re: "${email.subject}" — Marcus`,
+        body: `I've reviewed the situation with Ricardo.\n\nMy read: this is a trust issue as much as a tactical one. The moment a client starts second-guessing the process, you have to over-communicate — short status notes every 3 days without being asked. Frequency of contact at this stage matters more than depth.\n\nOn the substance: take their concern at face value first. Push back only after they feel heard. Don't try to win the argument before you've validated the relationship.\n\nLet me know if you want me to join the next call.`,
+      },
+      buyer: {
+        subject: `Re: "${email.subject}" — Marcus`,
+        body: `I've seen this move before.\n\nThe buyer is applying pressure at a predictable inflection point. Their behaviour is consistent with a firm that has approved a strong investment case internally but wants optionality — they're trying to lock in terms before the process gets competitive.\n\nDon't blink first. Acknowledge their concern professionally, hold the timeline, and remind them the process structure protects their interests as much as the seller's.\n\nIf they walk over process, they would have walked over something else later anyway.`,
+      },
+      partner: {
+        subject: `Re: "${email.subject}" — Marcus`,
+        body: `Thanks for looping me in.\n\nMy view: partners act in their own interest — that's not a criticism, it's a feature of the ecosystem. If they're pushing in a direction that doesn't serve our client, that's a sign to recalibrate the relationship, not the deal.\n\nBe direct with them. Tell them where we're aligned and where our obligations to Solara take precedence. Good partners respect that.`,
+      },
+      market: {
+        subject: `Re: "${email.subject}" — Marcus`,
+        body: `Market signals at this stage are noise until proven otherwise.\n\nI've been in processes where three consecutive bad headlines turned out to be entirely irrelevant to final price. Buyers know the difference between sector volatility and asset-specific risk — your job is to reinforce that Solara's story is idiosyncratic, not correlated to whatever is moving markets this week.\n\nPrepare a one-page differentiation note. Short. Factual. Send it proactively to all active buyers before they ask.`,
+      },
+      internal: {
+        subject: `Re: "${email.subject}" — Marcus`,
+        body: `Good that you flagged this.\n\nInternal frictions at this stage of a deal are usually a sign that someone's bandwidth is stretched and expectations haven't been re-calibrated. Address it directly — don't manage around it.\n\nIf it's capacity: reallocate. If it's process: fix the decision right. If it's morale: have the conversation now rather than later when it affects output.\n\nI'm available this week if useful.`,
+      },
+    };
+
+    const adv = advice[email.category] ?? {
+      subject: `Re: "${email.subject}" — Marcus`,
+      body: `I've looked at this.\n\nMy instinct: stay deliberate and don't add urgency prematurely. Situations like this tend to resolve when you address the core issue directly and keep the team focused on process.\n\nIdentify the single most important thing to do next and do that first. Happy to discuss if it would help.`,
+    };
+
+    const marcusEmail: Email = {
+      id: `email-escalated-${emailId}-${state.day}`,
+      week: state.week,
+      day: state.day,
+      phase: state.phase,
+      sender: 'Marcus Aldridge',
+      senderRole: 'Managing Partner, Clearwater Advisory',
+      subject: adv.subject,
+      body: adv.body,
+      preview: `Marcus weighs in on: ${email.subject.substring(0, 45)}...`,
+      category: 'partner',
+      state: 'unread',
+      priority: 'high',
+      timestamp: `Week ${state.week}, Day ${state.day}`,
+    };
+
+    return {
+      emails: [
+        ...state.emails.map((e) => e.id === emailId ? { ...e, escalated: true } : e),
+        marcusEmail,
+      ],
+      resources: normalizeResources({
+        ...state.resources,
+        budget: Math.max(0, state.resources.budget - 2), // costs 2k to pull in Marcus
+      }),
+    };
+  }),
+
   respondToEmail: (emailId, responseId) => set((state) => {
     const email = state.emails.find((e) => e.id === emailId);
     const response = email?.responseOptions?.find((r) => r.id === responseId);
 
-    // Apply resource effects from the chosen response
+    // Apply resource effects from the chosen response — with ±25% variance
+    // The same decision can play out slightly differently each time
     let newResources = state.resources;
     if (response?.resourceEffects) {
       newResources = { ...state.resources };
@@ -1052,15 +1303,17 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
         const k = key as keyof PlayerResources;
         const current = newResources[k];
         if (typeof current === 'number' && typeof delta === 'number') {
-          // Clamp 0-100 for percentage stats, no negative budget
+          // Apply ±25% noise to the effect magnitude (keeps sign intact)
+          const noise = 1 + (Math.random() - 0.5) * 0.5;
+          const variedDelta = Math.round(delta * noise);
           const maxVal = k === 'budget' ? newResources.budgetMax : k === 'teamCapacity' ? newResources.teamCapacityMax : 100;
-          (newResources as unknown as Record<string, number>)[k] = Math.max(0, Math.min(maxVal, current + delta));
+          (newResources as unknown as Record<string, number>)[k] = Math.max(0, Math.min(maxVal, current + variedDelta));
         }
       }
     }
 
     return {
-      resources: newResources,
+      resources: normalizeResources(newResources),
       emails: state.emails.map((e) =>
         e.id === emailId ? { ...e, state: 'resolved' as const } : e
       ),
@@ -1118,11 +1371,98 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       risks: state.risks.map((r) =>
         r.id === riskId ? { ...r, mitigated: true, probability: Math.max(0, r.probability - 20) } : r
       ),
-      resources: {
+      resources: normalizeResources({
         ...state.resources,
         budget: Math.max(0, state.resources.budget - cost),
         riskLevel: Math.max(0, state.resources.riskLevel - 5),
-      },
+      }),
+    };
+  }),
+
+  executeRiskMitigationPlan: (riskId, planId) => set((state) => {
+    const risk = state.risks.find((r) => r.id === riskId);
+    if (!risk || risk.mitigated) return {};
+
+    const plan = getRiskMitigationPlans(risk).find((p) => p.id === planId);
+    if (!plan) return {};
+
+    if (state.resources.budget < plan.budgetCost) return {};
+    if (state.resources.teamCapacity < plan.capacityCost) return {};
+
+    let baseResources: PlayerResources = {
+      ...state.resources,
+      budget: state.resources.budget - plan.budgetCost,
+      teamCapacity: state.resources.teamCapacity - plan.capacityCost,
+    };
+
+    const catastrophicFail =
+      !!plan.catastrophicFailureChance && Math.random() < plan.catastrophicFailureChance;
+    if (catastrophicFail) {
+      baseResources = normalizeResources({ ...baseResources, clientTrust: 0, dealMomentum: 0, riskLevel: 100 });
+      return {
+        resources: baseResources,
+        gameComplete: true,
+        collapseReason: 'client_walked' as const,
+        collapseHeadline: plan.catastrophicHeadline ?? 'Client Walked',
+        collapseDescription:
+          plan.catastrophicDescription ??
+          'The mitigation move backfired and the client terminated the engagement.',
+        toasts: [
+          ...state.toasts,
+          { id: Math.random().toString(36).substr(2, 9), message: 'Mitigation backfired: client exited the process.', type: 'danger' as const },
+        ],
+      };
+    }
+
+    const success = Math.random() < plan.successChance;
+    const effects = success ? plan.onSuccess : plan.onFailure;
+    const probabilityDelta = effects.probabilityDelta ?? 0;
+    const { probabilityDelta: _, ...resourceDeltas } = effects;
+
+    const mergedResources = { ...baseResources };
+    for (const [key, delta] of Object.entries(resourceDeltas)) {
+      const k = key as keyof PlayerResources;
+      const current = mergedResources[k];
+      if (typeof current === 'number' && typeof delta === 'number') {
+        (mergedResources as unknown as Record<string, number>)[k] = current + delta;
+      }
+    }
+
+    const nextRiskProbability = Math.max(0, Math.min(100, risk.probability + probabilityDelta));
+    const boardSubmissionUpdate =
+      success && plan.boardRecommendation && !state.boardSubmission
+        ? {
+            recommendation: plan.boardRecommendation.recommendation,
+            rationale: plan.boardRecommendation.rationale,
+            submittedWeek: state.week,
+            status: 'pending' as const,
+          }
+        : state.boardSubmission;
+
+    return {
+      resources: normalizeResources(mergedResources),
+      risks: state.risks.map((r) =>
+        r.id === riskId
+          ? {
+              ...r,
+              probability: round2(nextRiskProbability),
+              mitigated: success ? true : r.mitigated,
+            }
+          : r
+      ),
+      boardSubmission: boardSubmissionUpdate,
+      toasts: [
+        ...state.toasts,
+        {
+          id: Math.random().toString(36).substr(2, 9),
+          message: success
+            ? plan.boardRecommendation && !state.boardSubmission
+              ? 'Mitigation executed and board memo submitted.'
+              : 'Mitigation plan executed successfully.'
+            : 'Mitigation plan underperformed. Risk remains active.',
+          type: success ? 'success' as const : 'warning' as const,
+        },
+      ],
     };
   }),
 
@@ -1160,7 +1500,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
           : r
       ),
       resources: approved
-        ? { ...state.resources, budget: state.resources.budget + injected }
+        ? normalizeResources({ ...state.resources, budget: state.resources.budget + injected })
         : state.resources,
     };
   }),
@@ -1200,12 +1540,12 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     };
     return {
       team: [...state.team, newMember],
-      resources: {
+      resources: normalizeResources({
         ...state.resources,
         budget: state.resources.budget - cfg.hireCost,
         teamCapacity: state.resources.teamCapacity + cfg.capacityBoost,
         teamCapacityMax: state.resources.teamCapacityMax + cfg.capacityBoost,
-      },
+      }),
     };
   }),
 
@@ -1255,10 +1595,27 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     const currentRound = state.feeNegotiation.rounds.length + 1;
     const maxRounds = state.resources.clientTrust > 60 ? 4 : 3;
 
-    // Resolve per-component reactions
-    const reactionRetainer = resolveRetainerReaction(terms, clientState);
-    const reactionSuccessFee = resolveSuccessFeeReaction(terms.playerSuccessFeePercent, clientState);
-    const reactionRatchet = resolveRatchetReaction(terms, clientState);
+    // Use locked values for locked components
+    const effectiveTerms = {
+      ...terms,
+      playerRetainerType: clientState.lockedComponents.includes('retainer')
+        ? (clientState.lockedRetainerType ?? terms.playerRetainerType)
+        : terms.playerRetainerType,
+      playerRetainerAmount: clientState.lockedComponents.includes('retainer')
+        ? (clientState.lockedRetainerAmount ?? terms.playerRetainerAmount)
+        : terms.playerRetainerAmount,
+      playerSuccessFeePercent: clientState.lockedComponents.includes('successFee')
+        ? (clientState.lockedSuccessFeePercent ?? terms.playerSuccessFeePercent)
+        : terms.playerSuccessFeePercent,
+    };
+
+    // Resolve per-component reactions — locked components always green
+    const reactionRetainer: ComponentReaction = clientState.lockedComponents.includes('retainer')
+      ? 'green' : resolveRetainerReaction(effectiveTerms, clientState);
+    const reactionSuccessFee: ComponentReaction = clientState.lockedComponents.includes('successFee')
+      ? 'green' : resolveSuccessFeeReaction(effectiveTerms.playerSuccessFeePercent, clientState);
+    const reactionRatchet: ComponentReaction = clientState.lockedComponents.includes('ratchet')
+      ? 'green' : resolveRatchetReaction(effectiveTerms, clientState);
 
     // Net satisfaction score
     const score = computeSatisfactionScore(reactionRetainer, reactionSuccessFee, reactionRatchet, clientState);
@@ -1280,7 +1637,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
 
     const newRound: NegotiationRound = {
       round: currentRound,
-      ...terms,
+      ...effectiveTerms,
       reactionRetainer,
       reactionSuccessFee,
       reactionRatchet,
@@ -1288,21 +1645,26 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       outcome,
     };
 
-    const updatedClientState: ClientNegotiationState = { ...clientState, patienceRemaining: newPatience };
+    // Apply progressive locking (only on counter — not on accepted/rejected)
+    const lockUpdates = outcome === 'counter'
+      ? applyFeeProgressiveLocking(clientState, effectiveTerms, { retainer: reactionRetainer, successFee: reactionSuccessFee, ratchet: reactionRatchet })
+      : {};
+
+    const updatedClientState: ClientNegotiationState = { ...clientState, patienceRemaining: newPatience, ...lockUpdates };
 
     if (accepted) {
       const ev = state.client.valuationExpectationEV ?? 100;
-      const baseFee = (terms.playerSuccessFeePercent / 100) * ev;
-      const ratchetFee = terms.playerRatchetEnabled && terms.playerRatchetThresholdEV && terms.playerRatchetBonusPercent
-        ? (terms.playerRatchetBonusPercent / 100) * Math.max(0, ev - terms.playerRatchetThresholdEV)
+      const baseFee = (effectiveTerms.playerSuccessFeePercent / 100) * ev;
+      const ratchetFee = effectiveTerms.playerRatchetEnabled && effectiveTerms.playerRatchetThresholdEV && effectiveTerms.playerRatchetBonusPercent
+        ? (effectiveTerms.playerRatchetBonusPercent / 100) * Math.max(0, ev - effectiveTerms.playerRatchetThresholdEV)
         : 0;
       const agreedTerms: FeeTerms = {
-        retainerType: terms.playerRetainerType,
-        retainerAmount: terms.playerRetainerAmount,
-        successFeePercent: terms.playerSuccessFeePercent,
-        ratchetEnabled: terms.playerRatchetEnabled,
-        ratchetThresholdEV: terms.playerRatchetThresholdEV,
-        ratchetBonusPercent: terms.playerRatchetBonusPercent,
+        retainerType: effectiveTerms.playerRetainerType,
+        retainerAmount: effectiveTerms.playerRetainerAmount,
+        successFeePercent: effectiveTerms.playerSuccessFeePercent,
+        ratchetEnabled: effectiveTerms.playerRatchetEnabled,
+        ratchetThresholdEV: effectiveTerms.playerRatchetThresholdEV,
+        ratchetBonusPercent: effectiveTerms.playerRatchetBonusPercent,
         totalFeeProjection: Math.round((baseFee + ratchetFee) * 10) / 10,
         agreedWeek: state.week,
       };
@@ -1326,7 +1688,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
           clientState: updatedClientState,
           rounds: [...state.feeNegotiation.rounds, newRound],
         },
-        resources: { ...state.resources, clientTrust: Math.max(0, state.resources.clientTrust - 10) },
+        resources: normalizeResources({ ...state.resources, clientTrust: Math.max(0, state.resources.clientTrust - 10) }),
       };
     }
 
@@ -1397,17 +1759,53 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     if (!neg || neg.status !== 'in_progress') return {};
 
     const round = neg.rounds.length + 1;
-    const result = evaluateSPARound(terms, neg.buyerState, round, state.resources);
+    const lockedComponents = neg.buyerState.lockedComponents;
 
-    const newRound: SPARound = { round, ...terms, ...result };
+    // Use locked values for locked components
+    const effectiveTerms = {
+      ...terms,
+      playerWarrantyScope: lockedComponents.includes('scope')
+        ? (neg.buyerState.lockedWarrantyScope ?? terms.playerWarrantyScope)
+        : terms.playerWarrantyScope,
+      playerWarrantyCap: lockedComponents.includes('cap')
+        ? (neg.buyerState.lockedWarrantyCap ?? terms.playerWarrantyCap)
+        : terms.playerWarrantyCap,
+      playerEscrowPercent: lockedComponents.includes('escrow')
+        ? (neg.buyerState.lockedEscrowPercent ?? terms.playerEscrowPercent)
+        : terms.playerEscrowPercent,
+    };
+
+    const rawResult = evaluateSPARound(effectiveTerms, neg.buyerState, round, state.resources);
+
+    // Override locked component reactions to always green
+    const reactionScope: ComponentReaction  = lockedComponents.includes('scope')     ? 'green' : rawResult.reactionScope;
+    const reactionCap: ComponentReaction    = lockedComponents.includes('cap')       ? 'green' : rawResult.reactionCap;
+    const reactionEscrow: ComponentReaction = lockedComponents.includes('escrow')    ? 'green' : rawResult.reactionEscrow;
+    const reactionIndemnity: ComponentReaction = lockedComponents.includes('indemnity') ? 'green' : rawResult.reactionIndemnity;
+
+    // Recompute outcome with overridden reactions
+    const reds = [reactionScope, reactionCap, reactionEscrow, reactionIndemnity].filter(r => r === 'red').length;
+    const yellows = [reactionScope, reactionCap, reactionEscrow, reactionIndemnity].filter(r => r === 'yellow').length;
+    const patience = neg.buyerState.patienceRemaining;
+    let outcome: SPARound['outcome'] = reds === 0 && yellows <= 1 ? 'accepted' : reds >= 2 || patience < 20 ? 'rejected' : 'counter';
+    if (round >= 3 && reds >= 1) outcome = 'rejected';
+
+    const result = { ...rawResult, reactionScope, reactionCap, reactionEscrow, reactionIndemnity, outcome };
+
+    const newRound: SPARound = { round, ...effectiveTerms, ...result };
     const newPatience = Math.max(0, neg.buyerState.patienceRemaining - (result.reactionCap === 'red' || result.reactionScope === 'red' ? 30 : 15));
+
+    // Apply progressive locking on counter
+    const lockUpdates = outcome === 'counter'
+      ? applySPAProgressiveLocking(neg.buyerState, effectiveTerms, { scope: reactionScope, cap: reactionCap, escrow: reactionEscrow, indemnity: reactionIndemnity })
+      : {};
 
     const newStatus = result.outcome === 'accepted' ? 'agreed' :
                      result.outcome === 'rejected' ? 'failed' : 'in_progress';
 
     const agreedTerms: SPATerms | undefined = result.outcome === 'accepted' ? {
-      warrantyScope: terms.playerWarrantyScope,
-      warrantyCap: terms.playerWarrantyCap,
+      warrantyScope: effectiveTerms.playerWarrantyScope,
+      warrantyCap: effectiveTerms.playerWarrantyCap,
       escrowPercent: terms.playerEscrowPercent,
       specificIndemnity: terms.playerSpecificIndemnity,
       agreedWeek: state.week,
@@ -1423,12 +1821,12 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       spaNegotiation: {
         ...neg,
         status: newStatus,
-        buyerState: { ...neg.buyerState, patienceRemaining: newPatience },
+        buyerState: { ...neg.buyerState, patienceRemaining: newPatience, ...lockUpdates },
         rounds: [...neg.rounds, newRound],
         agreedTerms,
       },
       agreedSPATerms: agreedTerms ?? state.agreedSPATerms,
-      resources: { ...state.resources, ...resourceEffect },
+      resources: normalizeResources({ ...state.resources, ...resourceEffect }),
     };
   }),
 
@@ -1446,11 +1844,11 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     return {
       spaNegotiation: { ...neg, status: 'agreed', agreedTerms },
       agreedSPATerms: agreedTerms,
-      resources: {
+      resources: normalizeResources({
         ...state.resources,
         dealMomentum: Math.min(100, state.resources.dealMomentum + 8),
         clientTrust: Math.min(100, state.resources.clientTrust + 5),
-      },
+      }),
     };
   }),
 
@@ -1489,7 +1887,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       dataroomCategories: state.dataroomCategories.map((c) =>
         c.id === categoryId ? { ...c, accessLevel: level } : c
       ),
-      resources: newResources,
+      resources: normalizeResources(newResources),
     };
   }),
 
@@ -1514,18 +1912,36 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
         const resolved = updatedActions.length >= 2;
         return { ...t, usedActions: updatedActions, resolved };
       }),
-      resources: {
+      resources: normalizeResources({
         ...state.resources,
         budget: state.resources.budget - cfg.budgetCost,
         clientTrust: Math.min(100, state.resources.clientTrust + (effects.clientTrust ?? 0)),
         dealMomentum: Math.min(100, state.resources.dealMomentum + (effects.dealMomentum ?? 0)),
         reputation: Math.min(100, state.resources.reputation + (effects.reputation ?? 0)),
-      },
+      }),
     };
   }),
 }), {
   name: 'ma-rainmaker-save',
-  version: 1,
+  version: 2,
+  migrate: (persistedState: unknown, fromVersion: number) => {
+    const s = persistedState as Record<string, unknown>;
+    if (fromVersion < 2) {
+      // Add day/totalDays fields introduced in v2 (day-based time system)
+      const week = (s.week as number | undefined) ?? 1;
+      if (s.day === undefined) s.day = week;
+      if (s.totalDays === undefined) s.totalDays = week * 7;
+      // Patch weekHistory entries to include day and daysAdvanced
+      if (Array.isArray(s.weekHistory)) {
+        s.weekHistory = (s.weekHistory as Record<string, unknown>[]).map((entry) => ({
+          ...entry,
+          day: entry.day ?? ((entry.week as number) * 7),
+          daysAdvanced: entry.daysAdvanced ?? 7,
+        }));
+      }
+    }
+    return s;
+  },
   partialize: (state) => {
     // Exclude transient UI state from persistence
     const { lastWeekResult, phaseGate, isWeekInProgress, toasts, ...persisted } = state;

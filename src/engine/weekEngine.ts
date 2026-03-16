@@ -26,6 +26,7 @@ export interface WeekResult {
   newEvents: GameEvent[];
   buyerChanges: BuyerChange[];
   hiddenWorkload: { taskId: string; description: string; extraWork: number } | null;
+  criticalOutcomes: { taskId: string; taskName: string; type: 'success' | 'failure'; description: string; bonus: Partial<PlayerResources> }[];
   narrativeSummary: string;
   phaseProgressDelta: number;
   resolvedBudgetRequests: { id: string; approved: boolean; amount: number }[];
@@ -75,15 +76,92 @@ function checkHiddenWorkload(completedTasks: GameTask[]): WeekResult['hiddenWork
         `Partner review of ${task.name} flagged items requiring revision.`,
         `Client requested additional detail following ${task.name} output.`,
         `Quality check on ${task.name} surfaced gaps in the underlying data.`,
+        `${task.name} triggered a cascade review of three related documents.`,
+        `A third party introduced via ${task.name} returned with 12 detailed questions.`,
+        `${task.name} output was well-received but created appetite for a follow-on deliverable.`,
+        `Scope of ${task.name} expanded mid-delivery — additional sign-off required.`,
       ];
       return {
         taskId: task.id,
         description: descriptions[Math.floor(Math.random() * descriptions.length)],
-        extraWork: Math.ceil(task.work * 0.3),
+        extraWork: Math.ceil(task.work * (0.2 + Math.random() * 0.3)),
       };
     }
   }
   return null;
+}
+
+// Critical outcome roll — tasks can occasionally deliver exceptional or poor results
+type CriticalOutcome = { taskId: string; taskName: string; type: 'success' | 'failure'; description: string; bonus: Partial<PlayerResources> };
+
+function rollCriticalOutcomes(completedTasks: GameTask[]): CriticalOutcome[] {
+  const outcomes: CriticalOutcome[] = [];
+
+  const successPool: Record<string, { description: string; bonus: Partial<PlayerResources> }[]> = {
+    deliverable: [
+      { description: 'Exceptional quality — client shared the output with their board as a benchmark document.', bonus: { clientTrust: 8, dealMomentum: 5 } },
+      { description: 'Deliverable praised by buyer advisors — positions the process as highly professional.', bonus: { reputation: 6, dealMomentum: 4 } },
+    ],
+    relationship: [
+      { description: 'Chemistry exceeded all expectations — the counterpart requested an exclusive relationship going forward.', bonus: { clientTrust: 10, reputation: 5 } },
+      { description: 'Relationship meeting produced an unexpected referral to a second strategic buyer.', bonus: { dealMomentum: 8, reputation: 4 } },
+    ],
+    market: [
+      { description: 'Intelligence uncovered a premium buyer previously outside the target list — immediately added to outreach.', bonus: { dealMomentum: 10 } },
+      { description: 'Market work surfaced a sector thesis that materially strengthens valuation positioning.', bonus: { dealMomentum: 6, clientTrust: 4 } },
+    ],
+    internal: [
+      { description: 'Process streamlined ahead of schedule — team capacity freed for higher-priority work.', bonus: { morale: 8, dealMomentum: 3 } },
+      { description: 'Internal review produced an insight that pre-empts a likely buyer objection.', bonus: { reputation: 5, riskLevel: -6 } },
+    ],
+    strategic: [
+      { description: 'Strategic initiative landed with unusual force — deal momentum accelerated significantly.', bonus: { dealMomentum: 12, clientTrust: 6 } },
+      { description: 'Client reacted with visible relief and confidence — trust elevated beyond expectations.', bonus: { clientTrust: 12, morale: 5 } },
+    ],
+    external_advisor: [
+      { description: 'External advisor delivered a report that resolves a key risk the team had been tracking.', bonus: { riskLevel: -10, dealMomentum: 4 } },
+    ],
+  };
+
+  const failurePool: { description: string; bonus: Partial<PlayerResources> }[] = [
+    { description: 'Work product contained an error discovered post-delivery — had to issue a correction with apologies.', bonus: { reputation: -5, clientTrust: -4 } },
+    { description: 'Stakeholder interaction went off-script — relationship requires deliberate rebuilding over the coming days.', bonus: { clientTrust: -6, dealMomentum: -4 } },
+    { description: 'Deliverable released prematurely — had to be recalled and revised under time pressure.', bonus: { morale: -5, reputation: -4, riskLevel: 5 } },
+    { description: 'Outcome fell short of the brief — client flagged disappointment and requested a revised approach.', bonus: { clientTrust: -7, dealMomentum: -3 } },
+  ];
+
+  for (const task of completedTasks) {
+    const successChance = task.complexity === 'high' ? 0.12 : task.complexity === 'medium' ? 0.08 : 0.04;
+    const failChance = task.complexity === 'high' ? 0.07 : task.complexity === 'medium' ? 0.04 : 0.01;
+    const roll = Math.random();
+
+    if (roll < successChance) {
+      const pool = successPool[task.category] ?? successPool['internal'];
+      const pick = pool[Math.floor(Math.random() * pool.length)];
+      outcomes.push({ taskId: task.id, taskName: task.name, type: 'success', ...pick });
+    } else if (roll < successChance + failChance) {
+      const pick = failurePool[Math.floor(Math.random() * failurePool.length)];
+      outcomes.push({ taskId: task.id, taskName: task.name, type: 'failure', ...pick });
+    }
+  }
+
+  return outcomes;
+}
+
+// Small stochastic noise applied to resources each advance — the market never stands still
+function applyResourceNoise(resourceChanges: Partial<PlayerResources>, state: GameState): Partial<PlayerResources> {
+  const volatility = state.phase >= 6 ? 1.6 : state.phase >= 3 ? 1.1 : 0.6;
+  const noised = { ...resourceChanges };
+
+  const moraleNoise = Math.round((Math.random() - 0.5) * 4 * volatility);
+  const currentMorale = (noised.morale as number | undefined) ?? state.resources.morale;
+  noised.morale = Math.max(0, Math.min(100, currentMorale + moraleNoise));
+
+  const momentumNoise = Math.round((Math.random() - 0.5) * 6 * volatility);
+  const currentMomentum = (noised.dealMomentum as number | undefined) ?? state.resources.dealMomentum;
+  noised.dealMomentum = Math.max(0, Math.min(100, currentMomentum + momentumNoise));
+
+  return noised;
 }
 
 // Calculate resource consumption, scaled to the number of days advanced
@@ -166,7 +244,7 @@ function calculateStateChanges(
 }
 
 // Generate narrative summary
-function generateSummary(result: Omit<WeekResult, 'narrativeSummary' | '_updatedBuyers'>, _week: number): string {
+function generateSummary(result: Omit<WeekResult, 'narrativeSummary' | '_updatedBuyers' | 'criticalOutcomes'> & { criticalOutcomes: CriticalOutcome[] }, _week: number): string {
   const parts: string[] = [];
 
   if (result.tasksCompleted.length > 0) {
@@ -204,8 +282,23 @@ function generateSummary(result: Omit<WeekResult, 'narrativeSummary' | '_updated
     parts.push(`Event: ${result.newEvents[0].title}.`);
   }
 
+  // Critical outcomes
+  const crits = result.criticalOutcomes;
+  if (crits.some((c) => c.type === 'success')) {
+    parts.push(`Exceptional outcome on ${crits.find((c) => c.type === 'success')!.taskName}.`);
+  }
+  if (crits.some((c) => c.type === 'failure')) {
+    parts.push(`Setback on ${crits.find((c) => c.type === 'failure')!.taskName} — requires attention.`);
+  }
+
   if (parts.length === 0) {
-    parts.push('A quiet week. The team is standing by for direction.');
+    const quietLines = [
+      'A quiet stretch. The team is standing by for direction.',
+      'No major developments. Momentum holds steady.',
+      'Routine progress. The deal remains on track.',
+      'Calm period — good time to prepare for the next phase.',
+    ];
+    parts.push(quietLines[Math.floor(Math.random() * quietLines.length)]);
   }
 
   return parts.join(' ');
@@ -317,6 +410,21 @@ function progressBuyers(
       if (momentum < 30 && currentIdx > 0 && Math.random() < 0.15) {
         const oldInterest = newBuyer.interest;
         newBuyer.interest = INTEREST_ORDER[currentIdx - 1];
+        changes.push({ buyerId: buyer.id, field: 'interest', from: oldInterest, to: newBuyer.interest });
+      }
+
+      // Unpredictable mood swings — buyers can act independently of momentum
+      // "Cold feet" — 4% chance any active buyer cools unexpectedly
+      if (currentIdx > 1 && Math.random() < 0.04) {
+        const oldInterest = newBuyer.interest;
+        newBuyer.interest = INTEREST_ORDER[currentIdx - 1];
+        changes.push({ buyerId: buyer.id, field: 'interest', from: oldInterest, to: newBuyer.interest });
+      }
+      // "Breakthrough interest" — 3% chance a lukewarm/warm buyer jumps two levels
+      if (currentIdx >= 1 && currentIdx <= 2 && Math.random() < 0.03) {
+        const jumpIdx = Math.min(currentIdx + 2, INTEREST_ORDER.length - 1);
+        const oldInterest = newBuyer.interest;
+        newBuyer.interest = INTEREST_ORDER[jumpIdx];
         changes.push({ buyerId: buyer.id, field: 'interest', from: oldInterest, to: newBuyer.interest });
       }
     }
@@ -942,6 +1050,1244 @@ const EVENT_POOL: EventTemplate[] = [
       resourceEffects: { dealMomentum: 10, clientTrust: 3 },
     }),
   },
+
+  // ── New: Phase 0-1 ────────────────────────────────────────────────────────
+  {
+    id: 'evt-client-second-thoughts',
+    phases: [0, 1],
+    probability: 0.14,
+    condition: (s) => s.week >= 3 && s.resources.clientTrust < 55,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-secondthoughts`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'active',
+        title: 'Client Having Second Thoughts',
+        description: 'Ricardo calls to say he had a long conversation with his wife and is "questioning whether now is the right time." He is not withdrawing, but his commitment is wavering.',
+        resolved: false,
+      },
+      resourceEffects: { clientTrust: -8, dealMomentum: -6 },
+      emailGenerated: {
+        id: `email-2thoughts-${s.week}`,
+        week: s.week + 1,
+        phase: s.phase,
+        sender: 'Ricardo Mendes',
+        senderRole: 'Founder & CEO, Solara Systems',
+        subject: 'Need to talk — having doubts',
+        body: "I've been lying awake at night thinking about this.\n\nSelling means losing what I've spent 11 years building. I'm not saying I want to stop — but I need to understand again why now is the right moment, and why the process you're proposing is the best path.\n\nCan we meet this week?",
+        preview: 'Ricardo is questioning timing — confidence wavering...',
+        category: 'client',
+        state: 'unread',
+        priority: 'urgent',
+        timestamp: `Week ${s.week + 1}, Monday`,
+        responseOptions: [
+          { id: 'r1', label: 'Arrange a face-to-face and walk him through the strategic rationale again', effects: '+10 trust, +5 momentum', resourceEffects: { clientTrust: 10, dealMomentum: 5 } },
+          { id: 'r2', label: 'Send a written memo — sector window, buyer appetite, personal liquidity', effects: '+6 trust', resourceEffects: { clientTrust: 6 } },
+          { id: 'r3', label: 'Give him space — check in again in a few days', effects: '-4 momentum (risks further doubt)', resourceEffects: { dealMomentum: -4 } },
+        ],
+      },
+    }),
+  },
+
+  // ── New: Phase 2 ──────────────────────────────────────────────────────────
+  {
+    id: 'evt-sector-expert-conflicts',
+    phases: [2],
+    probability: 0.16,
+    condition: (s) => s.week >= 9,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-expertconflict`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'active',
+        title: 'Sector Expert Conflicts Out',
+        description: "The industry expert we planned to use for buyer management meetings has disclosed a prior advisory relationship with one of the target buyers. They cannot participate. Finding a credible replacement in time will require budget and effort.",
+        resolved: false,
+      },
+      resourceEffects: { budget: -6, dealMomentum: -3 },
+    }),
+  },
+  {
+    id: 'evt-regulatory-prescreen',
+    phases: [2, 3],
+    probability: 0.13,
+    condition: (s) => s.buyers.some((b) => b.type === 'strategic'),
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-regpre`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'active',
+        title: 'Regulatory Pre-Screen Alert',
+        description: 'An informal pre-screen with competition counsel flagged that one of the strategic buyers could face merger review in two jurisdictions. This needs to be factored into process timing and any exclusivity period.',
+        resolved: false,
+      },
+      resourceEffects: { riskLevel: 9, dealMomentum: -4 },
+      riskGenerated: {
+        id: `risk-reg-${s.week}`,
+        name: 'Regulatory Clearance Risk',
+        description: 'One or more buyers may face competition review. Could add 6–10 weeks to closing timeline.',
+        category: 'legal',
+        severity: 'medium',
+        probability: 35,
+        mitigated: false,
+        surfacedWeek: s.week + 1,
+        surfacedPhase: s.phase,
+      },
+    }),
+  },
+
+  // ── New: Phase 3 ──────────────────────────────────────────────────────────
+  {
+    id: 'evt-surprise-inbound',
+    phases: [3],
+    probability: 0.14,
+    condition: (s) => s.resources.reputation > 50,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-inbound`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'passive',
+        title: 'Unsolicited Strategic Approach',
+        description: "A major US strategic — not on the original buyer list — has reached out through a banker contact. They saw the CIM circulating and want to be included. Adding them creates competitive tension but also complexity.",
+        resolved: false,
+      },
+      resourceEffects: { dealMomentum: 9, riskLevel: 4 },
+      emailGenerated: {
+        id: `email-inbound-${s.week}`,
+        week: s.week + 1,
+        phase: s.phase,
+        sender: 'Marcus Aldridge',
+        senderRole: 'Managing Partner, Clearwater Advisory',
+        subject: 'Inbound — Axiom Technologies wants in',
+        body: "Received a call from David Lund at Morrison & Co — he represents Axiom Technologies (NYSE: AXT). They picked up the process through the network and want to be included.\n\nAxiom is a tier-1 strategic with strong IoT credentials. Adding them would add credibility and potentially drive up prices. But it also adds complexity, timeline risk, and a party we know less well.\n\nYour call.",
+        preview: 'Unsolicited strategic buyer wants to join the process...',
+        category: 'partner',
+        state: 'unread',
+        priority: 'high',
+        timestamp: `Week ${s.week + 1}, Wednesday`,
+        responseOptions: [
+          { id: 'r1', label: 'Add Axiom to the process — more competition, better price', effects: '+8 momentum, +6 risk (complexity)', resourceEffects: { dealMomentum: 8, riskLevel: 6 } },
+          { id: 'r2', label: 'Request a one-pager before deciding — qualify them first', effects: '+4 reputation, neutral', resourceEffects: { reputation: 4 } },
+          { id: 'r3', label: 'Decline politely — process is already at the right stage', effects: '+2 reputation, -3 momentum', resourceEffects: { reputation: 2, dealMomentum: -3 } },
+        ],
+      },
+    }),
+  },
+  {
+    id: 'evt-journalist-contact',
+    phases: [3, 4],
+    probability: 0.1,
+    condition: (s) => s.resources.riskLevel > 15,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-journalist`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'cascade',
+        title: 'Financial Journalist Makes Enquiry',
+        description: "A journalist at a financial newswire has emailed Solara's PR contact asking for comment on 'strategic options being explored by the IoT platform.' The enquiry suggests partial market awareness — a full leak could disrupt the buyer pool.",
+        resolved: false,
+      },
+      resourceEffects: { riskLevel: 11, clientTrust: -5, dealMomentum: -4 },
+      riskGenerated: {
+        id: `risk-press-${s.week}`,
+        name: 'Press Leak Risk',
+        description: 'Journalist has made an enquiry. Risk of premature public disclosure.',
+        category: 'market',
+        severity: 'high',
+        probability: 50,
+        mitigated: false,
+        surfacedWeek: s.week + 1,
+        surfacedPhase: s.phase,
+      },
+    }),
+  },
+
+  // ── New: Phase 4-5 ────────────────────────────────────────────────────────
+  {
+    id: 'evt-buyer-consortium',
+    phases: [4, 5],
+    probability: 0.12,
+    condition: (s) => s.buyers.filter((b) => b.status === 'shortlisted' || b.status === 'bidding').length >= 3,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-consortium`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'cascade',
+        title: 'Two Buyers Form Consortium',
+        description: "Two of the shortlisted buyers have quietly agreed to submit a joint bid. This removes a competitive dynamic but may strengthen their combined execution credibility. Ricardo will have mixed views.",
+        resolved: false,
+      },
+      resourceEffects: { dealMomentum: -5, riskLevel: 6 },
+    }),
+  },
+  {
+    id: 'evt-fx-concern',
+    phases: [4, 5, 6],
+    probability: 0.11,
+    condition: (s) => s.buyers.some((b) => b.geography !== 'Europe' && !['dropped', 'excluded'].includes(b.status)),
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-fx`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'active',
+        title: 'FX Volatility Spooks Overseas Buyer',
+        description: "The EUR/USD rate has moved 4% against the overseas buyer over the past two weeks. Their investment committee is requesting a sensitivity analysis on currency risk before confirming their valuation range.",
+        resolved: false,
+      },
+      resourceEffects: { dealMomentum: -5, budget: -4 },
+    }),
+  },
+
+  // ── New: Phase 6 ──────────────────────────────────────────────────────────
+  {
+    id: 'evt-ip-challenge',
+    phases: [6],
+    probability: 0.13,
+    condition: (s) => s.resources.riskLevel > 20,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-ipchallenge`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'active',
+        title: 'IP Ownership Gap Discovered',
+        description: "DD has uncovered that two core platform modules were partially built by an ex-employee who left without signing a proper IP assignment agreement. The buyer's legal team considers this material. Clean-up will require legal work and potentially a deed of assignment.",
+        resolved: false,
+      },
+      resourceEffects: { riskLevel: 14, dealMomentum: -6, budget: -8 },
+      riskGenerated: {
+        id: `risk-ip-${s.week}`,
+        name: 'IP Ownership Gap',
+        description: 'Two platform modules have unresolved IP assignment from a former employee. Buyers may require indemnity or escrow.',
+        category: 'legal',
+        severity: 'high',
+        probability: 55,
+        mitigated: false,
+        surfacedWeek: s.week + 1,
+        surfacedPhase: s.phase,
+      },
+    }),
+  },
+
+  // ── New: Phase 7-8 ────────────────────────────────────────────────────────
+  {
+    id: 'evt-exclusivity-standoff',
+    phases: [7, 8],
+    probability: 0.15,
+    condition: (s) => s.buyers.some((b) => b.status === 'preferred' || b.status === 'bidding'),
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-excl`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'active',
+        title: 'Buyer Demands Exclusivity Immediately',
+        description: "The preferred bidder is refusing to progress SPA negotiations until they have a signed exclusivity agreement. Ricardo is uncomfortable granting exclusivity before terms are locked. You are caught in the middle.",
+        resolved: false,
+      },
+      resourceEffects: { dealMomentum: -7, clientTrust: -4 },
+      emailGenerated: {
+        id: `email-excl-${s.week}`,
+        week: s.week + 1,
+        phase: s.phase,
+        sender: 'Kestrel Capital Partners',
+        senderRole: 'Deal Lead',
+        subject: 'Exclusivity required before SPA kickoff',
+        body: "Our investment committee's approval to proceed with SPA negotiations is conditional on receiving a signed exclusivity letter first.\n\nWe understand Ricardo's position, but our committee will not authorise legal and management resources at this level without protection from parallel processes.\n\nWe need a 4-week exclusivity window. Non-negotiable at this stage.",
+        preview: 'Preferred buyer halts SPA until exclusivity is signed...',
+        category: 'buyer',
+        state: 'unread',
+        priority: 'urgent',
+        timestamp: `Week ${s.week + 1}, Friday`,
+        responseOptions: [
+          { id: 'r1', label: 'Grant 3-week exclusivity — close faster, accept the constraint', effects: '+8 momentum, -5 trust (Ricardo unhappy)', resourceEffects: { dealMomentum: 8, clientTrust: -5 } },
+          { id: 'r2', label: 'Counter with a 2-week window — protect optionality', effects: '+4 momentum, -3 trust', resourceEffects: { dealMomentum: 4, clientTrust: -3 } },
+          { id: 'r3', label: 'Refuse and maintain parallel track — call their bluff', effects: '+5 trust, -8 momentum (may lose preferred bidder)', resourceEffects: { clientTrust: 5, dealMomentum: -8 } },
+        ],
+      },
+    }),
+  },
+  {
+    id: 'evt-buyer-financing-wobble',
+    phases: [7, 8],
+    probability: 0.12,
+    condition: (s) => s.buyers.some((b) => b.type === 'pe' && !['dropped', 'excluded'].includes(b.status)),
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-finwobble`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'cascade',
+        title: "PE Buyer's Financing Under Pressure",
+        description: "The PE buyer's bank has requested an additional equity cushion following a change in leveraged lending guidelines. The buyer is seeking to renegotiate price by 5% to compensate. This is a credible financing constraint, not a negotiation tactic.",
+        resolved: false,
+      },
+      resourceEffects: { dealMomentum: -9, riskLevel: 10 },
+    }),
+  },
+
+  // ── New: Phase 9-10 ───────────────────────────────────────────────────────
+  {
+    id: 'evt-completion-accounts-dispute',
+    phases: [9, 10],
+    probability: 0.14,
+    condition: (s) => s.resources.riskLevel > 15,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-compacc`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'active',
+        title: 'Completion Accounts Dispute',
+        description: 'The buyer has challenged the completion accounts, claiming working capital is €1.8M below the agreed target. The difference could reduce Ricardo\'s net proceeds. Accountants on both sides are now arguing over the normalisation methodology.',
+        resolved: false,
+      },
+      resourceEffects: { riskLevel: 8, dealMomentum: -5, clientTrust: -4 },
+    }),
+  },
+  {
+    id: 'evt-conditions-precedent-drag',
+    phases: [9, 10],
+    probability: 0.13,
+    condition: (s) => s.week >= 42,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-cpdrag`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'active',
+        title: 'Conditions Precedent Running Behind',
+        description: "Three CPs are still outstanding and the scheduled closing date is under pressure. The buyer's counsel is threatening to invoke a long-stop date extension clause if they are not satisfied within 10 days.",
+        resolved: false,
+      },
+      resourceEffects: { dealMomentum: -6, riskLevel: 9 },
+    }),
+  },
+
+  // ── New: Cross-phase ─────────────────────────────────────────────────────
+  {
+    id: 'evt-team-recognition',
+    phases: [2, 3, 4, 5, 6, 7],
+    probability: 0.08,
+    condition: (s) => s.resources.morale >= 70 && s.tasks.filter((t) => t.status === 'completed').length >= 5,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-teamrec`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'passive',
+        title: 'Marcus Recognises the Team',
+        description: "Marcus sends a personal note to the deal team recognising their output over the past weeks. He mentions the Solara process is being cited internally as a model for how to run a complex sell-side mandate.",
+        resolved: false,
+      },
+      resourceEffects: { morale: 10, reputation: 5 },
+    }),
+  },
+  {
+    id: 'evt-advisor-positive-press',
+    phases: [3, 4, 5],
+    probability: 0.07,
+    condition: (s) => s.resources.reputation > 60,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-press`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'passive',
+        title: 'Clearwater Mentioned in Industry Press',
+        description: "A mergers & acquisitions trade publication names Clearwater Advisory in their annual 'boutiques to watch' list, citing activity in the European technology sector. Several buyer contacts have mentioned seeing it.",
+        resolved: false,
+      },
+      resourceEffects: { reputation: 8, dealMomentum: 3 },
+    }),
+  },
+
+  // ── Phase 0: Additional Events ────────────────────────────────────────────
+  {
+    id: 'evt-rival-pitches-ricardo',
+    phases: [0],
+    probability: 0.18,
+    condition: (s) => s.week >= 1,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-rivalpitch`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'active',
+        title: 'Rival Firm Pitches Ricardo Directly',
+        description: "Beacon Partners — a larger advisory firm — has reached out to Ricardo with a credentials deck and a reference list of 'comparable successful exits.' Ricardo forwarded it to you with the note: 'Is their track record really better?'",
+        resolved: false,
+      },
+      resourceEffects: { clientTrust: -4, dealMomentum: -3, reputation: -2 },
+      emailGenerated: {
+        id: `email-rivalpitch-${s.week}`,
+        week: s.week + 1,
+        phase: s.phase,
+        sender: 'Ricardo Mendes',
+        senderRole: 'Founder & CEO, Solara Systems',
+        subject: 'FWD: Beacon Partners — credentials for your review',
+        body: "See below — Beacon approached me directly. Their pitch pack is slick and their track record looks impressive on paper.\n\nI'm not going anywhere, but I'd like to understand how Clearwater's approach is differentiated. Can you put something together?",
+        preview: 'Rival firm pitched Ricardo — he wants a differentiation response...',
+        category: 'client',
+        state: 'unread',
+        priority: 'high',
+        timestamp: `Week ${s.week + 1}, Tuesday`,
+        responseOptions: [
+          { id: 'r1', label: 'Send a focused differentiation memo — sector depth, boutique attention, track record', effects: '+8 trust, +5 reputation', resourceEffects: { clientTrust: 8, reputation: 5 } },
+          { id: 'r2', label: 'Request a call — address it face-to-face and reinforce the relationship', effects: '+6 trust, +3 momentum', resourceEffects: { clientTrust: 6, dealMomentum: 3 } },
+          { id: 'r3', label: 'Downplay the competitor — focus Ricardo on the process you\'ve already started', effects: '+2 trust, -3 reputation (appears defensive)', resourceEffects: { clientTrust: 2, reputation: -3 } },
+        ],
+      },
+    }),
+  },
+  {
+    id: 'evt-cfo-joins-meeting',
+    phases: [0, 1],
+    probability: 0.14,
+    condition: (s) => s.week >= 2,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-cfojoin`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'active',
+        title: "Ricardo's CFO Raises Concerns",
+        description: "Solara's CFO — Inês Carvalho — attended the latest update call without warning. She questioned the process timeline, the fee structure, and whether 'now is really the best time.' Ricardo looked uncomfortable.",
+        resolved: false,
+      },
+      resourceEffects: { clientTrust: -5, dealMomentum: -4 },
+    }),
+  },
+  {
+    id: 'evt-founder-reference',
+    phases: [0, 1],
+    probability: 0.1,
+    condition: (s) => s.resources.reputation > 45,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-reference`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'passive',
+        title: 'Positive Reference Check',
+        description: 'Ricardo mentioned he spoke with a founder who sold his company with Clearwater two years ago. The reference was overwhelmingly positive — he said it was the main reason he is comfortable proceeding.',
+        resolved: false,
+      },
+      resourceEffects: { clientTrust: 8, reputation: 5 },
+    }),
+  },
+
+  // ── Phase 1: Additional Events ────────────────────────────────────────────
+  {
+    id: 'evt-client-wants-faster',
+    phases: [1],
+    probability: 0.15,
+    condition: (s) => s.resources.clientTrust > 50,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-faster`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'active',
+        title: "Client Wants to Accelerate",
+        description: "Ricardo calls to say he has 'personal reasons' to want the deal completed before year end. He is not elaborating. He asks if it's possible to compress the timeline by 4–6 weeks.",
+        resolved: false,
+      },
+      resourceEffects: { dealMomentum: 5, riskLevel: 7 },
+      emailGenerated: {
+        id: `email-faster-${s.week}`,
+        week: s.week + 1,
+        phase: s.phase,
+        sender: 'Ricardo Mendes',
+        senderRole: 'Founder & CEO, Solara Systems',
+        subject: 'Timeline — can we move faster?',
+        body: "I know this might sound abrupt but I need to ask: is there a realistic path to completing by end of November?\n\nI have some personal circumstances that make it important to me — I'd rather not go into detail, but trust that it's significant.\n\nIs it possible, or at least worth exploring?",
+        preview: 'Client pushing for accelerated timeline — personal reasons...',
+        category: 'client',
+        state: 'unread',
+        priority: 'high',
+        timestamp: `Week ${s.week + 1}, Monday`,
+        responseOptions: [
+          { id: 'r1', label: "Yes — we'll compress market outreach and run parallel workstreams", effects: '+6 trust, +8 risk (timeline pressure)', resourceEffects: { clientTrust: 6, riskLevel: 8 } },
+          { id: 'r2', label: "We can try — but only if we don't compromise buyer quality", effects: '+4 trust, +4 risk', resourceEffects: { clientTrust: 4, riskLevel: 4 } },
+          { id: 'r3', label: "Rushing risks leaving money on the table — recommend we stay the course", effects: '+3 reputation, -3 trust (disappoints him)', resourceEffects: { reputation: 3, clientTrust: -3 } },
+        ],
+      },
+    }),
+  },
+  {
+    id: 'evt-mandate-lawyer-review',
+    phases: [1],
+    probability: 0.13,
+    condition: (s) => s.week >= 6,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-lawyerreview`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'active',
+        title: 'Mandate Letter Challenged by Client Lawyer',
+        description: "Ricardo's lawyer has reviewed the engagement letter and returned it with annotations. They are challenging the success fee cap provision and the exclusivity period. Legal back-and-forth will delay mandate signing.",
+        resolved: false,
+      },
+      resourceEffects: { budget: -4, dealMomentum: -5 },
+    }),
+  },
+  {
+    id: 'evt-ic-approves-early',
+    phases: [1],
+    probability: 0.1,
+    condition: (s) => s.resources.dealMomentum > 55 && s.resources.clientTrust > 55,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-icearly`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'passive',
+        title: 'IC Gives Early Green Light',
+        description: 'Marcus has spoken to the Investment Committee ahead of schedule. Given the strength of the opportunity, they have given informal approval to proceed without waiting for the next formal IC date. This accelerates the mandate.',
+        resolved: false,
+      },
+      resourceEffects: { dealMomentum: 8, morale: 5 },
+    }),
+  },
+
+  // ── Phase 2: Additional Events ────────────────────────────────────────────
+  {
+    id: 'evt-model-assumptions-challenged',
+    phases: [2],
+    probability: 0.16,
+    condition: (s) => s.tasks.some((t) => t.id === 'task-20' && (t.status === 'in_progress' || t.status === 'completed')),
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-modelchallenge`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'active',
+        title: 'Financial Model Assumptions Challenged',
+        description: "The auditor has flagged that Solara's revenue growth model uses an aggressive churn assumption that differs from the actual trailing 12-month figure. Revising this brings EBITDA 7% lower in year 2. The financial model needs to be updated before it goes to buyers.",
+        resolved: false,
+      },
+      resourceEffects: { riskLevel: 8, dealMomentum: -4, budget: -5 },
+    }),
+  },
+  {
+    id: 'evt-management-job-security',
+    phases: [2, 3],
+    probability: 0.12,
+    condition: (s) => s.resources.clientTrust < 65,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-jobsecurity`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'cascade',
+        title: 'Management Team Anxious About Roles',
+        description: "Two members of Solara's senior management team have heard rumours of a sale and approached Ricardo asking about their job security post-close. Ricardo is now asking you to help manage the messaging before it becomes a retention issue.",
+        resolved: false,
+      },
+      resourceEffects: { riskLevel: 7, clientTrust: -4, dealMomentum: -3 },
+    }),
+  },
+  {
+    id: 'evt-comparable-premium',
+    phases: [2, 3],
+    probability: 0.11,
+    condition: (s) => s.resources.dealMomentum > 45,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-comppremium`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'passive',
+        title: 'Sector Deal Closes at Significant Premium',
+        description: "A close comparable — VaultSense Technologies — has been acquired at 14x EV/EBITDA, 40% above consensus estimates. This meaningfully strengthens Solara's valuation positioning and gives buyers a new market reference point.",
+        resolved: false,
+      },
+      resourceEffects: { dealMomentum: 8, clientTrust: 5 },
+    }),
+  },
+  {
+    id: 'evt-junior-breach',
+    phases: [2],
+    probability: 0.09,
+    condition: (s) => s.resources.riskLevel > 10,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-juniorbreach`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'cascade',
+        title: 'Junior Analyst Shares Confidential Details',
+        description: "A junior member of the Solara deal team — an analyst seconded from another engagement — shared preliminary financial information with a peer at a competing firm. It has not yet reached a buyer, but the breach needs to be contained immediately.",
+        resolved: false,
+      },
+      resourceEffects: { riskLevel: 15, clientTrust: -8, reputation: -6 },
+      riskGenerated: {
+        id: `risk-breach-${s.week}`,
+        name: 'Confidentiality Breach',
+        description: 'Internal team member shared preliminary deal information externally. Containment in progress.',
+        category: 'team',
+        severity: 'high',
+        probability: 40,
+        mitigated: false,
+        surfacedWeek: s.week + 1,
+        surfacedPhase: s.phase,
+      },
+    }),
+  },
+
+  // ── Phase 3: Additional Events ────────────────────────────────────────────
+  {
+    id: 'evt-strong-buyer-drops-early',
+    phases: [3],
+    probability: 0.13,
+    condition: (s) => s.buyers.some((b) => b.executionCredibility >= 80 && b.status === 'contacted'),
+    generate: (s) => {
+      const dropBuyer = s.buyers.find((b) => b.executionCredibility >= 80 && b.status === 'contacted');
+      return {
+        event: {
+          id: `evt-${s.week}-earlydrop`,
+          week: s.week + 1,
+          phase: s.phase,
+          type: 'cascade',
+          title: 'Premium Buyer Cites Internal M&A Freeze',
+          description: `${dropBuyer?.name ?? 'A strong buyer'} has informed us they are subject to an internal M&A moratorium following a large acquisition they closed last quarter. They are interested in Solara but cannot act until Q2. This removes them from the current process.`,
+          resolved: false,
+        },
+        resourceEffects: { dealMomentum: -9, clientTrust: -4 },
+      };
+    },
+  },
+  {
+    id: 'evt-pre-nda-indicative',
+    phases: [3],
+    probability: 0.1,
+    condition: (s) => s.buyers.some((b) => b.interest === 'hot' || b.interest === 'on_fire'),
+    generate: (s) => {
+      const hotBuyer = s.buyers.find((b) => b.interest === 'hot' || b.interest === 'on_fire');
+      return {
+        event: {
+          id: `evt-${s.week}-prenda`,
+          week: s.week + 1,
+          phase: s.phase,
+          type: 'passive',
+          title: 'Buyer Makes Pre-NDA Indicative Bid',
+          description: `${hotBuyer?.name ?? 'An enthusiastic buyer'} has submitted an indicative valuation range before even signing an NDA — an unusual but strong signal of strategic urgency. They are prepared to move on an accelerated timeline.`,
+          resolved: false,
+        },
+        resourceEffects: { dealMomentum: 11, clientTrust: 5 },
+      };
+    },
+  },
+  {
+    id: 'evt-competing-cim-circulating',
+    phases: [3, 4],
+    probability: 0.11,
+    condition: (s) => s.resources.riskLevel > 12,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-compecim`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'cascade',
+        title: 'Competing CIM Reaching Same Buyer Pool',
+        description: "Word has reached us that a competing advisor is circulating a CIM for a similar IoT platform to some of the same buyers currently reviewing Solara. Buyers' investment bandwidth is not unlimited — this creates competition for attention.",
+        resolved: false,
+      },
+      resourceEffects: { dealMomentum: -6, riskLevel: 5 },
+    }),
+  },
+  {
+    id: 'evt-cyber-audit',
+    phases: [3],
+    probability: 0.1,
+    condition: (s) => s.buyers.some((b) => b.type === 'pe' && !['dropped', 'excluded'].includes(b.status)),
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-cyber`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'active',
+        title: 'Cyber Security Gap Found in Pre-Process Audit',
+        description: "A pre-process technical review commissioned by a PE buyer's DD team has flagged outdated authentication protocols on Solara's customer portal. This is a material item that buyers will raise and needs a remediation plan before formal DD begins.",
+        resolved: false,
+      },
+      resourceEffects: { riskLevel: 11, budget: -7 },
+      riskGenerated: {
+        id: `risk-cyber-${s.week}`,
+        name: 'Cyber Security Vulnerability',
+        description: 'Outdated authentication protocols flagged in pre-process audit. Buyers will require a remediation plan.',
+        category: 'diligence',
+        severity: 'medium',
+        probability: 35,
+        mitigated: false,
+        surfacedWeek: s.week + 1,
+        surfacedPhase: s.phase,
+      },
+    }),
+  },
+
+  // ── Phase 4: Additional Events ────────────────────────────────────────────
+  {
+    id: 'evt-shortlisted-buyer-acquired',
+    phases: [4],
+    probability: 0.09,
+    condition: (s) => s.buyers.filter((b) => b.status === 'shortlisted').length >= 2,
+    generate: (s) => {
+      const shortlisted = s.buyers.filter((b) => b.status === 'shortlisted');
+      const acquired = shortlisted[Math.floor(Math.random() * shortlisted.length)];
+      return {
+        event: {
+          id: `evt-${s.week}-buyeracq`,
+          week: s.week + 1,
+          phase: s.phase,
+          type: 'cascade',
+          title: 'Shortlisted Buyer Gets Acquired',
+          description: `${acquired.name} has announced it is itself being acquired by a larger competitor. Their M&A team is frozen pending integration — they can no longer participate in the Solara process. Competitive tension reduces.`,
+          resolved: false,
+        },
+        resourceEffects: { dealMomentum: -7 },
+      };
+    },
+  },
+  {
+    id: 'evt-client-pushes-back-shortlist',
+    phases: [4],
+    probability: 0.14,
+    condition: (s) => s.resources.clientTrust < 70,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-clientshort`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'active',
+        title: 'Client Wants a Different Shortlist',
+        description: "Ricardo has reviewed the shortlist and disagrees with two of the exclusions. He argues one excluded buyer is 'strategically interesting' despite low execution credibility. Reopening this debate could complicate the process.",
+        resolved: false,
+      },
+      resourceEffects: { clientTrust: -4, dealMomentum: -3 },
+    }),
+  },
+  {
+    id: 'evt-serious-buyer-site-visit',
+    phases: [4, 5],
+    probability: 0.12,
+    condition: (s) => s.buyers.some((b) => b.status === 'shortlisted' && b.executionCredibility >= 75),
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-sitevisit`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'passive',
+        title: 'Shortlisted Buyer Requests Site Visit',
+        description: "A shortlisted buyer has requested an early site visit to Solara's offices — ahead of the scheduled management presentation timeline. This signals very serious intent and gives Ricardo an early read on chemistry.",
+        resolved: false,
+      },
+      resourceEffects: { dealMomentum: 6, clientTrust: 4 },
+    }),
+  },
+  {
+    id: 'evt-interest-rate-spike',
+    phases: [3, 4, 5, 6, 7],
+    probability: 0.07,
+    condition: (s) => s.buyers.some((b) => b.type === 'pe' && !['dropped', 'excluded'].includes(b.status)),
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-rates`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'cascade',
+        title: 'Central Bank Rate Hike Squeezes PE Leverage',
+        description: "The ECB has raised rates unexpectedly by 50bps. PE buyers' leveraged buyout models are re-running with higher cost of debt. At least one PE buyer has asked for a 24-hour pause to remodel. The strategic buyers are unaffected.",
+        resolved: false,
+      },
+      resourceEffects: { dealMomentum: -8, riskLevel: 7 },
+    }),
+  },
+
+  // ── Phase 5: Additional Events ────────────────────────────────────────────
+  {
+    id: 'evt-double-nbo-same-day',
+    phases: [5],
+    probability: 0.12,
+    condition: (s) => s.buyers.filter((b) => b.status === 'bidding').length >= 2,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-doublenbo`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'passive',
+        title: 'Two NBOs Arrive on the Same Day',
+        description: 'Two competitive NBOs have been submitted within hours of each other — both at the upper end of expectations. The near-simultaneous timing suggests mutual awareness of the other party. Competitive tension is at its highest point.',
+        resolved: false,
+      },
+      resourceEffects: { dealMomentum: 12, clientTrust: 7 },
+    }),
+  },
+  {
+    id: 'evt-client-rejects-all-nbos',
+    phases: [5],
+    probability: 0.1,
+    condition: (s) => s.resources.clientTrust < 60 && s.buyers.filter((b) => b.status === 'bidding').length >= 1,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-rejectnbo`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'active',
+        title: "Client Dissatisfied With All NBOs",
+        description: "Ricardo has reviewed the indicative offers and is disappointed with all of them. He says the valuations are 'at least 20% below what the business is worth' and is asking whether the process should be restarted with a wider universe. You need to manage his expectations carefully.",
+        resolved: false,
+      },
+      resourceEffects: { clientTrust: -8, dealMomentum: -6 },
+      emailGenerated: {
+        id: `email-rejectnbo-${s.week}`,
+        week: s.week + 1,
+        phase: s.phase,
+        sender: 'Ricardo Mendes',
+        senderRole: 'Founder & CEO, Solara Systems',
+        subject: 'These offers are not acceptable',
+        body: "I've reviewed the indicative bids and I have to be honest — I'm disappointed.\n\nThe best offer is €48M. My expectation was €60M plus. I built this business for 11 years and this doesn't reflect what it's worth.\n\nIs it possible to reopen the process? Or at least push back harder on these numbers?",
+        preview: 'Ricardo rejects all NBOs — wants to push for higher valuation...',
+        category: 'client',
+        state: 'unread',
+        priority: 'urgent',
+        timestamp: `Week ${s.week + 1}, Thursday`,
+        responseOptions: [
+          { id: 'r1', label: 'Validate his concern but explain why the offers reflect the market — guide expectations', effects: '+5 trust, +4 momentum (realistic approach)', resourceEffects: { clientTrust: 5, dealMomentum: 4 } },
+          { id: 'r2', label: 'Go back to buyers for best and final offers — create auction pressure', effects: '+6 momentum, -3 trust (risky if buyers don\'t stretch)', resourceEffects: { dealMomentum: 6, clientTrust: -3 } },
+          { id: 'r3', label: 'Propose running a limited second phase with new buyers', effects: '-8 momentum, +4 trust (major delay)', resourceEffects: { dealMomentum: -8, clientTrust: 4 } },
+        ],
+      },
+    }),
+  },
+  {
+    id: 'evt-consortium-breaks',
+    phases: [5],
+    probability: 0.1,
+    condition: (s) => s.buyers.filter((b) => b.status === 'bidding').length >= 2,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-consorbreak`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'cascade',
+        title: 'Buyer Consortium Collapses',
+        description: "Two buyers who had agreed to submit a joint NBO have split up. Each will now bid independently. This unexpectedly increases competitive tension — but also means each party's firepower is reduced without the combined equity.",
+        resolved: false,
+      },
+      resourceEffects: { dealMomentum: 4, riskLevel: 5 },
+    }),
+  },
+  {
+    id: 'evt-industry-riskoff',
+    phases: [4, 5, 6],
+    probability: 0.08,
+    condition: (s) => s.resources.dealMomentum > 30,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-riskoff`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'cascade',
+        title: "Sector M&A Slowdown Creates 'Risk-Off' Sentiment",
+        description: "Three major European tech M&A processes have paused in the last week, cited as 'macro uncertainty.' Buyers' investment committees are becoming more cautious and increasing their required return thresholds. Expect more scrutiny on assumptions.",
+        resolved: false,
+      },
+      resourceEffects: { dealMomentum: -7, riskLevel: 8 },
+    }),
+  },
+
+  // ── Phase 6: Additional Events ────────────────────────────────────────────
+  {
+    id: 'evt-dd-question-unanswered',
+    phases: [6],
+    probability: 0.15,
+    condition: (s) => s.week >= 28,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-ddq`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'active',
+        title: 'Buyer Threatens Reprice on Unanswered DD',
+        description: "A core DD question on Solara's customer contract termination rights has been in the dataroom for 12 days without a response. The buyer's legal team has written to say that if it is not addressed in 48 hours, they will reflect the risk in a revised valuation.",
+        resolved: false,
+      },
+      resourceEffects: { dealMomentum: -7, riskLevel: 9, budget: -5 },
+    }),
+  },
+  {
+    id: 'evt-mgmt-qa-heated',
+    phases: [6],
+    probability: 0.12,
+    condition: (s) => s.resources.clientTrust < 70,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-qaheated`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'active',
+        title: 'Management Presentation Q&A Gets Heated',
+        description: "During the management presentation Q&A session, a PE buyer's associate asked an aggressive question about customer concentration. Ricardo responded defensively and the session ended on a poor note. Buyers left with concerns about his composure under pressure.",
+        resolved: false,
+      },
+      resourceEffects: { clientTrust: -5, dealMomentum: -6 },
+    }),
+  },
+  {
+    id: 'evt-dataroom-security',
+    phases: [6],
+    probability: 0.09,
+    condition: (s) => s.resources.riskLevel > 18,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-drmsec`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'cascade',
+        title: 'Dataroom Access Anomaly Detected',
+        description: "The dataroom provider has flagged that an authorised user account downloaded a large number of documents outside normal business hours from an unrecognised IP address. It may be authorised — or a security issue. Investigation required.",
+        resolved: false,
+      },
+      resourceEffects: { riskLevel: 12, clientTrust: -4 },
+    }),
+  },
+  {
+    id: 'evt-dd-extension-requested',
+    phases: [6],
+    probability: 0.14,
+    condition: (s) => s.week >= 30,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-ddextend`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'active',
+        title: 'Buyer Requests DD Timeline Extension',
+        description: "The lead buyer's external DD team is running 2 weeks behind schedule. They are requesting a 10-day extension to complete financial and commercial DD. Ricardo is unhappy about the delay. You need to decide whether to grant it.",
+        resolved: false,
+      },
+      resourceEffects: { dealMomentum: -5, clientTrust: -3 },
+      emailGenerated: {
+        id: `email-ddextend-${s.week}`,
+        week: s.week + 1,
+        phase: s.phase,
+        sender: 'Kestrel Capital Partners',
+        senderRole: 'Deal Lead',
+        subject: 'Request: DD timeline extension — 10 additional days',
+        body: "Our DD team has encountered unexpected depth in the financial and commercial analysis. We are running approximately 10 working days behind the original schedule.\n\nWe would like to request a formal extension. We remain committed to the process and our indicative offer range — this is purely a resourcing matter.\n\nWe hope this can be accommodated.",
+        preview: 'Lead buyer requests 10-day DD extension...',
+        category: 'buyer',
+        state: 'unread',
+        priority: 'high',
+        timestamp: `Week ${s.week + 1}, Wednesday`,
+        responseOptions: [
+          { id: 'r1', label: 'Grant the extension — better quality DD than a rushed process', effects: '-4 momentum, +4 trust (buyer relationship)', resourceEffects: { dealMomentum: -4, clientTrust: 4 } },
+          { id: 'r2', label: "Grant 5 days only — protect timeline but show goodwill", effects: '-2 momentum', resourceEffects: { dealMomentum: -2 } },
+          { id: 'r3', label: 'Decline — other buyers are on schedule; this creates inequality', effects: '+3 momentum, -5 buyer trust (risk they drop)', resourceEffects: { dealMomentum: 3, clientTrust: -5 } },
+        ],
+      },
+    }),
+  },
+
+  // ── Phase 7: Additional Events ────────────────────────────────────────────
+  {
+    id: 'evt-preferred-gets-cold-feet',
+    phases: [7],
+    probability: 0.12,
+    condition: (s) => s.resources.dealMomentum < 60,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-coldfeet`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'cascade',
+        title: 'Preferred Bidder Signals Price Hesitation',
+        description: "The preferred bidder's CFO has sent an informal note saying their board is 'less comfortable' with the valuation after final sensitivity analysis. They are not withdrawing but are signalling a desire to discuss price before final submission.",
+        resolved: false,
+      },
+      resourceEffects: { dealMomentum: -8, clientTrust: -5 },
+    }),
+  },
+  {
+    id: 'evt-late-third-party',
+    phases: [7],
+    probability: 0.1,
+    condition: (s) => s.resources.dealMomentum > 50,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-lateparty`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'active',
+        title: 'Third Party Approaches With Late Interest',
+        description: "A previously uninvolved strategic has reached out through a banker expressing serious interest. They are asking whether it is too late to participate. Including them would add leverage but delay the process by at least 3 weeks.",
+        resolved: false,
+      },
+      resourceEffects: { dealMomentum: 5, riskLevel: 6 },
+      emailGenerated: {
+        id: `email-lateparty-${s.week}`,
+        week: s.week + 1,
+        phase: s.phase,
+        sender: 'Marcus Aldridge',
+        senderRole: 'Managing Partner, Clearwater Advisory',
+        subject: 'Late inbound — do we let Meridian Group in?',
+        body: "Received a call from James Whitfield at Harrison & Co. He represents Meridian Group — a well-capitalised strategic that has been watching from the sidelines.\n\nThey've asked if it's too late to receive materials and submit a final offer.\n\nMeridian could meaningfully improve competitive tension. But it adds 3+ weeks and risks alienating current bidders who've invested heavily in the process.",
+        preview: 'Late-stage strategic buyer wants to join — do we let them in?',
+        category: 'partner',
+        state: 'unread',
+        priority: 'high',
+        timestamp: `Week ${s.week + 1}, Tuesday`,
+        responseOptions: [
+          { id: 'r1', label: 'Allow Meridian in on a compressed timeline — max competitive tension', effects: '+9 momentum, +6 risk (delay), -4 trust (Ricardo nervous)', resourceEffects: { dealMomentum: 9, riskLevel: 6, clientTrust: -4 } },
+          { id: 'r2', label: 'Invite them for a bilateral track only — keep main process intact', effects: '+5 momentum, +3 risk', resourceEffects: { dealMomentum: 5, riskLevel: 3 } },
+          { id: 'r3', label: 'Decline — process is too advanced and existing bidders deserve protection', effects: '+3 trust, -3 momentum', resourceEffects: { clientTrust: 3, dealMomentum: -3 } },
+        ],
+      },
+    }),
+  },
+  {
+    id: 'evt-earnout-heavy-structure',
+    phases: [7],
+    probability: 0.11,
+    condition: (s) => s.buyers.some((b) => b.valuationPosture === 'conservative' && !['dropped', 'excluded'].includes(b.status)),
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-earnout`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'active',
+        title: 'Unconventional Earnout-Heavy Offer',
+        description: "One bidder has structured their final offer with 35% of consideration as a 3-year earnout tied to ARR growth targets that management considers aggressive. Ricardo finds the headline number attractive but is concerned about the contingent element.",
+        resolved: false,
+      },
+      resourceEffects: { dealMomentum: -4, clientTrust: -3 },
+    }),
+  },
+
+  // ── Phase 8: Additional Events ────────────────────────────────────────────
+  {
+    id: 'evt-seller-new-spa-clauses',
+    phases: [8],
+    probability: 0.13,
+    condition: (s) => s.week >= 35,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-newclauses`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'active',
+        title: "Seller's Lawyers Introduce New SPA Clauses",
+        description: "Ricardo's legal team has introduced three new clauses into the SPA draft at a late stage: a material adverse change carve-out, an enhanced management retention covenant, and a change-of-control consent requirement on the top 5 contracts. Buyer counsel is unhappy with the late additions.",
+        resolved: false,
+      },
+      resourceEffects: { dealMomentum: -6, riskLevel: 7 },
+    }),
+  },
+  {
+    id: 'evt-tax-authority-inquiry',
+    phases: [8],
+    probability: 0.1,
+    condition: (s) => s.resources.riskLevel > 20,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-tax`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'cascade',
+        title: 'Tax Authority Issues Inquiry',
+        description: "The Portuguese tax authority has opened an inquiry into Solara's transfer pricing arrangements for its subsidiary in Ireland. The inquiry is routine but creates uncertainty about potential liability. Buyers are requesting clarification on the exposure before SPA signature.",
+        resolved: false,
+      },
+      resourceEffects: { riskLevel: 14, dealMomentum: -7 },
+      riskGenerated: {
+        id: `risk-tax-${s.week}`,
+        name: 'Tax Authority Inquiry',
+        description: 'Transfer pricing inquiry opened by Portuguese tax authority. Potential liability unclear.',
+        category: 'legal',
+        severity: 'high',
+        probability: 40,
+        mitigated: false,
+        surfacedWeek: s.week + 1,
+        surfacedPhase: s.phase,
+      },
+    }),
+  },
+  {
+    id: 'evt-buyer-ceo-change',
+    phases: [8],
+    probability: 0.09,
+    condition: (s) => s.buyers.some((b) => b.status === 'preferred'),
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-ceochg`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'cascade',
+        title: "Buyer's CEO Changes — New Decision-Maker",
+        description: "The preferred buyer has announced that its CEO is stepping down effective next month. The incoming CEO is unknown — and may have different views on the acquisition strategy. The deal team needs to re-establish alignment with new senior stakeholders.",
+        resolved: false,
+      },
+      resourceEffects: { dealMomentum: -10, riskLevel: 9 },
+    }),
+  },
+
+  // ── Phase 9-10: Additional Events ─────────────────────────────────────────
+  {
+    id: 'evt-bank-wire-delay',
+    phases: [10],
+    probability: 0.12,
+    condition: (s) => s.resources.riskLevel < 35,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-wiredelay`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'active',
+        title: 'Bank Wire Delayed on Closing Day',
+        description: "The buyer's bank has flagged a compliance hold on the closing wire — a €47M transfer requires enhanced due diligence under AML regulations. Ricardo is waiting. The legal team has been on a conference call for four hours.",
+        resolved: false,
+      },
+      resourceEffects: { riskLevel: 6, morale: -5, clientTrust: -3 },
+    }),
+  },
+  {
+    id: 'evt-victory-leak',
+    phases: [9, 10],
+    probability: 0.09,
+    condition: (s) => s.resources.dealMomentum > 55,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-victleak`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'cascade',
+        title: "Team Member Leaks Signing News Prematurely",
+        description: "A team member posted a cryptic congratulatory message on LinkedIn before the official announcement. This triggered press speculation and a call from the buyer's communications team. The announcement is being brought forward to contain the story.",
+        resolved: false,
+      },
+      resourceEffects: { riskLevel: 7, reputation: -4, clientTrust: -3 },
+    }),
+  },
+  {
+    id: 'evt-regulatory-final-push',
+    phases: [9],
+    probability: 0.13,
+    condition: (s) => s.resources.riskLevel > 20,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-regfinal`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'active',
+        title: 'Regulatory Clearance: Final Information Burst',
+        description: "Competition counsel has received a final supplementary questionnaire from the antitrust regulator requesting detailed market share data across 12 sub-segments. Response deadline is 5 working days. Full team mobilisation required.",
+        resolved: false,
+      },
+      resourceEffects: { riskLevel: 8, budget: -6, dealMomentum: -4 },
+    }),
+  },
+
+  // ── Additional Cross-Phase Events ─────────────────────────────────────────
+  {
+    id: 'evt-deal-pause-personal',
+    phases: [3, 4, 5, 6],
+    probability: 0.07,
+    condition: (s) => s.resources.clientTrust < 60,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-pause`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'cascade',
+        title: "Client Requests Brief Process Pause",
+        description: "Ricardo has asked for a one-week pause in buyer communications. He has not explained why. The team suspects a family matter. All scheduled buyer meetings are on hold.",
+        resolved: false,
+      },
+      resourceEffects: { dealMomentum: -6, riskLevel: 5 },
+    }),
+  },
+  {
+    id: 'evt-lateral-hire-interest',
+    phases: [4, 5, 6, 7],
+    probability: 0.07,
+    condition: (s) => s.resources.reputation > 65,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-lateral`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'passive',
+        title: 'Clearwater Attracts Lateral Hire Interest',
+        description: "The Solara process profile has attracted attention from an MD at a bulge-bracket firm who has reached out to Marcus about a lateral move to Clearwater. It signals the firm's growing reputation in the European tech M&A space.",
+        resolved: false,
+      },
+      resourceEffects: { reputation: 7, morale: 4 },
+    }),
+  },
+  {
+    id: 'evt-shadow-advisor',
+    phases: [2, 3, 4],
+    probability: 0.1,
+    condition: (s) => s.resources.clientTrust < 65 && s.week >= 8,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-shadowadv`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'cascade',
+        title: "Ricardo Consults Another Advisor Quietly",
+        description: "It has come to light that Ricardo has been taking informal advice from a retired investment banker — a family friend — without informing Clearwater. The advice appears to be conflicting with the process strategy.",
+        resolved: false,
+      },
+      resourceEffects: { clientTrust: -7, dealMomentum: -5 },
+    }),
+  },
+  {
+    id: 'evt-deal-awards-recognition',
+    phases: [9, 10],
+    probability: 0.08,
+    condition: (s) => s.resources.reputation > 60,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-awards`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'passive',
+        title: 'Deal Shortlisted for Industry Award',
+        description: "The Solara transaction has been shortlisted for 'Boutique Deal of the Year' at a major European M&A awards ceremony. This is excellent for Clearwater's profile and validates the approach taken throughout the process.",
+        resolved: false,
+      },
+      resourceEffects: { reputation: 10, morale: 6 },
+    }),
+  },
+  {
+    id: 'evt-key-advisor-falls-ill',
+    phases: [3, 4, 5, 6],
+    probability: 0.07,
+    condition: (s) => s.resources.morale < 65,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-illhealth`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'active',
+        title: 'Key Advisor Temporarily Unavailable',
+        description: "A key member of the deal team is out for 5 days due to illness. Their portfolio of buyer interactions and dataroom management now falls on the remaining team. Workload and risk increase temporarily.",
+        resolved: false,
+      },
+      resourceEffects: { morale: -7, riskLevel: 6, dealMomentum: -3 },
+    }),
+  },
 ];
 
 function rollEvents(state: GameState): {
@@ -960,6 +2306,15 @@ function rollEvents(state: GameState): {
   // Track fired event IDs to prevent duplicates within a session
   const firedIds = new Set(state.events.map((e) => e.id));
 
+  // Variable event density — some sessions are quiet, others chaotic
+  // Roll fresh each advance so density fluctuates naturally throughout a game
+  const densityRoll = Math.random();
+  const densityMultiplier = densityRoll < 0.20 ? 0.25   // 20%: very quiet stretch
+    : densityRoll < 0.50 ? 0.6                          // 30%: calm period
+    : densityRoll < 0.80 ? 1.0                          // 30%: normal activity
+    : densityRoll < 0.95 ? 1.5                          // 15%: busy period
+    : 2.2;                                               //  5%: everything happens at once
+
   for (const template of EVENT_POOL) {
     // Phase check
     if (!template.phases.includes(state.phase)) continue;
@@ -973,8 +2328,8 @@ function rollEvents(state: GameState): {
     // Condition check
     if (template.condition && !template.condition(state)) continue;
 
-    // Probability roll
-    if (Math.random() > template.probability) continue;
+    // Probability roll with density scaling
+    if (Math.random() > template.probability * densityMultiplier) continue;
 
     const generated = template.generate(state);
 
@@ -1033,11 +2388,26 @@ export function resolveWeek(state: GameState, daysToAdvance: number = 7): WeekRe
   // 4. Check for hidden workload
   const hiddenWorkload = checkHiddenWorkload(tasksCompleted);
 
+  // 4b. Roll critical outcomes for completed tasks
+  const criticalOutcomes = rollCriticalOutcomes(tasksCompleted);
+
   // 5. Combine all resource changes
-  const resourceChanges: Partial<PlayerResources> = {
+  let resourceChanges: Partial<PlayerResources> = {
     ...resourceConsumption,
     ...stateChanges,
   };
+
+  // 5b. Apply critical outcome bonuses/penalties
+  for (const crit of criticalOutcomes) {
+    for (const [key, delta] of Object.entries(crit.bonus)) {
+      const k = key as keyof PlayerResources;
+      const current = (resourceChanges[k] as number | undefined) ?? state.resources[k];
+      if (typeof current === 'number' && typeof delta === 'number') {
+        const maxVal = k === 'teamCapacity' ? state.resources.teamCapacityMax : k === 'budget' ? state.resources.budgetMax : 100;
+        (resourceChanges as Record<string, number>)[k] = Math.max(0, Math.min(maxVal, current + (delta as number)));
+      }
+    }
+  }
 
   // 6. Risk level adjustment
   const riskDelta = hiddenWorkload ? 5 : (tasksCompleted.length > 0 ? -2 : 1);
@@ -1127,6 +2497,9 @@ export function resolveWeek(state: GameState, daysToAdvance: number = 7): WeekRe
     }
   }
 
+  // Apply stochastic noise — small random drift makes each advance feel unique
+  resourceChanges = applyResourceNoise(resourceChanges, state);
+
   // 10. Phase progress estimate
   const phaseProgressDelta = tasksCompleted.length * 8 + tasksProgressed.length * 2;
 
@@ -1141,6 +2514,7 @@ export function resolveWeek(state: GameState, daysToAdvance: number = 7): WeekRe
     newEvents: [...eventResult.events],
     buyerChanges: buyerResult.changes,
     hiddenWorkload,
+    criticalOutcomes,
     phaseProgressDelta,
     resolvedBudgetRequests: resolvedRequests,
     resolvedBoardSubmission,

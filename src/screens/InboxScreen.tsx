@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useGameStore } from '../store/gameStore';
 import Panel from '../components/ui/Panel';
 import StatusChip from '../components/ui/StatusChip';
@@ -9,9 +9,10 @@ import {
   Star,
   ChevronRight,
   Reply,
-  Forward,
   AlertCircle,
   CheckCircle2,
+  ArrowUpDown,
+  ArrowUpRight,
 } from 'lucide-react';
 import type { Email, EmailCategory } from '../types/game';
 
@@ -35,23 +36,48 @@ const CATEGORY_LABELS: Record<EmailCategory, string> = {
   system: 'System',
 };
 
-type FilterTab = 'all' | 'unread' | 'important' | 'requires_response';
+const PRIORITY_RANK: Record<string, number> = { urgent: 4, high: 3, normal: 2, low: 1 };
+
+type FilterTab = 'all' | 'unread' | 'flagged' | 'important' | 'requires_response';
+type SortKey = 'newest' | 'oldest' | 'sender' | 'priority' | 'category';
 
 export default function InboxScreen() {
-  const { emails, markEmailRead, respondToEmail } = useGameStore();
+  const { emails, markEmailRead, respondToEmail, flagEmail, escalateEmail } = useGameStore();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortKey, setSortKey] = useState<SortKey>('newest');
 
-  const filteredEmails = emails.filter((e) => {
-    if (searchQuery && !e.subject.toLowerCase().includes(searchQuery.toLowerCase()) && !e.sender.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    switch (activeTab) {
-      case 'unread': return e.state === 'unread';
-      case 'important': return e.priority === 'high' || e.priority === 'urgent';
-      case 'requires_response': return e.state === 'requires_response' || (e.responseOptions && e.responseOptions.length > 0 && e.state !== 'resolved');
-      default: return true;
-    }
-  });
+  const filteredEmails = useMemo(() => {
+    const filtered = emails.filter((e) => {
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        const hit = e.subject.toLowerCase().includes(q)
+          || e.sender.toLowerCase().includes(q)
+          || e.body.toLowerCase().includes(q)
+          || e.preview.toLowerCase().includes(q);
+        if (!hit) return false;
+      }
+      switch (activeTab) {
+        case 'unread': return e.state === 'unread';
+        case 'flagged': return !!e.flagged;
+        case 'important': return e.priority === 'high' || e.priority === 'urgent';
+        case 'requires_response': return e.state === 'requires_response' || (e.responseOptions && e.responseOptions.length > 0 && e.state !== 'resolved');
+        default: return true;
+      }
+    });
+
+    return [...filtered].sort((a, b) => {
+      switch (sortKey) {
+        case 'newest': return (b.day ?? b.week * 7) - (a.day ?? a.week * 7);
+        case 'oldest': return (a.day ?? a.week * 7) - (b.day ?? b.week * 7);
+        case 'sender': return a.sender.localeCompare(b.sender);
+        case 'priority': return (PRIORITY_RANK[b.priority] ?? 2) - (PRIORITY_RANK[a.priority] ?? 2);
+        case 'category': return a.category.localeCompare(b.category);
+        default: return 0;
+      }
+    });
+  }, [emails, searchQuery, activeTab, sortKey]);
 
   const selected = emails.find((e) => e.id === selectedId);
 
@@ -66,9 +92,12 @@ export default function InboxScreen() {
     respondToEmail(emailId, responseId);
   }
 
+  const flaggedCount = emails.filter((e) => e.flagged).length;
+
   const tabs: { key: FilterTab; label: string }[] = [
     { key: 'all', label: 'All' },
     { key: 'unread', label: 'Unread' },
+    { key: 'flagged', label: `Flagged${flaggedCount > 0 ? ` (${flaggedCount})` : ''}` },
     { key: 'important', label: 'Important' },
     { key: 'requires_response', label: 'Action Required' },
   ];
@@ -112,6 +141,22 @@ export default function InboxScreen() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-9 pr-3 py-1.5 text-[12px] bg-surface-default border border-border-subtle rounded-[var(--radius-md)] text-text-primary placeholder:text-text-muted/50 focus:outline-none focus:border-border-accent transition-colors"
           />
+        </div>
+
+        {/* Sort */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <ArrowUpDown size={13} className="text-text-muted" />
+          <select
+            value={sortKey}
+            onChange={(e) => setSortKey(e.target.value as SortKey)}
+            className="text-[12px] bg-surface-default border border-border-subtle rounded-[var(--radius-md)] text-text-secondary px-2 py-1.5 focus:outline-none focus:border-border-accent transition-colors cursor-pointer"
+          >
+            <option value="newest">Newest</option>
+            <option value="oldest">Oldest</option>
+            <option value="priority">Priority</option>
+            <option value="sender">Sender</option>
+            <option value="category">Category</option>
+          </select>
         </div>
       </div>
 
@@ -161,6 +206,8 @@ export default function InboxScreen() {
                       </span>
                       {email.priority === 'urgent' && <AlertCircle size={10} className="text-state-danger" />}
                       {email.priority === 'high' && <Star size={10} className="text-state-warning" />}
+                      {email.flagged && <Star size={10} className="text-text-accent fill-text-accent" />}
+                      {email.escalated && <ArrowUpRight size={10} className="text-muted-lavender" />}
                     </div>
                     <div className={`text-[12px] mt-1 truncate ${email.state === 'unread' ? 'font-medium text-text-primary' : 'text-text-secondary'}`}>
                       {email.subject}
@@ -241,11 +288,30 @@ export default function InboxScreen() {
 
               {/* Quick Actions */}
               <div className="flex items-center gap-2 mt-4 pt-3 border-t border-border-subtle">
-                <button className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-text-muted hover:text-text-primary bg-surface-default hover:bg-surface-hover rounded-[var(--radius-md)] transition-colors">
-                  <Forward size={12} /> Escalate
+                <button
+                  onClick={() => selected && escalateEmail(selected.id)}
+                  disabled={selected?.escalated}
+                  title={selected?.escalated ? 'Already escalated to Marcus' : 'Send to Marcus Aldridge for strategic advice (costs €2k)'}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-[11px] rounded-[var(--radius-md)] transition-colors ${
+                    selected?.escalated
+                      ? 'text-muted-lavender bg-surface-default cursor-default opacity-60'
+                      : 'text-text-muted hover:text-text-primary bg-surface-default hover:bg-surface-hover'
+                  }`}
+                >
+                  <ArrowUpRight size={12} />
+                  {selected?.escalated ? 'Escalated' : 'Escalate to Marcus'}
                 </button>
-                <button className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-text-muted hover:text-text-primary bg-surface-default hover:bg-surface-hover rounded-[var(--radius-md)] transition-colors">
-                  <Star size={12} /> Flag
+                <button
+                  onClick={() => selected && flagEmail(selected.id)}
+                  title={selected?.flagged ? 'Remove flag' : 'Flag for follow-up'}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-[11px] rounded-[var(--radius-md)] transition-colors ${
+                    selected?.flagged
+                      ? 'text-text-accent bg-accent-soft hover:bg-accent-soft/70'
+                      : 'text-text-muted hover:text-text-primary bg-surface-default hover:bg-surface-hover'
+                  }`}
+                >
+                  <Star size={12} className={selected?.flagged ? 'fill-text-accent' : ''} />
+                  {selected?.flagged ? 'Flagged' : 'Flag'}
                 </button>
               </div>
             </Panel>

@@ -1,3 +1,5 @@
+import { formatNumber } from '../../utils/numberFormat';
+
 interface ProgressBarProps {
   value: number; // 0-100
   color?: 'accent' | 'success' | 'warning' | 'danger' | 'info';
@@ -26,7 +28,7 @@ export default function ProgressBar({ value, color = 'accent', size = 'sm', show
         />
       </div>
       {showLabel && (
-        <span className="text-[10px] font-mono text-text-muted w-8 text-right">{clamped}%</span>
+        <span className="text-[10px] font-mono text-text-muted w-10 text-right">{formatNumber(clamped)}%</span>
       )}
     </div>
   );

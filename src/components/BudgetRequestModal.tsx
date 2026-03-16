@@ -16,8 +16,30 @@ export default function BudgetRequestModal({ onClose }: Props) {
   const requestBudget = useGameStore((s) => s.requestBudget);
 
   const [amount, setAmount] = useState(10);
-  const [justification, setJustification] = useState('');
+  const [selectedReasons, setSelectedReasons] = useState<string[]>([]);
   const [submitted, setSubmitted] = useState(false);
+
+  const PRESET_REASONS = [
+    { id: 'legal', label: 'Legal escalation', text: 'Unexpected legal complexity' },
+    { id: 'valuation', label: 'Valuation support', text: 'Strengthen valuation positioning' },
+    { id: 'mgmt', label: 'Management prep', text: 'Prepare management for buyer sessions' },
+    { id: 'specialist', label: 'External specialist', text: 'Bring in specialist support' },
+    { id: 'client', label: 'Client relationship', text: 'Protect client trust in a critical phase' },
+    { id: 'contingency', label: 'Process contingency', text: 'Cover process extension and complications' },
+    { id: 'dataroom', label: 'Dataroom / DD support', text: 'Support dataroom and DD response load' },
+    { id: 'advisor', label: 'Third-party advisor', text: 'Fund third-party advisor work' },
+  ];
+
+  const justification = selectedReasons
+    .map((id) => PRESET_REASONS.find((r) => r.id === id)?.text ?? '')
+    .filter(Boolean)
+    .join(' | ');
+
+  function toggleReason(id: string) {
+    setSelectedReasons((prev) =>
+      prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id]
+    );
+  }
 
   const pendingRequest = budgetRequests.find(
     (r) => r.status === 'pending' && r.phase === phase
@@ -29,7 +51,7 @@ export default function BudgetRequestModal({ onClose }: Props) {
   const isBudgetLow = resources.budget < BUDGET_LOW_THRESHOLD;
 
   const handleSubmit = () => {
-    if (amount < 1 || justification.trim().length < 20) return;
+    if (amount < 1 || selectedReasons.length === 0) return;
     requestBudget(amount, justification.trim());
     setSubmitted(true);
   };
@@ -117,24 +139,35 @@ export default function BudgetRequestModal({ onClose }: Props) {
                 </div>
               </div>
 
-              {/* Justification */}
+              {/* Justification — multi-select presets */}
               <div>
-                <label className="block text-[12px] font-medium text-text-secondary mb-1.5">
-                  Justification <span className="text-text-muted">(min 20 characters)</span>
+                <label className="block text-[12px] font-medium text-text-secondary mb-2">
+                  Reason <span className="text-text-muted">(select all that apply)</span>
                 </label>
-                <textarea
-                  value={justification}
-                  onChange={(e) => setJustification(e.target.value)}
-                  placeholder="Explain why additional budget is needed and how it will be deployed..."
-                  rows={4}
-                  className="w-full bg-bg-primary border border-border-subtle rounded-[var(--radius-md)] px-3 py-2.5 text-[13px] text-text-primary placeholder:text-text-muted/50 resize-none focus:outline-none focus:border-accent-primary/50 transition-colors"
-                />
-                <p className="text-[11px] text-text-muted mt-1">{justification.length} / 20 min characters</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {PRESET_REASONS.map((r) => (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={() => toggleReason(r.id)}
+                      className={`text-left px-3 py-2 rounded-[var(--radius-md)] border text-[12px] transition-all ${
+                        selectedReasons.includes(r.id)
+                          ? 'bg-accent-soft border-accent-primary/40 text-text-accent'
+                          : 'bg-bg-primary border-border-subtle text-text-muted hover:text-text-secondary hover:border-border-subtle/80'
+                      }`}
+                    >
+                      {r.label}
+                    </button>
+                  ))}
+                </div>
+                {selectedReasons.length > 0 && (
+                  <p className="text-[11px] text-text-muted mt-2 leading-relaxed">{justification}</p>
+                )}
               </div>
 
               <button
                 onClick={handleSubmit}
-                disabled={amount < 1 || justification.trim().length < 20}
+                disabled={amount < 1 || selectedReasons.length === 0}
                 className="w-full py-2.5 rounded-[var(--radius-md)] bg-accent-primary text-white font-medium text-[13px] hover:bg-accent-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Submit to Board

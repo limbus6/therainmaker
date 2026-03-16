@@ -10,13 +10,30 @@ export default function LandingPage() {
   const phase = useGameStore((s) => s.phase);
   const week = useGameStore((s) => s.week);
 
-  const hasSavedGame = !!playerName && (phase > 0 || week > 1);
+  let persistedState: { playerName?: string; phase?: number; week?: number } | null = null;
+  try {
+    const raw = localStorage.getItem('ma-rainmaker-save');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed?.state) persistedState = parsed.state;
+    }
+  } catch {
+    persistedState = null;
+  }
+
+  const savedPlayerName = persistedState?.playerName ?? playerName;
+  const savedPhase = persistedState?.phase ?? phase;
+  const savedWeek = persistedState?.week ?? week;
+  const hasSavedGame = !!savedPlayerName;
 
   const [nameInput, setNameInput] = useState('');
   const [showNameForm, setShowNameForm] = useState(false);
   const [error, setError] = useState('');
 
-  const handleContinue = () => navigate('/game');
+  const handleContinue = () => {
+    if (!hasSavedGame) return;
+    navigate('/game');
+  };
 
   const handleNewGame = () => {
     if (hasSavedGame && !window.confirm('Start a new game? Your current save will be lost.')) return;
@@ -97,12 +114,12 @@ export default function LandingPage() {
               </div>
               <div className="px-3 py-2.5 flex items-center gap-2">
                 <div className="w-8 h-8 rounded-full bg-accent-primary/20 flex items-center justify-center shrink-0">
-                  <span className="text-sm font-bold text-text-accent">{playerName[0].toUpperCase()}</span>
+                  <span className="text-sm font-bold text-text-accent">{savedPlayerName[0].toUpperCase()}</span>
                 </div>
                 <div className="flex-1 min-w-0 text-left">
-                  <p className="text-base font-bold text-text-primary leading-tight">{playerName}</p>
+                  <p className="text-base font-bold text-text-primary leading-tight">{savedPlayerName}</p>
                   <p className="text-[10px] text-text-secondary mt-0.5">
-                    Phase {phase} · Week {String(week).padStart(2, '0')}
+                    Phase {savedPhase} · Week {String(savedWeek).padStart(2, '0')}
                   </p>
                 </div>
               </div>
@@ -113,7 +130,7 @@ export default function LandingPage() {
               onClick={handleContinue}
               className="w-full px-5 py-3 rounded-xl bg-accent-primary hover:bg-accent-primary/90 active:scale-95 transition-all duration-150 text-base font-bold text-text-primary shadow-xl"
             >
-              Continue
+              Carregar Jogo Gravado
             </button>
 
             {/* New game */}

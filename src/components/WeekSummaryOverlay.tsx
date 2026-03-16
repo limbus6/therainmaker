@@ -1,7 +1,7 @@
 import { useGameStore } from '../store/gameStore';
 import StatusChip from './ui/StatusChip';
 import ProgressBar from './ui/ProgressBar';
-import { CheckCircle2, Clock, AlertTriangle, TrendingUp, TrendingDown, ArrowRight, X, Users, Zap } from 'lucide-react';
+import { CheckCircle2, Clock, AlertTriangle, TrendingUp, TrendingDown, ArrowRight, X, Users, Zap, Sparkles, XCircle } from 'lucide-react';
 
 export default function WeekSummaryOverlay() {
   const result = useGameStore((s) => s.lastWeekResult);
@@ -19,6 +19,7 @@ export default function WeekSummaryOverlay() {
   const hasProgressed = result.tasksProgressed.length > 0;
   const hasBuyerChanges = result.buyerChanges.length > 0;
   const hasEvents = result.newEvents.length > 0;
+  const hasCriticals = result.criticalOutcomes && result.criticalOutcomes.length > 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg-primary/80 backdrop-blur-sm">
@@ -58,6 +59,34 @@ export default function WeekSummaryOverlay() {
                 <Clock size={14} className="text-text-muted shrink-0" />
                 <span className="text-[12px] text-text-secondary">{t.name}</span>
                 <StatusChip label="In Progress" variant="info" />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Critical Outcomes */}
+        {hasCriticals && (
+          <div className="px-5 py-4 border-b border-border-subtle space-y-2">
+            <div className="text-[10px] font-mono uppercase tracking-widest text-text-muted">Exceptional Outcomes</div>
+            {result.criticalOutcomes.map((crit, i) => (
+              <div
+                key={i}
+                className={`flex items-start gap-3 p-3 rounded-[var(--radius-md)] border ${
+                  crit.type === 'success'
+                    ? 'bg-state-success/10 border-state-success/25'
+                    : 'bg-state-danger/10 border-state-danger/20'
+                }`}
+              >
+                {crit.type === 'success'
+                  ? <Sparkles size={14} className="text-state-success shrink-0 mt-0.5" />
+                  : <XCircle size={14} className="text-state-danger shrink-0 mt-0.5" />
+                }
+                <div>
+                  <div className={`text-[12px] font-semibold ${crit.type === 'success' ? 'text-state-success' : 'text-state-danger'}`}>
+                    {crit.type === 'success' ? 'Exceptional: ' : 'Setback: '}{crit.taskName}
+                  </div>
+                  <p className="text-[11px] text-text-secondary mt-1">{crit.description}</p>
+                </div>
               </div>
             ))}
           </div>

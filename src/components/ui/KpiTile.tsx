@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { formatNumber } from '../../utils/numberFormat';
 
 interface KpiTileProps {
   label: string;
@@ -41,6 +42,8 @@ export default function KpiTile({ label, value, trend, color = 'default', onClic
     }
   }, [value, prevValue]);
 
+  const renderedValue = typeof value === 'number' ? formatNumber(value) : value;
+
   return (
     <div
       className={`bg-bg-panel/60 border border-border-subtle rounded-[var(--radius-md)] p-3 min-w-[120px] ${onClick ? 'cursor-pointer hover:border-accent-primary/40 transition-colors' : ''}`}
@@ -48,7 +51,7 @@ export default function KpiTile({ label, value, trend, color = 'default', onClic
     >
       <div className="text-[10px] font-mono uppercase tracking-widest text-text-muted mb-1">{label}</div>
       <div className="flex items-baseline gap-2">
-        <span className={`text-xl font-semibold font-mono ${colorMap[color]} ${flash ? 'animate-pulse' : ''}`}>{value}</span>
+        <span className={`text-xl font-semibold font-mono ${colorMap[color]} ${flash ? 'animate-pulse' : ''}`}>{renderedValue}</span>
         {trend && (
           <span className={`text-[10px] ${trendColor[trend]}`}>{trendSymbol[trend]}</span>
         )}

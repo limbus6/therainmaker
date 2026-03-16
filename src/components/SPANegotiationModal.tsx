@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import type { WarrantyScope, ComponentReaction } from '../types/game';
-import { X, Shield, Lock, Percent, HandshakeIcon, ChevronRight, AlertTriangle } from 'lucide-react';
+import { X, Shield, Lock, Percent, HandshakeIcon, ChevronRight, AlertTriangle, Lightbulb } from 'lucide-react';
 
 interface Props { onClose: () => void; }
 
@@ -80,6 +80,11 @@ export default function SPANegotiationModal({ onClose }: Props) {
 
   const { status, buyerState, rounds } = spaNegotiation;
   const latestRound = rounds.at(-1);
+
+  const isScopeLocked     = buyerState.lockedComponents.includes('scope');
+  const isCapLocked       = buyerState.lockedComponents.includes('cap');
+  const isEscrowLocked    = buyerState.lockedComponents.includes('escrow');
+  const isIndemnityLocked = buyerState.lockedComponents.includes('indemnity');
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
@@ -218,6 +223,20 @@ export default function SPANegotiationModal({ onClose }: Props) {
                 </div>
               </div>
 
+              {/* Revealed signals */}
+              {buyerState.revealedHints.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-[10px] text-text-muted uppercase tracking-widest flex items-center gap-1">
+                    <Lightbulb size={10} /> Signals
+                  </p>
+                  {buyerState.revealedHints.map((hint, i) => (
+                    <div key={i} className="p-2 bg-yellow-500/5 border border-yellow-500/20 rounded-[var(--radius-sm)]">
+                      <p className="text-[11px] text-yellow-300 leading-relaxed">{hint}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {latestRound && (
                 <div className="p-3 bg-bg-primary rounded-[var(--radius-md)] border border-border-subtle/50">
                   <p className="text-[11px] text-text-secondary italic leading-relaxed">"{latestRound.buyerNote}"</p>
@@ -260,77 +279,111 @@ export default function SPANegotiationModal({ onClose }: Props) {
               {!showReactions && (
                 <>
                   {/* Warranty Scope */}
-                  <div>
+                  <div className={isScopeLocked ? 'opacity-60 pointer-events-none' : ''}>
                     <div className="flex items-center gap-1.5 text-[11px] font-semibold text-text-muted uppercase tracking-widest mb-2">
                       <Shield size={11} /> Warranty Scope
+                      {isScopeLocked && (
+                        <span className="ml-auto flex items-center gap-1 text-green-400 normal-case text-[10px] font-normal">
+                          <Lock size={10} /> Agreed — {buyerState.lockedWarrantyScope}
+                        </span>
+                      )}
                     </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      {(['fundamental', 'standard', 'limited'] as WarrantyScope[]).map((s) => (
-                        <button key={s} onClick={() => setWarrantyScope(s)}
-                          className={`p-3 text-left rounded-[var(--radius-md)] border transition-all ${warrantyScope === s ? 'border-accent-primary/40 bg-accent-soft' : 'border-border-subtle hover:bg-surface-hover'}`}>
-                          <p className={`text-[12px] font-semibold mb-0.5 ${warrantyScope === s ? 'text-text-accent' : 'text-text-secondary'}`}>
-                            {WARRANTY_SCOPE_LABELS[s].label}
+                    {!isScopeLocked && (
+                      <>
+                        <div className="grid grid-cols-3 gap-2">
+                          {(['fundamental', 'standard', 'limited'] as WarrantyScope[]).map((s) => (
+                            <button key={s} onClick={() => setWarrantyScope(s)}
+                              className={`p-3 text-left rounded-[var(--radius-md)] border transition-all ${warrantyScope === s ? 'border-accent-primary/40 bg-accent-soft' : 'border-border-subtle hover:bg-surface-hover'}`}>
+                              <p className={`text-[12px] font-semibold mb-0.5 ${warrantyScope === s ? 'text-text-accent' : 'text-text-secondary'}`}>
+                                {WARRANTY_SCOPE_LABELS[s].label}
+                              </p>
+                              <p className="text-[10px] text-text-muted leading-relaxed">{WARRANTY_SCOPE_LABELS[s].desc}</p>
+                            </button>
+                          ))}
+                        </div>
+                        {warrantyScope === 'limited' && buyerState.profile === 'aggressive_buyer' && (
+                          <p className="text-[11px] text-state-warning mt-1.5 flex items-center gap-1">
+                            <AlertTriangle size={11} /> PE buyers typically reject limited scope — expect pushback.
                           </p>
-                          <p className="text-[10px] text-text-muted leading-relaxed">{WARRANTY_SCOPE_LABELS[s].desc}</p>
-                        </button>
-                      ))}
-                    </div>
-                    {warrantyScope === 'limited' && buyerState.profile === 'aggressive_buyer' && (
-                      <p className="text-[11px] text-state-warning mt-1.5 flex items-center gap-1">
-                        <AlertTriangle size={11} /> PE buyers typically reject limited scope — expect pushback.
-                      </p>
+                        )}
+                      </>
                     )}
                   </div>
 
                   {/* Warranty Cap */}
-                  <div>
+                  <div className={isCapLocked ? 'opacity-60 pointer-events-none' : ''}>
                     <div className="flex items-center gap-1.5 text-[11px] font-semibold text-text-muted uppercase tracking-widest mb-2">
                       <Percent size={11} /> Warranty Cap (% of EV)
+                      {isCapLocked && (
+                        <span className="ml-auto flex items-center gap-1 text-green-400 normal-case text-[10px] font-normal">
+                          <Lock size={10} /> Agreed — {buyerState.lockedWarrantyCap}%
+                        </span>
+                      )}
                     </div>
-                    <div className="flex items-center gap-3">
-                      <input type="range" min={5} max={50} step={1} value={warrantyCap}
-                        onChange={(e) => setWarrantyCap(Number(e.target.value))}
-                        className="flex-1 accent-[var(--color-accent-primary)]" />
-                      <span className="font-mono font-bold text-[14px] text-text-accent w-16 text-right">{warrantyCap}%</span>
-                    </div>
-                    <div className="flex justify-between text-[9px] text-text-muted mt-1">
-                      <span>5% (seller-friendly)</span>
-                      <span className="text-yellow-500/70">~20% (market)</span>
-                      <span>50% (buyer-friendly)</span>
-                    </div>
+                    {!isCapLocked && (
+                      <>
+                        <div className="flex items-center gap-3">
+                          <input type="range" min={5} max={50} step={1} value={warrantyCap}
+                            onChange={(e) => setWarrantyCap(Number(e.target.value))}
+                            className="flex-1 accent-[var(--color-accent-primary)]" />
+                          <span className="font-mono font-bold text-[14px] text-text-accent w-16 text-right">{warrantyCap}%</span>
+                        </div>
+                        <div className="flex justify-between text-[9px] text-text-muted mt-1">
+                          <span>5% (seller-friendly)</span>
+                          <span className="text-yellow-500/70">~20% (market)</span>
+                          <span>50% (buyer-friendly)</span>
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   {/* Escrow */}
-                  <div>
+                  <div className={isEscrowLocked ? 'opacity-60 pointer-events-none' : ''}>
                     <div className="flex items-center gap-1.5 text-[11px] font-semibold text-text-muted uppercase tracking-widest mb-2">
                       <Lock size={11} /> Escrow / Retention (% of EV · 18 months)
+                      {isEscrowLocked && (
+                        <span className="ml-auto flex items-center gap-1 text-green-400 normal-case text-[10px] font-normal">
+                          <Lock size={10} /> Agreed — {buyerState.lockedEscrowPercent}%
+                        </span>
+                      )}
                     </div>
-                    <div className="flex items-center gap-3">
-                      <input type="range" min={0} max={15} step={0.5} value={escrowPercent}
-                        onChange={(e) => setEscrowPercent(Number(e.target.value))}
-                        className="flex-1 accent-[var(--color-accent-primary)]" />
-                      <span className="font-mono font-bold text-[14px] text-text-accent w-16 text-right">{escrowPercent}%</span>
-                    </div>
-                    <div className="flex justify-between text-[9px] text-text-muted mt-1">
-                      <span>0% (clean)</span>
-                      <span className="text-yellow-500/70">5-8% (market)</span>
-                      <span>15% (max)</span>
-                    </div>
+                    {!isEscrowLocked && (
+                      <>
+                        <div className="flex items-center gap-3">
+                          <input type="range" min={0} max={15} step={0.5} value={escrowPercent}
+                            onChange={(e) => setEscrowPercent(Number(e.target.value))}
+                            className="flex-1 accent-[var(--color-accent-primary)]" />
+                          <span className="font-mono font-bold text-[14px] text-text-accent w-16 text-right">{escrowPercent}%</span>
+                        </div>
+                        <div className="flex justify-between text-[9px] text-text-muted mt-1">
+                          <span>0% (clean)</span>
+                          <span className="text-yellow-500/70">5-8% (market)</span>
+                          <span>15% (max)</span>
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   {/* Specific Indemnity */}
-                  <div>
+                  <div className={isIndemnityLocked ? 'opacity-60 pointer-events-none' : ''}>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-1.5 text-[11px] font-semibold text-text-muted uppercase tracking-widest">
                         <Shield size={11} /> Specific Indemnity
+                        {isIndemnityLocked && (
+                          <span className="flex items-center gap-1 text-green-400 normal-case text-[10px] font-normal">
+                            <Lock size={10} /> Agreed
+                          </span>
+                        )}
                       </div>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <span className="text-[11px] text-text-muted">{specificIndemnity ? 'Agreed' : 'Declined'}</span>
-                        <div onClick={() => setSpecificIndemnity(!specificIndemnity)}
-                          className={`w-9 h-5 rounded-full transition-colors cursor-pointer relative ${specificIndemnity ? 'bg-accent-primary' : 'bg-bg-primary border border-border-subtle'}`}>
-                          <div className={`w-3.5 h-3.5 rounded-full bg-white absolute top-0.5 transition-transform ${specificIndemnity ? 'translate-x-4' : 'translate-x-0.5'}`} />
-                        </div>
-                      </label>
+                      {!isIndemnityLocked && (
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <span className="text-[11px] text-text-muted">{specificIndemnity ? 'Agreed' : 'Declined'}</span>
+                          <div onClick={() => setSpecificIndemnity(!specificIndemnity)}
+                            className={`w-9 h-5 rounded-full transition-colors cursor-pointer relative ${specificIndemnity ? 'bg-accent-primary' : 'bg-bg-primary border border-border-subtle'}`}>
+                            <div className={`w-3.5 h-3.5 rounded-full bg-white absolute top-0.5 transition-transform ${specificIndemnity ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                          </div>
+                        </label>
+                      )}
                     </div>
                     <p className="text-[11px] text-text-muted">Buyer requests a specific indemnity for the identified tax exposure. Accepting reduces deal risk but increases post-close liability for Ricardo.</p>
                   </div>
@@ -347,7 +400,15 @@ export default function SPANegotiationModal({ onClose }: Props) {
                   </div>
 
                   <button
-                    onClick={() => { submitSPARound({ playerWarrantyScope: warrantyScope, playerWarrantyCap: warrantyCap, playerEscrowPercent: escrowPercent, playerSpecificIndemnity: specificIndemnity }); setShowReactions(true); }}
+                    onClick={() => {
+                      submitSPARound({
+                        playerWarrantyScope: isScopeLocked ? (buyerState.lockedWarrantyScope ?? warrantyScope) : warrantyScope,
+                        playerWarrantyCap: isCapLocked ? (buyerState.lockedWarrantyCap ?? warrantyCap) : warrantyCap,
+                        playerEscrowPercent: isEscrowLocked ? (buyerState.lockedEscrowPercent ?? escrowPercent) : escrowPercent,
+                        playerSpecificIndemnity: specificIndemnity,
+                      });
+                      setShowReactions(true);
+                    }}
                     className="w-full py-3 bg-accent-primary text-white font-semibold text-[14px] rounded-[var(--radius-md)] hover:bg-accent-primary/90 transition-all flex items-center justify-center gap-2"
                   >
                     Submit Proposal <ChevronRight size={16} />

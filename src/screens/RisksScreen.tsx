@@ -1,8 +1,10 @@
 import { useGameStore } from '../store/gameStore';
 import Panel from '../components/ui/Panel';
 import StatusChip from '../components/ui/StatusChip';
-import { AlertTriangle, Shield } from 'lucide-react';
+import { AlertTriangle, Shield, Wrench } from 'lucide-react';
 import type { RiskSeverity } from '../types/game';
+import { getRiskMitigationPlans } from '../config/riskMitigation';
+import { formatNumber } from '../utils/numberFormat';
 
 const severityVariant: Record<RiskSeverity, 'muted' | 'warning' | 'danger'> = {
   low: 'muted',
@@ -11,12 +13,11 @@ const severityVariant: Record<RiskSeverity, 'muted' | 'warning' | 'danger'> = {
   critical: 'danger',
 };
 
-const mitigationCost: Record<RiskSeverity, number> = { low: 2, medium: 4, high: 6, critical: 8 };
-
 export default function RisksScreen() {
   const risks = useGameStore((s) => s.risks);
   const budget = useGameStore((s) => s.resources.budget);
-  const mitigateRisk = useGameStore((s) => s.mitigateRisk);
+  const teamCapacity = useGameStore((s) => s.resources.teamCapacity);
+  const executeRiskMitigationPlan = useGameStore((s) => s.executeRiskMitigationPlan);
   const activeRisks = risks.filter((r) => !r.mitigated);
   const mitigatedRisks = risks.filter((r) => r.mitigated);
 
@@ -61,18 +62,50 @@ export default function RisksScreen() {
                     <StatusChip label={risk.category} />
                   </div>
                   <p className="text-[12px] text-text-muted mt-1">{risk.description}</p>
-                  <div className="flex items-center justify-between mt-2">
-                    <div className="text-[10px] font-mono text-text-muted">
-                      Probability: {risk.probability}% | Surfaced: Phase {risk.surfacedPhase}, Week {risk.surfacedWeek}
-                    </div>
-                    <button
-                      onClick={() => mitigateRisk(risk.id)}
-                      disabled={budget < mitigationCost[risk.severity]}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium bg-accent-primary/10 text-text-accent hover:bg-accent-primary/20 disabled:opacity-40 disabled:cursor-not-allowed rounded-[var(--radius-md)] transition-colors"
-                    >
-                      <Shield size={12} />
-                      Mitigate (€{mitigationCost[risk.severity]}k)
-                    </button>
+                  <div className="text-[10px] font-mono text-text-muted mt-2">
+                    Probability: {formatNumber(risk.probability)}% | Surfaced: Phase {risk.surfacedPhase}, Week {risk.surfacedWeek}
+                  </div>
+
+                  <div className="mt-3 space-y-2">
+                    {getRiskMitigationPlans(risk).map((plan) => {
+                      const canAffordBudget = budget >= plan.budgetCost;
+                      const canAffordCapacity = teamCapacity >= plan.capacityCost;
+                      const canRun = canAffordBudget && canAffordCapacity;
+                      return (
+                        <div key={plan.id} className="rounded-[var(--radius-md)] border border-border-subtle p-2.5 bg-bg-primary/35">
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <p className="text-[12px] font-medium text-text-secondary">{plan.title}</p>
+                              <p className="text-[10px] text-text-muted mt-0.5">
+                                Budget: €{formatNumber(plan.budgetCost)}k · Capacity: {formatNumber(plan.capacityCost)}%
+                                {' '}· Success: {formatNumber(plan.successChance * 100)}%
+                                {plan.catastrophicFailureChance
+                                  ? ` · Catastrophic fail: ${formatNumber(plan.catastrophicFailureChance * 100)}%`
+                                  : ''}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => executeRiskMitigationPlan(risk.id, plan.id)}
+                              disabled={!canRun}
+                              className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium bg-accent-primary/10 text-text-accent hover:bg-accent-primary/20 disabled:opacity-40 disabled:cursor-not-allowed rounded-[var(--radius-md)] transition-colors"
+                            >
+                              <Wrench size={12} />
+                              Run Plan
+                            </button>
+                          </div>
+                          <div className="mt-2 space-y-1">
+                            {plan.actions.map((action, idx) => (
+                              <p key={idx} className="text-[11px] text-text-muted">- {action}</p>
+                            ))}
+                          </div>
+                          {!canRun && (
+                            <p className="text-[10px] text-state-warning mt-2">
+                              Insufficient resources: {!canAffordBudget ? 'budget ' : ''}{!canAffordCapacity ? 'capacity' : ''}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>

@@ -48,6 +48,7 @@ export interface EmailResponseOption {
 export interface Email {
   id: string;
   week: number;
+  day?: number;  // calendar day when email arrived (undefined for seed emails)
   phase: PhaseId;
   sender: string;
   senderRole?: string;
@@ -61,6 +62,8 @@ export interface Email {
   timestamp: string;
   linkedEntityId?: string;
   linkedEntityType?: 'buyer' | 'task' | 'deliverable' | 'risk';
+  flagged?: boolean;
+  escalated?: boolean;
 }
 
 // --- Buyers ---
@@ -313,6 +316,12 @@ export interface ClientNegotiationState {
   priorityRatchet: number;
   // Patience (starts 100; depletes when reds occur)
   patienceRemaining: number;
+  // Progressive negotiation state
+  lockedComponents: ('retainer' | 'successFee' | 'ratchet')[];
+  revealedHints: string[];
+  lockedRetainerType?: RetainerType;
+  lockedRetainerAmount?: number;
+  lockedSuccessFeePercent?: number;
 }
 
 export interface FeeNegotiation {
@@ -352,6 +361,12 @@ export interface SPABuyerState {
   priorityEscrow: number;     // 0-10
   priorityIndemnity: number;  // 0-10
   patienceRemaining: number;  // 0-100
+  // Progressive locking
+  lockedComponents: ('scope' | 'cap' | 'escrow' | 'indemnity')[];
+  revealedHints: string[];
+  lockedWarrantyScope?: WarrantyScope;
+  lockedWarrantyCap?: number;
+  lockedEscrowPercent?: number;
 }
 
 export interface SPARound {

@@ -11,9 +11,40 @@ export default function BoardSubmissionModal({ onClose }: Props) {
   const qualificationNotes = useGameStore((s) => s.qualificationNotes);
   const boardSubmission = useGameStore((s) => s.boardSubmission);
   const submitBoardRecommendation = useGameStore((s) => s.submitBoardRecommendation);
+  const competitorThreats = useGameStore((s) => s.competitorThreats);
+  const activeThreats = competitorThreats.filter((t) => !t.resolved);
 
   const [recommendation, setRecommendation] = useState<'proceed' | 'decline'>('proceed');
-  const [rationale, setRationale] = useState('');
+  const [selectedPoints, setSelectedPoints] = useState<string[]>([]);
+
+  const PROCEED_POINTS = [
+    { id: 'ahead', text: 'We need to move now to stay ahead of the competing advisor.' },
+    { id: 'great_deal', text: 'This is a great deal and we cannot afford to lose it.' },
+    { id: 'workable_risk', text: 'It is a good opportunity with risks we can manage.' },
+    { id: 'fee', text: 'The mandate can generate an attractive fee for the firm.' },
+    { id: 'founder_fit', text: 'The founder fit and sector position justify moving quickly.' },
+    { id: 'trust', text: 'Client engagement is strong enough to justify a full push.' },
+  ];
+
+  const DECLINE_POINTS = [
+    { id: 'valuation', text: 'The valuation gap is too wide for a credible mandate.' },
+    { id: 'depth', text: 'The management bench is too thin for a stable process.' },
+    { id: 'momentum', text: 'Momentum and trust are still too weak to justify escalation.' },
+    { id: 'regulatory', text: 'Execution risk is too high relative to likely fee.' },
+    { id: 'competitor', text: 'The competing advisor is too far ahead for a clean win.' },
+  ];
+
+  const activePoints = recommendation === 'proceed' ? PROCEED_POINTS : DECLINE_POINTS;
+  const rationale = selectedPoints
+    .map((id) => activePoints.find((p) => p.id === id)?.text ?? '')
+    .filter(Boolean)
+    .join(' | ');
+
+  function togglePoint(id: string) {
+    setSelectedPoints((prev) =>
+      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]
+    );
+  }
 
   const positiveNotes = qualificationNotes.filter((n) => n.sentiment === 'positive').length;
   const negativeNotes = qualificationNotes.filter((n) => n.sentiment === 'negative').length;
@@ -21,7 +52,7 @@ export default function BoardSubmissionModal({ onClose }: Props) {
 
   const canSubmit =
     !boardSubmission &&
-    rationale.trim().length >= 50 &&
+    selectedPoints.length >= 1 &&
     qualificationNotes.length >= 1;
 
   const handleSubmit = () => {
@@ -135,6 +166,12 @@ export default function BoardSubmissionModal({ onClose }: Props) {
 
           {!boardSubmission && (
             <>
+              {activeThreats.length > 0 && (
+                <div className="p-3 rounded-[var(--radius-md)] border border-red-500/30 bg-red-500/10 text-[12px] text-red-200">
+                  Rival advisor pressure detected. Fast board escalation may preserve initiative, but a weak case can still be rejected.
+                </div>
+              )}
+
               {/* Recommendation */}
               <div>
                 <h3 className="text-[12px] font-semibold text-text-muted uppercase tracking-widest mb-3 flex items-center gap-1.5">
@@ -145,7 +182,7 @@ export default function BoardSubmissionModal({ onClose }: Props) {
                   {(['proceed', 'decline'] as const).map((opt) => (
                     <button
                       key={opt}
-                      onClick={() => setRecommendation(opt)}
+                      onClick={() => { setRecommendation(opt); setSelectedPoints([]); }}
                       className={`py-3 rounded-[var(--radius-md)] border text-[13px] font-medium transition-all ${
                         recommendation === opt
                           ? opt === 'proceed'
@@ -160,22 +197,30 @@ export default function BoardSubmissionModal({ onClose }: Props) {
                 </div>
               </div>
 
-              {/* Rationale */}
+              {/* Rationale — multi-select */}
               <div>
-                <label className="block text-[12px] font-medium text-text-secondary mb-1.5">
-                  Rationale <span className="text-text-muted">(min 50 characters)</span>
+                <label className="block text-[12px] font-medium text-text-secondary mb-2">
+                  Rationale <span className="text-text-muted">(select 1 or more options)</span>
                 </label>
-                <textarea
-                  value={rationale}
-                  onChange={(e) => setRationale(e.target.value)}
-                  placeholder={recommendation === 'proceed'
-                    ? 'Explain why Solara Systems represents a strong mandate opportunity...'
-                    : 'Explain why we should not pursue this opportunity at this time...'
-                  }
-                  rows={4}
-                  className="w-full bg-bg-primary border border-border-subtle rounded-[var(--radius-md)] px-3 py-2.5 text-[13px] text-text-primary placeholder:text-text-muted/50 resize-none focus:outline-none focus:border-accent-primary/50 transition-colors"
-                />
-                <p className="text-[11px] text-text-muted mt-1">{rationale.length} / 50 min characters</p>
+                <div className="space-y-2">
+                  {activePoints.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => togglePoint(p.id)}
+                      className={`w-full text-left px-3 py-2.5 rounded-[var(--radius-md)] border text-[12px] leading-relaxed transition-all ${
+                        selectedPoints.includes(p.id)
+                          ? recommendation === 'proceed'
+                            ? 'bg-green-500/10 border-green-500/40 text-green-200'
+                            : 'bg-red-500/10 border-red-500/40 text-red-200'
+                          : 'bg-bg-primary border-border-subtle text-text-muted hover:text-text-secondary hover:border-border-subtle/80'
+                      }`}
+                    >
+                      {p.text}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-text-muted mt-1.5">{selectedPoints.length} selected</p>
               </div>
 
               {!qualScore && qualificationNotes.length >= 1 && (
