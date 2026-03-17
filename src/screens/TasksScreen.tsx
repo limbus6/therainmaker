@@ -106,8 +106,9 @@ export default function TasksScreen() {
               {/* Task Row */}
               <button
                 onClick={() => setExpandedTask(isExpanded ? null : task.id)}
-                className="w-full flex items-center gap-3 p-3 text-left"
+                className="w-full p-3 text-left"
               >
+                <div className="flex items-start gap-3">
                 {/* Status icon */}
                 <span className="shrink-0">
                   {task.status === 'locked' ? <Lock size={14} className="text-text-muted/40" /> :
@@ -119,20 +120,30 @@ export default function TasksScreen() {
 
                 {/* Name + Category */}
                 <div className="flex-1 min-w-0">
-                  <div className={`text-[13px] ${task.status === 'locked' ? 'text-text-muted' : 'text-text-primary'} font-medium truncate`}>
+                  <div className={`text-[13px] ${task.status === 'locked' ? 'text-text-muted' : 'text-text-primary'} font-medium break-words sm:truncate`}>
                     {task.name}
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-2 sm:hidden">
+                    <StatusChip label={categoryLabels[task.category]} variant="muted" />
+                    <StatusChip label={task.status.replace('_', ' ')} variant={statusVariant[task.status]} />
+                    <span className="text-[11px] font-mono text-text-muted">€{task.cost}k</span>
+                    <span className="text-[11px] font-mono text-text-muted">{task.work}h</span>
+                    <StatusChip label={task.complexity} variant={task.complexity === 'high' ? 'warning' : task.complexity === 'medium' ? 'default' : 'muted'} />
                   </div>
                 </div>
 
                 {/* Chips */}
-                <StatusChip label={categoryLabels[task.category]} variant="muted" />
-                <StatusChip label={task.status.replace('_', ' ')} variant={statusVariant[task.status]} />
+                <div className="hidden sm:flex sm:items-center sm:gap-2">
+                  <StatusChip label={categoryLabels[task.category]} variant="muted" />
+                  <StatusChip label={task.status.replace('_', ' ')} variant={statusVariant[task.status]} />
+                </div>
 
                 {/* Costs */}
-                <div className="flex items-center gap-3 text-[11px] font-mono text-text-muted shrink-0 w-32 justify-end">
+                <div className="hidden sm:flex sm:items-center sm:gap-3 sm:text-[11px] sm:font-mono sm:text-text-muted sm:shrink-0 sm:w-32 sm:justify-end">
                   <span>€{task.cost}k</span>
                   <span>{task.work}h</span>
                   <StatusChip label={task.complexity} variant={task.complexity === 'high' ? 'warning' : task.complexity === 'medium' ? 'default' : 'muted'} />
+                </div>
                 </div>
               </button>
 
