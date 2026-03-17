@@ -14,7 +14,7 @@ const SLIDES = [
   },
   {
     title: 'Phase 0 — Deal Origination',
-    body: `You're starting in Phase 0: Deal Origination.\n\nYour immediate objectives:\n1. Screen the market and confirm Solara is ready to sell\n2. Meet Ricardo and assess his motivations\n3. Prepare an internal deal memo\n4. Pitch for the mandate and agree fee terms\n\nCheck your Inbox and Tasks to get started. Good luck.`,
+    body: `You're starting in Phase 0: Deal Origination.\n\nYour immediate objectives:\n1. Screen the market and confirm Solara is ready to sell\n2. Meet Ricardo and assess his motivations\n3. Align internally on whether to pursue the mandate\n4. Prepare to enter Phase 1 (Pitch & Mandate)\n\nCheck your Inbox and Tasks to get started. Good luck.`,
     cta: 'Start the Deal →',
   },
 ];

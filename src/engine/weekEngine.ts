@@ -1449,9 +1449,9 @@ const EVENT_POOL: EventTemplate[] = [
   },
   {
     id: 'evt-cfo-joins-meeting',
-    phases: [0, 1],
+    phases: [1],
     probability: 0.14,
-    condition: (s) => s.week >= 2,
+    condition: (s) => s.week >= 4,
     generate: (s) => ({
       event: {
         id: `evt-${s.week}-cfojoin`,
@@ -1459,7 +1459,7 @@ const EVENT_POOL: EventTemplate[] = [
         phase: s.phase,
         type: 'active',
         title: "Ricardo's CFO Raises Concerns",
-        description: "Solara's CFO — Inês Carvalho — attended the latest update call without warning. She questioned the process timeline, the fee structure, and whether 'now is really the best time.' Ricardo looked uncomfortable.",
+        description: "Solara's CFO — Inês Carvalho — joined a mandate discussion call unexpectedly. She challenged the process timeline, the proposed fee structure, and whether 'now is really the best time.' Ricardo looked uncomfortable.",
         resolved: false,
       },
       resourceEffects: { clientTrust: -5, dealMomentum: -4 },
@@ -2599,7 +2599,7 @@ export function checkDealCollapse(state: GameState): CollapseResult {
       collapsed: true,
       reason: 'client_walked',
       headline: 'Client Terminated Engagement',
-      description: 'Ricardo Ferreira has lost confidence in Clearwater\'s ability to deliver. The mandate has been withdrawn.',
+      description: 'Ricardo Mendes has lost confidence in Clearwater\'s ability to deliver. The mandate has been withdrawn.',
     };
   }
 
