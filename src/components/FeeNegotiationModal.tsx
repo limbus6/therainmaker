@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useGameStore } from '../store/gameStore';
 import type { RetainerType, ComponentReaction } from '../types/game';
 import { X, TrendingUp, Shield, BarChart2, ChevronRight, HandshakeIcon, Lock, Lightbulb } from 'lucide-react';
+import { gsap } from 'gsap';
 
 interface Props {
   onClose: () => void;
@@ -65,10 +66,54 @@ export default function FeeNegotiationModal({ onClose }: Props) {
   const [ratchetBonusPercent, setRatchetBonusPercent] = useState(5);
   const [showReactions, setShowReactions] = useState(false);
 
+  // Refs for GSAP
+  const modalRef = useRef<HTMLDivElement>(null);
+  const handshakeRef = useRef<HTMLDivElement>(null);
+  const patienceBarRef = useRef<HTMLDivElement>(null);
+  const reactionRefs = useRef<(HTMLDivElement | null)[]>([]);
+
   if (!feeNegotiation) return null;
 
   const { clientState, rounds, status } = feeNegotiation;
   const latestRound = rounds.at(-1);
+
+  // Entrance animation
+  useEffect(() => {
+    if (modalRef.current) {
+      gsap.fromTo(modalRef.current, 
+        { scale: 0.95, opacity: 0, y: 20 }, 
+        { scale: 1, opacity: 1, y: 0, duration: 0.4, ease: 'back.out(1.5)' }
+      );
+    }
+  }, []);
+
+  // Handshake animation
+  useEffect(() => {
+    if (status === 'agreed' && handshakeRef.current) {
+      gsap.fromTo(handshakeRef.current,
+        { scale: 0.5, opacity: 0, rotation: -15 },
+        { scale: 1, opacity: 1, rotation: 0, duration: 0.6, ease: 'elastic.out(1, 0.5)', delay: 0.1 }
+      );
+    }
+  }, [status]);
+
+  // Patience sizzle animation on red reaction
+  useEffect(() => {
+    if (showReactions && patienceBarRef.current && feeNegotiation) {
+      const latest = feeNegotiation.rounds.at(-1);
+      if (latest && (latest.reactionRetainer === 'red' || latest.reactionSuccessFee === 'red' || latest.reactionRatchet === 'red')) {
+        gsap.to(patienceBarRef.current, {
+          x: 'random(-4, 4)',
+          y: 'random(-2, 2)',
+          duration: 0.05,
+          repeat: 10,
+          yoyo: true,
+          clearProps: 'all'
+        });
+      }
+    }
+  }, [showReactions, feeNegotiation]);
+
   const maxRounds = resources.clientTrust > 60 ? 4 : 3;
   const ev = client.valuationExpectationEV ?? 100;
 
@@ -102,6 +147,18 @@ export default function FeeNegotiationModal({ onClose }: Props) {
       playerRatchetBonusPercent: ratchetEnabled ? ratchetBonusPercent : undefined,
     });
     setShowReactions(true);
+    
+    // Animate reaction reveal sequence
+    setTimeout(() => {
+      reactionRefs.current.forEach((ref, index) => {
+        if (ref) {
+          gsap.fromTo(ref,
+            { scale: 0.5, opacity: 0, y: 10 },
+            { scale: 1, opacity: 1, y: 0, duration: 0.4, ease: 'back.out(1.7)', delay: index * 0.15 }
+          );
+        }
+      });
+    }, 50);
   };
 
   const handleRevise = () => {
@@ -116,7 +173,14 @@ export default function FeeNegotiationModal({ onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-      <div className="bg-bg-secondary border border-border-subtle rounded-[var(--radius-lg)] shadow-[var(--shadow-heavy)] w-full max-w-4xl mx-4 overflow-hidden flex flex-col max-h-[92vh]">
+      <div 
+        ref={modalRef}
+        className={`bg-bg-secondary border rounded-[var(--radius-lg)] shadow-[var(--shadow-heavy)] w-full max-w-4xl mx-4 overflow-hidden flex flex-col max-h-[92vh] ${
+          status === 'agreed' ? 'border-green-500/50 shadow-green-500/10' :
+          status === 'failed' ? 'border-red-500/50 shadow-red-500/10' :
+          'border-accent-primary/50 shadow-accent-primary/10'
+        }`}
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-3.5 border-b border-border-subtle shrink-0">
           <div>
@@ -149,7 +213,10 @@ export default function FeeNegotiationModal({ onClose }: Props) {
         {/* AGREED STATE */}
         {status === 'agreed' && agreedFeeTerms && (
           <div className="p-8 flex flex-col items-center text-center gap-5">
-            <div className="w-16 h-16 rounded-full bg-green-500/15 border border-green-500/30 flex items-center justify-center">
+            <div 
+              ref={handshakeRef}
+              className="w-16 h-16 rounded-full bg-green-500/15 border border-green-500/30 flex items-center justify-center"
+            >
               <HandshakeIcon size={28} className="text-green-400" />
             </div>
             <div>
@@ -265,7 +332,7 @@ export default function FeeNegotiationModal({ onClose }: Props) {
               </div>
 
               {/* Patience meter */}
-              <div>
+              <div ref={patienceBarRef}>
                 <div className="flex justify-between text-[10px] mb-0.5">
                   <span className="text-text-muted">Client Patience</span>
                   <span className={`font-mono ${clientState.patienceRemaining > 50 ? 'text-green-400' : clientState.patienceRemaining > 25 ? 'text-yellow-400' : 'text-red-400'}`}>
@@ -313,8 +380,12 @@ export default function FeeNegotiationModal({ onClose }: Props) {
                       { label: 'Retainer', reaction: latestRound.reactionRetainer },
                       { label: 'Success Fee', reaction: latestRound.reactionSuccessFee },
                       { label: 'Ratchet', reaction: latestRound.reactionRatchet },
-                    ].map(({ label, reaction }) => (
-                      <div key={label} className={`flex-1 flex flex-col items-center gap-1 py-2 rounded-[var(--radius-sm)] border ${reactionColor[reaction]}`}>
+                    ].map(({ label, reaction }, index) => (
+                      <div 
+                        key={label}
+                        ref={(el) => { reactionRefs.current[index] = el; }}
+                        className={`flex-1 flex flex-col items-center gap-1 py-2 rounded-[var(--radius-sm)] border ${reactionColor[reaction]}`}
+                      >
                         <span className="text-xl">{reactionEmoji[reaction]}</span>
                         <span className="text-[10px] font-medium">{label}</span>
                         <span className="text-[10px] opacity-80">{reactionLabel[reaction]}</span>

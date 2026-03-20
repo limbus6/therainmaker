@@ -1,0 +1,2 @@
+src/components/FeeNegotiationModal.tsx(93,7): error TS2448: Block-scoped variable 'status' used before its declaration.
+src/components/FeeNegotiationModal.tsx(93,7): error TS2454: Variable 'status' is used before being assigned.

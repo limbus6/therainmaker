@@ -109,6 +109,7 @@ export interface GameTask {
   dependencies?: string[];
   deadline?: number; // week number
   owner?: string;
+  targetId?: string; // Links task to a specific lead/target in Phase 0
 }
 
 // --- Workstreams ---
@@ -234,6 +235,36 @@ export interface BudgetRequest {
 // NEW: Phase 0 Qualification
 // ============================================
 
+export interface InvestigationStatus {
+  sector: 'none' | 'in_progress' | 'completed';
+  company: 'none' | 'in_progress' | 'completed';
+  shareholder: 'none' | 'in_progress' | 'completed';
+  market: 'none' | 'in_progress' | 'completed';
+}
+
+export interface Lead {
+  id: string;
+  companyName: string;
+  sector: string;
+  founderName: string;
+  origin: string;
+  description: string;
+  investmentCaseSummary: string;
+  
+  // Investigation metrics
+  investigation: InvestigationStatus;
+  meetingDone: boolean;
+  
+  // Hidden backend values to drive notes generation
+  hiddenMotivations: string;
+  hiddenGrowth: 'high' | 'moderate' | 'low';
+  hiddenRisk: 'high' | 'moderate' | 'low';
+  
+  // Gathered insights by the player
+  researchNotes: QualificationNote[];
+  meetingTranscript?: string;
+}
+
 export interface QualificationNote {
   id: string;
   week: number;
@@ -243,6 +274,7 @@ export interface QualificationNote {
 }
 
 export interface BoardSubmission {
+  leadId?: string; // Optional for backward compatibility, but required for Phase 0
   recommendation: 'proceed' | 'decline';
   rationale: string;
   submittedWeek: number;
@@ -462,54 +494,3 @@ export interface CompetitorThreat {
   resolved: boolean;
 }
 
-// ============================================
-// Full Game State
-// ============================================
-
-export interface GameState {
-  phase: PhaseId;
-  /** Total calendar days elapsed (primary time counter, starts at 1) */
-  day: number;
-  /** Derived: Math.ceil(day / 7) — used by event system and email timestamps */
-  week: number;
-  totalDays: number;
-  resources: PlayerResources;
-  client: Client;
-  team: TeamMember[];
-  emails: Email[];
-  buyers: Buyer[];
-  tasks: GameTask[];
-  workstreams: Workstream[];
-  deliverables: Deliverable[];
-  risks: Risk[];
-  events: GameEvent[];
-  headlines: Headline[];
-  weekSummary: string | null;
-  weekHistory: { day: number; week: number; summary: string; phase: PhaseId; daysAdvanced: number }[];
-  isWeekInProgress: boolean;
-  playerName: string;
-  savedAt: string | null;
-  hasSeenOnboarding: boolean;
-  gameComplete: boolean;
-  /** Set when the deal collapses before Phase 10 */
-  collapseReason: string | null;
-  collapseHeadline: string | null;
-  collapseDescription: string | null;
-  /** Cumulative k€ spent across all phases (used for end-game scoring) */
-  totalBudgetSpent: number;
-  // --- New systems ---
-  phaseBudget: PhaseBudgetAllocation;
-  budgetRequests: BudgetRequest[];
-  qualificationNotes: QualificationNote[];
-  boardSubmission: BoardSubmission | null;
-  tempCapacityAllocations: TempCapacityAllocation[];
-  feeNegotiation: FeeNegotiation | null;
-  agreedFeeTerms: FeeTerms | null;
-  competitorThreats: CompetitorThreat[];
-  toasts: Toast[];
-  finalOffers: FinalOffer[];
-  preferredBidderId: string | null;
-  dataroomCategories: DataroomCategory[];
-  spaNegotiation: SPANegotiation | null;
-  agreedSPATerms: SPATerms | null;
-}

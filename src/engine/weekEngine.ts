@@ -1,5 +1,4 @@
 import type {
-  GameState,
   GameTask,
   PlayerResources,
   Risk,
@@ -10,7 +9,9 @@ import type {
   Buyer,
   BuyerInterest,
   TempCapacityAllocation,
+  QualificationNote,
 } from '../types/game';
+import type { GameStore } from '../store/gameStore';
 
 // ============================================
 // Week Resolution Engine
@@ -24,6 +25,7 @@ export interface WeekResult {
   newEmails: Email[];
   newHeadlines: Headline[];
   newEvents: GameEvent[];
+  newQualificationNotes: Omit<QualificationNote, 'id' | 'week'>[];
   buyerChanges: BuyerChange[];
   hiddenWorkload: { taskId: string; description: string; extraWork: number } | null;
   criticalOutcomes: { taskId: string; taskName: string; type: 'success' | 'failure'; description: string; bonus: Partial<PlayerResources> }[];
@@ -31,6 +33,7 @@ export interface WeekResult {
   phaseProgressDelta: number;
   resolvedBudgetRequests: { id: string; approved: boolean; amount: number }[];
   resolvedBoardSubmission: { approved: boolean; notes: string } | null;
+  newTasks?: GameTask[];
   /** How many calendar days this advance covered (1–7) */
   daysAdvanced: number;
   /** Internal: updated buyer array for store to apply */
@@ -149,7 +152,7 @@ function rollCriticalOutcomes(completedTasks: GameTask[]): CriticalOutcome[] {
 }
 
 // Small stochastic noise applied to resources each advance — the market never stands still
-function applyResourceNoise(resourceChanges: Partial<PlayerResources>, state: GameState): Partial<PlayerResources> {
+function applyResourceNoise(resourceChanges: Partial<PlayerResources>, state: GameStore): Partial<PlayerResources> {
   const volatility = state.phase >= 6 ? 1.6 : state.phase >= 3 ? 1.1 : 0.6;
   const noised = { ...resourceChanges };
 
@@ -443,8 +446,8 @@ interface EventTemplate {
   id: string;
   phases: number[];
   probability: number;
-  condition?: (state: GameState) => boolean;
-  generate: (state: GameState) => {
+  condition?: (state: GameStore) => boolean;
+  generate: (state: GameStore) => {
     event: GameEvent;
     resourceEffects?: Partial<PlayerResources>;
     riskGenerated?: Risk;
@@ -1411,6 +1414,42 @@ const EVENT_POOL: EventTemplate[] = [
 
   // ── Phase 0: Additional Events ────────────────────────────────────────────
   {
+    id: 'evt-macro-rate-hike',
+    phases: [0],
+    probability: 0.12,
+    condition: (s) => s.week >= 2,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-ratehike`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'passive',
+        title: 'Central Bank Unexpected Rate Hike',
+        description: "The ECB announced an unexpected 50bps rate hike. Leverage is getting more expensive, which might cool down Private Equity appetite, making PE-reliant leads slightly harder to sell.",
+        resolved: false,
+      },
+      resourceEffects: { dealMomentum: -5, riskLevel: 5 },
+    }),
+  },
+  {
+    id: 'evt-macro-sector-boom',
+    phases: [0],
+    probability: 0.12,
+    condition: (s) => s.week >= 2,
+    generate: (s) => ({
+      event: {
+        id: `evt-${s.week}-sectorboom`,
+        week: s.week + 1,
+        phase: s.phase,
+        type: 'passive',
+        title: 'B2B Software Sector Boom',
+        description: "A major US software conglomerate just bought a European player for 18x ARR. Suddenly, all B2B and Aviation Software assets are looking highly attractive to strategics.",
+        resolved: false,
+      },
+      resourceEffects: { dealMomentum: 8, clientTrust: 2 },
+    }),
+  },
+  {
     id: 'evt-rival-pitches-ricardo',
     phases: [0],
     probability: 0.18,
@@ -2290,7 +2329,7 @@ const EVENT_POOL: EventTemplate[] = [
   },
 ];
 
-function rollEvents(state: GameState): {
+function rollEvents(state: GameStore): {
   events: GameEvent[];
   resourceEffects: Partial<PlayerResources>;
   risks: Risk[];
@@ -2361,7 +2400,7 @@ function rollEvents(state: GameState): {
 // Main Week Resolution Function
 // ============================================
 
-export function resolveWeek(state: GameState, daysToAdvance: number = 7): WeekResult {
+export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekResult {
   const inProgressTasks = state.tasks.filter((t) => t.status === 'in_progress');
   const newDay = state.day + daysToAdvance;
   const newWeek = Math.ceil(newDay / 7);
@@ -2390,6 +2429,42 @@ export function resolveWeek(state: GameState, daysToAdvance: number = 7): WeekRe
 
   // 4b. Roll critical outcomes for completed tasks
   const criticalOutcomes = rollCriticalOutcomes(tasksCompleted);
+
+  // 4c. Generate qualification notes for Phase 0 tasks
+  const newQualificationNotes: Omit<QualificationNote, 'id' | 'week'>[] = [];
+  if (state.phase === 0) {
+    for (const task of tasksCompleted) {
+      // General macro tasks → market context note
+      if (task.id === 'task-gen-02') { // Research Market Momentum
+        newQualificationNotes.push({
+          source: 'team_research',
+          content: 'Market momentum research complete. Current M&A environment shows elevated activity in tech-enabled services and SaaS verticals. Multiples remain healthy at 8-14x EBITDA for quality assets.',
+          sentiment: 'positive',
+        });
+      }
+      // Target-specific investigation tasks → company-specific notes
+      if (task.id.startsWith('task-investigate-') && task.id.endsWith('-company')) {
+        const lead = state.leads.find(l => task.id.includes(l.id));
+        if (lead) {
+          newQualificationNotes.push({
+            source: 'team_research',
+            content: `Company screening complete for ${lead.companyName}. Financial profile verified and sector fit confirmed. Deal fundamentals look credible for a structured process.`,
+            sentiment: 'positive',
+          });
+        }
+      }
+      if (task.id.startsWith('task-investigate-') && task.id.endsWith('-shareholder')) {
+        const lead = state.leads.find(l => task.id.includes(l.id));
+        if (lead) {
+          newQualificationNotes.push({
+            source: 'meeting',
+            content: `Shareholder assessment complete for ${lead.companyName}. Founder appears motivated and timeline is realistic. Valuation expectations are within market range.`,
+            sentiment: 'neutral',
+          });
+        }
+      }
+    }
+  }
 
   // 5. Combine all resource changes
   let resourceChanges: Partial<PlayerResources> = {
@@ -2503,6 +2578,70 @@ export function resolveWeek(state: GameState, daysToAdvance: number = 7): WeekRe
   // 10. Phase progress estimate
   const phaseProgressDelta = tasksCompleted.length * 8 + tasksProgressed.length * 2;
 
+  // 9d. Day 2 Trigger: Deal Origination identifies targets
+  const newTasks: GameTask[] = [];
+  if (state.phase === 0 && state.day < 2 && newDay >= 2 && !state.events.some(e => e.id === 'evt-do-day2')) {
+    eventResult.emails.push({
+      id: 'email-do-targets',
+      week: newWeek,
+      phase: 0,
+      sender: 'Sarah Jenkins',
+      senderRole: 'Head of Deal Origination',
+      subject: 'Target Shortlist for Q3 Mandate',
+      body: 'Marcus mentioned you need actionable targets quickly. The DO team has pulled together 3 highly qualified opportunities across different sectors. \n\nI’ve formally added them to your dashboard and pipeline. Review the materials and decide where you want to focus your origination budget. Let me know if you need our analysts to dig into any specific dimensions before you recommend one to the board.',
+      preview: 'Marcus mentioned you need targets. The team has...',
+      category: 'partner',
+      state: 'unread',
+      priority: 'high',
+      timestamp: `Week ${newWeek}, Tuesday`,
+      responseOptions: [
+        { id: 'r1', label: 'Thanks Sarah. I\'ll review the targets with the team.', effects: '+3 momentum', resourceEffects: { dealMomentum: 3 } },
+      ],
+    });
+
+    eventResult.events.push({
+      id: 'evt-do-day2',
+      week: newWeek,
+      phase: 0,
+      type: 'passive',
+      title: 'Actionable Targets Identified',
+      description: 'Deal Origination has delivered three potential mandate targets. You can now investigate them before submitting a board recommendation.',
+      resolved: false,
+    });
+    
+    // Generate Target-Specific Tasks
+    state.leads.forEach(lead => {
+      newTasks.push({
+        id: `task-investigate-${lead.id}-sector`,
+        name: `Sector Dynamics: ${lead.companyName}`,
+        description: `Deep dive into the sector dynamics surrounding ${lead.companyName}. Uncover growth trends and competitive pressures.`,
+        phase: 0, category: 'internal', status: 'available', cost: 1, work: 3, complexity: 'low',
+        effectSummary: `Sector insights for ${lead.companyName}`, targetId: lead.id,
+      });
+      newTasks.push({
+        id: `task-investigate-${lead.id}-company`,
+        name: `Company Fundamentals: ${lead.companyName}`,
+        description: `Analyze ${lead.companyName}'s product, tech stack, and financial health to ensure it meets our mandate criteria.`,
+        phase: 0, category: 'internal', status: 'available', cost: 2, work: 4, complexity: 'medium',
+        effectSummary: `Company fundamentals for ${lead.companyName}`, targetId: lead.id,
+      });
+      newTasks.push({
+        id: `task-investigate-${lead.id}-shareholder`,
+        name: `Shareholder Objectives: ${lead.companyName}`,
+        description: `Assess the cap table and founder motivations for ${lead.companyName}. Are they actually ready to sell?`,
+        phase: 0, category: 'internal', status: 'available', cost: 2, work: 3, complexity: 'medium',
+        effectSummary: `Shareholder alignment for ${lead.companyName}`, targetId: lead.id,
+      });
+      newTasks.push({
+        id: `task-investigate-${lead.id}-market`,
+        name: `Market Read: ${lead.companyName}`,
+        description: `Quick market read on active buyers and recent multiples for businesses similar to ${lead.companyName}.`,
+        phase: 0, category: 'market', status: 'available', cost: 2, work: 5, complexity: 'medium',
+        effectSummary: `Market insights for ${lead.companyName}`, targetId: lead.id,
+      });
+    });
+  }
+
   // Build result (without narrative first)
   const partialResult = {
     tasksCompleted,
@@ -2519,6 +2658,8 @@ export function resolveWeek(state: GameState, daysToAdvance: number = 7): WeekRe
     resolvedBudgetRequests: resolvedRequests,
     resolvedBoardSubmission,
     daysAdvanced: daysToAdvance,
+    newQualificationNotes,
+    newTasks,
   };
 
   const narrativeSummary = generateSummary(partialResult, newWeek);
@@ -2530,7 +2671,7 @@ export function resolveWeek(state: GameState, daysToAdvance: number = 7): WeekRe
 // Calculate Days to Next Meaningful Event
 // ============================================
 
-export function calcDaysToAdvance(state: GameState): number {
+export function calcDaysToAdvance(state: GameStore): number {
   let days = 7; // default: advance a full week if nothing is urgent
 
   // Urgent unread emails: check inbox tomorrow
@@ -2589,7 +2730,7 @@ export interface CollapseResult {
   description: string;
 }
 
-export function checkDealCollapse(state: GameState): CollapseResult {
+export function checkDealCollapse(state: GameStore): CollapseResult {
   const { resources, buyers, phase } = state;
   const none: CollapseResult = { collapsed: false, reason: null, headline: '', description: '' };
 
@@ -2649,7 +2790,7 @@ export interface PhaseGateResult {
   nextPhase: PhaseId;
 }
 
-export function checkPhaseGate(state: GameState): PhaseGateResult {
+export function checkPhaseGate(state: GameStore): PhaseGateResult {
   const { phase, tasks, resources } = state;
   const phaseTasks = tasks.filter((t) => t.phase === phase);
   const completedCount = phaseTasks.filter((t) => t.status === 'completed').length;
@@ -2657,20 +2798,21 @@ export function checkPhaseGate(state: GameState): PhaseGateResult {
 
   switch (phase) {
     case 0: { // Deal Origination → Pitch & Mandate
-      const screeningDone = tasks.find((t) => t.id === 'task-01')?.status === 'completed';
-      const clientAssessed = tasks.find((t) => t.id === 'task-03')?.status === 'completed';
-      const internalReview = tasks.find((t) => t.id === 'task-05')?.status === 'completed';
-      const marketRead = tasks.find((t) => t.id === 'task-04')?.status === 'completed';
+      const anyLeadInvestigated = state.leads.some(l =>
+        l.investigation.sector === 'completed' ||
+        l.investigation.company === 'completed' ||
+        l.investigation.shareholder === 'completed' ||
+        l.investigation.market === 'completed'
+      );
+      const anyLeadMet = state.leads.some(l => l.meetingDone);
       const boardApproved = state.boardSubmission?.status === 'approved';
       const hasQualNotes = (state.qualificationNotes?.length ?? 0) >= 1;
 
       return {
-        canTransition: !!screeningDone && !!clientAssessed && !!internalReview && boardApproved,
+        canTransition: anyLeadInvestigated && anyLeadMet && hasQualNotes && boardApproved,
         requirements: [
-          { label: 'Company screening completed', met: !!screeningDone },
-          { label: 'Client motivation assessed', met: !!clientAssessed },
-          { label: 'Quick market read completed', met: !!marketRead },
-          { label: 'Internal opportunity review approved', met: !!internalReview },
+          { label: 'Lead dimensions investigated', met: anyLeadInvestigated },
+          { label: 'Introductory meeting held', met: anyLeadMet },
           { label: 'Qualification notes gathered', met: hasQualNotes },
           { label: 'Board submission approved', met: boardApproved },
         ],
@@ -2679,14 +2821,12 @@ export function checkPhaseGate(state: GameState): PhaseGateResult {
     }
 
     case 1: { // Pitch & Mandate → Preparation
-      const completionRatio = totalCount > 0 ? completedCount / totalCount : 0;
       const pitchPresented = state.feeNegotiation?.pitchPresented === true;
       const feeAgreed = state.feeNegotiation?.status === 'agreed' || state.agreedFeeTerms !== null;
       return {
-        canTransition: completionRatio >= 0.7 && resources.clientTrust >= 60 && pitchPresented && feeAgreed,
+        canTransition: pitchPresented && feeAgreed,
         requirements: [
-          { label: `Phase tasks completed (${completedCount}/${totalCount})`, met: completionRatio >= 0.7 },
-          { label: 'Client trust above 60 (mandate confidence)', met: resources.clientTrust >= 60 },
+          { label: 'Pitch document prepared', met: state.pitchDocumentReady === true },
           { label: 'Pitch presented to client', met: pitchPresented },
           { label: 'Fee terms agreed', met: feeAgreed },
         ],
@@ -2695,61 +2835,64 @@ export function checkPhaseGate(state: GameState): PhaseGateResult {
     }
 
     case 2: { // Preparation → Market Outreach
+      const modelDone = tasks.find((t) => t.id === 'task-20')?.status === 'completed';
       const cimDone = tasks.find((t) => t.id === 'task-21')?.status === 'completed';
       const teaserDone = tasks.find((t) => t.id === 'task-22')?.status === 'completed';
-      const modelDone = tasks.find((t) => t.id === 'task-20')?.status === 'completed';
-      const qualityReview = tasks.find((t) => t.id === 'task-30')?.status === 'completed';
       const buyerListDone = tasks.find((t) => t.id === 'task-25')?.status === 'completed';
 
       return {
-        canTransition: !!cimDone && !!teaserDone && !!modelDone && !!qualityReview,
+        canTransition: !!modelDone && !!cimDone && !!teaserDone && !!buyerListDone,
         requirements: [
           { label: 'Financial model completed', met: !!modelDone },
           { label: 'CIM drafted', met: !!cimDone },
-          { label: 'Teaser document prepared', met: !!teaserDone },
-          { label: 'Buyer long list finalised', met: !!buyerListDone },
-          { label: 'Quality review passed', met: !!qualityReview },
-          { label: 'Deal momentum above 50', met: resources.dealMomentum >= 50 },
+          { label: 'Teaser prepared', met: !!teaserDone },
+          { label: 'Buyer list approved by client', met: !!buyerListDone },
         ],
         nextPhase: 3,
       };
     }
 
-    case 3: { // Market Outreach → Shortlist
+    case 3: { // Market Outreach → Shortlist — deadline-gated
       const outreachLaunched = tasks.find((t) => t.id === 'task-40')?.status === 'completed';
       const ndasProcessed = tasks.find((t) => t.id === 'task-42')?.status === 'completed';
       const qaResponded = tasks.find((t) => t.id === 'task-46')?.status === 'completed';
       const buyerQualified = tasks.find((t) => t.id === 'task-48')?.status === 'completed';
-      const completionRatio3 = totalCount > 0 ? completedCount / totalCount : 0;
+      const activeBuyersWithNDA = state.buyers.filter(b => b.status === 'nda_signed' || b.status === 'reviewing' || b.status === 'active' || b.status === 'shortlisted' || b.status === 'bidding').length;
+      const deadlineSet = state.phaseDeadline !== null;
+      const deadlinePassed = deadlineSet && state.day >= (state.phaseDeadline ?? Infinity);
+      const enoughBuyers = activeBuyersWithNDA >= 10;
 
       return {
-        canTransition: !!outreachLaunched && !!ndasProcessed && completionRatio3 >= 0.6 && resources.dealMomentum >= 50,
+        canTransition: !!outreachLaunched && !!ndasProcessed && !!qaResponded && !!buyerQualified && (enoughBuyers || deadlinePassed),
         requirements: [
+          { label: 'Outreach deadline set', met: deadlineSet },
           { label: 'Tier 1 outreach launched', met: !!outreachLaunched },
           { label: 'NDAs processed', met: !!ndasProcessed },
           { label: 'Buyer Q&A responded', met: !!qaResponded },
-          { label: 'Buyer seriousness qualified', met: !!buyerQualified },
-          { label: `Phase tasks completed (${completedCount}/${totalCount})`, met: completionRatio3 >= 0.6 },
-          { label: 'Deal momentum above 50', met: resources.dealMomentum >= 50 },
+          { label: 'Buyers qualified', met: !!buyerQualified },
+          { label: `Buyers with NDA: ${activeBuyersWithNDA}/10 or deadline reached`, met: enoughBuyers || deadlinePassed },
         ],
         nextPhase: 4,
       };
     }
 
-    case 4: { // Shortlist → Non-Binding Offers
+    case 4: { // Shortlist → Non-Binding Offers — deadline-gated
       const shortlistBuilt = tasks.find((t) => t.id === 'task-61')?.status === 'completed';
       const clientApproved = tasks.find((t) => t.id === 'task-63')?.status === 'completed';
       const processNote = tasks.find((t) => t.id === 'task-64')?.status === 'completed';
-      const completionRatio4 = totalCount > 0 ? completedCount / totalCount : 0;
+      const shortlistedBuyers = state.buyers.filter(b => b.status === 'shortlisted' || b.status === 'bidding').length;
+      const deadlineSet = state.phaseDeadline !== null;
+      const deadlinePassed = deadlineSet && state.day >= (state.phaseDeadline ?? Infinity);
 
       return {
-        canTransition: !!shortlistBuilt && !!clientApproved && !!processNote && completionRatio4 >= 0.6,
+        canTransition: !!shortlistBuilt && !!clientApproved && !!processNote && shortlistedBuyers >= 2 && deadlinePassed,
         requirements: [
-          { label: 'Provisional shortlist built', met: !!shortlistBuilt },
-          { label: 'Shortlist presented to client', met: !!clientApproved },
-          { label: 'First-round process note prepared', met: !!processNote },
-          { label: `Phase tasks completed (${completedCount}/${totalCount})`, met: completionRatio4 >= 0.6 },
-          { label: 'Deal momentum above 50', met: resources.dealMomentum >= 50 },
+          { label: 'NBO deadline set', met: deadlineSet },
+          { label: 'Shortlist built', met: !!shortlistBuilt },
+          { label: 'Client approved shortlist', met: !!clientApproved },
+          { label: 'Process note sent to buyers', met: !!processNote },
+          { label: `Shortlisted buyers: ${shortlistedBuyers}/2 required`, met: shortlistedBuyers >= 2 },
+          { label: 'NBO deadline reached', met: deadlinePassed },
         ],
         nextPhase: 5,
       };
@@ -2758,15 +2901,16 @@ export function checkPhaseGate(state: GameState): PhaseGateResult {
     case 5: { // Non-Binding Offers → Due Diligence
       const matrixBuilt = tasks.some((t) => t.phase === 5 && t.linkedDeliverableId === 'del-50' && t.status === 'completed');
       const ddPackage = tasks.some((t) => t.phase === 5 && t.linkedDeliverableId === 'del-51' && t.status === 'completed');
-      const completionRatio5 = totalCount > 0 ? completedCount / totalCount : 0;
+      const nbosReceived = state.buyers.filter(b => b.status === 'bidding' || b.status === 'shortlisted' || b.status === 'preferred').length;
+      const clientSelectedDD = tasks.some((t) => t.phase === 5 && (t.name.toLowerCase().includes('select dd') || t.name.toLowerCase().includes('dd candidate')) && t.status === 'completed');
 
       return {
-        canTransition: !!matrixBuilt && !!ddPackage && completionRatio5 >= 0.6 && resources.dealMomentum >= 50,
+        canTransition: !!matrixBuilt && !!ddPackage && nbosReceived >= 2 && clientSelectedDD,
         requirements: [
           { label: 'NBO comparison matrix completed', met: !!matrixBuilt },
           { label: 'DD entry package prepared', met: !!ddPackage },
-          { label: `Phase tasks completed (${completedCount}/${totalCount})`, met: completionRatio5 >= 0.6 },
-          { label: 'Deal momentum above 50', met: resources.dealMomentum >= 50 },
+          { label: `NBOs received: ${nbosReceived}/2 required`, met: nbosReceived >= 2 },
+          { label: 'Client selected DD candidates', met: clientSelectedDD },
         ],
         nextPhase: 6,
       };
@@ -2774,51 +2918,42 @@ export function checkPhaseGate(state: GameState): PhaseGateResult {
 
     case 6: { // Due Diligence → Final Offers
       const processLetter = tasks.some((t) => t.phase === 6 && t.linkedDeliverableId === 'del-63' && t.status === 'completed');
-      const ddReadiness = tasks.some((t) => t.phase === 6 && t.name.toLowerCase().includes('final dd readiness') && t.status === 'completed');
-      const completionRatio6 = totalCount > 0 ? completedCount / totalCount : 0;
+      const activeDDBuyers = state.buyers.filter(b => !['dropped', 'excluded'].includes(b.status)).length;
 
       return {
-        canTransition: !!processLetter && completionRatio6 >= 0.6 && resources.dealMomentum >= 40,
+        canTransition: !!processLetter && activeDDBuyers >= 1 && resources.dealMomentum >= 40,
         requirements: [
           { label: 'Final process letter issued', met: !!processLetter },
-          { label: 'DD readiness reviewed', met: !!ddReadiness },
-          { label: `Phase tasks completed (${completedCount}/${totalCount})`, met: completionRatio6 >= 0.6 },
-          { label: 'Deal momentum above 40', met: resources.dealMomentum >= 40 },
-          { label: 'At least 2 active buyers remain', met: state.buyers.filter((b) => !['dropped', 'excluded'].includes(b.status)).length >= 2 },
+          { label: `Active buyers in DD: ${activeDDBuyers} (need ≥1)`, met: activeDDBuyers >= 1 },
+          { label: 'Deal momentum ≥40', met: resources.dealMomentum >= 40 },
         ],
         nextPhase: 7,
       };
     }
 
     case 7: { // Final Offers → SPA Negotiation
-      const preferredSelected = tasks.some((t) => t.phase === 7 && t.name.toLowerCase().includes('recommend preferred') && t.status === 'completed');
+      const preferredSelected = state.preferredBidderId !== null;
       const exclusivityReady = tasks.some((t) => t.phase === 7 && t.linkedDeliverableId === 'del-72' && t.status === 'completed');
-      const completionRatio7 = totalCount > 0 ? completedCount / totalCount : 0;
 
       return {
-        canTransition: !!preferredSelected && !!exclusivityReady && completionRatio7 >= 0.6,
+        canTransition: preferredSelected && exclusivityReady,
         requirements: [
-          { label: 'Preferred bidder recommended', met: !!preferredSelected },
-          { label: 'Exclusivity agreement prepared', met: !!exclusivityReady },
-          { label: `Phase tasks completed (${completedCount}/${totalCount})`, met: completionRatio7 >= 0.6 },
-          { label: 'Client trust above 50', met: resources.clientTrust >= 50 },
+          { label: 'Preferred bidder selected', met: preferredSelected },
+          { label: 'Exclusivity agreement prepared', met: exclusivityReady },
         ],
         nextPhase: 8,
       };
     }
 
     case 8: { // SPA Negotiation → Signing
+      const spaNegotiationAgreed = state.spaNegotiation?.status === 'agreed';
       const signingChecklist = tasks.some((t) => t.phase === 8 && t.linkedDeliverableId === 'del-82' && t.status === 'completed');
-      const paperReview = tasks.some((t) => t.phase === 8 && t.name.toLowerCase().includes('pre-signing') && t.status === 'completed');
-      const completionRatio8 = totalCount > 0 ? completedCount / totalCount : 0;
 
       return {
-        canTransition: !!signingChecklist && completionRatio8 >= 0.6,
+        canTransition: spaNegotiationAgreed && !!signingChecklist,
         requirements: [
+          { label: 'SPA terms agreed by preferred buyer', met: spaNegotiationAgreed },
           { label: 'Signing checklist completed', met: !!signingChecklist },
-          { label: 'Pre-signing paper review done', met: !!paperReview },
-          { label: `Phase tasks completed (${completedCount}/${totalCount})`, met: completionRatio8 >= 0.6 },
-          { label: 'Deal momentum above 40', met: resources.dealMomentum >= 40 },
         ],
         nextPhase: 9,
       };
@@ -2827,14 +2962,13 @@ export function checkPhaseGate(state: GameState): PhaseGateResult {
     case 9: { // Signing → Closing & Execution
       const docLocked = tasks.some((t) => t.phase === 9 && t.name.toLowerCase().includes('lock signature') && t.status === 'completed');
       const signedOff = tasks.some((t) => t.phase === 9 && t.linkedDeliverableId === 'del-90' && t.status === 'completed');
-      const completionRatio9 = totalCount > 0 ? completedCount / totalCount : 0;
 
       return {
-        canTransition: !!docLocked && !!signedOff && completionRatio9 >= 0.7,
+        canTransition: !!docLocked && !!signedOff && resources.riskLevel < 40,
         requirements: [
           { label: 'Signature version locked', met: !!docLocked },
           { label: 'SPA signed', met: !!signedOff },
-          { label: `Phase tasks completed (${completedCount}/${totalCount})`, met: completionRatio9 >= 0.7 },
+          { label: 'Risk level below 40', met: resources.riskLevel < 40 },
         ],
         nextPhase: 10,
       };

@@ -4,7 +4,7 @@ import Panel from '../components/ui/Panel';
 import StatusChip from '../components/ui/StatusChip';
 import ProgressBar from '../components/ui/ProgressBar';
 import { Play, CheckCircle2, Lock, ChevronDown, ChevronRight } from 'lucide-react';
-import type { TaskStatus, TaskCategory } from '../types/game';
+import type { TaskStatus, TaskCategory, GameTask } from '../types/game';
 
 const statusVariant: Record<TaskStatus, 'default' | 'accent' | 'muted' | 'info' | 'success' | 'warning'> = {
   available: 'default',
@@ -27,7 +27,7 @@ const categoryLabels: Record<TaskCategory, string> = {
 type ViewFilter = 'all' | 'available' | 'in_progress' | 'completed';
 
 export default function TasksScreen() {
-  const { tasks, workstreams, startTask } = useGameStore();
+  const { tasks, workstreams, startTask, phase, leads } = useGameStore();
   const [filter, setFilter] = useState<ViewFilter>('all');
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
 
@@ -36,6 +36,7 @@ export default function TasksScreen() {
       case 'available': return t.status === 'available' || t.status === 'recommended';
       case 'in_progress': return t.status === 'in_progress';
       case 'completed': return t.status === 'completed';
+      case 'all': return t.status !== 'completed';
       default: return true;
     }
   });
@@ -48,6 +49,125 @@ export default function TasksScreen() {
     { key: 'in_progress', label: 'In Progress' },
     { key: 'completed', label: 'Completed' },
   ];
+
+  const renderTaskList = (taskList: GameTask[]) => (
+    <div className="space-y-1.5">
+      {taskList.map((task) => {
+        const isExpanded = expandedTask === task.id;
+        const isActionable = task.status === 'available' || task.status === 'recommended';
+
+        return (
+          <div key={task.id} className={`rounded-[var(--radius-md)] border transition-all duration-150 ${
+            isExpanded ? 'bg-bg-panel/80 border-border-default' : 'bg-surface-default border-transparent hover:border-border-subtle'
+          }`}>
+            {/* Task Row */}
+            <button
+              onClick={() => setExpandedTask(isExpanded ? null : task.id)}
+              className="w-full p-3 text-left"
+            >
+              <div className="flex items-start gap-3">
+              {/* Status icon */}
+              <span className="shrink-0">
+                {task.status === 'locked' ? <Lock size={14} className="text-text-muted/40" /> :
+                 task.status === 'completed' ? <CheckCircle2 size={14} className="text-state-success" /> :
+                 task.status === 'in_progress' ? <Play size={14} className="text-state-info" /> :
+                 isExpanded ? <ChevronDown size={14} className="text-text-muted" /> :
+                 <ChevronRight size={14} className="text-text-muted" />}
+              </span>
+
+              {/* Name + Category */}
+              <div className="flex-1 min-w-0">
+                <div className={`text-[13px] ${task.status === 'locked' ? 'text-text-muted' : 'text-text-primary'} font-medium break-words sm:truncate`}>
+                  {task.name}
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-2 sm:hidden">
+                  <StatusChip label={categoryLabels[task.category]} variant="muted" />
+                  <StatusChip label={task.status.replace('_', ' ')} variant={statusVariant[task.status]} />
+                  <span className="text-[11px] font-mono text-text-muted">€{task.cost}k</span>
+                  <span className="text-[11px] font-mono text-text-muted">{task.work}h</span>
+                  <StatusChip label={task.complexity} variant={task.complexity === 'high' ? 'warning' : task.complexity === 'medium' ? 'default' : 'muted'} />
+                </div>
+              </div>
+
+              {/* Chips */}
+              <div className="hidden sm:flex sm:items-center sm:gap-2">
+                <StatusChip label={categoryLabels[task.category]} variant="muted" />
+                <StatusChip label={task.status.replace('_', ' ')} variant={statusVariant[task.status]} />
+              </div>
+
+              {/* Costs */}
+              <div className="hidden sm:flex sm:items-center sm:gap-3 sm:text-[11px] sm:font-mono sm:text-text-muted sm:shrink-0 sm:w-32 sm:justify-end">
+                <span>€{task.cost}k</span>
+                <span>{task.work}h</span>
+                <StatusChip label={task.complexity} variant={task.complexity === 'high' ? 'warning' : task.complexity === 'medium' ? 'default' : 'muted'} />
+              </div>
+              </div>
+            </button>
+
+            {/* Expanded Detail */}
+            {isExpanded && (
+              <div className="px-3 pb-3 pt-0 border-t border-border-subtle mx-3">
+                <div className="pt-3 space-y-3">
+                  <p className="text-[12px] text-text-secondary leading-relaxed">{task.description}</p>
+                  <div className="flex items-center gap-4 text-[11px]">
+                    <span className="text-text-muted">Effect: <span className="text-text-secondary">{task.effectSummary}</span></span>
+                    {task.dependencies && task.dependencies.length > 0 && (
+                      <span className="text-state-warning">Requires: {task.dependencies.join(', ')}</span>
+                    )}
+                  </div>
+                  {isActionable && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); startTask(task.id); }}
+                      className="flex items-center gap-2 px-4 py-2 bg-accent-primary hover:bg-accent-hover text-white text-[12px] font-semibold rounded-[var(--radius-md)] transition-colors shadow-[var(--shadow-glow-soft)]"
+                    >
+                      <Play size={12} /> Start Task
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  let taskContent;
+  if (phase === 0) {
+    const generalTasks = filteredTasks.filter(t => !t.targetId);
+    const targetGroups = leads.map(lead => ({
+      lead,
+      tasks: filteredTasks.filter(t => t.targetId === lead.id)
+    })).filter(g => g.tasks.length > 0);
+
+    taskContent = (
+      <div className="space-y-8">
+        {generalTasks.length > 0 && (
+          <div>
+            <h2 className="text-[13px] font-semibold text-text-muted uppercase tracking-widest mb-3">General Origination</h2>
+            {renderTaskList(generalTasks)}
+          </div>
+        )}
+        {targetGroups.map(g => (
+          <div key={g.lead.id}>
+            <h2 className="text-[13px] font-semibold text-text-muted uppercase tracking-widest mb-3">{g.lead.companyName}</h2>
+            {renderTaskList(g.tasks)}
+          </div>
+        ))}
+        {filteredTasks.length === 0 && (
+          <div className="p-8 text-center border border-dashed border-border-default rounded-[var(--radius-lg)]">
+            <p className="text-[13px] text-text-muted">No tasks found for this view.</p>
+          </div>
+        )}
+      </div>
+    );
+  } else {
+    taskContent = filteredTasks.length > 0 ? renderTaskList(filteredTasks) : (
+      <div className="p-8 text-center border border-dashed border-border-default rounded-[var(--radius-lg)]">
+        <p className="text-[13px] text-text-muted">No tasks found for this view.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-[1200px]">
@@ -94,85 +214,7 @@ export default function TasksScreen() {
       </div>
 
       {/* Task List */}
-      <div className="space-y-1.5">
-        {filteredTasks.map((task) => {
-          const isExpanded = expandedTask === task.id;
-          const isActionable = task.status === 'available' || task.status === 'recommended';
-
-          return (
-            <div key={task.id} className={`rounded-[var(--radius-md)] border transition-all duration-150 ${
-              isExpanded ? 'bg-bg-panel/80 border-border-default' : 'bg-surface-default border-transparent hover:border-border-subtle'
-            }`}>
-              {/* Task Row */}
-              <button
-                onClick={() => setExpandedTask(isExpanded ? null : task.id)}
-                className="w-full p-3 text-left"
-              >
-                <div className="flex items-start gap-3">
-                {/* Status icon */}
-                <span className="shrink-0">
-                  {task.status === 'locked' ? <Lock size={14} className="text-text-muted/40" /> :
-                   task.status === 'completed' ? <CheckCircle2 size={14} className="text-state-success" /> :
-                   task.status === 'in_progress' ? <Play size={14} className="text-state-info" /> :
-                   isExpanded ? <ChevronDown size={14} className="text-text-muted" /> :
-                   <ChevronRight size={14} className="text-text-muted" />}
-                </span>
-
-                {/* Name + Category */}
-                <div className="flex-1 min-w-0">
-                  <div className={`text-[13px] ${task.status === 'locked' ? 'text-text-muted' : 'text-text-primary'} font-medium break-words sm:truncate`}>
-                    {task.name}
-                  </div>
-                  <div className="mt-2 flex flex-wrap items-center gap-2 sm:hidden">
-                    <StatusChip label={categoryLabels[task.category]} variant="muted" />
-                    <StatusChip label={task.status.replace('_', ' ')} variant={statusVariant[task.status]} />
-                    <span className="text-[11px] font-mono text-text-muted">€{task.cost}k</span>
-                    <span className="text-[11px] font-mono text-text-muted">{task.work}h</span>
-                    <StatusChip label={task.complexity} variant={task.complexity === 'high' ? 'warning' : task.complexity === 'medium' ? 'default' : 'muted'} />
-                  </div>
-                </div>
-
-                {/* Chips */}
-                <div className="hidden sm:flex sm:items-center sm:gap-2">
-                  <StatusChip label={categoryLabels[task.category]} variant="muted" />
-                  <StatusChip label={task.status.replace('_', ' ')} variant={statusVariant[task.status]} />
-                </div>
-
-                {/* Costs */}
-                <div className="hidden sm:flex sm:items-center sm:gap-3 sm:text-[11px] sm:font-mono sm:text-text-muted sm:shrink-0 sm:w-32 sm:justify-end">
-                  <span>€{task.cost}k</span>
-                  <span>{task.work}h</span>
-                  <StatusChip label={task.complexity} variant={task.complexity === 'high' ? 'warning' : task.complexity === 'medium' ? 'default' : 'muted'} />
-                </div>
-                </div>
-              </button>
-
-              {/* Expanded Detail */}
-              {isExpanded && (
-                <div className="px-3 pb-3 pt-0 border-t border-border-subtle mx-3">
-                  <div className="pt-3 space-y-3">
-                    <p className="text-[12px] text-text-secondary leading-relaxed">{task.description}</p>
-                    <div className="flex items-center gap-4 text-[11px]">
-                      <span className="text-text-muted">Effect: <span className="text-text-secondary">{task.effectSummary}</span></span>
-                      {task.dependencies && task.dependencies.length > 0 && (
-                        <span className="text-state-warning">Requires: {task.dependencies.join(', ')}</span>
-                      )}
-                    </div>
-                    {isActionable && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); startTask(task.id); }}
-                        className="flex items-center gap-2 px-4 py-2 bg-accent-primary hover:bg-accent-hover text-white text-[12px] font-semibold rounded-[var(--radius-md)] transition-colors shadow-[var(--shadow-glow-soft)]"
-                      >
-                        <Play size={12} /> Start Task
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+      {taskContent}
     </div>
   );
 }

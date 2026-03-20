@@ -1,4 +1,4 @@
-import type { GameState } from '../types/game';
+import type { GameStore } from '../store/gameStore';
 import { PHASE_BASE_BUDGETS } from '../config/phaseBudgets';
 
 const TOTAL_GAME_BUDGET = Object.values(PHASE_BASE_BUDGETS).reduce((a, b) => a + b, 0); // ~265 k€
@@ -57,7 +57,7 @@ export interface ResultsBoard {
 }
 
 // --- Financial Score ---
-function calculateFinancialScore(state: GameState): ResultsBoard['financial'] & { score: number } {
+function calculateFinancialScore(state: GameStore): ResultsBoard['financial'] & { score: number } {
   const dealClosed = state.phase === 10;
   // Base closing value derived from deal momentum and preparation quality
   const baseValue = 120; // €M baseline for Solara Systems
@@ -108,7 +108,7 @@ function calculateFinancialScore(state: GameState): ResultsBoard['financial'] & 
 }
 
 // --- Client Score ---
-function calculateClientScore(state: GameState): ResultsBoard['client'] & { score: number } {
+function calculateClientScore(state: GameStore): ResultsBoard['client'] & { score: number } {
   const trust = state.resources.clientTrust;
   const momentum = state.resources.dealMomentum;
 
@@ -127,7 +127,7 @@ function calculateClientScore(state: GameState): ResultsBoard['client'] & { scor
 }
 
 // --- Team Score ---
-function calculateTeamScore(state: GameState): ResultsBoard['team'] & { score: number } {
+function calculateTeamScore(state: GameStore): ResultsBoard['team'] & { score: number } {
   const morale = state.resources.morale;
   // Burnout is inverse of morale + capacity pressure
   const burnout = Math.max(0, 100 - morale - (state.resources.teamCapacity > 50 ? 10 : -10));
@@ -146,7 +146,7 @@ function calculateTeamScore(state: GameState): ResultsBoard['team'] & { score: n
 }
 
 // --- Process Score ---
-function calculateProcessScore(state: GameState): ResultsBoard['process'] & { score: number } {
+function calculateProcessScore(state: GameStore): ResultsBoard['process'] & { score: number } {
   const totalTasks = state.tasks.length;
   const completedTasks = state.tasks.filter((t) => t.status === 'completed').length;
   const completionRate = totalTasks > 0 ? completedTasks / totalTasks : 0;
@@ -173,7 +173,7 @@ function calculateProcessScore(state: GameState): ResultsBoard['process'] & { sc
 }
 
 // --- Career Impact Score ---
-function calculateCareerScore(state: GameState, financialScore: number, processScore: number): ResultsBoard['career'] & { score: number } {
+function calculateCareerScore(state: GameStore, financialScore: number, processScore: number): ResultsBoard['career'] & { score: number } {
   const reputationGain = Math.round(state.resources.reputation * 0.3 + financialScore * 0.3 + processScore * 0.4) - 40;
   const rainmakerScore = Math.round(financialScore * 0.35 + processScore * 0.3 + state.resources.clientTrust * 0.2 + state.resources.reputation * 0.15);
   const sectorCredibilityGain = Math.round(state.resources.reputation * 0.4 + state.resources.dealMomentum * 0.3 + financialScore * 0.3) - 30;
@@ -189,7 +189,7 @@ function calculateCareerScore(state: GameState, financialScore: number, processS
 }
 
 // --- Key Drivers ---
-function generateKeyDrivers(state: GameState, _scores: ResultsBoard['scores']): string[] {
+function generateKeyDrivers(state: GameStore, _scores: ResultsBoard['scores']): string[] {
   const drivers: string[] = [];
 
   // Financial drivers — evaluate against total game budget (TOTAL_GAME_BUDGET k€)
@@ -249,7 +249,7 @@ function generateKeyDrivers(state: GameState, _scores: ResultsBoard['scores']): 
 // Main Results Board Calculation
 // ============================================
 
-export function buildResultsBoard(state: GameState): ResultsBoard {
+export function buildResultsBoard(state: GameStore): ResultsBoard {
   const dealClosed = state.phase === 10;
 
   const financial = calculateFinancialScore(state);

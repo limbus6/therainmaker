@@ -5,7 +5,7 @@ import type { PhaseId, StaffProfile, ContractorProfile } from '../types/game';
 
 // Base budget injected at the start of each phase (k€)
 export const PHASE_BASE_BUDGETS: Record<PhaseId, number> = {
-  0: 20,  // Deal Origination
+  0: 50,  // Deal Origination
   1: 30,  // Pitch & Mandate
   2: 50,  // Preparation — heavy deliverable phase (VDD, CIM, financial model)
   3: 30,  // Market Outreach — outreach costs, NDA processing

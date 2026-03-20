@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type {
-  GameState,
   PhaseId,
   Email,
   GameTask,
@@ -9,9 +8,10 @@ import type {
   Deliverable,
   Risk,
   Headline,
-  TeamMember,
   Client,
+  Lead,
   PlayerResources,
+  TeamMember,
   StaffProfile,
   ContractorProfile,
   MitigationActionId,
@@ -30,8 +30,13 @@ import type {
   DataroomAccessLevel,
   SPABuyerState,
   SPABuyerProfile,
+  SPANegotiation,
   SPARound,
   SPATerms,
+  GameEvent,
+  BudgetRequest,
+  Buyer,
+  CompetitorThreat,
 } from '../types/game';
 import { resolveWeek, checkPhaseGate, unlockTasks, checkDealCollapse, calcDaysToAdvance } from '../engine/weekEngine';
 import type { WeekResult, PhaseGateResult } from '../engine/weekEngine';
@@ -85,71 +90,36 @@ const initialEmails: Email[] = [
     phase: 0,
     sender: 'Marcus Aldridge',
     senderRole: 'Managing Partner',
-    subject: 'Potential opportunity — Solara Systems',
-    body: 'Ricardo Mendes, founder of Solara Systems, reached out through our Lisbon network. Industrial IoT platform, predictive maintenance for energy infrastructure. Claims €28M ARR and 35% growth.\n\nI need you to assess whether this is worth pursuing. Schedule an intro call, do a quick company screen, and give me your read on whether this is a real opportunity or just a founder fishing for a valuation number.\n\nDon\'t commit to anything yet. This is origination, not a mandate.',
-    preview: 'Potential opportunity — need you to assess...',
+    subject: 'Q3 Mandate Objective',
+    body: 'We are behind on our origination targets for this quarter. I need you to secure a new sell-side mandate within the next few weeks to close the gap.\n\nThe Deal Origination team is currently scanning the market and should have a shortlist of actionable targets for you shortly. In the meantime, you have a €50k origination budget to deploy. Use it to build a solid investment case once the targets are identified.\n\nStart warming up your broader market read now so we\'re ready to move fast.',
+    preview: 'We need a mandate this quarter. Deal Origination is...',
     category: 'partner',
     state: 'unread',
     priority: 'high',
     timestamp: 'Week 1, Monday',
     responseOptions: [
-      { id: 'r1', label: 'On it — I\'ll schedule the intro call this week', effects: '+5 momentum', resourceEffects: { dealMomentum: 5 } },
-      { id: 'r2', label: 'I\'ll run a quick screen first before reaching out', effects: '+3 reputation (thorough)', resourceEffects: { reputation: 3 } },
+      { id: 'r1', label: 'Understood. I\'ll get the team ready.', effects: '+2 momentum', resourceEffects: { dealMomentum: 2 } },
     ],
-  },
-  {
-    id: 'email-2',
-    week: 1,
-    phase: 0,
-    sender: 'Ricardo Mendes',
-    senderRole: 'Founder & CEO, Solara Systems',
-    subject: 'Introduction',
-    body: 'Marcus suggested I reach out directly. I\'ve been running Solara for 12 years and I\'m starting to think about what comes next. A few PE firms have approached us informally, but I want to understand what a structured process would look like before making any decisions.\n\nI\'m not in a rush, but I\'d like to have a conversation soon if your team is interested.',
-    preview: 'Marcus suggested I reach out directly...',
-    category: 'client',
-    state: 'unread',
-    priority: 'normal',
-    timestamp: 'Week 1, Monday',
-    responseOptions: [
-      { id: 'r1', label: 'Propose an introductory meeting this week', effects: '+5 client trust', resourceEffects: { clientTrust: 5 } },
-      { id: 'r2', label: 'Reply warmly but take time to research first', effects: '+3 reputation, slight delay', resourceEffects: { reputation: 3 } },
-      { id: 'r3', label: 'Ask for key financial metrics upfront', effects: '+5 momentum, -3 client trust (too transactional)', resourceEffects: { dealMomentum: 5, clientTrust: -3 } },
-    ],
-  },
+  }
 ];
 
 // Phase 0: Origination tasks — assess the opportunity
 const initialTasks: GameTask[] = [
   {
-    id: 'task-01', name: 'Initial Company Screening', description: 'Review publicly available information on Solara Systems: product, market position, competitors, recent press. Determine if the company profile fits our advisory sweet spot.',
-    phase: 0, category: 'internal', status: 'recommended', cost: 2, work: 4, complexity: 'low',
-    effectSummary: 'Validates opportunity quality, +5 momentum',
+    id: 'task-gen-01', name: 'Assess Macro Environment', description: 'Review current interest rates, generic M&A volume trends, and macroeconomic indicators to understand the broader backdrop for dealmaking this quarter.',
+    phase: 0, category: 'market', status: 'available', cost: 1, work: 3, complexity: 'low',
+    effectSummary: 'Generates macro insights, +2 momentum',
   },
   {
-    id: 'task-02', name: 'Schedule Introductory Meeting', description: 'Arrange a first meeting with Ricardo Mendes. Understand his motivations, timeline, and initial expectations. This is a listening exercise — not a pitch.',
-    phase: 0, category: 'relationship', status: 'available', cost: 1, work: 3, complexity: 'low',
-    effectSummary: '+8 client trust, unlocks client assessment',
+    id: 'task-gen-02', name: 'Research Market Momentum', description: 'Deep dive into sector-agnostic market momentum. Which sectors are seeing the highest multiples and buyer activity? Prepares the team to evaluate upcoming targets.',
+    phase: 0, category: 'internal', status: 'recommended', cost: 2, work: 4, complexity: 'medium',
+    effectSummary: 'Prepares team for execution, +5 momentum',
   },
   {
-    id: 'task-03', name: 'Client Motivation Assessment', description: 'Through the introductory conversation, assess: Why now? Is the founder truly committed to a sale, or testing the market? Are there other advisors in the picture?',
-    phase: 0, category: 'relationship', status: 'locked', cost: 2, work: 5, complexity: 'medium',
-    effectSummary: 'Reveals client true intent, +10 client trust', dependencies: ['task-02'],
-  },
-  {
-    id: 'task-04', name: 'Quick Market Read', description: 'Assess the industrial IoT / energy tech M&A landscape. Recent transactions, active buyers, current multiples. Is this a hot sector or cooling?',
-    phase: 0, category: 'market', status: 'available', cost: 3, work: 6, complexity: 'low',
-    effectSummary: 'Informs opportunity quality, +5 momentum',
-  },
-  {
-    id: 'task-05', name: 'Internal Opportunity Review', description: 'Present initial findings to Marcus Aldridge. Discuss fit with current deal pipeline, team capacity, and strategic value of the mandate. Get partner alignment on whether to proceed to pitch.',
-    phase: 0, category: 'internal', status: 'locked', cost: 1, work: 3, complexity: 'medium',
-    effectSummary: 'Partner buy-in, unlocks Phase 1 transition', dependencies: ['task-01', 'task-03'],
-  },
-  {
-    id: 'task-06', name: 'Competitive Intelligence', description: 'Discreetly assess if other advisory firms are in conversation with Solara. Understanding the competitive landscape for the mandate itself.',
-    phase: 0, category: 'market', status: 'available', cost: 2, work: 4, complexity: 'low',
-    effectSummary: 'Intelligence on competing advisors, +3 reputation',
-  },
+    id: 'task-gen-03', name: 'Review Active Buyer Universe', description: 'Update the internal database of active Private Equity sponsors and strategic buyers currently deploying capital. Establishes a baseline for future buyer outreach.',
+    phase: 0, category: 'market', status: 'available', cost: 3, work: 5, complexity: 'medium',
+    effectSummary: 'Improves future outreach quality, +3 reputation',
+  }
 ];
 
 const initialWorkstreams: Workstream[] = [
@@ -385,8 +355,107 @@ function generateClientNote(
 // Store Actions
 // ============================================
 
+const initialLeads: Lead[] = [
+  {
+    id: 'lead-1',
+    companyName: 'Solara Systems',
+    sector: 'Industrial SaaS / Energy Tech',
+    founderName: 'Ricardo Mendes',
+    origin: 'Inbound network referral',
+    description: 'Founder-led industrial IoT platform specialising in predictive maintenance for energy infrastructure. €28M ARR, growing 35% YoY. The founder is considering a full exit after 12 years.',
+    investmentCaseSummary: 'Strong SaaS metrics and clear strategic value to industrial buyers. High likelihood of aggressive bidding if properly positioned.',
+    investigation: { sector: 'none', company: 'none', shareholder: 'none', market: 'none' },
+    meetingDone: false,
+    hiddenMotivations: 'Wife is pressuring him to retire; he is burned out but won\'t admit it easily.',
+    hiddenGrowth: 'high',
+    hiddenRisk: 'low',
+    researchNotes: []
+  },
+  {
+    id: 'lead-2',
+    companyName: 'Zephyr Logistics',
+    sector: 'Supply Chain Tech',
+    founderName: 'Amina Al-Fayed',
+    origin: 'Outbound origination campaign',
+    description: 'Asset-light freight forwarding platform using AI for route optimisation. €45M GMV. Margins are tight but volume is scaling fast.',
+    investmentCaseSummary: 'A scale play. Potential for margin expansion under the umbrella of a larger logistics incumbent.',
+    investigation: { sector: 'none', company: 'none', shareholder: 'none', market: 'none' },
+    meetingDone: false,
+    hiddenMotivations: 'Needs a large cash injection to survive price war with competitors.',
+    hiddenGrowth: 'moderate',
+    hiddenRisk: 'high',
+    researchNotes: []
+  },
+  {
+    id: 'lead-3',
+    companyName: 'Nexus BioPharma',
+    sector: 'Healthcare / Biotech',
+    founderName: 'Dr. Elias Vance',
+    origin: 'Conference meeting',
+    description: 'Contract Research Organisation (CRO) specializing in rare disease trials. Highly profitable, €15M EBITDA, but reliant on 3 key clients.',
+    investmentCaseSummary: 'Cash cow with high customer concentration risk. Excellent target for PE roll-up strategies.',
+    investigation: { sector: 'none', company: 'none', shareholder: 'none', market: 'none' },
+    meetingDone: false,
+    hiddenMotivations: 'Wants to cash out and return to pure academic research.',
+    hiddenGrowth: 'low',
+    hiddenRisk: 'moderate',
+    researchNotes: []
+  }
+];
 
-interface GameActions {
+export interface GameStore {
+  phase: PhaseId;
+  day: number;
+  totalDays: number;
+  week: number;
+  
+  // Phase 0 Mechanics
+  leads: Lead[];
+  activeLeadId?: string;
+
+  resources: PlayerResources;
+  client: Client;
+  team: TeamMember[];
+  emails: Email[];
+  buyers: Buyer[];
+  tasks: GameTask[];
+  workstreams: Workstream[];
+  deliverables: Deliverable[];
+  risks: Risk[];
+  events: GameEvent[];
+  headlines: Headline[];
+  weekSummary: string | null;
+  weekHistory: { day: number; week: number; daysAdvanced: number; summary: string; phase: PhaseId; }[];
+  isWeekInProgress: boolean;
+  playerName: string;
+  savedAt: string | null;
+  hasSeenOnboarding: boolean;
+  gameComplete: boolean;
+  collapseReason: string | null;
+  collapseHeadline: string | null;
+  collapseDescription: string | null;
+  lastWeekResult: WeekResult | null;
+  phaseGate: PhaseGateResult | null;
+  // New systems
+  totalBudgetSpent: number;
+  phaseBudget: { phaseBase: number; carryover: number };
+  budgetRequests: BudgetRequest[];
+  qualificationNotes: QualificationNote[];
+  boardSubmission: BoardSubmission | null;
+  tempCapacityAllocations: TempCapacityAllocation[];
+  feeNegotiation: FeeNegotiation | null;
+  agreedFeeTerms: FeeTerms | null;
+  competitorThreats: CompetitorThreat[];
+  toasts: Toast[];
+  finalOffers: FinalOffer[];
+  preferredBidderId: string | null;
+  spaNegotiation: SPANegotiation | null;
+  agreedSPATerms: SPATerms | null;
+  dataroomCategories: DataroomCategory[];
+  phaseDeadline: number | null; // calendar day when phase 3/4 deadline expires
+  pitchDocumentReady: boolean;  // unlocked when pitch document task completes
+
+  // GameActions
   advanceWeek: () => void;
   advancePhase: () => Promise<void>;
   updateResources: (partial: Partial<PlayerResources>) => void;
@@ -406,9 +475,11 @@ interface GameActions {
   // Budget
   requestBudget: (amount: number, justification: string) => void;
   resolveBudgetRequest: (id: string, approved: boolean, approvedAmount?: number) => void;
-  // Phase 0 qualification
+  // Phase 0 Qualification
+  investigateDimension: (leadId: string, dimension: keyof NonNullable<Lead['investigation']>) => void;
+  scheduleMeeting: (leadId: string) => void;
   addQualificationNote: (note: Omit<QualificationNote, 'id'>) => void;
-  submitBoardRecommendation: (recommendation: BoardSubmission['recommendation'], rationale: string) => void;
+  submitBoardRecommendation: (recommendation: BoardSubmission['recommendation'], rationale: string, leadId?: string) => void;
   // Staffing
   hireStaffer: (profile: StaffProfile) => void;
   allocateTempCapacity: (taskId: string, profile: ContractorProfile) => void;
@@ -423,6 +494,8 @@ interface GameActions {
   // Toasts
   addToast: (message: string, type: Toast['type']) => void;
   removeToast: (id: string) => void;
+  // Deadline
+  setPhaseDeadline: (weeks: number) => void;
   // Final Offers
   selectPreferredBidder: (buyerId: string) => void;
   // Dataroom
@@ -431,11 +504,7 @@ interface GameActions {
   initSPANegotiation: () => void;
   submitSPARound: (terms: Pick<SPARound, 'playerWarrantyScope' | 'playerWarrantyCap' | 'playerEscrowPercent' | 'playerSpecificIndemnity'>) => void;
   acceptSPATerms: () => void;
-  lastWeekResult: WeekResult | null;
-  phaseGate: PhaseGateResult | null;
 }
-
-export type GameStore = GameState & GameActions;
 
 // ============================================
 // Helper: sync deliverable status from linked tasks
@@ -785,7 +854,7 @@ function evaluateSPARound(
   else if (reactionScope === 'yellow') notes.push("We'd prefer broader warranty coverage, but we can work with this.");
   if (reactionCap === 'red') notes.push(`A ${terms.playerWarrantyCap}% cap is too low given deal complexity — our investment committee needs at least ${buyerState.reservationWarrantyCap}%.`);
   else if (reactionCap === 'yellow') notes.push("The cap is lower than we'd like, but we're not walking away over this.");
-  if (reactionEscrow === 'red') notes.push("Escrow of ${terms.playerEscrowPercent}% doesn't give us sufficient security — we need at least ${buyerState.reservationEscrowPercent}%.");
+  if (reactionEscrow === 'red') notes.push(`Escrow of ${terms.playerEscrowPercent}% doesn't give us sufficient security — we need at least ${buyerState.reservationEscrowPercent}%.`);
   if (reactionIndemnity === 'red') notes.push("We need a specific indemnity for the identified risk — no indemnity, no deal.");
   if (notes.length === 0) {
     notes.push(outcome === 'accepted'
@@ -809,6 +878,8 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
   day: 1,
   week: 1,
   totalDays: 1,
+  leads: initialLeads,
+  activeLeadId: undefined,
   resources: initialResources,
   client: initialClient,
   team: initialTeam,
@@ -857,6 +928,8 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     { id: 'dr-commercial', name: 'Commercial Pipeline', description: 'Sales pipeline, win/loss data, go-to-market strategy, pricing model.', sensitivity: 'high', accessLevel: 'restricted' },
     { id: 'dr-operations', name: 'Operational KPIs', description: 'Product uptime, support metrics, deployment architecture, SLA performance.', sensitivity: 'low', accessLevel: 'full' },
   ] as DataroomCategory[],
+  phaseDeadline: null,
+  pitchDocumentReady: false,
 
   // Actions
   advanceWeek: () => {
@@ -875,6 +948,10 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       }
       return t;
     });
+
+    if (result.newTasks && result.newTasks.length > 0) {
+      updatedTasks.push(...result.newTasks);
+    }
 
     // Unlock tasks whose dependencies are now met
     const unlockedTasks = unlockTasks(updatedTasks);
@@ -929,26 +1006,38 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     const newDay = state.day + daysToAdvance;
     const newWeekNum = Math.ceil(newDay / 7);
     if (state.phase === 0) {
-      if (completedTaskIds.has('task-01') && !newQualNotes.some((n) => n.source === 'team_research' && n.content.includes('screening'))) {
+      // General macro tasks
+      if (completedTaskIds.has('task-gen-02') && !newQualNotes.some((n) => n.content.includes('Market momentum'))) {
         newQualNotes.push({
-          id: `qn-${Date.now()}-01`,
+          id: `qn-${Date.now()}-gen02`,
           week: newWeekNum,
           source: 'team_research',
-          content: 'Initial company screening complete. Solara Systems financials and growth metrics verified. Deal fundamentals look credible.',
+          content: 'Market momentum research complete. Elevated M&A activity in tech-enabled services and SaaS. Multiples healthy at 8-14x EBITDA for quality assets.',
           sentiment: 'positive',
         });
       }
-      if (completedTaskIds.has('task-03') && !newQualNotes.some((n) => n.source === 'meeting' && n.content.includes('motivation'))) {
-        const trustLevel = newResources.clientTrust;
-        newQualNotes.push({
-          id: `qn-${Date.now()}-03`,
-          week: newWeekNum,
-          source: 'meeting',
-          content: trustLevel >= 50
-            ? 'Client motivation assessment complete. Ricardo is committed to a full exit and timeline is realistic. Mandate opportunity confirmed.'
-            : 'Client motivation assessment complete. Ricardo appears committed but some ambiguity remains around timeline and valuation expectations.',
-          sentiment: trustLevel >= 50 ? 'positive' : 'neutral',
-        });
+      // Target-specific investigation tasks
+      for (const lead of state.leads) {
+        const companyTaskId = `task-investigate-${lead.id}-company`;
+        const shareholderTaskId = `task-investigate-${lead.id}-shareholder`;
+        if (completedTaskIds.has(companyTaskId) && !newQualNotes.some((n) => n.content.includes(lead.companyName) && n.source === 'team_research')) {
+          newQualNotes.push({
+            id: `qn-${Date.now()}-${lead.id}-company`,
+            week: newWeekNum,
+            source: 'team_research',
+            content: `Company screening complete for ${lead.companyName}. Financial profile and sector fit confirmed. Viable profile for a structured process.`,
+            sentiment: 'positive',
+          });
+        }
+        if (completedTaskIds.has(shareholderTaskId) && !newQualNotes.some((n) => n.content.includes(lead.companyName) && n.source === 'meeting')) {
+          newQualNotes.push({
+            id: `qn-${Date.now()}-${lead.id}-shareholder`,
+            week: newWeekNum,
+            source: 'meeting',
+            content: `Shareholder assessment complete for ${lead.companyName}. Founder appears motivated, timeline realistic, and valuation expectations within market range.`,
+            sentiment: 'neutral',
+          });
+        }
       }
     }
 
@@ -978,7 +1067,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       buyers: updatedBuyers,
       boardSubmission: resolvedBoardSub,
       qualificationNotes: newQualNotes,
-    } as GameState;
+    } as GameStore;
     const gate = checkPhaseGate(nextState);
 
     // Phase 10 gate met = game complete (success)
@@ -1040,7 +1129,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       weekSummary: result.narrativeSummary,
       weekHistory: [...state.weekHistory, { day: newDay, week: newWeekNum, daysAdvanced: daysToAdvance, summary: result.narrativeSummary, phase: state.phase }],
       isWeekInProgress: true,
-      savedAt: new Date().toISOString(),
+      savedAt: new Date().toISOString() as any,
       lastWeekResult: result,
       phaseGate: gate,
       ...(isGameComplete ? { gameComplete: true } : {}),
@@ -1073,6 +1162,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     let newHeadlines = state.headlines;
     let newWorkstreams = state.workstreams;
     let newBuyers = state.buyers;
+    let newClient = state.client;
     if (nextPhase >= 1) {
       const phaseContent = await loadPhaseContent(nextPhase as Exclude<PhaseId, 0>);
       newTasks = [...state.tasks, ...phaseContent.tasks];
@@ -1085,6 +1175,18 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       }
     }
     if (nextPhase === 1) {
+      if (state.boardSubmission?.leadId) {
+        const chosenLead = state.leads.find(l => l.id === state.boardSubmission?.leadId);
+        if (chosenLead) {
+          newClient = {
+            ...state.client,
+            name: chosenLead.founderName,
+            companyName: chosenLead.companyName,
+            sector: chosenLead.sector,
+            description: chosenLead.description,
+          };
+        }
+      }
       newWorkstreams = state.workstreams.map((ws) => {
         if (['financials', 'marketing_materials', 'buyer_outreach'].includes(ws.id)) {
           return { ...ws, active: true };
@@ -1144,6 +1246,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       headlines: newHeadlines,
       workstreams: newWorkstreams,
       buyers: newBuyers,
+      client: newClient,
       phaseGate: null,
       resources: normalizeResources({
         ...state.resources,
@@ -1153,6 +1256,9 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       totalBudgetSpent: newTotalBudgetSpent,
       phaseBudget: { phaseBase, carryover },
       feeNegotiation: null,
+      agreedFeeTerms: null,
+      phaseDeadline: null,
+      pitchDocumentReady: false,
       finalOffers: newFinalOffers,
       preferredBidderId: null,
     });
@@ -1419,6 +1525,11 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
 
   dismissWeekSummary: () => set({ lastWeekResult: null, isWeekInProgress: false }),
 
+  // ─── Phase Deadline ──────────────────────────────────────────────────────
+  setPhaseDeadline: (weeks) => set((state) => ({
+    phaseDeadline: state.day + weeks * 7,
+  })),
+
   // ─── Budget ─────────────────────────────────────────────────────────────
   requestBudget: (amount, justification) => set((state) => ({
     budgetRequests: [
@@ -1451,6 +1562,94 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
   }),
 
   // ─── Phase 0 Qualification ───────────────────────────────────────────────
+  investigateDimension: (leadId, dimension) => set((state) => {
+    const cost = 2; // k€
+    if (state.resources.budget < cost) return {};
+
+    const leadIndex = state.leads.findIndex((l) => l.id === leadId);
+    if (leadIndex === -1) return {};
+
+    const updatedLeads = [...state.leads];
+    updatedLeads[leadIndex] = {
+      ...updatedLeads[leadIndex],
+      investigation: {
+        ...updatedLeads[leadIndex].investigation,
+        [dimension]: 'completed'
+      }
+    };
+
+    const dimensionNames = {
+      sector: 'Sector Dynamics',
+      company: 'Company Fundamentals',
+      shareholder: 'Shareholder Objectives',
+      market: 'Market Read'
+    };
+
+    const newNote: QualificationNote = {
+      id: `qn-${Date.now()}-${dimension}`,
+      week: state.week,
+      source: 'team_research',
+      content: `Investigated ${dimensionNames[dimension]} for ${updatedLeads[leadIndex].companyName}. Findings look viable for a structured process.`,
+      sentiment: 'neutral',
+    };
+
+    return {
+      resources: normalizeResources({
+        ...state.resources,
+        budget: state.resources.budget - cost
+      }),
+      leads: updatedLeads,
+      qualificationNotes: [...state.qualificationNotes, newNote],
+      toasts: [
+        ...state.toasts,
+        {
+          id: `t-${Date.now()}`,
+          message: `Investigating ${dimensionNames[dimension]} for ${updatedLeads[leadIndex].companyName}.`,
+          type: 'info'
+        }
+      ]
+    };
+  }),
+
+  scheduleMeeting: (leadId) => set((state) => {
+    const cost = 5; // k€
+    if (state.resources.budget < cost) return {};
+
+    const leadIndex = state.leads.findIndex((l) => l.id === leadId);
+    if (leadIndex === -1) return {};
+
+    const updatedLeads = [...state.leads];
+    updatedLeads[leadIndex] = {
+      ...updatedLeads[leadIndex],
+      meetingDone: true
+    };
+
+    const newNote: QualificationNote = {
+      id: `qn-${Date.now()}-intro`,
+      week: state.week,
+      source: 'meeting',
+      content: `Introductory meeting with ${updatedLeads[leadIndex].founderName} (${updatedLeads[leadIndex].companyName}). Client is receptive to our advisory approach.`,
+      sentiment: 'positive',
+    };
+
+    return {
+      resources: normalizeResources({
+        ...state.resources,
+        budget: state.resources.budget - cost
+      }),
+      leads: updatedLeads,
+      qualificationNotes: [...state.qualificationNotes, newNote],
+      toasts: [
+        ...state.toasts,
+        {
+          id: `t-${Date.now()}`,
+          message: `Introductory meeting scheduled for ${updatedLeads[leadIndex].companyName}.`,
+          type: 'success'
+        }
+      ]
+    };
+  }),
+
   addQualificationNote: (note) => set((state) => ({
     qualificationNotes: [
       ...state.qualificationNotes,
@@ -1458,10 +1657,11 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     ],
   })),
 
-  submitBoardRecommendation: (recommendation, rationale) => set((state) => ({
+  submitBoardRecommendation: (recommendation, rationale, leadId) => set((state) => ({
     boardSubmission: {
       recommendation,
       rationale,
+      leadId,
       submittedWeek: state.week,
       status: 'pending' as const,
     },

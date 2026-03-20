@@ -12,9 +12,12 @@ export default function BoardSubmissionModal({ onClose }: Props) {
   const boardSubmission = useGameStore((s) => s.boardSubmission);
   const submitBoardRecommendation = useGameStore((s) => s.submitBoardRecommendation);
   const competitorThreats = useGameStore((s) => s.competitorThreats);
+  const leads = useGameStore((s) => s.leads);
+  const phase = useGameStore((s) => s.phase);
   const activeThreats = competitorThreats.filter((t) => !t.resolved);
 
   const [recommendation, setRecommendation] = useState<'proceed' | 'decline'>('proceed');
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [selectedPoints, setSelectedPoints] = useState<string[]>([]);
 
   const PROCEED_POINTS = [
@@ -48,16 +51,17 @@ export default function BoardSubmissionModal({ onClose }: Props) {
 
   const positiveNotes = qualificationNotes.filter((n) => n.sentiment === 'positive').length;
   const negativeNotes = qualificationNotes.filter((n) => n.sentiment === 'negative').length;
-  const qualScore = qualificationNotes.length >= 2 && resources.clientTrust > 40 && resources.dealMomentum > 30;
+  const qualScore = qualificationNotes.length >= 2 && resources.clientTrust > 40 && resources.dealMomentum >= 10;
 
   const canSubmit =
     !boardSubmission &&
     selectedPoints.length >= 1 &&
-    qualificationNotes.length >= 1;
+    qualificationNotes.length >= 1 &&
+    (phase > 0 || selectedLeadId !== null); // Force selection if in phase 0
 
   const handleSubmit = () => {
     if (!canSubmit) return;
-    submitBoardRecommendation(recommendation, rationale.trim());
+    submitBoardRecommendation(recommendation, rationale.trim(), selectedLeadId || undefined);
   };
 
   return (
@@ -110,7 +114,7 @@ export default function BoardSubmissionModal({ onClose }: Props) {
             <div className="grid grid-cols-3 gap-3">
               {[
                 { label: 'Client Trust', value: resources.clientTrust, threshold: 40 },
-                { label: 'Deal Momentum', value: resources.dealMomentum, threshold: 30 },
+                { label: 'Deal Momentum', value: resources.dealMomentum, threshold: 10 },
                 { label: 'Research Notes', value: qualificationNotes.length, threshold: 2, max: 5 },
               ].map(({ label, value, threshold, max = 100 }) => {
                 const pct = Math.min(100, (value / max) * 100);
@@ -169,6 +173,33 @@ export default function BoardSubmissionModal({ onClose }: Props) {
               {activeThreats.length > 0 && (
                 <div className="p-3 rounded-[var(--radius-md)] border border-red-500/30 bg-red-500/10 text-[12px] text-red-200">
                   Rival advisor pressure detected. Fast board escalation may preserve initiative, but a weak case can still be rejected.
+                </div>
+              )}
+
+              {/* Lead Selection (Phase 0 only) */}
+              {phase === 0 && leads.length > 0 && (
+                <div>
+                  <h3 className="text-[12px] font-semibold text-text-muted uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                    <CheckCircle size={12} />
+                    Target Lead Selection
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+                    {leads.map(lead => (
+                      <button
+                        key={lead.id}
+                        type="button"
+                        onClick={() => setSelectedLeadId(lead.id)}
+                        className={`text-left p-3 rounded-[var(--radius-md)] border text-[13px] transition-all flex flex-col items-start ${
+                          selectedLeadId === lead.id
+                            ? 'bg-accent-primary/10 border-accent-primary text-text-primary'
+                            : 'bg-bg-primary border-border-subtle text-text-muted hover:text-text-secondary hover:border-border-subtle/80'
+                        }`}
+                      >
+                        <div className="font-semibold mb-1">{lead.companyName}</div>
+                        <div className="text-[11px] truncate w-full">{lead.sector}</div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
 
