@@ -38,6 +38,8 @@ export interface WeekResult {
   daysAdvanced: number;
   /** Internal: updated buyer array for store to apply */
   _updatedBuyers: Buyer[];
+  /** How many buyers submitted binding offers this advance (Phase 6 deadline trigger) */
+  bindingOfferDelta: number;
 }
 
 export interface BuyerChange {
@@ -2575,8 +2577,108 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
   // Apply stochastic noise — small random drift makes each advance feel unique
   resourceChanges = applyResourceNoise(resourceChanges, state);
 
+  // ─── Phase 6: Binding Offer Deadline Evaluation ──────────────────────────────
+  // When the process letter deadline passes, evaluate each active buyer's likelihood
+  // of submitting a binding offer. Three dropout risk factors:
+  //   1. High risk level (undisclosed DD issues from poor preparation)
+  //   2. Weak dataroom (not enough documents at full/partial access)
+  //   3. High unaddressed Q&A count (slow or incomplete Q&A responses)
+  let bindingOfferDelta = 0;
+  const updatedBuyersAfterDeadline = [...state.buyers];
+
+  if (
+    state.phase === 6 &&
+    state.phaseDeadline !== null &&
+    newDay >= state.phaseDeadline &&
+    state.day < state.phaseDeadline // only trigger once when crossing the deadline
+  ) {
+    // Compute dataroom completeness (% of categories with 'full' or 'partial' access)
+    const totalCats = state.dataroomCategories.length;
+    const openCats = state.dataroomCategories.filter(c => c.accessLevel === 'full' || c.accessLevel === 'partial').length;
+    const dataroomScore = totalCats > 0 ? openCats / totalCats : 0; // 0–1
+
+    // Active DD buyers who haven't yet submitted
+    const ddBuyers = updatedBuyersAfterDeadline.filter(
+      b => !['dropped', 'excluded'].includes(b.status) && !b.bindingOfferSubmitted
+    );
+
+    for (const buyer of ddBuyers) {
+      // Base dropout probability
+      let dropoutP = 0.15; // 15% base
+
+      // Factor 1: Risk level from undisclosed DD issues
+      const riskPenalty = Math.max(0, (state.resources.riskLevel - 40) / 100 * 0.4);
+      dropoutP += riskPenalty;
+
+      // Factor 2: Weak dataroom
+      if (dataroomScore < 0.5) dropoutP += 0.30;
+      else if (dataroomScore < 0.75) dropoutP += 0.12;
+
+      // Factor 3: Unaddressed Q&A
+      const qaPenalty = Math.min(0.30, (state.unaddressedQACount / 5) * 0.15);
+      dropoutP += qaPenalty;
+
+      // Buyer-specific modifier: high DD friction buyers are more likely to drop
+      if (buyer.ddFriction === 'high') dropoutP += 0.15;
+      else if (buyer.ddFriction === 'medium') dropoutP += 0.05;
+
+      dropoutP = Math.min(0.95, dropoutP);
+
+      const rolled = Math.random();
+      const submits = rolled > dropoutP;
+
+      const idx = updatedBuyersAfterDeadline.findIndex(b => b.id === buyer.id);
+      if (submits) {
+        updatedBuyersAfterDeadline[idx] = { ...buyer, bindingOfferSubmitted: true, status: 'bidding' };
+        bindingOfferDelta += 1;
+        eventResult.emails.push({
+          id: `email-bindoffer-${buyer.id}-${Date.now()}`,
+          week: newWeek,
+          phase: 6,
+          sender: buyer.name,
+          senderRole: 'Corporate Development',
+          subject: `Binding Offer Submitted — ${buyer.name}`,
+          body: `We are pleased to confirm submission of our binding offer ahead of the process letter deadline. Our legal team has also returned a marked-up draft SPA for your review. We remain committed to completing this transaction on a timely basis and look forward to your feedback.`,
+          preview: `Binding offer and SPA mark-up received from ${buyer.name}.`,
+          category: 'buyer',
+          state: 'unread',
+          priority: 'high',
+          timestamp: `Week ${newWeek}`,
+          linkedEntityId: buyer.id,
+          linkedEntityType: 'buyer',
+        });
+      } else {
+        // Determine the main dropout reason for the email
+        const reason =
+          riskPenalty > 0.20 ? 'material issues identified during due diligence that were not adequately disclosed in the data room'
+          : dataroomScore < 0.5 ? 'insufficient documentation in the data room to complete their legal and financial review'
+          : state.unaddressedQACount > 3 ? 'outstanding Q&A requests that were not responded to in a timely manner'
+          : 'internal constraints and transaction priorities';
+
+        updatedBuyersAfterDeadline[idx] = { ...buyer, status: 'dropped', bindingOfferSubmitted: false };
+        eventResult.emails.push({
+          id: `email-dropout-${buyer.id}-${Date.now()}`,
+          week: newWeek,
+          phase: 6,
+          sender: buyer.name,
+          senderRole: 'Corporate Development',
+          subject: `Process Withdrawal — ${buyer.name}`,
+          body: `Following our internal review, we regret to inform you that we will not be submitting a binding offer by the process letter deadline. This decision was driven by ${reason}. We wish you and your client success in completing this transaction.`,
+          preview: `${buyer.name} has withdrawn from the process.`,
+          category: 'buyer',
+          state: 'unread',
+          priority: 'high',
+          timestamp: `Week ${newWeek}`,
+          linkedEntityId: buyer.id,
+          linkedEntityType: 'buyer',
+        });
+      }
+    }
+  }
+
   // 10. Phase progress estimate
   const phaseProgressDelta = tasksCompleted.length * 8 + tasksProgressed.length * 2;
+
 
   // 9d. Day 2 Trigger: Deal Origination identifies targets
   const newTasks: GameTask[] = [];
@@ -2660,11 +2762,18 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
     daysAdvanced: daysToAdvance,
     newQualificationNotes,
     newTasks,
+    bindingOfferDelta: 0, // will be overwritten in the return if deadline triggers
   };
 
   const narrativeSummary = generateSummary(partialResult, newWeek);
 
-  return { ...partialResult, daysAdvanced: daysToAdvance, narrativeSummary, _updatedBuyers: buyerResult.buyers };
+  return {
+    ...partialResult,
+    daysAdvanced: daysToAdvance,
+    narrativeSummary,
+    _updatedBuyers: updatedBuyersAfterDeadline,
+    bindingOfferDelta,
+  };
 }
 
 // ============================================
@@ -2916,15 +3025,21 @@ export function checkPhaseGate(state: GameStore): PhaseGateResult {
       };
     }
 
-    case 6: { // Due Diligence → Final Offers
+    case 6: { // Due Diligence → Final Offers (process letter deadline-gated)
       const processLetter = tasks.some((t) => t.phase === 6 && t.linkedDeliverableId === 'del-63' && t.status === 'completed');
+      const deadlineSet = state.phaseDeadline !== null;
+      const deadlinePassed = deadlineSet && state.day >= (state.phaseDeadline ?? Infinity);
+      const bindingOffersIn = state.bindingOffersReceived > 0;
       const activeDDBuyers = state.buyers.filter(b => !['dropped', 'excluded'].includes(b.status)).length;
 
       return {
-        canTransition: !!processLetter && activeDDBuyers >= 1 && resources.dealMomentum >= 40,
+        canTransition: !!processLetter && deadlinePassed && bindingOffersIn && activeDDBuyers >= 1 && resources.dealMomentum >= 40,
         requirements: [
-          { label: 'Final process letter issued', met: !!processLetter },
-          { label: `Active buyers in DD: ${activeDDBuyers} (need ≥1)`, met: activeDDBuyers >= 1 },
+          { label: 'Process letter issued (sets binding offer deadline)', met: !!processLetter },
+          { label: 'Binding offer deadline set', met: deadlineSet },
+          { label: 'Binding offer deadline passed', met: deadlinePassed },
+          { label: `Binding offers received: ${state.bindingOffersReceived} (need ≥1)`, met: bindingOffersIn },
+          { label: `Active buyers remain: ${activeDDBuyers} (need ≥1)`, met: activeDDBuyers >= 1 },
           { label: 'Deal momentum ≥40', met: resources.dealMomentum >= 40 },
         ],
         nextPhase: 7,

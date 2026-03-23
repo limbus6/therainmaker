@@ -86,6 +86,8 @@ export interface Buyer {
   politicalSensitivity: 'low' | 'medium' | 'high';
   notes: string;
   enteredPhase: PhaseId;
+  bindingOfferSubmitted?: boolean; // set true when buyer submits binding offer before Phase 6 deadline
+  ddDropoutRisk?: number;          // 0-100: probability this buyer drops before submitting binding offer
 }
 
 // --- Tasks ---

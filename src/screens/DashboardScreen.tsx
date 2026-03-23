@@ -51,9 +51,11 @@ export default function DashboardScreen() {
   const spaNegotiation = useGameStore((s) => s.spaNegotiation);
   const agreedSPATerms = useGameStore((s) => s.agreedSPATerms);
   const phaseDeadline = useGameStore((s) => s.phaseDeadline);
+  const bindingOffersReceived = useGameStore((s) => s.bindingOffersReceived);
 
-  const needsDeadline = (phase === 3 || phase === 4) && phaseDeadline === null;
+  const needsDeadline = (phase === 3 || phase === 4 || phase === 6) && phaseDeadline === null;
   const daysUntilDeadline = phaseDeadline !== null ? Math.max(0, phaseDeadline - day) : null;
+  void bindingOffersReceived; // consumed by phase gate display
 
   const [modal, setModal] = useState<ModalId>(null);
   const navigate = useNavigate();
@@ -333,7 +335,7 @@ export default function DashboardScreen() {
       {modal === 'pitch' && <PitchPresentationModal onClose={() => setModal(null)} />}
       {modal === 'fee' && <FeeNegotiationModal onClose={() => setModal(null)} />}
       {modal === 'spa' && <SPANegotiationModal onClose={() => setModal(null)} />}
-      {needsDeadline && <PhaseDeadlineModal phase={phase as 3 | 4} />}
+      {needsDeadline && <PhaseDeadlineModal phase={phase as 3 | 4 | 6} />}
     </div>
   );
 }

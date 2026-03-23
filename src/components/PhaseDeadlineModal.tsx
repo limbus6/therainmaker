@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { useGameStore } from '../store/gameStore';
-import { Calendar, Clock } from 'lucide-react';
+import { Calendar, Clock, AlertTriangle } from 'lucide-react';
 
 interface PhaseDeadlineModalProps {
-  phase: 3 | 4;
+  phase: 3 | 4 | 6;
 }
 
-const PHASE_COPY: Record<3 | 4, { title: string; description: string; action: string }> = {
+const PHASE_COPY: Record<3 | 4 | 6, { title: string; description: string; action: string; icon?: string }> = {
   3: {
     title: 'Set Shortlist Deadline',
     description: 'Buyers need time to review the teaser, sign NDAs, and qualify their interest. When do you want to close outreach and move to shortlist?',
@@ -17,14 +17,38 @@ const PHASE_COPY: Record<3 | 4, { title: string; description: string; action: st
     description: 'Shortlisted buyers must submit their Non-Binding Offers by this date. After the deadline, no further offers will be accepted.',
     action: 'Set NBO Deadline & Open Bidding',
   },
+  6: {
+    title: 'Issue Process Letter',
+    description: 'The Process Letter sets the deadline for buyers to complete due diligence, mark up the SPA, and submit a binding offer. Buyers who miss this deadline will be excluded from the process.',
+    action: 'Issue Process Letter & Set Binding Offer Deadline',
+  },
+};
+
+const ADVISORY: Record<3 | 4 | 6, (weeks: number) => string> = {
+  3: (w) => w <= 1
+    ? 'Very tight. Buyers may not have enough time to mobilise. Risk of low participation.'
+    : w === 2 ? 'Standard market timeline. Balances speed and buyer preparation.'
+    : w === 3 ? 'Comfortable timeline. Maximises buyer participation but delays momentum.'
+    : 'Extended window. Reduces urgency and may signal desperation to the market.',
+  4: (w) => w <= 1
+    ? 'Very tight. Buyers may not have enough time to compile NBOs. Risk of low quality bids.'
+    : w === 2 ? 'Standard NBO window. Allows adequate buyer preparation.'
+    : w === 3 ? 'Generous timeline. Buyers well-prepared but deal momentum may suffer.'
+    : 'Extended window. Signals process weakness. May attract opportunistic lowball offers.',
+  6: (w) => w <= 1
+    ? 'Very tight. Buyers may not have enough time to complete DD and mark up the SPA. High dropout risk.'
+    : w === 2 ? 'Standard binding offer window. Tests buyer seriousness and creates urgency.'
+    : w === 3 ? 'Comfortable timeline. Reduces dropout risk but extends process. Client may lose patience.'
+    : 'Extended window. Buyers may drift. High risk of re-trading or material changes before signing.',
 };
 
 const WEEKS = [1, 2, 3, 4] as const;
 
 export default function PhaseDeadlineModal({ phase }: PhaseDeadlineModalProps) {
   const { setPhaseDeadline, week } = useGameStore();
-  const [selected, setSelected] = useState<1 | 2 | 3 | 4>(2);
+  const [selected, setSelected] = useState<1 | 2 | 3 | 4>(phase === 6 ? 3 : 2);
   const copy = PHASE_COPY[phase];
+  const advisory = ADVISORY[phase](selected);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
@@ -39,6 +63,16 @@ export default function PhaseDeadlineModal({ phase }: PhaseDeadlineModalProps) {
             <p className="text-[12px] text-text-muted mt-1 leading-relaxed">{copy.description}</p>
           </div>
         </div>
+
+        {/* Phase 6 risk callout */}
+        {phase === 6 && (
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-red-500/5 border border-red-500/20">
+            <AlertTriangle size={13} className="text-red-400 mt-0.5 shrink-0" />
+            <p className="text-[11px] text-red-300 leading-relaxed">
+              Buyers who cannot complete DD or mark up the SPA in time will be excluded. Ensure the dataroom is well-stocked and all Q&A has been addressed before issuing.
+            </p>
+          </div>
+        )}
 
         {/* Week selector */}
         <div>
@@ -65,15 +99,7 @@ export default function PhaseDeadlineModal({ phase }: PhaseDeadlineModalProps) {
         {/* Advisory note */}
         <div className="flex items-start gap-2 p-3 rounded-lg bg-surface-default border border-border-subtle">
           <Clock size={13} className="text-text-muted mt-0.5 shrink-0" />
-          <p className="text-[11px] text-text-muted leading-relaxed">
-            {selected <= 1
-              ? 'Very tight. Buyers may not have enough time to mobilise. Risk of low participation.'
-              : selected === 2
-              ? 'Standard market timeline. Balances speed and buyer preparation.'
-              : selected === 3
-              ? 'Comfortable timeline. Maximises buyer participation but delays momentum.'
-              : 'Extended window. Reduces urgency and may signal desperation to the market.'}
-          </p>
+          <p className="text-[11px] text-text-muted leading-relaxed">{advisory}</p>
         </div>
 
         {/* CTA */}

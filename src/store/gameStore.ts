@@ -452,8 +452,10 @@ export interface GameStore {
   spaNegotiation: SPANegotiation | null;
   agreedSPATerms: SPATerms | null;
   dataroomCategories: DataroomCategory[];
-  phaseDeadline: number | null; // calendar day when phase 3/4 deadline expires
+  phaseDeadline: number | null; // calendar day when phase 3/4/6 deadline expires
   pitchDocumentReady: boolean;  // unlocked when pitch document task completes
+  bindingOffersReceived: number; // count of buyers who submitted binding offer before Phase 6 deadline
+  unaddressedQACount: number;   // counter incremented by DD Q&A events; reduced by Q&A response task
 
   // GameActions
   advanceWeek: () => void;
@@ -930,6 +932,8 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
   ] as DataroomCategory[],
   phaseDeadline: null,
   pitchDocumentReady: false,
+  bindingOffersReceived: 0,
+  unaddressedQACount: 0,
 
   // Actions
   advanceWeek: () => {
@@ -1132,6 +1136,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       savedAt: new Date().toISOString() as any,
       lastWeekResult: result,
       phaseGate: gate,
+      bindingOffersReceived: state.bindingOffersReceived + (result.bindingOfferDelta ?? 0),
       ...(isGameComplete ? { gameComplete: true } : {}),
       ...(collapse.collapsed ? {
         gameComplete: true,
@@ -1259,6 +1264,8 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       agreedFeeTerms: null,
       phaseDeadline: null,
       pitchDocumentReady: false,
+      bindingOffersReceived: 0,
+      unaddressedQACount: 0,
       finalOffers: newFinalOffers,
       preferredBidderId: null,
     });
