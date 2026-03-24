@@ -54,7 +54,8 @@ export default function BoardSubmissionModal({ onClose }: Props) {
   const qualScore = qualificationNotes.length >= 2 && resources.clientTrust > 40 && resources.dealMomentum >= 10;
 
   const canSubmit =
-    !boardSubmission &&
+    boardSubmission?.status !== 'pending' &&
+    boardSubmission?.status !== 'approved' &&
     selectedPoints.length >= 1 &&
     qualificationNotes.length >= 1 &&
     (phase > 0 || selectedLeadId !== null); // Force selection if in phase 0
@@ -168,7 +169,7 @@ export default function BoardSubmissionModal({ onClose }: Props) {
             </div>
           )}
 
-          {!boardSubmission && (
+          {boardSubmission?.status !== 'pending' && boardSubmission?.status !== 'approved' && (
             <>
               {activeThreats.length > 0 && (
                 <div className="p-3 rounded-[var(--radius-md)] border border-red-500/30 bg-red-500/10 text-[12px] text-red-200">
@@ -266,7 +267,7 @@ export default function BoardSubmissionModal({ onClose }: Props) {
                 disabled={!canSubmit}
                 className="w-full py-2.5 rounded-[var(--radius-md)] bg-accent-primary text-white font-medium text-[13px] hover:bg-accent-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                Submit to Board
+                {boardSubmission?.status === 'rejected' ? 'Resubmit to Board' : 'Submit to Board'}
               </button>
             </>
           )}
