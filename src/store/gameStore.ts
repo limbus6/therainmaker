@@ -552,6 +552,38 @@ function syncClient(client: Client, resources: PlayerResources): Client {
   };
 }
 
+type LeadInvestigationDimension = keyof Lead['investigation'];
+
+const PHASE_ZERO_DIMENSION_TASK_SUFFIX: Record<LeadInvestigationDimension, string> = {
+  sector: '-sector',
+  company: '-company',
+  shareholder: '-shareholder',
+  market: '-market',
+};
+
+function mapTaskStatusToInvestigationStatus(
+  status: GameTask['status']
+): Lead['investigation'][LeadInvestigationDimension] {
+  if (status === 'completed') return 'completed';
+  if (status === 'in_progress') return 'in_progress';
+  return 'none';
+}
+
+function syncLeadsFromTasks(leads: Lead[], tasks: GameTask[]): Lead[] {
+  return leads.map((lead) => {
+    const nextInvestigation: Lead['investigation'] = { ...lead.investigation };
+
+    (Object.keys(PHASE_ZERO_DIMENSION_TASK_SUFFIX) as LeadInvestigationDimension[]).forEach((dimension) => {
+      const taskId = `task-investigate-${lead.id}${PHASE_ZERO_DIMENSION_TASK_SUFFIX[dimension]}`;
+      const task = tasks.find((t) => t.id === taskId);
+      if (!task) return;
+      nextInvestigation[dimension] = mapTaskStatusToInvestigationStatus(task.status);
+    });
+
+    return { ...lead, investigation: nextInvestigation };
+  });
+}
+
 function normalizeResources(resources: PlayerResources): PlayerResources {
   return {
     ...resources,
@@ -1106,6 +1138,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       totalDays: state.totalDays + daysToAdvance,
       resources: normalizedResources,
       tasks: unlockedTasks,
+      leads: syncLeadsFromTasks(state.leads, unlockedTasks),
       workstreams: updatedWorkstreams,
       deliverables: syncDeliverables(state.deliverables, unlockedTasks),
       team: syncTeamLoad(state.team, unlockedTasks),
@@ -1387,6 +1420,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     const unlockedUpdated = unlockTasks(updated);
     return {
       tasks: unlockedUpdated,
+      leads: syncLeadsFromTasks(state.leads, unlockedUpdated),
       deliverables: syncDeliverables(state.deliverables, unlockedUpdated),
       team: syncTeamLoad(state.team, unlockedUpdated),
     };
@@ -1411,6 +1445,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
 
     return {
       tasks: unlockedUpdated,
+      leads: syncLeadsFromTasks(state.leads, unlockedUpdated),
       workstreams: updatedWorkstreams,
       deliverables: syncDeliverables(state.deliverables, unlockedUpdated),
       team: syncTeamLoad(state.team, unlockedUpdated),
@@ -1576,12 +1611,20 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     const leadIndex = state.leads.findIndex((l) => l.id === leadId);
     if (leadIndex === -1) return {};
 
+    const taskId = `task-investigate-${leadId}-${dimension}`;
+    const updatedTasks = state.tasks.map((task) =>
+      task.id === taskId && (task.status === 'available' || task.status === 'recommended')
+        ? { ...task, status: 'in_progress' as const }
+        : task
+    );
+    const unlockedTasks = unlockTasks(updatedTasks);
+
     const updatedLeads = [...state.leads];
     updatedLeads[leadIndex] = {
       ...updatedLeads[leadIndex],
       investigation: {
         ...updatedLeads[leadIndex].investigation,
-        [dimension]: 'completed'
+        [dimension]: 'in_progress'
       }
     };
 
@@ -1605,7 +1648,10 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
         ...state.resources,
         budget: state.resources.budget - cost
       }),
-      leads: updatedLeads,
+      tasks: unlockedTasks,
+      leads: syncLeadsFromTasks(updatedLeads, unlockedTasks),
+      deliverables: syncDeliverables(state.deliverables, unlockedTasks),
+      team: syncTeamLoad(state.team, unlockedTasks),
       qualificationNotes: [...state.qualificationNotes, newNote],
       toasts: [
         ...state.toasts,
@@ -2100,6 +2146,3 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     return persisted;
   },
 }));
-
-
-
