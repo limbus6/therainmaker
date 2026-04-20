@@ -162,7 +162,7 @@ export default function SPANegotiationModal({ onClose }: Props) {
                 <div className="flex flex-wrap gap-2 mt-3">
                   {(['Scope', 'Cap', 'Escrow', 'Indemnity'] as const).map((label, i) => {
                     const rx = i === 0 ? latestRound.reactionScope : i === 1 ? latestRound.reactionCap : i === 2 ? latestRound.reactionEscrow : latestRound.reactionIndemnity;
-                    return <span key={label} className={`text-[11px] px-2 py-1 rounded border ${reactionColor[rx]}`}>{reactionEmoji[rx]} {label}</span>;
+                    return <span key={label} className={`text-[11px] px-2 py-1 rounded border ${reactionColor[rx as ComponentReaction]}`}>{reactionEmoji[rx as ComponentReaction]} {label}</span>;
                   })}
                 </div>
               </div>
@@ -254,10 +254,10 @@ export default function SPANegotiationModal({ onClose }: Props) {
                     {(['Scope', 'Cap', 'Escrow', 'Indemnity'] as const).map((label, i) => {
                       const rx = i === 0 ? latestRound.reactionScope : i === 1 ? latestRound.reactionCap : i === 2 ? latestRound.reactionEscrow : latestRound.reactionIndemnity;
                       return (
-                        <div key={label} className={`flex flex-col items-center gap-1 py-2 rounded border ${reactionColor[rx]}`}>
-                          <span className="text-xl">{reactionEmoji[rx]}</span>
+                        <div key={label} className={`flex flex-col items-center gap-1 py-2 rounded border ${reactionColor[rx as ComponentReaction]}`}>
+                          <span className="text-xl">{reactionEmoji[rx as ComponentReaction]}</span>
                           <span className="text-[10px] font-medium">{label}</span>
-                          <span className="text-[10px] opacity-80">{reactionLabel[rx]}</span>
+                          <span className="text-[10px] opacity-80">{reactionLabel[rx as ComponentReaction]}</span>
                         </div>
                       );
                     })}

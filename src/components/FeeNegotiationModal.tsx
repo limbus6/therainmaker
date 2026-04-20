@@ -267,8 +267,8 @@ export default function FeeNegotiationModal({ onClose }: Props) {
                   {(['Retainer', 'Success Fee', 'Ratchet'] as const).map((label, i) => {
                     const reaction = i === 0 ? latestRound.reactionRetainer : i === 1 ? latestRound.reactionSuccessFee : latestRound.reactionRatchet;
                     return (
-                      <span key={label} className={`px-2 py-1 rounded border ${reactionColor[reaction]}`}>
-                        {reactionEmoji[reaction]} {label}
+                      <span key={label} className={`px-2 py-1 rounded border ${reactionColor[reaction as ComponentReaction]}`}>
+                        {reactionEmoji[reaction as ComponentReaction]} {label}
                       </span>
                     );
                   })}
@@ -384,11 +384,11 @@ export default function FeeNegotiationModal({ onClose }: Props) {
                       <div 
                         key={label}
                         ref={(el) => { reactionRefs.current[index] = el; }}
-                        className={`flex-1 flex flex-col items-center gap-1 py-2 rounded-[var(--radius-sm)] border ${reactionColor[reaction]}`}
+                        className={`flex-1 flex flex-col items-center gap-1 py-2 rounded-[var(--radius-sm)] border ${reactionColor[reaction as ComponentReaction]}`}
                       >
-                        <span className="text-xl">{reactionEmoji[reaction]}</span>
+                        <span className="text-xl">{reactionEmoji[reaction as ComponentReaction]}</span>
                         <span className="text-[10px] font-medium">{label}</span>
-                        <span className="text-[10px] opacity-80">{reactionLabel[reaction]}</span>
+                        <span className="text-[10px] opacity-80">{reactionLabel[reaction as ComponentReaction]}</span>
                       </div>
                     ))}
                   </div>

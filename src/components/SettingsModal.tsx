@@ -33,6 +33,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
+    return undefined;
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;

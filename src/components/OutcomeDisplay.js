@@ -40,18 +40,6 @@ const calculateSummaryStats = (outcomes) => {
     };
 };
 /**
- * Formats a resource delta value with sign and label
- * @param value - The numeric value to format
- * @param label - The resource label (e.g., "morale", "trust")
- * @returns Formatted string with sign and label
- */
-const formatResourceDelta = (value, label) => {
-    if (value === 0)
-        return '';
-    const sign = value > 0 ? '+' : '';
-    return `${sign}${value} ${label}`;
-};
-/**
  * Gets the CSS class for outcome type styling
  * @param type - The outcome type ('success' or 'failure')
  * @returns CSS class string for styling
@@ -60,26 +48,6 @@ const getOutcomeTypeClass = (type) => {
     return type === 'success'
         ? 'outcome-card--success'
         : 'outcome-card--failure';
-};
-/**
- * Gets the border color class for outcome type
- * @param type - The outcome type ('success' or 'failure')
- * @returns CSS class string for border color
- */
-const getOutcomeTypeBorderClass = (type) => {
-    return type === 'success'
-        ? 'border-green-500'
-        : 'border-red-500';
-};
-/**
- * Gets the background color class for outcome type
- * @param type - The outcome type ('success' or 'failure')
- * @returns CSS class string for background color
- */
-const getOutcomeTypeBgClass = (type) => {
-    return type === 'success'
-        ? 'bg-green-50'
-        : 'bg-red-50';
 };
 /**
  * Gets the header background color class for outcome type
@@ -113,10 +81,9 @@ const getOutcomeTypeBadge = (type) => {
  * Renders a single resource delta item
  * @param value - The numeric value
  * @param label - The resource label
- * @param isNegative - Whether the value is negative (for styling)
  * @returns JSX element or null if value is 0
  */
-const ResourceDeltaItem = ({ value, label, isNegative }) => {
+const ResourceDeltaItem = ({ value, label }) => {
     if (value === 0)
         return null;
     const sign = value > 0 ? '+' : '';
@@ -140,7 +107,7 @@ const OutcomeResourceDeltas = ({ bonus }) => {
     if (!hasAnyDelta) {
         return _jsx("p", { className: "text-sm text-gray-500", children: "No resource changes" });
     }
-    return (_jsx("div", { className: "flex flex-wrap gap-3", children: deltas.map((delta) => delta.value !== 0 ? (_jsx(ResourceDeltaItem, { value: delta.value, label: delta.label, isNegative: delta.value < 0 }, delta.label)) : null) }));
+    return (_jsx("div", { className: "flex flex-wrap gap-3", children: deltas.map((delta) => delta.value !== 0 ? (_jsx(ResourceDeltaItem, { value: delta.value, label: delta.label }, delta.label)) : null) }));
 };
 /**
  * Renders a single outcome card
@@ -171,7 +138,7 @@ const SummarySection = ({ stats }) => {
         { value: stats.netResourceImpact.riskLevel, label: 'Risk Level' },
     ];
     const hasNetImpact = netDeltas.some((d) => d.value !== 0);
-    return (_jsxs("div", { className: "summary-section", children: [_jsx("div", { className: "summary-section__header", children: _jsxs("h2", { className: "summary-section__title", children: ["Week ", stats.totalOutcomes > 0 ? 'Summary' : 'No Outcomes'] }) }), _jsxs("div", { className: "summary-section__stats", children: [_jsxs("div", { className: "summary-stat", children: [_jsx("span", { className: "summary-stat__label", children: "Total Outcomes:" }), _jsx("span", { className: "summary-stat__value", children: stats.totalOutcomes })] }), _jsxs("div", { className: "summary-stat summary-stat--success", children: [_jsx("span", { className: "summary-stat__label", children: "Successes:" }), _jsx("span", { className: "summary-stat__value", children: stats.successCount })] }), _jsxs("div", { className: "summary-stat summary-stat--failure", children: [_jsx("span", { className: "summary-stat__label", children: "Failures:" }), _jsx("span", { className: "summary-stat__value", children: stats.failureCount })] })] }), hasNetImpact && (_jsxs("div", { className: "summary-section__net-impact", children: [_jsx("h3", { className: "summary-section__net-impact-title", children: "Net Resource Impact:" }), _jsx("div", { className: "flex flex-wrap gap-4", children: netDeltas.map((delta) => delta.value !== 0 ? (_jsx(ResourceDeltaItem, { value: delta.value, label: delta.label, isNegative: delta.value < 0 }, delta.label)) : null) })] }))] }));
+    return (_jsxs("div", { className: "summary-section", children: [_jsx("div", { className: "summary-section__header", children: _jsxs("h2", { className: "summary-section__title", children: ["Week ", stats.totalOutcomes > 0 ? 'Summary' : 'No Outcomes'] }) }), _jsxs("div", { className: "summary-section__stats", children: [_jsxs("div", { className: "summary-stat", children: [_jsx("span", { className: "summary-stat__label", children: "Total Outcomes:" }), _jsx("span", { className: "summary-stat__value", children: stats.totalOutcomes })] }), _jsxs("div", { className: "summary-stat summary-stat--success", children: [_jsx("span", { className: "summary-stat__label", children: "Successes:" }), _jsx("span", { className: "summary-stat__value", children: stats.successCount })] }), _jsxs("div", { className: "summary-stat summary-stat--failure", children: [_jsx("span", { className: "summary-stat__label", children: "Failures:" }), _jsx("span", { className: "summary-stat__value", children: stats.failureCount })] })] }), hasNetImpact && (_jsxs("div", { className: "summary-section__net-impact", children: [_jsx("h3", { className: "summary-section__net-impact-title", children: "Net Resource Impact:" }), _jsx("div", { className: "flex flex-wrap gap-4", children: netDeltas.map((delta) => delta.value !== 0 ? (_jsx(ResourceDeltaItem, { value: delta.value, label: delta.label }, delta.label)) : null) })] }))] }));
 };
 /**
  * OutcomeDisplay Component
@@ -211,7 +178,7 @@ const SummarySection = ({ stats }) => {
  *   onDismiss={(taskId) => console.log(`Dismissed ${taskId}`)}
  * />
  */
-const OutcomeDisplay = ({ outcomes, week, onDismiss, }) => {
+const OutcomeDisplay = ({ outcomes, onDismiss, }) => {
     const [dismissedOutcomes, setDismissedOutcomes] = useState(new Set());
     /**
      * Handles outcome dismissal

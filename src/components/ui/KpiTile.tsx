@@ -40,6 +40,7 @@ export default function KpiTile({ label, value, trend, color = 'default', onClic
       const timer = setTimeout(() => setFlash(false), 600);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [value, prevValue]);
 
   const renderedValue = typeof value === 'number' ? formatNumber(value) : value;
