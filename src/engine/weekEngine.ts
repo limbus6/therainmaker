@@ -54,8 +54,22 @@ export interface BuyerChange {
 //   medium weekly = 60% → per-day = 1 - 0.4^(1/7) ≈ 12.9%
 //   high weekly   = 40% → per-day = 1 - 0.6^(1/7) ≈ 8.0%
 // In N days: P(complete) = 1 - (1-weeklyP)^(N/7)
-function resolveTaskProgress(task: GameTask, _week: number, tempAllocations: TempCapacityAllocation[] = [], daysToAdvance: number = 7): 'completed' | 'progressed' {
+function resolveTaskProgress(task: GameTask, _week: number, tempAllocations: TempCapacityAllocation[] = [], daysToAdvance: number = 7, budget: number = 0): 'completed' | 'progressed' {
   const alloc = tempAllocations.find((a) => a.taskId === task.id);
+
+  // Validate budget sufficiency for contractor allocation
+  if (alloc && budget < alloc.weeklyRate) {
+    // Cannot afford contractor, treat as no allocation
+    const ratio = (daysToAdvance / 7);
+    if (task.complexity === 'low') return 'completed';
+    if (task.complexity === 'medium') {
+      const prob = 1 - Math.pow(0.4, ratio);
+      return Math.random() < Math.min(0.97, prob) ? 'completed' : 'progressed';
+    }
+    const prob = 1 - Math.pow(0.6, ratio);
+    return Math.random() < Math.min(0.92, prob) ? 'completed' : 'progressed';
+  }
+
   const boost = alloc ? alloc.speedMultiplier : 1.0;
   const ratio = (daysToAdvance / 7) * boost;
 
@@ -99,45 +113,52 @@ function checkHiddenWorkload(completedTasks: GameTask[]): WeekResult['hiddenWork
 // Critical outcome roll — tasks can occasionally deliver exceptional or poor results
 type CriticalOutcome = { taskId: string; taskName: string; type: 'success' | 'failure'; description: string; bonus: Partial<PlayerResources> };
 
-function rollCriticalOutcomes(completedTasks: GameTask[]): CriticalOutcome[] {
+function rollCriticalOutcomes(completedTasks: GameTask[], morale: number = 50): CriticalOutcome[] {
   const outcomes: CriticalOutcome[] = [];
 
   const successPool: Record<string, { description: string; bonus: Partial<PlayerResources> }[]> = {
     deliverable: [
-      { description: 'Exceptional quality — client shared the output with their board as a benchmark document.', bonus: { clientTrust: 8, dealMomentum: 5 } },
-      { description: 'Deliverable praised by buyer advisors — positions the process as highly professional.', bonus: { reputation: 6, dealMomentum: 4 } },
+      { description: 'Exceptional quality — client shared the output with their board as a benchmark document.', bonus: { clientTrust: 8, dealMomentum: 5, morale: 3 } },
+      { description: 'Deliverable praised by buyer advisors — positions the process as highly professional.', bonus: { reputation: 6, dealMomentum: 4, morale: 2 } },
     ],
     relationship: [
-      { description: 'Chemistry exceeded all expectations — the counterpart requested an exclusive relationship going forward.', bonus: { clientTrust: 10, reputation: 5 } },
-      { description: 'Relationship meeting produced an unexpected referral to a second strategic buyer.', bonus: { dealMomentum: 8, reputation: 4 } },
+      { description: 'Chemistry exceeded all expectations — the counterpart requested an exclusive relationship going forward.', bonus: { clientTrust: 10, reputation: 5, morale: 4 } },
+      { description: 'Relationship meeting produced an unexpected referral to a second strategic buyer.', bonus: { dealMomentum: 8, reputation: 4, morale: 3 } },
     ],
     market: [
-      { description: 'Intelligence uncovered a premium buyer previously outside the target list — immediately added to outreach.', bonus: { dealMomentum: 10 } },
-      { description: 'Market work surfaced a sector thesis that materially strengthens valuation positioning.', bonus: { dealMomentum: 6, clientTrust: 4 } },
+      { description: 'Intelligence uncovered a premium buyer previously outside the target list — immediately added to outreach.', bonus: { dealMomentum: 10, morale: 2 } },
+      { description: 'Market work surfaced a sector thesis that materially strengthens valuation positioning.', bonus: { dealMomentum: 6, clientTrust: 4, morale: 2 } },
     ],
     internal: [
       { description: 'Process streamlined ahead of schedule — team capacity freed for higher-priority work.', bonus: { morale: 8, dealMomentum: 3 } },
-      { description: 'Internal review produced an insight that pre-empts a likely buyer objection.', bonus: { reputation: 5, riskLevel: -6 } },
+      { description: 'Internal review produced an insight that pre-empts a likely buyer objection.', bonus: { reputation: 5, riskLevel: -6, morale: 3 } },
     ],
     strategic: [
-      { description: 'Strategic initiative landed with unusual force — deal momentum accelerated significantly.', bonus: { dealMomentum: 12, clientTrust: 6 } },
+      { description: 'Strategic initiative landed with unusual force — deal momentum accelerated significantly.', bonus: { dealMomentum: 12, clientTrust: 6, morale: 5 } },
       { description: 'Client reacted with visible relief and confidence — trust elevated beyond expectations.', bonus: { clientTrust: 12, morale: 5 } },
     ],
     external_advisor: [
-      { description: 'External advisor delivered a report that resolves a key risk the team had been tracking.', bonus: { riskLevel: -10, dealMomentum: 4 } },
+      { description: 'External advisor delivered a report that resolves a key risk the team had been tracking.', bonus: { riskLevel: -10, dealMomentum: 4, morale: 2 } },
     ],
   };
 
   const failurePool: { description: string; bonus: Partial<PlayerResources> }[] = [
-    { description: 'Work product contained an error discovered post-delivery — had to issue a correction with apologies.', bonus: { reputation: -5, clientTrust: -4 } },
-    { description: 'Stakeholder interaction went off-script — relationship requires deliberate rebuilding over the coming days.', bonus: { clientTrust: -6, dealMomentum: -4 } },
+    { description: 'Work product contained an error discovered post-delivery — had to issue a correction with apologies.', bonus: { reputation: -5, clientTrust: -4, morale: -3, riskLevel: 3 } },
+    { description: 'Stakeholder interaction went off-script — relationship requires deliberate rebuilding over the coming days.', bonus: { clientTrust: -6, dealMomentum: -4, morale: -4, riskLevel: 4 } },
     { description: 'Deliverable released prematurely — had to be recalled and revised under time pressure.', bonus: { morale: -5, reputation: -4, riskLevel: 5 } },
-    { description: 'Outcome fell short of the brief — client flagged disappointment and requested a revised approach.', bonus: { clientTrust: -7, dealMomentum: -3 } },
+    { description: 'Outcome fell short of the brief — client flagged disappointment and requested a revised approach.', bonus: { clientTrust: -7, dealMomentum: -3, morale: -3, riskLevel: 3 } },
   ];
 
   for (const task of completedTasks) {
-    const successChance = task.complexity === 'high' ? 0.12 : task.complexity === 'medium' ? 0.08 : 0.04;
-    const failChance = task.complexity === 'high' ? 0.07 : task.complexity === 'medium' ? 0.04 : 0.01;
+    // Probability based on complexity and morale
+    const baseSuccessChance = task.complexity === 'high' ? 0.12 : task.complexity === 'medium' ? 0.08 : 0.04;
+    const baseFailChance = task.complexity === 'high' ? 0.07 : task.complexity === 'medium' ? 0.04 : 0.01;
+
+    // Morale factor: higher morale increases success chance, decreases failure chance
+    const moraleFactor = (morale / 100) * 0.2;
+    const successChance = Math.min(0.3, baseSuccessChance + moraleFactor);
+    const failChance = Math.max(0.01, baseFailChance - moraleFactor * 0.5);
+
     const roll = Math.random();
 
     if (roll < successChance) {
@@ -386,17 +407,34 @@ function progressBuyers(
       }
     }
 
-    // Phase 7: Final Offers — bidding buyers become preferred/excluded
-    if (phase === 7) {
-      if (buyer.status === 'bidding') {
-        // Preferred bidder selection
-        const preferredSelected = completedTasks.some((t) => t.name.toLowerCase().includes('recommend preferred'));
-        if (preferredSelected && buyer.executionCredibility >= 80) {
-          newBuyer.status = 'preferred';
-          changes.push({ buyerId: buyer.id, field: 'status', from: 'bidding', to: 'preferred' });
-        }
-      }
-    }
+     // Phase 5-6: Due Diligence dropout risk
+     if ((phase === 5 || phase === 6) && buyer.ddDropoutRisk && buyer.ddDropoutRisk > 0) {
+       if (Math.random() < buyer.ddDropoutRisk) {
+         const oldStatus = newBuyer.status;
+         newBuyer.status = 'dropped';
+         const dropoutReasons = ['Financing concerns', 'Competitive bid', 'Strategic shift', 'Internal review'];
+         const reason = dropoutReasons[Math.floor(Math.random() * dropoutReasons.length)];
+         changes.push({
+           buyerId: buyer.id,
+           field: 'status',
+           from: oldStatus,
+           to: 'dropped',
+           metadata: { dropoutReason: reason }
+         });
+       }
+     }
+
+     // Phase 7: Final Offers — bidding buyers become preferred/excluded
+     if (phase === 7) {
+       if (buyer.status === 'bidding') {
+         // Preferred bidder selection
+         const preferredSelected = completedTasks.some((t) => t.name.toLowerCase().includes('recommend preferred'));
+         if (preferredSelected && buyer.executionCredibility >= 80) {
+           newBuyer.status = 'preferred';
+           changes.push({ buyerId: buyer.id, field: 'status', from: 'bidding', to: 'preferred' });
+         }
+       }
+     }
 
     // Interest warming — buyers warm up based on momentum and phase engagement
     if (newBuyer.status !== 'dropped' && newBuyer.status !== 'excluded') {
@@ -2412,7 +2450,7 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
   const tasksProgressed: GameTask[] = [];
 
   for (const task of inProgressTasks) {
-    const outcome = resolveTaskProgress(task, newWeek, state.tempCapacityAllocations, daysToAdvance);
+    const outcome = resolveTaskProgress(task, newWeek, state.tempCapacityAllocations, daysToAdvance, state.resources.budget);
     if (outcome === 'completed') {
       tasksCompleted.push(task);
     } else {
@@ -2423,6 +2461,15 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
   // 2. Calculate resource consumption
   const resourceConsumption = calculateResourceConsumption(inProgressTasks, state.resources, state.tempCapacityAllocations, daysToAdvance);
 
+  // 2b. Deduct contractor costs from budget
+  for (const alloc of state.tempCapacityAllocations) {
+    if (resourceConsumption.budget === undefined) {
+      resourceConsumption.budget = state.resources.budget - alloc.weeklyRate;
+    } else {
+      resourceConsumption.budget -= alloc.weeklyRate;
+    }
+  }
+
   // 3. Calculate state changes from completions
   const stateChanges = calculateStateChanges(tasksCompleted, state.resources);
 
@@ -2430,7 +2477,7 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
   const hiddenWorkload = checkHiddenWorkload(tasksCompleted);
 
   // 4b. Roll critical outcomes for completed tasks
-  const criticalOutcomes = rollCriticalOutcomes(tasksCompleted);
+  const criticalOutcomes = rollCriticalOutcomes(tasksCompleted, state.resources.morale);
 
   // 4c. Generate qualification notes for Phase 0 tasks
   const newQualificationNotes: Omit<QualificationNote, 'id' | 'week'>[] = [];
@@ -2500,14 +2547,29 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
   const resolvedRequests: { id: string; approved: boolean; amount: number; justification: string }[] = [];
   for (const req of state.budgetRequests) {
     if (req.status === 'pending') {
-      // Logic: Higher client trust and reasonable amount increases approval chance
-      // Max approval chance 90% at 100 trust; Min 10%
-      const approvalChance = (state.resources.clientTrust / 100) * 0.8 + 0.1;
+      // Logic: Higher client trust, lower risk, and phase context increase approval chance
+      // Base: 50% + (clientTrust / 100) * 30% - (riskLevel / 100) * 20%
+      const trustFactor = (state.resources.clientTrust / 100) * 0.3;
+      const riskFactor = (state.resources.riskLevel / 100) * 0.2;
+      const phaseFactor = state.phase >= 3 ? 0.1 : 0; // Easier to approve in later phases
+      const approvalChance = Math.max(0.1, Math.min(0.9, 0.5 + trustFactor - riskFactor + phaseFactor));
       const approved = Math.random() < approvalChance;
       const approvedAmount = approved ? req.amount : 0;
-      
+
+      // Generate reasoning
+      let reasoning = '';
+      if (approved) {
+        if (trustFactor > 0.2) reasoning = 'Strong client trust supports additional investment.';
+        else if (phaseFactor > 0) reasoning = 'Deal progression justifies additional resources.';
+        else reasoning = 'Budget allocation approved by committee.';
+      } else {
+        if (riskFactor > 0.1) reasoning = 'Risk level too high for additional spend.';
+        else if (state.resources.budget < req.amount) reasoning = 'Insufficient budget available.';
+        else reasoning = 'Committee prefers to focus on core workstreams.';
+      }
+
       resolvedRequests.push({ id: req.id, approved, amount: approvedAmount, justification: req.justification });
-      
+
       // Generate email from "The Board"
       eventResult.emails.push({
         id: `email-budget-${req.id}`,
@@ -2516,9 +2578,9 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
         sender: 'Investment Committee',
         senderRole: 'Clearwater Partners',
         subject: approved ? 'Budget Request Approved' : 'Budget Request Declined',
-        body: approved 
-          ? `The Board has reviewed your request for €${req.amount}k regarding: "${req.justification}". \n\nGiven the current deal trajectory, we have approved this additional allocation. Spend it wisely.`
-          : `We have reviewed your request for extra budget. At this stage, the Committee is not convinced that additional spend is justified. Focus on the core workstreams.`,
+        body: approved
+          ? `The Board has reviewed your request for €${req.amount}k regarding: "${req.justification}". \n\nReasoning: ${reasoning}\n\nGiven the current deal trajectory, we have approved this additional allocation. Spend it wisely.`
+          : `We have reviewed your request for €${req.amount}k. \n\nReasoning: ${reasoning}\n\nAt this stage, the Committee is not convinced that additional spend is justified. Focus on the core workstreams.`,
         preview: approved ? 'Budget request approved...' : 'Budget request declined...',
         category: 'partner',
         state: 'unread',
@@ -2773,6 +2835,7 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
     narrativeSummary,
     _updatedBuyers: updatedBuyersAfterDeadline,
     bindingOfferDelta,
+    newQualificationNotes,
   };
 }
 
