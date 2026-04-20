@@ -414,13 +414,12 @@ function progressBuyers(
          newBuyer.status = 'dropped';
          const dropoutReasons = ['Financing concerns', 'Competitive bid', 'Strategic shift', 'Internal review'];
          const reason = dropoutReasons[Math.floor(Math.random() * dropoutReasons.length)];
-         changes.push({
-           buyerId: buyer.id,
-           field: 'status',
-           from: oldStatus,
-           to: 'dropped',
-           metadata: { dropoutReason: reason }
-         });
+          changes.push({
+            buyerId: buyer.id,
+            field: 'status',
+            from: oldStatus,
+            to: 'dropped'
+          });
        }
      }
 

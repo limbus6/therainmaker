@@ -93,18 +93,6 @@ const calculateSummaryStats = (
 };
 
 /**
- * Formats a resource delta value with sign and label
- * @param value - The numeric value to format
- * @param label - The resource label (e.g., "morale", "trust")
- * @returns Formatted string with sign and label
- */
-const formatResourceDelta = (value: number, label: string): string => {
-  if (value === 0) return '';
-  const sign = value > 0 ? '+' : '';
-  return `${sign}${value} ${label}`;
-};
-
-/**
  * Gets the CSS class for outcome type styling
  * @param type - The outcome type ('success' or 'failure')
  * @returns CSS class string for styling
@@ -113,28 +101,6 @@ const getOutcomeTypeClass = (type: 'success' | 'failure'): string => {
   return type === 'success'
     ? 'outcome-card--success'
     : 'outcome-card--failure';
-};
-
-/**
- * Gets the border color class for outcome type
- * @param type - The outcome type ('success' or 'failure')
- * @returns CSS class string for border color
- */
-const getOutcomeTypeBorderClass = (type: 'success' | 'failure'): string => {
-  return type === 'success'
-    ? 'border-green-500'
-    : 'border-red-500';
-};
-
-/**
- * Gets the background color class for outcome type
- * @param type - The outcome type ('success' or 'failure')
- * @returns CSS class string for background color
- */
-const getOutcomeTypeBgClass = (type: 'success' | 'failure'): string => {
-  return type === 'success'
-    ? 'bg-green-50'
-    : 'bg-red-50';
 };
 
 /**
@@ -392,7 +358,6 @@ const SummarySection: React.FC<{ stats: SummaryStats }> = ({ stats }) => {
  */
 const OutcomeDisplay: React.FC<OutcomeDisplayProps> = ({
   outcomes,
-  week,
   onDismiss,
 }) => {
   const [dismissedOutcomes, setDismissedOutcomes] = useState<Set<string>>(
