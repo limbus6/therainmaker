@@ -410,10 +410,8 @@ function progressBuyers(
      // Phase 5-6: Due Diligence dropout risk
      if ((phase === 5 || phase === 6) && buyer.ddDropoutRisk && buyer.ddDropoutRisk > 0) {
        if (Math.random() < buyer.ddDropoutRisk) {
-         const oldStatus = newBuyer.status;
-         newBuyer.status = 'dropped';
-         const dropoutReasons = ['Financing concerns', 'Competitive bid', 'Strategic shift', 'Internal review'];
-         const reason = dropoutReasons[Math.floor(Math.random() * dropoutReasons.length)];
+          const oldStatus = newBuyer.status;
+          newBuyer.status = 'dropped';
           changes.push({
             buyerId: buyer.id,
             field: 'status',

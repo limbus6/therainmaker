@@ -138,14 +138,12 @@ const getOutcomeTypeBadge = (type: 'success' | 'failure'): string => {
  * Renders a single resource delta item
  * @param value - The numeric value
  * @param label - The resource label
- * @param isNegative - Whether the value is negative (for styling)
  * @returns JSX element or null if value is 0
  */
 const ResourceDeltaItem: React.FC<{
   value: number;
   label: string;
-  isNegative: boolean;
-}> = ({ value, label, isNegative }) => {
+}> = ({ value, label }) => {
   if (value === 0) return null;
 
   const sign = value > 0 ? '+' : '';
@@ -188,7 +186,6 @@ const OutcomeResourceDeltas: React.FC<{
             key={delta.label}
             value={delta.value}
             label={delta.label}
-            isNegative={delta.value < 0}
           />
         ) : null
       )}
@@ -307,7 +304,6 @@ const SummarySection: React.FC<{ stats: SummaryStats }> = ({ stats }) => {
                   key={delta.label}
                   value={delta.value}
                   label={delta.label}
-                  isNegative={delta.value < 0}
                 />
               ) : null
             )}
