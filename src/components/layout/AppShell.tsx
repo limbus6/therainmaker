@@ -7,6 +7,7 @@ import PhaseTransitionOverlay from '../PhaseTransitionOverlay';
 import DealCollapseOverlay from '../DealCollapseOverlay';
 import OnboardingOverlay from '../OnboardingOverlay';
 import ToastContainer from '../ToastContainer';
+import GameplayReviewBar from '../GameplayReviewBar';
 import { useGameStore } from '../../store/gameStore';
 import type { PhaseId } from '../../types/game';
 
@@ -58,6 +59,7 @@ export default function AppShell() {
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-bg-primary">
       <Topbar onMenuToggle={() => setSidebarOpen((o) => !o)} />
+      <GameplayReviewBar />
       <div className="flex flex-1 overflow-hidden">
         {/* Mobile overlay */}
         {sidebarOpen && (

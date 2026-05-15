@@ -105,6 +105,37 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             </div>
           </div>
         )}
+
+        {/* Phase Jumper (Requested Feature) */}
+        <div className="px-2 pb-1">
+          <label className="text-[10px] font-semibold text-text-muted uppercase tracking-wider mb-1.5 block">
+            Jump to Phase
+          </label>
+          <select
+            className="w-full bg-surface-default border border-border-subtle rounded-md text-[11px] py-1.5 px-2 text-text-secondary outline-none focus:border-accent-primary transition-colors cursor-pointer"
+            onChange={(e) => {
+              if (e.target.value) {
+                useGameStore.getState().debugJumpToPhase(Number(e.target.value) as any);
+                if (onNavigate) onNavigate();
+                e.target.value = "";
+              }
+            }}
+          >
+            <option value="">-- Select Phase --</option>
+            <option value="0">Phase 0: Origination</option>
+            <option value="1">Phase 1: Pitch & Mandate</option>
+            <option value="2">Phase 2: Preparation</option>
+            <option value="3">Phase 3: Market Outreach</option>
+            <option value="4">Phase 4: Shortlist</option>
+            <option value="5">Phase 5: Non-Binding Offers</option>
+            <option value="6">Phase 6: Due Diligence</option>
+            <option value="7">Phase 7: Final Offers</option>
+            <option value="8">Phase 8: SPA Negotiation</option>
+            <option value="9">Phase 9: Signing</option>
+            <option value="10">Phase 10: Closing</option>
+          </select>
+        </div>
+
         <div className="text-[10px] font-mono uppercase tracking-widest text-text-muted/60 px-2">
           Clearwater Advisory
         </div>

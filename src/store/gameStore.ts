@@ -28,6 +28,7 @@ import type {
   FinalOffer,
   DataroomCategory,
   DataroomAccessLevel,
+  BuyerStatus,
   SPABuyerState,
   SPABuyerProfile,
   SPANegotiation,
@@ -42,6 +43,7 @@ import { resolveWeek, checkPhaseGate, unlockTasks, checkDealCollapse, calcDaysTo
 import type { WeekResult, PhaseGateResult } from '../engine/weekEngine';
 import { PHASE_BASE_BUDGETS, STAFF_PROFILES, CONTRACTOR_PROFILES, MITIGATION_ACTIONS } from '../config/phaseBudgets';
 import { getRiskMitigationPlans } from '../config/riskMitigation';
+import { REVIEW_CHECKPOINTS_BY_ID } from '../config/reviewCheckpoints';
 import { round2 } from '../utils/numberFormat';
 
 import { loadPhaseContent } from '../content/loadPhaseContent';
@@ -149,6 +151,116 @@ const initialHeadlines: Headline[] = [
   { id: 'hl-2', week: 1, text: 'Industrial IoT consolidation accelerates — three deals closed in Q1.', category: 'sector' },
   { id: 'hl-3', week: 1, text: 'Mid-market advisory mandates surge as founders eye exit window.', category: 'sector' },
 ];
+
+function createInitialDataroomCategories(): DataroomCategory[] {
+  return [
+    { id: 'dr-financials', name: 'Financial Statements', description: 'P&L, balance sheet, cash flow, management accounts, ARR breakdown.', sensitivity: 'low', accessLevel: 'partial' },
+    { id: 'dr-customers', name: 'Customer Contracts', description: 'Key account agreements, MSAs, concentration analysis, churn data.', sensitivity: 'high', accessLevel: 'restricted' },
+    { id: 'dr-technology', name: 'Technology & IP', description: 'Platform architecture, source code summary, patent filings, technical debt audit.', sensitivity: 'critical', accessLevel: 'restricted' },
+    { id: 'dr-employees', name: 'Employee & HR Data', description: 'Org chart, key employee contracts, comp structure, retention agreements.', sensitivity: 'high', accessLevel: 'restricted' },
+    { id: 'dr-legal', name: 'Legal & Litigation', description: 'Corporate documents, material contracts, pending litigation, IP disputes.', sensitivity: 'medium', accessLevel: 'partial' },
+    { id: 'dr-regulatory', name: 'Regulatory & Compliance', description: 'Industry certifications, regulatory filings, GDPR/data handling policies.', sensitivity: 'medium', accessLevel: 'partial' },
+    { id: 'dr-commercial', name: 'Commercial Pipeline', description: 'Sales pipeline, win/loss data, go-to-market strategy, pricing model.', sensitivity: 'high', accessLevel: 'restricted' },
+    { id: 'dr-operations', name: 'Operational KPIs', description: 'Product uptime, support metrics, deployment architecture, SLA performance.', sensitivity: 'low', accessLevel: 'full' },
+  ];
+}
+
+function applyDebugBuyerState(buyers: Buyer[], targetPhase: PhaseId): Buyer[] {
+  const phaseStatusMap: Partial<Record<PhaseId, Partial<Record<string, BuyerStatus>>>> = {
+    2: {
+      'buyer-01': 'identified',
+      'buyer-02': 'identified',
+      'buyer-03': 'identified',
+      'buyer-04': 'identified',
+      'buyer-05': 'identified',
+    },
+    3: {
+      'buyer-01': 'nda_signed',
+      'buyer-02': 'identified',
+      'buyer-03': 'reviewing',
+      'buyer-04': 'nda_signed',
+      'buyer-05': 'active',
+    },
+    4: {
+      'buyer-01': 'shortlisted',
+      'buyer-02': 'excluded',
+      'buyer-03': 'shortlisted',
+      'buyer-04': 'active',
+      'buyer-05': 'active',
+    },
+    5: {
+      'buyer-01': 'bidding',
+      'buyer-02': 'dropped',
+      'buyer-03': 'bidding',
+      'buyer-04': 'shortlisted',
+      'buyer-05': 'excluded',
+    },
+    6: {
+      'buyer-01': 'active',
+      'buyer-02': 'dropped',
+      'buyer-03': 'active',
+      'buyer-04': 'active',
+      'buyer-05': 'dropped',
+    },
+    7: {
+      'buyer-01': 'bidding',
+      'buyer-02': 'dropped',
+      'buyer-03': 'bidding',
+      'buyer-04': 'bidding',
+      'buyer-05': 'dropped',
+    },
+    8: {
+      'buyer-01': 'shortlisted',
+      'buyer-02': 'dropped',
+      'buyer-03': 'preferred',
+      'buyer-04': 'dropped',
+      'buyer-05': 'dropped',
+    },
+    9: {
+      'buyer-01': 'excluded',
+      'buyer-02': 'dropped',
+      'buyer-03': 'preferred',
+      'buyer-04': 'dropped',
+      'buyer-05': 'dropped',
+    },
+    10: {
+      'buyer-01': 'excluded',
+      'buyer-02': 'dropped',
+      'buyer-03': 'preferred',
+      'buyer-04': 'dropped',
+      'buyer-05': 'dropped',
+    },
+  };
+
+  const overrides = phaseStatusMap[targetPhase] ?? {};
+  return buyers.map((buyer) => {
+    const status = overrides[buyer.id] ?? buyer.status;
+    return {
+      ...buyer,
+      status,
+      bindingOfferSubmitted: targetPhase >= 7 ? !['dropped', 'excluded'].includes(status) : buyer.bindingOfferSubmitted,
+    };
+  });
+}
+
+const DEBUG_FEE_TERMS: FeeTerms = {
+  retainerType: 'upfront',
+  retainerAmount: 50,
+  successFeePercent: 2.0,
+  ratchetEnabled: true,
+  ratchetThresholdEV: 100,
+  ratchetBonusPercent: 5.0,
+  totalFeeProjection: 2050,
+  agreedWeek: 0,
+};
+
+const DEBUG_SPA_TERMS: SPATerms = {
+  warrantyScope: 'standard',
+  warrantyCap: 22,
+  escrowPercent: 8.5,
+  specificIndemnity: true,
+  agreedWeek: 0,
+};
 
 // ============================================
 // Fee Negotiation Helpers
@@ -460,6 +572,8 @@ export interface GameStore {
   // GameActions
   advanceWeek: () => void;
   advancePhase: () => Promise<void>;
+  debugJumpToPhase: (targetPhase: PhaseId) => Promise<void>;
+  debugJumpToCheckpoint: (checkpointId: string) => Promise<void>;
   updateResources: (partial: Partial<PlayerResources>) => void;
   markEmailRead: (emailId: string) => void;
   flagEmail: (emailId: string) => void;
@@ -952,16 +1066,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
   preferredBidderId: null,
   spaNegotiation: null,
   agreedSPATerms: null,
-  dataroomCategories: [
-    { id: 'dr-financials', name: 'Financial Statements', description: 'P&L, balance sheet, cash flow, management accounts, ARR breakdown.', sensitivity: 'low', accessLevel: 'partial' },
-    { id: 'dr-customers', name: 'Customer Contracts', description: 'Key account agreements, MSAs, concentration analysis, churn data.', sensitivity: 'high', accessLevel: 'restricted' },
-    { id: 'dr-technology', name: 'Technology & IP', description: 'Platform architecture, source code summary, patent filings, technical debt audit.', sensitivity: 'critical', accessLevel: 'restricted' },
-    { id: 'dr-employees', name: 'Employee & HR Data', description: 'Org chart, key employee contracts, comp structure, retention agreements.', sensitivity: 'high', accessLevel: 'restricted' },
-    { id: 'dr-legal', name: 'Legal & Litigation', description: 'Corporate documents, material contracts, pending litigation, IP disputes.', sensitivity: 'medium', accessLevel: 'partial' },
-    { id: 'dr-regulatory', name: 'Regulatory & Compliance', description: 'Industry certifications, regulatory filings, GDPR/data handling policies.', sensitivity: 'medium', accessLevel: 'partial' },
-    { id: 'dr-commercial', name: 'Commercial Pipeline', description: 'Sales pipeline, win/loss data, go-to-market strategy, pricing model.', sensitivity: 'high', accessLevel: 'restricted' },
-    { id: 'dr-operations', name: 'Operational KPIs', description: 'Product uptime, support metrics, deployment architecture, SLA performance.', sensitivity: 'low', accessLevel: 'full' },
-  ] as DataroomCategory[],
+  dataroomCategories: createInitialDataroomCategories(),
   phaseDeadline: null,
   pitchDocumentReady: false,
   bindingOffersReceived: 0,
@@ -1301,6 +1406,281 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       unaddressedQACount: 0,
       finalOffers: newFinalOffers,
       preferredBidderId: null,
+    });
+  },
+
+  debugJumpToPhase: async (targetPhase: PhaseId) => {
+    const state = get();
+    const baseBudget = PHASE_BASE_BUDGETS[targetPhase] ?? 100;
+
+    const phase0Tasks = state.tasks.filter((t) => t.phase === 0).map((t) => ({ ...t }));
+    let accumulatedTasks: GameTask[] = [...phase0Tasks];
+    let accumulatedDeliverables: Deliverable[] = [];
+    let accumulatedRisks: Risk[] = [];
+    let accumulatedHeadlines: Headline[] = [];
+    let currentBuyers: Buyer[] = [];
+
+    for (let p = 1; p <= targetPhase; p++) {
+      const content = await loadPhaseContent(p as Exclude<PhaseId, 0>);
+      accumulatedTasks = [...accumulatedTasks, ...content.tasks];
+      accumulatedDeliverables = [...accumulatedDeliverables, ...content.deliverables];
+      accumulatedRisks = [...accumulatedRisks, ...content.risks];
+      accumulatedHeadlines = [...accumulatedHeadlines, ...content.headlines];
+      if (content.buyers) {
+        currentBuyers = [...currentBuyers, ...content.buyers];
+      }
+    }
+
+    const newTasks = accumulatedTasks.map((task) =>
+      task.phase < targetPhase ? { ...task, status: 'completed' as const } : task,
+    );
+    const unlockedTasks = unlockTasks(newTasks);
+    const newDeliverables = syncDeliverables(accumulatedDeliverables, unlockedTasks);
+    const buyers = applyDebugBuyerState(currentBuyers, targetPhase);
+    const day = targetPhase === 0 ? 1 : targetPhase * 20;
+    const week = Math.max(1, Math.ceil(day / 7));
+    const resources = normalizeResources({
+      ...state.resources,
+      budget: baseBudget,
+      budgetMax: baseBudget,
+      dealMomentum: targetPhase === 0 ? 15 : 50,
+      clientTrust: targetPhase === 0 ? 40 : 60,
+      riskLevel: targetPhase >= 6 ? 28 : 25,
+      morale: 78,
+    });
+    const finalOffers = targetPhase >= 7 ? generateFinalOffers(buyers, resources.dealMomentum, week) : [];
+
+    set({
+      phase: targetPhase,
+      week,
+      day,
+      totalDays: day,
+      resources,
+      client: syncClient(state.client, resources),
+      tasks: unlockedTasks,
+      deliverables: newDeliverables,
+      risks: accumulatedRisks,
+      headlines: accumulatedHeadlines,
+      buyers,
+      phaseBudget: { phaseBase: baseBudget, carryover: 0 },
+      emails: [], // clear inbox for a clean jump
+      events: [],
+      qualificationNotes: targetPhase > 0 ? [{
+        id: 'qn-debug-1',
+        week,
+        source: 'internal',
+        content: 'Debug jump generated a baseline qualification memo.',
+        sentiment: 'positive',
+      }] : [],
+      budgetRequests: [],
+      boardSubmission: targetPhase > 0 ? {
+        recommendation: 'proceed',
+        rationale: 'Debug jump',
+        status: 'approved',
+        submittedWeek: 0,
+        leadId: state.leads[0]?.id ?? 'lead1',
+      } : null,
+      feeNegotiation: null,
+      agreedFeeTerms: targetPhase > 1 ? {
+        retainerType: 'upfront',
+        retainerAmount: 50,
+        successFeePercent: 2.0,
+        ratchetEnabled: true,
+        ratchetThresholdEV: 100,
+        ratchetBonusPercent: 5.0,
+        totalFeeProjection: 2050,
+        agreedWeek: 0,
+      } : null,
+      competitorThreats: [],
+      phaseDeadline: null,
+      pitchDocumentReady: targetPhase >= 1,
+      bindingOffersReceived: targetPhase >= 7 ? 1 : 0,
+      unaddressedQACount: 0,
+      finalOffers,
+      preferredBidderId: targetPhase >= 8 ? 'buyer-03' : null,
+      spaNegotiation: null,
+      agreedSPATerms: null,
+      dataroomCategories: createInitialDataroomCategories(),
+      collapseReason: null,
+      collapseHeadline: null,
+      collapseDescription: null,
+      gameComplete: false,
+      phaseGate: null,
+    });
+  },
+
+  debugJumpToCheckpoint: async (checkpointId) => {
+    const checkpoint = REVIEW_CHECKPOINTS_BY_ID[checkpointId];
+    if (!checkpoint) return;
+
+    await get().debugJumpToPhase(checkpoint.phase);
+
+    const state = get();
+    const completedTaskIds = new Set(checkpoint.completedTaskIds ?? []);
+    let tasks = unlockTasks(state.tasks.map((task) => (
+      task.phase === checkpoint.phase && completedTaskIds.has(task.id)
+        ? { ...task, status: 'completed' as const }
+        : task
+    )));
+    const deliverables = syncDeliverables(state.deliverables, tasks);
+
+    let buyers = state.buyers.map((buyer) => {
+      const status = checkpoint.buyerStatuses?.[buyer.id];
+      if (!status) return buyer;
+      return {
+        ...buyer,
+        status,
+        bindingOfferSubmitted: checkpoint.phase >= 7 ? !['dropped', 'excluded'].includes(status) : buyer.bindingOfferSubmitted,
+      };
+    });
+
+    if (checkpoint.preferredBidderId) {
+      buyers = buyers.map((buyer) => (
+        buyer.id === checkpoint.preferredBidderId
+          ? { ...buyer, status: 'preferred' as const }
+          : buyer.status === 'preferred'
+            ? { ...buyer, status: 'shortlisted' as const }
+            : buyer
+      ));
+    }
+
+    const resources = normalizeResources({
+      ...state.resources,
+      clientTrust: checkpoint.clientTrust ?? state.resources.clientTrust,
+      dealMomentum: checkpoint.dealMomentum ?? state.resources.dealMomentum,
+      riskLevel: checkpoint.riskLevel ?? state.resources.riskLevel,
+    });
+
+    const leadId = state.leads[0]?.id;
+    const leads = state.leads.map((lead, index) => {
+      if (index > 0) return lead;
+      return {
+        ...lead,
+        meetingDone: checkpoint.leadMeetingDone ?? lead.meetingDone,
+        investigation: checkpoint.leadInvestigated
+          ? { sector: 'completed' as const, company: 'completed' as const, shareholder: 'completed' as const, market: 'completed' as const }
+          : lead.investigation,
+      };
+    });
+
+    const qualificationNotes = checkpoint.qualificationNotes
+      ? Array.from({ length: checkpoint.qualificationNotes }, (_, index) => ({
+          id: `qn-debug-${checkpoint.id}-${index}`,
+          week: Math.max(1, Math.ceil(checkpoint.day / 7)),
+          source: index === 0 ? 'team_research' as const : 'meeting' as const,
+          content: index === 0
+            ? 'Debug checkpoint: qualification research confirms a credible sell-side path.'
+            : 'Debug checkpoint: founder meeting and qualification follow-up completed.',
+          sentiment: 'positive' as const,
+        }))
+      : state.qualificationNotes;
+
+    const checkpointWeek = Math.max(1, Math.ceil(checkpoint.day / 7));
+    const agreedFeeTerms = checkpoint.feeAgreed ? { ...DEBUG_FEE_TERMS, agreedWeek: checkpointWeek } : state.agreedFeeTerms;
+    const finalOffers = checkpoint.phase >= 7 ? generateFinalOffers(buyers, resources.dealMomentum, checkpointWeek) : [];
+    const feeNegotiation = checkpoint.feeAgreed ? {
+      phase: 1 as PhaseId,
+      pitchPresented: true,
+      status: 'agreed' as const,
+      clientState: buildClientNegotiationState(deriveClientProfile(resources.clientTrust, qualificationNotes), state.client.valuationExpectationEV ?? 100),
+      rounds: [],
+      agreedTerms: agreedFeeTerms ?? undefined,
+    } : state.feeNegotiation;
+    const agreedSPATerms = checkpoint.spaAgreed ? { ...DEBUG_SPA_TERMS, agreedWeek: checkpointWeek } : state.agreedSPATerms;
+
+    let spaNegotiation = checkpoint.phase >= 8 && checkpoint.preferredBidderId
+      ? (() => {
+          const preferredBuyer = buyers.find((buyer) => buyer.id === checkpoint.preferredBidderId);
+          if (!preferredBuyer) return null;
+          const buyerState = generateSPABuyerState(preferredBuyer);
+          return {
+            phase: checkpoint.phase,
+            preferredBuyerId: checkpoint.preferredBidderId,
+            status: checkpoint.spaAgreed ? 'agreed' as const : 'in_progress' as const,
+            buyerState,
+            rounds: [],
+            agreedTerms: checkpoint.spaAgreed ? agreedSPATerms ?? undefined : undefined,
+          };
+        })()
+      : null;
+
+    if (checkpoint.spaAgreed && !spaNegotiation && checkpoint.preferredBidderId) {
+      tasks = tasks.map((task) => (
+        task.phase === 8 && task.id === 'task-109' ? { ...task, status: 'completed' as const } : task
+      ));
+    }
+
+    set({
+      phase: checkpoint.phase,
+      day: checkpoint.day,
+      totalDays: checkpoint.day,
+      week: Math.max(1, Math.ceil(checkpoint.day / 7)),
+      resources,
+      client: syncClient(state.client, resources),
+      leads,
+      tasks,
+      deliverables: syncDeliverables(deliverables, tasks),
+      buyers,
+      qualificationNotes,
+      boardSubmission: checkpoint.boardApproved
+        ? {
+            recommendation: 'proceed',
+            rationale: 'Gameplay review checkpoint',
+            status: 'approved',
+            submittedWeek: checkpointWeek,
+            leadId,
+          }
+        : state.boardSubmission,
+      agreedFeeTerms,
+      feeNegotiation,
+      pitchDocumentReady: checkpoint.pitchDocumentReady ?? state.pitchDocumentReady,
+      phaseDeadline: checkpoint.phaseDeadlineDay ?? state.phaseDeadline,
+      bindingOffersReceived: checkpoint.bindingOffersReceived ?? state.bindingOffersReceived,
+      preferredBidderId: checkpoint.preferredBidderId ?? state.preferredBidderId,
+      finalOffers,
+      spaNegotiation,
+      agreedSPATerms,
+      dataroomCategories: createInitialDataroomCategories(),
+      emails: [],
+      events: [],
+      weekSummary: null,
+      lastWeekResult: null,
+      phaseGate: checkPhaseGate({
+        ...state,
+        phase: checkpoint.phase,
+        day: checkpoint.day,
+        totalDays: checkpoint.day,
+        week: Math.max(1, Math.ceil(checkpoint.day / 7)),
+        resources,
+        client: syncClient(state.client, resources),
+        leads,
+        tasks,
+        deliverables: syncDeliverables(deliverables, tasks),
+        buyers,
+        qualificationNotes,
+        boardSubmission: checkpoint.boardApproved
+          ? {
+              recommendation: 'proceed',
+              rationale: 'Gameplay review checkpoint',
+              status: 'approved',
+              submittedWeek: checkpointWeek,
+              leadId,
+            }
+          : state.boardSubmission,
+        agreedFeeTerms,
+        feeNegotiation,
+        pitchDocumentReady: checkpoint.pitchDocumentReady ?? state.pitchDocumentReady,
+        phaseDeadline: checkpoint.phaseDeadlineDay ?? state.phaseDeadline,
+        bindingOffersReceived: checkpoint.bindingOffersReceived ?? state.bindingOffersReceived,
+        preferredBidderId: checkpoint.preferredBidderId ?? state.preferredBidderId,
+        finalOffers,
+        spaNegotiation,
+        agreedSPATerms,
+      } as GameStore),
+      collapseReason: null,
+      collapseHeadline: null,
+      collapseDescription: null,
+      gameComplete: false,
     });
   },
 
