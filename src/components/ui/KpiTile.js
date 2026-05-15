@@ -28,6 +28,7 @@ export default function KpiTile({ label, value, trend, color = 'default', onClic
             const timer = setTimeout(() => setFlash(false), 600);
             return () => clearTimeout(timer);
         }
+        return undefined;
     }, [value, prevValue]);
     const renderedValue = typeof value === 'number' ? formatNumber(value) : value;
     return (_jsxs("div", { className: `bg-bg-panel/60 border border-border-subtle rounded-[var(--radius-md)] p-3 min-w-[120px] ${onClick ? 'cursor-pointer hover:border-accent-primary/40 transition-colors' : ''}`, onClick: onClick, children: [_jsx("div", { className: "text-[10px] font-mono uppercase tracking-widest text-text-muted mb-1", children: label }), _jsxs("div", { className: "flex items-baseline gap-2", children: [_jsx("span", { className: `text-xl font-semibold font-mono ${colorMap[color]} ${flash ? 'animate-pulse' : ''}`, children: renderedValue }), trend && (_jsx("span", { className: `text-[10px] ${trendColor[trend]}`, children: trendSymbol[trend] }))] })] }));

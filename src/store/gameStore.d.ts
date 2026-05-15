@@ -60,6 +60,8 @@ export interface GameStore {
     unaddressedQACount: number;
     advanceWeek: () => void;
     advancePhase: () => Promise<void>;
+    debugJumpToPhase: (targetPhase: PhaseId) => Promise<void>;
+    debugJumpToCheckpoint: (checkpointId: string) => Promise<void>;
     updateResources: (partial: Partial<PlayerResources>) => void;
     markEmailRead: (emailId: string) => void;
     flagEmail: (emailId: string) => void;
