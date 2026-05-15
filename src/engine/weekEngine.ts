@@ -2594,13 +2594,45 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
   // 9c. Resolve pending board submission (Phase 0)
   let resolvedBoardSubmission: WeekResult['resolvedBoardSubmission'] | null = null;
   if (state.phase === 0 && state.boardSubmission && state.boardSubmission.status === 'pending') {
-    // Chance based on deal momentum and reputation
-    const approvalChance = (state.resources.dealMomentum / 100) * 0.6 + (state.resources.reputation / 100) * 0.3 + 0.1;
+    // Base approval chance — starts at 65% so a reasonably prepared player usually gets through
+    let approvalChance = 0.65;
+
+    // + momentum bonus (up to +15%)
+    approvalChance += (state.resources.dealMomentum / 100) * 0.15;
+
+    // + reputation bonus (up to +10%)
+    approvalChance += (state.resources.reputation / 100) * 0.10;
+
+    // + qualification note quality bonus
+    const qualNotes = state.qualificationNotes ?? [];
+    const positiveNotes = qualNotes.filter((n) => n.sentiment === 'positive').length;
+    const negativeNotes = qualNotes.filter((n) => n.sentiment === 'negative').length;
+    approvalChance += Math.min(0.15, positiveNotes * 0.05); // up to +15%
+    approvalChance -= Math.min(0.15, negativeNotes * 0.05); // up to -15%
+
+    // Penalty if player recommended "decline" (they're telling the board it's bad)
+    if (state.boardSubmission.recommendation === 'decline') approvalChance -= 0.40;
+
+    // Penalty if submitting with very few notes (unprepared)
+    if (qualNotes.length === 0) approvalChance -= 0.30;
+    else if (qualNotes.length === 1) approvalChance -= 0.10;
+
+    // Hard floor: always at least 20% chance if they recommend 'proceed'
+    if (state.boardSubmission.recommendation === 'proceed') {
+      approvalChance = Math.max(0.20, approvalChance);
+    }
+    approvalChance = Math.min(0.95, approvalChance); // cap at 95%
+
     const approved = Math.random() < approvalChance;
+
     const notes = approved
-      ? "The Investment Committee has reviewed the Solara opportunity. Given the sector tailwinds and founder profile, we approve the mandate. Proceed to formal pitch."
-      : "The Committee remains concerned about the founder's valuation expectations and current deal momentum. We are not prepared to release further resources at this stage. Strengthen the investment case.";
-    
+      ? "The Investment Committee has reviewed the Solara Systems opportunity. The qualification signals and sector dynamics support the case for mandate. We approve — proceed to formal pitch and fee negotiation."
+      : qualNotes.length < 2
+        ? "The Investment Committee is not convinced at this stage. The qualification package is thin — we need stronger research signals and clearer investment rationale before committing. Strengthen the case and resubmit."
+        : negativeNotes > positiveNotes
+          ? "The Committee notes significant concerns surfaced during qualification. The risk profile as presented outweighs the upside. Address the key concerns and resubmit with a clearer mitigation narrative."
+          : "The mandate falls short of the IC threshold at this stage. Deal momentum and reputation signals need to improve. Continue building the case and resubmit when the position is stronger.";
+
     resolvedBoardSubmission = { approved, notes };
 
     eventResult.emails.push({
