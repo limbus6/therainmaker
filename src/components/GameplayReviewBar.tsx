@@ -30,6 +30,26 @@ function formatFixesEntry(payload: ReviewPayload): string {
   ].join('\n');
 }
 
+function buildGitHubIssueUrl(payload: ReviewPayload, fixesEntry: string): string {
+  const title = `[Gameplay Fix] P${payload.phase} - ${payload.checkpointLabel}`;
+  const body = [
+    'Esta issue foi criada a partir da barra de revisão do jogo.',
+    '',
+    'Quando for submetida, o workflow `Append Gameplay Fix` anexa automaticamente o bloco abaixo ao `Fixes.md`.',
+    '',
+    '<!-- gameplay-fix-entry -->',
+    fixesEntry,
+    '<!-- /gameplay-fix-entry -->',
+  ].join('\n');
+
+  const params = new URLSearchParams({
+    title,
+    body,
+  });
+
+  return `https://github.com/limbus6/therainmaker/issues/new?${params.toString()}`;
+}
+
 export default function GameplayReviewBar() {
   const navigate = useNavigate();
   const debugJumpToCheckpoint = useGameStore((s) => s.debugJumpToCheckpoint);
@@ -112,14 +132,18 @@ export default function GameplayReviewBar() {
     } catch {
       const fixesEntry = formatFixesEntry(payload);
       const storedDrafts = JSON.parse(window.localStorage.getItem('fixesDrafts') ?? '[]') as string[];
+      const issueUrl = buildGitHubIssueUrl(payload, fixesEntry);
       window.localStorage.setItem('fixesDrafts', JSON.stringify([...storedDrafts, fixesEntry]));
 
       try {
         await navigator.clipboard.writeText(fixesEntry);
-        addToast('GitHub Pages não escreve ficheiros. A nota foi copiada e guardada em rascunhos locais.', 'warning');
+        addToast('A abrir issue no GitHub. Ao submeteres, o Fixes.md será atualizado automaticamente.', 'warning');
       } catch {
-        addToast('GitHub Pages não escreve ficheiros. A nota ficou guardada em rascunhos locais.', 'warning');
+        addToast('A abrir issue no GitHub. A nota também ficou guardada em rascunhos locais.', 'warning');
       }
+      window.setTimeout(() => {
+        window.location.assign(issueUrl);
+      }, 250);
     } finally {
       setIsSubmitting(false);
     }
@@ -173,7 +197,7 @@ export default function GameplayReviewBar() {
                 </button>
               </div>
               <p className="mt-1 text-[12px] text-text-secondary">
-                Salta para fases e subfases coerentes para testes. Em local, as notas são gravadas em <span className="font-mono text-text-primary">Fixes.md</span>; em GitHub Pages ficam copiadas/guardadas como rascunho.
+                Salta para fases e subfases coerentes para testes. Em local, as notas são gravadas em <span className="font-mono text-text-primary">Fixes.md</span>; em GitHub Pages abrem uma issue que atualiza o ficheiro automaticamente.
               </p>
             </div>
           </div>

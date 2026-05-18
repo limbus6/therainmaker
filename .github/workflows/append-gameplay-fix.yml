@@ -1,0 +1,76 @@
+name: Append Gameplay Fix
+
+on:
+  issues:
+    types:
+      - opened
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  append-fix:
+    if: startsWith(github.event.issue.title, '[Gameplay Fix]')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Append issue body to Fixes.md
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const issue = context.payload.issue;
+            const body = issue.body || '';
+            const start = '<!-- gameplay-fix-entry -->';
+            const end = '<!-- /gameplay-fix-entry -->';
+
+            let entry = body.trim();
+            if (body.includes(start) && body.includes(end)) {
+              entry = body.split(start)[1].split(end)[0].trim();
+            }
+
+            if (!entry) {
+              core.setFailed('Issue does not contain a gameplay fix entry.');
+              return;
+            }
+
+            if (!fs.existsSync('Fixes.md')) {
+              fs.writeFileSync('Fixes.md', '# Gameplay Fixes\n', 'utf8');
+            }
+
+            fs.appendFileSync('Fixes.md', `\n\n${entry}\n`, 'utf8');
+
+      - name: Commit Fixes.md update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Fixes.md
+          if git diff --cached --quiet; then
+            echo "No Fixes.md changes to commit."
+            exit 0
+          fi
+          git commit -m "docs: append gameplay fix from issue #${{ github.event.issue.number }}"
+          git push origin main
+
+      - name: Comment and close issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body: 'Nota anexada automaticamente ao `Fixes.md`. Obrigado pelo teste.'
+            });
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              state: 'closed'
+            });
