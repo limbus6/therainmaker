@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bug, ChevronDown, Send, SkipForward } from 'lucide-react';
+import { Bug, ChevronDown, ChevronUp, Send, SkipForward } from 'lucide-react';
 import { REVIEW_CHECKPOINTS } from '../config/reviewCheckpoints';
 import { useGameStore } from '../store/gameStore';
 import { PHASE_NAMES, type PhaseId } from '../types/game';
@@ -18,6 +18,10 @@ export default function GameplayReviewBar() {
   const [reviewText, setReviewText] = useState('');
   const [isJumping, setIsJumping] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.localStorage.getItem('gameplayReviewBarCollapsed') === 'true';
+  });
 
   const phaseCheckpoints = REVIEW_CHECKPOINTS.filter((checkpoint) => checkpoint.phase === selectedPhase);
   const selectedCheckpoint = phaseCheckpoints.find((checkpoint) => checkpoint.id === selectedCheckpointId) ?? phaseCheckpoints[0];
@@ -27,6 +31,10 @@ export default function GameplayReviewBar() {
       setSelectedCheckpointId(phaseCheckpoints[0].id);
     }
   }, [phaseCheckpoints, selectedCheckpointId]);
+
+  useEffect(() => {
+    window.localStorage.setItem('gameplayReviewBarCollapsed', String(isCollapsed));
+  }, [isCollapsed]);
 
   async function handleJump() {
     if (!selectedCheckpoint) return;
@@ -81,6 +89,30 @@ export default function GameplayReviewBar() {
     }
   }
 
+  if (isCollapsed) {
+    return (
+      <section className="shrink-0 border-b border-border-subtle bg-bg-panel/95">
+        <div className="flex items-center justify-between gap-3 px-4 py-2 md:px-6">
+          <div className="flex min-w-0 items-center gap-2">
+            <Bug size={14} className="text-text-accent" />
+            <span className="text-[10px] font-mono uppercase tracking-[0.22em] text-text-muted">Gameplay Review hidden</span>
+            <span className="hidden truncate text-[11px] text-text-secondary sm:inline">
+              QA jump and Fixes.md submission are still available.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsCollapsed(false)}
+            className="inline-flex items-center gap-2 rounded-[var(--radius-md)] border border-border-subtle bg-surface-default px-3 py-1.5 text-[11px] font-semibold text-text-primary transition-colors hover:border-border-accent hover:text-text-accent"
+          >
+            <ChevronDown size={13} />
+            Show Review Bar
+          </button>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="shrink-0 border-b border-border-subtle bg-[radial-gradient(circle_at_top_left,rgba(240,79,165,0.18),transparent_34%),linear-gradient(90deg,rgba(13,10,33,0.96),rgba(30,16,64,0.92))]">
       <div className="px-4 py-3 md:px-6">
@@ -95,6 +127,14 @@ export default function GameplayReviewBar() {
                 <span className="rounded-full border border-border-subtle bg-surface-default px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-text-muted">
                   QA Jump Bar
                 </span>
+                <button
+                  type="button"
+                  onClick={() => setIsCollapsed(true)}
+                  className="inline-flex items-center gap-1 rounded-full border border-border-subtle bg-surface-default px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-text-muted transition-colors hover:border-border-accent hover:text-text-accent"
+                >
+                  <ChevronUp size={12} />
+                  Hide
+                </button>
               </div>
               <p className="mt-1 text-[12px] text-text-secondary">
                 Salta para fases e subfases coerentes para testes e envia feedback direto para <span className="font-mono text-text-primary">Fixes.md</span>.

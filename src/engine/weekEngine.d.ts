@@ -40,12 +40,23 @@ export interface WeekResult {
     _updatedBuyers: Buyer[];
     /** How many buyers submitted binding offers this advance (Phase 6 deadline trigger) */
     bindingOfferDelta: number;
+    directorSignal: GameplayDirectorSignal;
 }
 export interface BuyerChange {
     buyerId: string;
     field: 'status' | 'interest';
     from: string;
     to: string;
+}
+export interface GameplayDirectorSignal {
+    tensionBand: 'recovery' | 'steady' | 'live' | 'danger';
+    pressureScore: number;
+    eventBias: number;
+    complicationBias: number;
+    recoveryBias: number;
+    headline: string;
+    explanation: string;
+    nextPressure: string;
 }
 export declare function resolveWeek(state: GameStore, daysToAdvance?: number): WeekResult;
 export declare function calcDaysToAdvance(state: GameStore): number;

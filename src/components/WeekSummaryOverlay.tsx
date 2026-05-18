@@ -1,7 +1,7 @@
 import { useGameStore } from '../store/gameStore';
 import StatusChip from './ui/StatusChip';
 import ProgressBar from './ui/ProgressBar';
-import { CheckCircle2, Clock, AlertTriangle, TrendingUp, TrendingDown, ArrowRight, X, Users, Zap, Sparkles, XCircle } from 'lucide-react';
+import { CheckCircle2, Clock, AlertTriangle, TrendingUp, TrendingDown, ArrowRight, X, Users, Zap, Sparkles, XCircle, Activity } from 'lucide-react';
 
 export default function WeekSummaryOverlay() {
   const result = useGameStore((s) => s.lastWeekResult);
@@ -20,6 +20,20 @@ export default function WeekSummaryOverlay() {
   const hasBuyerChanges = result.buyerChanges.length > 0;
   const hasEvents = result.newEvents.length > 0;
   const hasCriticals = result.criticalOutcomes && result.criticalOutcomes.length > 0;
+  const pulseVariant = result.directorSignal.tensionBand === 'danger'
+    ? 'danger'
+    : result.directorSignal.tensionBand === 'live'
+      ? 'warning'
+      : result.directorSignal.tensionBand === 'recovery'
+        ? 'success'
+        : 'info';
+  const pulseLabel = result.directorSignal.tensionBand === 'danger'
+    ? 'Recovery Mode'
+    : result.directorSignal.tensionBand === 'live'
+      ? 'Live Tension'
+      : result.directorSignal.tensionBand === 'recovery'
+        ? 'Breathing Room'
+        : 'Steady';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg-primary/80 backdrop-blur-sm">
@@ -41,6 +55,22 @@ export default function WeekSummaryOverlay() {
         {/* Narrative */}
         <div className="px-5 py-4 border-b border-border-subtle">
           <p className="text-[13px] text-text-secondary leading-relaxed">{result.narrativeSummary}</p>
+        </div>
+
+        <div className="px-5 py-4 border-b border-border-subtle">
+          <div className="flex items-start gap-3 rounded-[var(--radius-md)] border border-border-subtle bg-surface-default p-3">
+            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-primary/10 text-accent-primary">
+              <Activity size={15} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="text-[10px] font-mono uppercase tracking-widest text-text-muted">Deal Pulse</div>
+                <StatusChip label={pulseLabel} variant={pulseVariant} />
+                <span className="text-[10px] font-mono text-text-muted">Pressure {result.directorSignal.pressureScore}/100</span>
+              </div>
+              <p className="mt-2 text-[12px] text-text-secondary leading-relaxed">{result.directorSignal.explanation}</p>
+            </div>
+          </div>
         </div>
 
         {/* Tasks Resolved */}

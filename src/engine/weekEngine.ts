@@ -40,6 +40,7 @@ export interface WeekResult {
   _updatedBuyers: Buyer[];
   /** How many buyers submitted binding offers this advance (Phase 6 deadline trigger) */
   bindingOfferDelta: number;
+  directorSignal: GameplayDirectorSignal;
 }
 
 export interface BuyerChange {
@@ -47,6 +48,91 @@ export interface BuyerChange {
   field: 'status' | 'interest';
   from: string;
   to: string;
+}
+
+export interface GameplayDirectorSignal {
+  tensionBand: 'recovery' | 'steady' | 'live' | 'danger';
+  pressureScore: number;
+  eventBias: number;
+  complicationBias: number;
+  recoveryBias: number;
+  headline: string;
+  explanation: string;
+  nextPressure: string;
+}
+
+function clamp(value: number, min = 0, max = 100): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function createGameplayDirectorSignal(state: GameStore): GameplayDirectorSignal {
+  const unresolvedRiskPressure = state.risks
+    .filter((risk) => !risk.mitigated)
+    .reduce((total, risk) => total + (risk.severity === 'critical' ? 10 : risk.severity === 'high' ? 7 : risk.severity === 'medium' ? 4 : 2), 0);
+  const inProgressWork = state.tasks
+    .filter((task) => task.status === 'in_progress')
+    .reduce((total, task) => total + task.work, 0);
+  const activeBuyers = state.buyers.filter((buyer) => !['dropped', 'excluded'].includes(buyer.status));
+  const fragileBuyerCount = activeBuyers.filter((buyer) => buyer.interest === 'cold' || buyer.ddFriction === 'high').length;
+  const urgentInboxPressure = state.emails.filter((email) => email.state !== 'resolved' && ['urgent', 'high'].includes(email.priority)).length * 3;
+  const deadlinePressure = state.phaseDeadline && state.day <= state.phaseDeadline
+    ? Math.max(0, 14 - (state.phaseDeadline - state.day))
+    : 0;
+
+  const resourceStress =
+    Math.max(0, 55 - state.resources.dealMomentum) * 0.35 +
+    Math.max(0, 55 - state.resources.clientTrust) * 0.25 +
+    Math.max(0, 45 - state.resources.morale) * 0.25 +
+    Math.max(0, state.resources.riskLevel - 35) * 0.45 +
+    Math.max(0, inProgressWork - state.resources.teamCapacity * 0.45) * 0.35 +
+    unresolvedRiskPressure +
+    fragileBuyerCount * 3 +
+    urgentInboxPressure +
+    deadlinePressure;
+
+  const pressureScore = Math.round(clamp(resourceStress));
+  const tensionBand: GameplayDirectorSignal['tensionBand'] =
+    pressureScore >= 72 ? 'danger'
+      : pressureScore >= 48 ? 'live'
+        : pressureScore <= 22 ? 'recovery'
+          : 'steady';
+
+  const eventBias = tensionBand === 'danger' ? 0.85 : tensionBand === 'live' ? 1.2 : tensionBand === 'recovery' ? 0.75 : 1;
+  const complicationBias = tensionBand === 'danger' ? -0.1 : tensionBand === 'live' ? 0.08 : tensionBand === 'recovery' ? -0.12 : 0;
+  const recoveryBias = tensionBand === 'danger' ? 0.18 : tensionBand === 'recovery' ? -0.04 : 0;
+
+  const headline = tensionBand === 'danger'
+    ? 'The deal is under strain, but the market is still giving you recovery routes.'
+    : tensionBand === 'live'
+      ? 'The process feels alive: buyers, risks and deadlines are all moving at once.'
+      : tensionBand === 'recovery'
+        ? 'The desk is quieter, giving the team room to prepare and regain control.'
+        : 'The transaction is in a healthy tension band.';
+
+  const explanation = tensionBand === 'danger'
+    ? 'The director will dampen random punishment and surface stabilising chances so the run does not spiral unfairly.'
+    : tensionBand === 'live'
+      ? 'The director will allow more organic movement and light complications while preserving player agency.'
+      : tensionBand === 'recovery'
+        ? 'The director will keep surprise workload low and reward preparation, avoiding dead time.'
+        : 'The director will keep events varied without making the week feel chaotic.';
+
+  const nextPressure = state.phase >= 6
+    ? 'Keep DD scope, buyer confidence and SPA discipline under control.'
+    : state.phase >= 3
+      ? 'Protect buyer momentum while avoiding process leaks and overloading the team.'
+      : 'Build credibility quickly without burning budget or client trust.';
+
+  return {
+    tensionBand,
+    pressureScore,
+    eventBias,
+    complicationBias,
+    recoveryBias,
+    headline,
+    explanation,
+    nextPressure,
+  };
 }
 
 // Determine if a task completes in the given number of days
@@ -85,10 +171,11 @@ function resolveTaskProgress(task: GameTask, _week: number, tempAllocations: Tem
 }
 
 // Hidden workload check — some tasks trigger surprise extra work
-function checkHiddenWorkload(completedTasks: GameTask[]): WeekResult['hiddenWorkload'] {
+function checkHiddenWorkload(completedTasks: GameTask[], directorSignal: GameplayDirectorSignal): WeekResult['hiddenWorkload'] {
   for (const task of completedTasks) {
     // Higher complexity = higher chance of hidden workload
-    const chance = task.complexity === 'high' ? 0.4 : task.complexity === 'medium' ? 0.2 : 0.05;
+    const baseChance = task.complexity === 'high' ? 0.34 : task.complexity === 'medium' ? 0.16 : 0.04;
+    const chance = clamp((baseChance + directorSignal.complicationBias) * 100, 2, 42) / 100;
     if (Math.random() < chance) {
       const descriptions = [
         `${task.name} revealed inconsistencies that require additional clean-up.`,
@@ -113,7 +200,7 @@ function checkHiddenWorkload(completedTasks: GameTask[]): WeekResult['hiddenWork
 // Critical outcome roll — tasks can occasionally deliver exceptional or poor results
 type CriticalOutcome = { taskId: string; taskName: string; type: 'success' | 'failure'; description: string; bonus: Partial<PlayerResources> };
 
-function rollCriticalOutcomes(completedTasks: GameTask[], morale: number = 50): CriticalOutcome[] {
+function rollCriticalOutcomes(completedTasks: GameTask[], morale: number = 50, directorSignal?: GameplayDirectorSignal): CriticalOutcome[] {
   const outcomes: CriticalOutcome[] = [];
 
   const successPool: Record<string, { description: string; bonus: Partial<PlayerResources> }[]> = {
@@ -156,8 +243,10 @@ function rollCriticalOutcomes(completedTasks: GameTask[], morale: number = 50): 
 
     // Morale factor: higher morale increases success chance, decreases failure chance
     const moraleFactor = (morale / 100) * 0.2;
-    const successChance = Math.min(0.3, baseSuccessChance + moraleFactor);
-    const failChance = Math.max(0.01, baseFailChance - moraleFactor * 0.5);
+    const directorRecovery = directorSignal?.recoveryBias ?? 0;
+    const directorComplication = directorSignal?.complicationBias ?? 0;
+    const successChance = Math.min(0.32, baseSuccessChance + moraleFactor + Math.max(0, directorRecovery * 0.35));
+    const failChance = Math.max(0.01, baseFailChance - moraleFactor * 0.5 + Math.max(0, directorComplication * 0.25) - Math.max(0, directorRecovery * 0.3));
 
     const roll = Math.random();
 
@@ -175,17 +264,18 @@ function rollCriticalOutcomes(completedTasks: GameTask[], morale: number = 50): 
 }
 
 // Small stochastic noise applied to resources each advance — the market never stands still
-function applyResourceNoise(resourceChanges: Partial<PlayerResources>, state: GameStore): Partial<PlayerResources> {
+function applyResourceNoise(resourceChanges: Partial<PlayerResources>, state: GameStore, directorSignal: GameplayDirectorSignal): Partial<PlayerResources> {
   const volatility = state.phase >= 6 ? 1.6 : state.phase >= 3 ? 1.1 : 0.6;
+  const directorVolatility = directorSignal.tensionBand === 'danger' ? 0.65 : directorSignal.tensionBand === 'live' ? 1.18 : 1;
   const noised = { ...resourceChanges };
 
-  const moraleNoise = Math.round((Math.random() - 0.5) * 4 * volatility);
+  const moraleNoise = Math.round((Math.random() - 0.5) * 4 * volatility * directorVolatility);
   const currentMorale = (noised.morale as number | undefined) ?? state.resources.morale;
-  noised.morale = Math.max(0, Math.min(100, currentMorale + moraleNoise));
+  noised.morale = clamp(currentMorale + moraleNoise + Math.round(Math.max(0, directorSignal.recoveryBias) * 6));
 
-  const momentumNoise = Math.round((Math.random() - 0.5) * 6 * volatility);
+  const momentumNoise = Math.round((Math.random() - 0.5) * 6 * volatility * directorVolatility);
   const currentMomentum = (noised.dealMomentum as number | undefined) ?? state.resources.dealMomentum;
-  noised.dealMomentum = Math.max(0, Math.min(100, currentMomentum + momentumNoise));
+  noised.dealMomentum = clamp(currentMomentum + momentumNoise + Math.round(Math.max(0, directorSignal.recoveryBias) * 5));
 
   return noised;
 }
@@ -270,16 +360,22 @@ function calculateStateChanges(
 }
 
 // Generate narrative summary
-function generateSummary(result: Omit<WeekResult, 'narrativeSummary' | '_updatedBuyers' | 'criticalOutcomes'> & { criticalOutcomes: CriticalOutcome[] }, _week: number): string {
+function generateSummary(
+  result: Omit<WeekResult, 'narrativeSummary' | '_updatedBuyers' | 'criticalOutcomes' | 'directorSignal'> & { criticalOutcomes: CriticalOutcome[] },
+  _week: number,
+  directorSignal: GameplayDirectorSignal,
+): string {
   const parts: string[] = [];
+  parts.push(directorSignal.headline);
 
   if (result.tasksCompleted.length > 0) {
-    const names = result.tasksCompleted.map((t) => t.name).join(', ');
-    parts.push(`Completed: ${names}.`);
+    const names = result.tasksCompleted.slice(0, 3).map((t) => t.name).join(', ');
+    const extra = result.tasksCompleted.length > 3 ? ` plus ${result.tasksCompleted.length - 3} more` : '';
+    parts.push(`Execution moved: ${names}${extra}.`);
   }
 
   if (result.tasksProgressed.length > 0) {
-    parts.push(`${result.tasksProgressed.length} task${result.tasksProgressed.length > 1 ? 's' : ''} still in progress.`);
+    parts.push(`${result.tasksProgressed.length} workstream${result.tasksProgressed.length > 1 ? 's' : ''} kept moving but need another pass.`);
   }
 
   if (result.hiddenWorkload) {
@@ -287,7 +383,7 @@ function generateSummary(result: Omit<WeekResult, 'narrativeSummary' | '_updated
   }
 
   if (result.resourceChanges.budget !== undefined) {
-    parts.push(`Budget deployed this week.`);
+    parts.push(`Budget and team capacity shifted with the workplan.`);
   }
 
   if (result.newRisks.length > 0) {
@@ -296,11 +392,15 @@ function generateSummary(result: Omit<WeekResult, 'narrativeSummary' | '_updated
 
   // Buyer changes
   const statusChanges = result.buyerChanges.filter((c) => c.field === 'status');
+  const interestChanges = result.buyerChanges.filter((c) => c.field === 'interest');
   if (statusChanges.length > 0) {
     const label = statusChanges.length === 1
       ? `1 buyer status update.`
       : `${statusChanges.length} buyer status updates.`;
     parts.push(label);
+  }
+  if (interestChanges.length > 0) {
+    parts.push(`${interestChanges.length} buyer sentiment signal${interestChanges.length > 1 ? 's' : ''} changed.`);
   }
 
   // Events
@@ -326,6 +426,8 @@ function generateSummary(result: Omit<WeekResult, 'narrativeSummary' | '_updated
     ];
     parts.push(quietLines[Math.floor(Math.random() * quietLines.length)]);
   }
+
+  parts.push(`Next pressure: ${directorSignal.nextPressure}`);
 
   return parts.join(' ');
 }
@@ -2366,7 +2468,7 @@ const EVENT_POOL: EventTemplate[] = [
   },
 ];
 
-function rollEvents(state: GameStore): {
+function rollEvents(state: GameStore, directorSignal: GameplayDirectorSignal): {
   events: GameEvent[];
   resourceEffects: Partial<PlayerResources>;
   risks: Risk[];
@@ -2385,11 +2487,13 @@ function rollEvents(state: GameStore): {
   // Variable event density — some sessions are quiet, others chaotic
   // Roll fresh each advance so density fluctuates naturally throughout a game
   const densityRoll = Math.random();
-  const densityMultiplier = densityRoll < 0.20 ? 0.25   // 20%: very quiet stretch
+  const organicDensity = densityRoll < 0.20 ? 0.25   // 20%: very quiet stretch
     : densityRoll < 0.50 ? 0.6                          // 30%: calm period
     : densityRoll < 0.80 ? 1.0                          // 30%: normal activity
     : densityRoll < 0.95 ? 1.5                          // 15%: busy period
     : 2.2;                                               //  5%: everything happens at once
+  const densityMultiplier = organicDensity * directorSignal.eventBias;
+  const maxEvents = directorSignal.tensionBand === 'danger' ? 1 : directorSignal.tensionBand === 'live' ? 3 : 2;
 
   for (const template of EVENT_POOL) {
     // Phase check
@@ -2428,6 +2532,8 @@ function rollEvents(state: GameStore): {
     if (generated.emailGenerated) {
       result.emails.push(generated.emailGenerated);
     }
+
+    if (result.events.length >= maxEvents) break;
   }
 
   return result;
@@ -2441,6 +2547,7 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
   const inProgressTasks = state.tasks.filter((t) => t.status === 'in_progress');
   const newDay = state.day + daysToAdvance;
   const newWeek = Math.ceil(newDay / 7);
+  const directorSignal = createGameplayDirectorSignal(state);
 
   // 1. Resolve task progress
   const tasksCompleted: GameTask[] = [];
@@ -2471,10 +2578,10 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
   const stateChanges = calculateStateChanges(tasksCompleted, state.resources);
 
   // 4. Check for hidden workload
-  const hiddenWorkload = checkHiddenWorkload(tasksCompleted);
+  const hiddenWorkload = checkHiddenWorkload(tasksCompleted, directorSignal);
 
   // 4b. Roll critical outcomes for completed tasks
-  const criticalOutcomes = rollCriticalOutcomes(tasksCompleted, state.resources.morale);
+  const criticalOutcomes = rollCriticalOutcomes(tasksCompleted, state.resources.morale, directorSignal);
 
   // 4c. Generate qualification notes for Phase 0 tasks
   const newQualificationNotes: Omit<QualificationNote, 'id' | 'week'>[] = [];
@@ -2538,7 +2645,7 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
   const buyerResult = progressBuyers(state.buyers, tasksCompleted, state.phase, state.resources.dealMomentum);
 
   // 9. Event system
-  const eventResult = rollEvents(state);
+  const eventResult = rollEvents(state, directorSignal);
 
   // 9b. Resolve pending budget requests (Board decision)
   const resolvedRequests: { id: string; approved: boolean; amount: number; justification: string }[] = [];
@@ -2666,7 +2773,7 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
   }
 
   // Apply stochastic noise — small random drift makes each advance feel unique
-  resourceChanges = applyResourceNoise(resourceChanges, state);
+  resourceChanges = applyResourceNoise(resourceChanges, state, directorSignal);
 
   // ─── Phase 6: Binding Offer Deadline Evaluation ──────────────────────────────
   // When the process letter deadline passes, evaluate each active buyer's likelihood
@@ -2854,9 +2961,10 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
     newQualificationNotes,
     newTasks,
     bindingOfferDelta: 0, // will be overwritten in the return if deadline triggers
+    directorSignal,
   };
 
-  const narrativeSummary = generateSummary(partialResult, newWeek);
+  const narrativeSummary = generateSummary(partialResult, newWeek, directorSignal);
 
   return {
     ...partialResult,
@@ -3061,7 +3169,8 @@ export function checkPhaseGate(state: GameStore): PhaseGateResult {
       const activeBuyersWithNDA = state.buyers.filter(b => b.status === 'nda_signed' || b.status === 'reviewing' || b.status === 'active' || b.status === 'shortlisted' || b.status === 'bidding').length;
       const deadlineSet = state.phaseDeadline !== null;
       const deadlinePassed = deadlineSet && state.day >= (state.phaseDeadline ?? Infinity);
-      const enoughBuyers = activeBuyersWithNDA >= 10;
+      const requiredNdaBuyers = Math.max(2, Math.min(6, Math.ceil(Math.max(1, state.buyers.length) * 0.6)));
+      const enoughBuyers = activeBuyersWithNDA >= requiredNdaBuyers;
 
       return {
         canTransition: !!outreachLaunched && !!ndasProcessed && !!qaResponded && !!buyerQualified && (enoughBuyers || deadlinePassed),
@@ -3071,7 +3180,7 @@ export function checkPhaseGate(state: GameStore): PhaseGateResult {
           { label: 'NDAs processed', met: !!ndasProcessed },
           { label: 'Buyer Q&A responded', met: !!qaResponded },
           { label: 'Buyers qualified', met: !!buyerQualified },
-          { label: `Buyers with NDA: ${activeBuyersWithNDA}/10 or deadline reached`, met: enoughBuyers || deadlinePassed },
+          { label: `Qualified NDA buyers: ${activeBuyersWithNDA}/${requiredNdaBuyers} or deadline reached`, met: enoughBuyers || deadlinePassed },
         ],
         nextPhase: 4,
       };
@@ -3103,7 +3212,12 @@ export function checkPhaseGate(state: GameStore): PhaseGateResult {
       const matrixBuilt = tasks.some((t) => t.phase === 5 && t.linkedDeliverableId === 'del-50' && t.status === 'completed');
       const ddPackage = tasks.some((t) => t.phase === 5 && t.linkedDeliverableId === 'del-51' && t.status === 'completed');
       const nbosReceived = state.buyers.filter(b => b.status === 'bidding' || b.status === 'shortlisted' || b.status === 'preferred').length;
-      const clientSelectedDD = tasks.some((t) => t.phase === 5 && (t.name.toLowerCase().includes('select dd') || t.name.toLowerCase().includes('dd candidate')) && t.status === 'completed');
+      const clientSelectedDD = tasks.some((t) => (
+        t.id === 'task-75' ||
+        t.id === 'task-76' ||
+        t.name.toLowerCase().includes('advancement recommendation') ||
+        t.name.toLowerCase().includes('dd candidate')
+      ) && t.status === 'completed');
 
       return {
         canTransition: !!matrixBuilt && !!ddPackage && nbosReceived >= 2 && clientSelectedDD,
