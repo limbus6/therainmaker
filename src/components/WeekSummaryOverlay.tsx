@@ -28,12 +28,12 @@ export default function WeekSummaryOverlay() {
         ? 'success'
         : 'info';
   const pulseLabel = result.directorSignal.tensionBand === 'danger'
-    ? 'Modo recuperação'
+    ? 'Recovery Mode'
     : result.directorSignal.tensionBand === 'live'
-      ? 'Tensão ativa'
+      ? 'Live Tension'
       : result.directorSignal.tensionBand === 'recovery'
-        ? 'Margem de manobra'
-        : 'Estável';
+        ? 'Breathing Room'
+        : 'Steady';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg-primary/80 backdrop-blur-sm">
@@ -42,10 +42,10 @@ export default function WeekSummaryOverlay() {
         <div className="flex items-center justify-between p-5 border-b border-border-subtle">
           <div>
             <div className="text-[10px] font-mono uppercase tracking-widest text-text-muted">
-              {result?.daysAdvanced === 1 ? '1 dia avançado' : `${result?.daysAdvanced ?? '?'} dias avançados`}
-              <span className="ml-2 text-text-muted/50">· Dia {day} · Semana {week}</span>
+              {result?.daysAdvanced === 1 ? '1 Day Advanced' : `${result?.daysAdvanced ?? '?'} Days Advanced`}
+              <span className="ml-2 text-text-muted/50">· Day {day} · Week {week}</span>
             </div>
-            <h2 className="text-lg font-display font-semibold text-text-primary mt-1">Relatório da situação</h2>
+            <h2 className="text-lg font-display font-semibold text-text-primary mt-1">Situation Report</h2>
           </div>
           <button onClick={dismiss} className="p-1.5 rounded-[var(--radius-sm)] hover:bg-surface-hover transition-colors">
             <X size={16} className="text-text-muted" />
@@ -64,9 +64,9 @@ export default function WeekSummaryOverlay() {
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <div className="text-[10px] font-mono uppercase tracking-widest text-text-muted">Pulso do deal</div>
+                <div className="text-[10px] font-mono uppercase tracking-widest text-text-muted">Deal Pulse</div>
                 <StatusChip label={pulseLabel} variant={pulseVariant} />
-                <span className="text-[10px] font-mono text-text-muted">Pressão {result.directorSignal.pressureScore}/100</span>
+                <span className="text-[10px] font-mono text-text-muted">Pressure {result.directorSignal.pressureScore}/100</span>
               </div>
               <p className="mt-2 text-[12px] text-text-secondary leading-relaxed">{result.directorSignal.explanation}</p>
             </div>
@@ -76,19 +76,19 @@ export default function WeekSummaryOverlay() {
         {/* Tasks Resolved */}
         {(hasCompleted || hasProgressed) && (
           <div className="px-5 py-4 border-b border-border-subtle space-y-3">
-            <div className="text-[10px] font-mono uppercase tracking-widest text-text-muted">Progresso das tarefas</div>
+            <div className="text-[10px] font-mono uppercase tracking-widest text-text-muted">Task Progress</div>
             {result.tasksCompleted.map((t) => (
               <div key={t.id} className="flex items-center gap-3 p-2 rounded-[var(--radius-md)] bg-state-success/10">
                 <CheckCircle2 size={14} className="text-state-success shrink-0" />
                 <span className="text-[12px] text-text-primary">{t.name}</span>
-                <StatusChip label="Concluída" variant="success" />
+                <StatusChip label="Completed" variant="success" />
               </div>
             ))}
             {result.tasksProgressed.map((t) => (
               <div key={t.id} className="flex items-center gap-3 p-2 rounded-[var(--radius-md)] bg-surface-default">
                 <Clock size={14} className="text-text-muted shrink-0" />
                 <span className="text-[12px] text-text-secondary">{t.name}</span>
-                <StatusChip label="Em curso" variant="info" />
+                <StatusChip label="In Progress" variant="info" />
               </div>
             ))}
           </div>
@@ -97,7 +97,7 @@ export default function WeekSummaryOverlay() {
         {/* Critical Outcomes */}
         {hasCriticals && (
           <div className="px-5 py-4 border-b border-border-subtle space-y-2">
-            <div className="text-[10px] font-mono uppercase tracking-widest text-text-muted">Resultados excecionais</div>
+            <div className="text-[10px] font-mono uppercase tracking-widest text-text-muted">Exceptional Outcomes</div>
             {result.criticalOutcomes.map((crit, i) => (
               <div
                 key={i}
@@ -113,7 +113,7 @@ export default function WeekSummaryOverlay() {
                 }
                 <div>
                   <div className={`text-[12px] font-semibold ${crit.type === 'success' ? 'text-state-success' : 'text-state-danger'}`}>
-                    {crit.type === 'success' ? 'Excecional: ' : 'Contratempo: '}{crit.taskName}
+                    {crit.type === 'success' ? 'Exceptional: ' : 'Setback: '}{crit.taskName}
                   </div>
                   <p className="text-[11px] text-text-secondary mt-1">{crit.description}</p>
                 </div>
@@ -128,9 +128,9 @@ export default function WeekSummaryOverlay() {
             <div className="flex items-start gap-3 p-3 rounded-[var(--radius-md)] bg-state-warning/10 border border-state-warning/20">
               <AlertTriangle size={16} className="text-state-warning shrink-0 mt-0.5" />
               <div>
-                <div className="text-[12px] font-semibold text-text-primary">Complicação</div>
+                <div className="text-[12px] font-semibold text-text-primary">Complication</div>
                 <p className="text-[11px] text-text-secondary mt-1">{result.hiddenWorkload.description}</p>
-                <p className="text-[10px] font-mono text-text-muted mt-1">+{result.hiddenWorkload.extraWork}h de trabalho extra</p>
+                <p className="text-[10px] font-mono text-text-muted mt-1">+{result.hiddenWorkload.extraWork}h extra work</p>
               </div>
             </div>
           </div>
@@ -139,12 +139,12 @@ export default function WeekSummaryOverlay() {
         {/* Buyer Changes */}
         {hasBuyerChanges && (
           <div className="px-5 py-4 border-b border-border-subtle space-y-3">
-            <div className="text-[10px] font-mono uppercase tracking-widest text-text-muted">Atividade dos compradores</div>
+            <div className="text-[10px] font-mono uppercase tracking-widest text-text-muted">Buyer Activity</div>
             {result.buyerChanges.map((change, i) => {
               const buyer = buyers.find((b) => b.id === change.buyerId);
               const label = change.field === 'status'
                 ? `${change.from} → ${change.to}`
-                : `Interesse: ${change.from} → ${change.to}`;
+                : `Interest: ${change.from} → ${change.to}`;
               return (
                 <div key={i} className="flex items-center gap-3 p-2 rounded-[var(--radius-md)] bg-accent-primary/5">
                   <Users size={14} className="text-accent-primary shrink-0" />
@@ -159,7 +159,7 @@ export default function WeekSummaryOverlay() {
         {/* Events */}
         {hasEvents && (
           <div className="px-5 py-4 border-b border-border-subtle space-y-3">
-            <div className="text-[10px] font-mono uppercase tracking-widest text-text-muted">Eventos</div>
+            <div className="text-[10px] font-mono uppercase tracking-widest text-text-muted">Events</div>
             {result.newEvents.map((evt) => (
               <div key={evt.id} className="flex items-start gap-3 p-3 rounded-[var(--radius-md)] bg-accent-primary/5 border border-accent-primary/10">
                 <Zap size={14} className="text-accent-primary shrink-0 mt-0.5" />
@@ -174,13 +174,13 @@ export default function WeekSummaryOverlay() {
 
         {/* Resource Changes */}
         <div className="px-5 py-4 border-b border-border-subtle">
-          <div className="text-[10px] font-mono uppercase tracking-widest text-text-muted mb-3">Recursos</div>
+          <div className="text-[10px] font-mono uppercase tracking-widest text-text-muted mb-3">Resources</div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {[
-              { label: 'Orçamento', value: `€${resources.budget}k`, max: resources.budgetMax, current: resources.budget, color: 'accent' as const },
-              { label: 'Capacidade', value: `${resources.teamCapacity}%`, max: 100, current: resources.teamCapacity, color: 'success' as const },
+              { label: 'Budget', value: `€${resources.budget}k`, max: resources.budgetMax, current: resources.budget, color: 'accent' as const },
+              { label: 'Capacity', value: `${resources.teamCapacity}%`, max: 100, current: resources.teamCapacity, color: 'success' as const },
               { label: 'Momentum', value: resources.dealMomentum, max: 100, current: resources.dealMomentum, color: 'accent' as const },
-              { label: 'Confiança', value: resources.clientTrust, max: 100, current: resources.clientTrust, color: 'info' as const },
+              { label: 'Trust', value: resources.clientTrust, max: 100, current: resources.clientTrust, color: 'info' as const },
             ].map((r) => (
               <div key={r.label} className="space-y-1">
                 <div className="flex items-center justify-between">
@@ -193,11 +193,11 @@ export default function WeekSummaryOverlay() {
           </div>
           <div className="flex items-center gap-4 mt-3 text-[11px]">
             <span className="flex items-center gap-1 text-text-secondary">
-              Moral: <span className="font-mono text-text-primary">{resources.morale}</span>
+              Morale: <span className="font-mono text-text-primary">{resources.morale}</span>
               {resources.morale >= 70 ? <TrendingUp size={12} className="text-state-success" /> : <TrendingDown size={12} className="text-state-danger" />}
             </span>
             <span className="flex items-center gap-1 text-text-secondary">
-              Risco: <span className="font-mono text-text-primary">{resources.riskLevel}</span>
+              Risk: <span className="font-mono text-text-primary">{resources.riskLevel}</span>
             </span>
           </div>
         </div>
@@ -205,7 +205,7 @@ export default function WeekSummaryOverlay() {
         {/* Phase Gate Status */}
         {phaseGate && (
           <div className="px-5 py-4 border-b border-border-subtle">
-            <div className="text-[10px] font-mono uppercase tracking-widest text-text-muted mb-3">Gate da fase</div>
+            <div className="text-[10px] font-mono uppercase tracking-widest text-text-muted mb-3">Phase Gate</div>
             <div className="space-y-2">
               {phaseGate.requirements.map((req) => (
                 <div key={req.label} className="flex items-center gap-2">
@@ -219,7 +219,7 @@ export default function WeekSummaryOverlay() {
                 onClick={() => { advancePhase(); dismiss(); }}
                 className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-accent-primary hover:bg-accent-hover text-white text-[13px] font-semibold rounded-[var(--radius-md)] transition-colors shadow-[var(--shadow-glow-strong)]"
               >
-                Avançar para a próxima fase
+                Advance to Next Phase
                 <ArrowRight size={14} />
               </button>
             )}
@@ -232,7 +232,7 @@ export default function WeekSummaryOverlay() {
             onClick={dismiss}
             className="w-full px-4 py-2.5 text-[13px] font-medium text-text-secondary border border-border-subtle rounded-[var(--radius-md)] hover:bg-surface-hover transition-colors"
           >
-            Continuar
+            Continue
           </button>
         </div>
       </div>

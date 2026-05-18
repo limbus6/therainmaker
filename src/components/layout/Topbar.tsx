@@ -46,19 +46,19 @@ export default function Topbar({ onMenuToggle }: { onMenuToggle: () => void }) {
           <span className="hidden lg:inline text-[12px] text-text-secondary">{PHASE_NAMES[phase]}</span>
           <div className="h-4 w-px bg-border-subtle" />
           <span className="text-[12px] font-mono text-text-muted">
-            DIA <span className="text-text-primary font-semibold">{String(day).padStart(2, '0')}</span>
+            DAY <span className="text-text-primary font-semibold">{String(day).padStart(2, '0')}</span>
           </span>
-          <span className="text-[11px] font-mono text-text-muted/60">SEM {week}</span>
+          <span className="text-[11px] font-mono text-text-muted/60">WK {week}</span>
         </div>
       </div>
 
       {/* Center: KPI Strip — hidden on mobile */}
       <div className="hidden md:flex items-center gap-1.5">
-        <KpiPill label="Orçamento" value={`€${resources.budget}k`} />
-        <KpiPill label="Capacidade" value={`${resources.teamCapacity}%`} color={resources.teamCapacity < 30 ? 'text-state-danger' : undefined} />
+        <KpiPill label="Budget" value={`€${resources.budget}k`} />
+        <KpiPill label="Capacity" value={`${resources.teamCapacity}%`} color={resources.teamCapacity < 30 ? 'text-state-danger' : undefined} />
         <KpiPill label="Momentum" value={resources.dealMomentum} color={resources.dealMomentum > 60 ? 'text-state-success' : undefined} />
-        <KpiPill label="Confiança" value={resources.clientTrust} />
-        <KpiPill label="Risco" value={resources.riskLevel} color={resources.riskLevel > 50 ? 'text-state-danger' : resources.riskLevel > 30 ? 'text-state-warning' : 'text-state-success'} />
+        <KpiPill label="Trust" value={resources.clientTrust} />
+        <KpiPill label="Risk" value={resources.riskLevel} color={resources.riskLevel > 50 ? 'text-state-danger' : resources.riskLevel > 30 ? 'text-state-warning' : 'text-state-success'} />
       </div>
 
       {/* Right: Controls */}
@@ -66,14 +66,14 @@ export default function Topbar({ onMenuToggle }: { onMenuToggle: () => void }) {
         <button
           onClick={() => setShowInstructions(true)}
           className="p-2 rounded-[var(--radius-md)] text-text-muted hover:text-text-primary hover:bg-surface-hover transition-colors duration-150"
-          title="Instruções do jogo"
+          title="Game instructions"
         >
           <BookOpen size={16} />
         </button>
         <button
           onClick={() => setShowNotifications(!showNotifications)}
           className="relative p-2 rounded-[var(--radius-md)] text-text-muted hover:text-text-primary hover:bg-surface-hover transition-colors duration-150"
-          title="Notificações"
+          title="Notifications"
         >
           <Bell size={16} />
           {unreadCount > 0 && (
@@ -83,7 +83,7 @@ export default function Topbar({ onMenuToggle }: { onMenuToggle: () => void }) {
 <button
           onClick={() => setShowSettings(true)}
           className="p-2 rounded-[var(--radius-md)] text-text-muted hover:text-text-primary hover:bg-surface-hover transition-colors duration-150"
-          title="Definições"
+          title="Settings"
         >
           <Settings size={16} />
         </button>

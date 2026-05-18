@@ -66,7 +66,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.payload.issue.number,
-              body: 'Nota anexada automaticamente ao `Fixes.md`. Obrigado pelo teste.'
+              body: 'Note automatically appended to `Fixes.md`. Thanks for testing.'
             });
             await github.rest.issues.update({
               owner: context.repo.owner,

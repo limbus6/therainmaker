@@ -8,23 +8,23 @@ interface GameInstructionsModalProps {
 const CORE_STEPS = [
   {
     icon: Mail,
-    title: 'Lê a Inbox',
-    body: 'Os emails trazem pressão do cliente, pedidos da equipa, sinais de compradores e eventos que podem alterar o rumo do deal.',
+    title: 'Read the Inbox',
+    body: 'Emails bring client pressure, team requests, buyer signals, and events that can change the direction of the deal.',
   },
   {
     icon: ListChecks,
-    title: 'Escolhe tarefas',
-    body: 'As tarefas fazem avançar workstreams, entregáveis e gates de fase. Prioriza o que desbloqueia progresso sem rebentar a capacidade.',
+    title: 'Choose Tasks',
+    body: 'Tasks move workstreams, deliverables, and phase gates forward. Prioritize what unlocks progress without overloading capacity.',
   },
   {
     icon: ShieldAlert,
-    title: 'Mitiga riscos',
-    body: 'Riscos ignorados podem transformar-se em eventos negativos, perda de confiança ou quebra de momentum.',
+    title: 'Mitigate Risks',
+    body: 'Ignored risks can become negative events, lost client trust, or broken deal momentum.',
   },
   {
     icon: Gauge,
-    title: 'Avança a semana',
-    body: 'Quando tiveres definido a tua jogada, avança o tempo. O jogo resolve tarefas, eventos, compradores e recursos.',
+    title: 'Advance Time',
+    body: 'Once you have set your move, advance time. The game resolves tasks, events, buyers, and resources.',
   },
 ];
 
@@ -36,11 +36,11 @@ export default function GameInstructionsModal({ isOpen, onClose }: GameInstructi
       <div className="w-full max-w-3xl overflow-hidden rounded-[var(--radius-lg)] border border-border-subtle bg-bg-secondary shadow-[var(--shadow-heavy)]">
         <div className="flex items-start justify-between gap-4 border-b border-border-subtle px-6 py-5">
           <div>
-            <p className="text-[10px] font-mono uppercase tracking-[0.24em] text-text-accent">Instruções do jogo</p>
-            <h2 className="mt-1 font-display text-[22px] font-semibold text-text-primary">Como conduzir o deal</h2>
+            <p className="text-[10px] font-mono uppercase tracking-[0.24em] text-text-accent">Game instructions</p>
+            <h2 className="mt-1 font-display text-[22px] font-semibold text-text-primary">How to Run the Deal</h2>
             <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-text-secondary">
-              O objetivo é fechar a venda da Solara Systems sem perder compradores, confiança do cliente ou controlo do processo.
-              O jogo deve viver numa tensão saudável: nem checklist automática, nem caos injusto.
+              Your goal is to close the sale of Solara Systems without losing buyers, client trust, or control of the process.
+              The game should sit in a healthy tension band: neither an automatic checklist nor unfair chaos.
             </p>
           </div>
           <button
@@ -74,21 +74,21 @@ export default function GameInstructionsModal({ isOpen, onClose }: GameInstructi
             <div>
               <div className="flex items-center gap-2 text-[12px] font-semibold text-text-primary">
                 <Users size={14} className="text-text-accent" />
-                O que observar
+                What to Watch
               </div>
               <p className="mt-2 text-[12px] leading-relaxed text-text-secondary">
-                Mantém momentum e confiança altos, orçamento e capacidade sob controlo, risco abaixo de níveis críticos,
-                e compradores suficientes no processo para preservar tensão competitiva.
+                Keep momentum and trust high, budget and capacity under control, risk below critical levels,
+                and enough buyers in the process to preserve competitive tension.
               </p>
             </div>
             <div>
               <div className="flex items-center gap-2 text-[12px] font-semibold text-text-primary">
                 <ArrowRight size={14} className="text-text-accent" />
-                Como progredir
+                How to Progress
               </div>
               <p className="mt-2 text-[12px] leading-relaxed text-text-secondary">
-                Cada fase tem um gate. Completa os requisitos principais, avança a semana para resolver consequências,
-                e passa de fase quando o gate indicar que o processo está pronto.
+                Each phase has a gate. Complete the core requirements, advance time to resolve consequences,
+                and move to the next phase when the gate shows the process is ready.
               </p>
             </div>
           </div>
@@ -98,7 +98,7 @@ export default function GameInstructionsModal({ isOpen, onClose }: GameInstructi
             onClick={onClose}
             className="mt-5 w-full rounded-[var(--radius-md)] bg-accent-primary px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-accent-hover"
           >
-            Voltar ao jogo
+            Back to Game
           </button>
         </div>
       </div>
