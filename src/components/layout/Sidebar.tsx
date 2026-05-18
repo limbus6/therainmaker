@@ -25,13 +25,13 @@ interface NavEntry {
 const NAV_ITEMS: NavEntry[] = [
   { to: '/game', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
   { to: '/inbox', label: 'Inbox', icon: <Inbox size={18} />, badgeKey: 'unreadEmails' },
-  { to: '/client', label: 'Client', icon: <UserCircle size={18} /> },
-  { to: '/team', label: 'Team', icon: <Users size={18} /> },
-  { to: '/buyers', label: 'Buyers', icon: <Briefcase size={18} /> },
-  { to: '/tasks', label: 'Tasks', icon: <ListChecks size={18} />, badgeKey: 'pendingTasks' },
-  { to: '/deliverables', label: 'Deliverables', icon: <FileText size={18} /> },
-  { to: '/market', label: 'Market', icon: <Newspaper size={18} /> },
-  { to: '/risks', label: 'Risks', icon: <AlertTriangle size={18} />, badgeKey: 'activeRisks' },
+  { to: '/client', label: 'Cliente', icon: <UserCircle size={18} /> },
+  { to: '/team', label: 'Equipa', icon: <Users size={18} /> },
+  { to: '/buyers', label: 'Compradores', icon: <Briefcase size={18} /> },
+  { to: '/tasks', label: 'Tarefas', icon: <ListChecks size={18} />, badgeKey: 'pendingTasks' },
+  { to: '/deliverables', label: 'Entregáveis', icon: <FileText size={18} /> },
+  { to: '/market', label: 'Mercado', icon: <Newspaper size={18} /> },
+  { to: '/risks', label: 'Riscos', icon: <AlertTriangle size={18} />, badgeKey: 'activeRisks' },
   { to: '/timeline', label: 'Timeline', icon: <Clock size={18} /> },
 ];
 
@@ -56,7 +56,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const visibleNavItems: NavEntry[] = [
     ...NAV_ITEMS,
     ...(phase >= 5 ? [{ to: '/dataroom', label: 'Data Room', icon: <Database size={18} /> }] : []),
-    ...(phase >= 7 ? [{ to: '/final-offers', label: 'Final Offers', icon: <Trophy size={18} /> }] : []),
+    ...(phase >= 7 ? [{ to: '/final-offers', label: 'Ofertas finais', icon: <Trophy size={18} /> }] : []),
   ];
 
   return (
@@ -100,7 +100,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             <div className="min-w-0">
               <p className="text-[12px] font-semibold text-text-primary truncate">{playerName}</p>
               {lastSaved && (
-                <p className="text-[9px] text-text-muted font-mono">Saved {lastSaved}</p>
+                <p className="text-[9px] text-text-muted font-mono">Guardado {lastSaved}</p>
               )}
             </div>
           </div>
@@ -109,7 +109,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         {/* Phase Jumper (Requested Feature) */}
         <div className="px-2 pb-1">
           <label className="text-[10px] font-semibold text-text-muted uppercase tracking-wider mb-1.5 block">
-            Jump to Phase
+            Saltar para fase
           </label>
           <select
             className="w-full bg-surface-default border border-border-subtle rounded-md text-[11px] py-1.5 px-2 text-text-secondary outline-none focus:border-accent-primary transition-colors cursor-pointer"
@@ -121,18 +121,18 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               }
             }}
           >
-            <option value="">-- Select Phase --</option>
-            <option value="0">Phase 0: Origination</option>
-            <option value="1">Phase 1: Pitch & Mandate</option>
-            <option value="2">Phase 2: Preparation</option>
-            <option value="3">Phase 3: Market Outreach</option>
-            <option value="4">Phase 4: Shortlist</option>
-            <option value="5">Phase 5: Non-Binding Offers</option>
-            <option value="6">Phase 6: Due Diligence</option>
-            <option value="7">Phase 7: Final Offers</option>
-            <option value="8">Phase 8: SPA Negotiation</option>
-            <option value="9">Phase 9: Signing</option>
-            <option value="10">Phase 10: Closing</option>
+            <option value="">-- Selecionar fase --</option>
+            <option value="0">Fase 0: Originação</option>
+            <option value="1">Fase 1: Pitch & Mandate</option>
+            <option value="2">Fase 2: Preparação</option>
+            <option value="3">Fase 3: Outreach ao mercado</option>
+            <option value="4">Fase 4: Shortlist</option>
+            <option value="5">Fase 5: Ofertas não vinculativas</option>
+            <option value="6">Fase 6: Due Diligence</option>
+            <option value="7">Fase 7: Ofertas finais</option>
+            <option value="8">Fase 8: Negociação do SPA</option>
+            <option value="9">Fase 9: Signing</option>
+            <option value="10">Fase 10: Closing</option>
           </select>
         </div>
 

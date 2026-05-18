@@ -2,8 +2,8 @@ export const REVIEW_CHECKPOINTS = [
     {
         id: 'p0-kickoff',
         phase: 0,
-        label: 'Kickoff',
-        description: 'Origination fresca, sem board nem qual notes.',
+        label: 'Arranque',
+        description: 'Originação fresca, sem aprovação do board nem notas de qualificação.',
         route: '/game',
         day: 1,
         clientTrust: 40,
@@ -13,8 +13,8 @@ export const REVIEW_CHECKPOINTS = [
     {
         id: 'p0-gate-ready',
         phase: 0,
-        label: 'Gate Ready',
-        description: 'Lead qualificado, meeting feita, board aprovado.',
+        label: 'Gate pronto',
+        description: 'Lead qualificado, reunião feita e board aprovado.',
         route: '/client',
         day: 18,
         clientTrust: 55,
@@ -28,8 +28,8 @@ export const REVIEW_CHECKPOINTS = [
     {
         id: 'p1-pitch-build',
         phase: 1,
-        label: 'Pitch Build',
-        description: 'A montar investment case e deck.',
+        label: 'Construção do pitch',
+        description: 'A montar o investment case e o deck.',
         route: '/tasks',
         day: 22,
         clientTrust: 52,
@@ -39,8 +39,8 @@ export const REVIEW_CHECKPOINTS = [
     {
         id: 'p1-fee-agreed',
         phase: 1,
-        label: 'Mandate Won',
-        description: 'Pitch entregue e fee terms fechados.',
+        label: 'Mandato ganho',
+        description: 'Pitch entregue e termos de fee fechados.',
         route: '/client',
         day: 30,
         clientTrust: 68,
@@ -53,7 +53,7 @@ export const REVIEW_CHECKPOINTS = [
     {
         id: 'p2-materials-build',
         phase: 2,
-        label: 'Materials Build',
+        label: 'Construção de materiais',
         description: 'Modelo, CIM e teaser em construção.',
         route: '/deliverables',
         day: 40,
@@ -64,7 +64,7 @@ export const REVIEW_CHECKPOINTS = [
     {
         id: 'p2-launch-ready',
         phase: 2,
-        label: 'Launch Ready',
+        label: 'Lançamento pronto',
         description: 'Materiais core prontos para ir ao mercado.',
         route: '/deliverables',
         day: 52,
@@ -76,7 +76,7 @@ export const REVIEW_CHECKPOINTS = [
     {
         id: 'p3-outreach-live',
         phase: 3,
-        label: 'Outreach Live',
+        label: 'Outreach ativo',
         description: 'Teasers enviados e NDAs a entrar.',
         route: '/buyers',
         day: 58,
@@ -87,7 +87,7 @@ export const REVIEW_CHECKPOINTS = [
     {
         id: 'p3-shortlist-ready',
         phase: 3,
-        label: 'Shortlist Ready',
+        label: 'Shortlist pronta',
         description: 'Q&A respondido e deadline batido para seguir.',
         route: '/buyers',
         day: 78,
@@ -107,8 +107,8 @@ export const REVIEW_CHECKPOINTS = [
     {
         id: 'p4-shortlist-build',
         phase: 4,
-        label: 'Shortlist Build',
-        description: 'A limpar buyers e a definir round de NBO.',
+        label: 'Construção da shortlist',
+        description: 'A filtrar compradores e a definir a ronda de NBO.',
         route: '/buyers',
         day: 82,
         clientTrust: 69,
@@ -118,8 +118,8 @@ export const REVIEW_CHECKPOINTS = [
     {
         id: 'p4-nbo-ready',
         phase: 4,
-        label: 'NBO Ready',
-        description: 'Shortlist fechada e deadline para first round.',
+        label: 'NBO pronto',
+        description: 'Shortlist fechada e deadline definido para a primeira ronda.',
         route: '/timeline',
         day: 96,
         clientTrust: 72,
@@ -138,7 +138,7 @@ export const REVIEW_CHECKPOINTS = [
     {
         id: 'p5-nbo-analysis',
         phase: 5,
-        label: 'NBO Analysis',
+        label: 'Análise de NBO',
         description: 'Ofertas indicativas acabadas de chegar.',
         route: '/buyers',
         day: 102,
@@ -149,8 +149,8 @@ export const REVIEW_CHECKPOINTS = [
     {
         id: 'p5-dd-entry-ready',
         phase: 5,
-        label: 'DD Entry Ready',
-        description: 'Matrix pronta e candidatos a DD escolhidos.',
+        label: 'Entrada em DD pronta',
+        description: 'Matriz pronta e candidatos a DD escolhidos.',
         route: '/deliverables',
         day: 112,
         clientTrust: 74,
@@ -168,8 +168,8 @@ export const REVIEW_CHECKPOINTS = [
     {
         id: 'p6-dd-live',
         phase: 6,
-        label: 'DD Live',
-        description: 'Q&A tracker lançado e buyer DD streams abertas.',
+        label: 'DD ativa',
+        description: 'Q&A tracker lançado e streams de DD dos compradores abertas.',
         route: '/dataroom',
         day: 118,
         clientTrust: 68,
@@ -179,8 +179,8 @@ export const REVIEW_CHECKPOINTS = [
     {
         id: 'p6-binding-bid-ready',
         phase: 6,
-        label: 'Binding Bid Ready',
-        description: 'Issue memo contido e process letter pronta.',
+        label: 'Binding bid pronto',
+        description: 'Issue memo controlado e process letter pronta.',
         route: '/dataroom',
         day: 138,
         clientTrust: 76,
@@ -200,7 +200,7 @@ export const REVIEW_CHECKPOINTS = [
     {
         id: 'p7-final-offers-live',
         phase: 7,
-        label: 'Final Offers Live',
+        label: 'Ofertas finais ativas',
         description: 'As binding offers estão na mesa.',
         route: '/final-offers',
         day: 142,
@@ -212,8 +212,8 @@ export const REVIEW_CHECKPOINTS = [
     {
         id: 'p7-exclusivity-ready',
         phase: 7,
-        label: 'Exclusivity Ready',
-        description: 'Preferred bidder escolhido e exclusivity pack pronto.',
+        label: 'Exclusividade pronta',
+        description: 'Bidder preferido escolhido e pack de exclusividade pronto.',
         route: '/final-offers',
         day: 154,
         clientTrust: 78,
@@ -233,7 +233,7 @@ export const REVIEW_CHECKPOINTS = [
     {
         id: 'p8-spa-live',
         phase: 8,
-        label: 'SPA Live',
+        label: 'SPA ativo',
         description: 'Negociação legal aberta com o bidder preferido.',
         route: '/client',
         day: 160,
@@ -252,7 +252,7 @@ export const REVIEW_CHECKPOINTS = [
     {
         id: 'p8-signing-ready',
         phase: 8,
-        label: 'Signing Ready',
+        label: 'Signing pronto',
         description: 'SPA acordado e checklist de signing pronta.',
         route: '/timeline',
         day: 176,
@@ -273,7 +273,7 @@ export const REVIEW_CHECKPOINTS = [
     {
         id: 'p9-signing-desk',
         phase: 9,
-        label: 'Signing Desk',
+        label: 'Mesa de signing',
         description: 'Documentos quase prontos para assinar.',
         route: '/timeline',
         day: 182,
@@ -285,7 +285,7 @@ export const REVIEW_CHECKPOINTS = [
     {
         id: 'p9-closing-ready',
         phase: 9,
-        label: 'Closing Ready',
+        label: 'Closing pronto',
         description: 'Signature version locked e SPA assinada.',
         route: '/timeline',
         day: 194,
@@ -299,7 +299,7 @@ export const REVIEW_CHECKPOINTS = [
     {
         id: 'p10-closing-live',
         phase: 10,
-        label: 'Closing Live',
+        label: 'Closing ativo',
         description: 'CP tracker, wires e pressão final.',
         route: '/game',
         day: 200,
@@ -311,7 +311,7 @@ export const REVIEW_CHECKPOINTS = [
     {
         id: 'p10-results-ready',
         phase: 10,
-        label: 'Results Ready',
+        label: 'Resultados prontos',
         description: 'Mais de 70% da fase completa, quase no scoring final.',
         route: '/game',
         day: 214,

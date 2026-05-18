@@ -3,19 +3,19 @@ import { useGameStore } from '../store/gameStore';
 
 const SLIDES = [
   {
-    title: 'Welcome to M&A Rainmaker',
-    body: `You are a sell-side M&A banker at Clearwater Advisory. Your client, Ricardo Mendes, has hired you to run a full sale process for Solara Systems — his industrial automation company.\n\nYour job: find the right buyer, manage the process, and close the deal at the best possible price.`,
-    cta: 'Got it →',
+    title: 'Bem-vindo ao M&A Rainmaker',
+    body: `És um banker de M&A sell-side na Clearwater Advisory. O teu cliente, Ricardo Mendes, contratou-te para conduzir o processo de venda da Solara Systems, a sua empresa de automação industrial.\n\nO teu objetivo: encontrar o comprador certo, gerir o processo e fechar o deal nas melhores condições possíveis.`,
+    cta: 'Percebi →',
   },
   {
-    title: 'How the Game Works',
-    body: `The deal runs across 11 phases — from origination to closing. Each week you:\n\n• Complete tasks to drive the process forward\n• Respond to emails from your client, team, and buyers\n• Manage risks before they derail the deal\n• Advance the week when you're ready\n\nYour resources — budget, momentum, trust, and team capacity — determine whether the deal closes.`,
-    cta: 'Understood →',
+    title: 'Como o jogo funciona',
+    body: `O deal avança ao longo de 11 fases, desde a originação até ao closing. Em cada semana deves:\n\n• Concluir tarefas para empurrar o processo\n• Responder a emails do cliente, equipa e compradores\n• Mitigar riscos antes de descarrilarem o deal\n• Avançar a semana quando estiveres pronto\n\nOs teus recursos — orçamento, momentum, confiança e capacidade da equipa — determinam se o deal chega ao fim.`,
+    cta: 'Entendido →',
   },
   {
-    title: 'Phase 0 — Deal Origination',
-    body: `You're starting in Phase 0: Deal Origination.\n\nYour immediate objectives:\n1. Screen the market and confirm Solara is ready to sell\n2. Meet Ricardo and assess his motivations\n3. Align internally on whether to pursue the mandate\n4. Prepare to enter Phase 1 (Pitch & Mandate)\n\nCheck your Inbox and Tasks to get started. Good luck.`,
-    cta: 'Start the Deal →',
+    title: 'Fase 0 — Originação do deal',
+    body: `Começas na Fase 0: Originação do deal.\n\nObjetivos imediatos:\n1. Analisar o mercado e confirmar que a Solara está pronta para vender\n2. Reunir com Ricardo e avaliar as suas motivações\n3. Alinhar internamente se vale a pena perseguir o mandato\n4. Preparar a entrada na Fase 1 (Pitch & Mandate)\n\nComeça pela Inbox e pelas Tarefas. Boa sorte.`,
+    cta: 'Começar o deal →',
   },
 ];
 
@@ -60,7 +60,7 @@ export default function OnboardingOverlay({ onComplete }: OnboardingOverlayProps
         <div className="px-6 py-6">
           {slide === 0 && playerName && (
             <p className="text-[12px] font-mono text-text-accent mb-3">
-              Hello, {playerName}.
+              Olá, {playerName}.
             </p>
           )}
           <h2 className="text-[20px] font-bold font-display text-text-primary mb-4">

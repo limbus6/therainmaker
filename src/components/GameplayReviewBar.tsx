@@ -5,6 +5,31 @@ import { REVIEW_CHECKPOINTS } from '../config/reviewCheckpoints';
 import { useGameStore } from '../store/gameStore';
 import { PHASE_NAMES, type PhaseId } from '../types/game';
 
+interface ReviewPayload {
+  phase: PhaseId;
+  phaseLabel: string;
+  checkpointId: string;
+  checkpointLabel: string;
+  checkpointDescription: string;
+  route: string;
+  review: string;
+}
+
+function formatFixesEntry(payload: ReviewPayload): string {
+  const timestamp = new Date().toISOString().replace('T', ' ').replace('Z', ' UTC');
+
+  return [
+    `## ${timestamp}`,
+    `- Fase: P${payload.phase} — ${payload.phaseLabel}`,
+    `- Checkpoint: ${payload.checkpointLabel}`,
+    `- Rota: ${payload.route}`,
+    `- Contexto: ${payload.checkpointDescription}`,
+    '',
+    payload.review,
+    '',
+  ].join('\n');
+}
+
 export default function GameplayReviewBar() {
   const navigate = useNavigate();
   const debugJumpToCheckpoint = useGameStore((s) => s.debugJumpToCheckpoint);
@@ -43,9 +68,9 @@ export default function GameplayReviewBar() {
     try {
       await debugJumpToCheckpoint(selectedCheckpoint.id);
       navigate(selectedCheckpoint.route);
-      addToast(`Checkpoint loaded: P${selectedCheckpoint.phase} — ${selectedCheckpoint.label}`, 'info');
+      addToast(`Checkpoint carregado: P${selectedCheckpoint.phase} — ${selectedCheckpoint.label}`, 'info');
     } catch {
-      addToast('Failed to load the selected review checkpoint.', 'danger');
+      addToast('Não foi possível carregar o checkpoint selecionado.', 'danger');
     } finally {
       setIsJumping(false);
     }
@@ -54,9 +79,19 @@ export default function GameplayReviewBar() {
   async function handleSubmitReview() {
     const trimmedReview = reviewText.trim();
     if (!trimmedReview || !selectedCheckpoint) {
-      addToast('Write a review note before submitting.', 'warning');
+      addToast('Escreve uma nota antes de enviar.', 'warning');
       return;
     }
+
+    const payload: ReviewPayload = {
+      phase: selectedCheckpoint.phase,
+      phaseLabel: PHASE_NAMES[selectedCheckpoint.phase],
+      checkpointId: selectedCheckpoint.id,
+      checkpointLabel: selectedCheckpoint.label,
+      checkpointDescription: selectedCheckpoint.description,
+      route: selectedCheckpoint.route,
+      review: trimmedReview,
+    };
 
     setIsSubmitting(true);
     try {
@@ -65,15 +100,7 @@ export default function GameplayReviewBar() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          phase: selectedCheckpoint.phase,
-          phaseLabel: PHASE_NAMES[selectedCheckpoint.phase],
-          checkpointId: selectedCheckpoint.id,
-          checkpointLabel: selectedCheckpoint.label,
-          checkpointDescription: selectedCheckpoint.description,
-          route: selectedCheckpoint.route,
-          review: trimmedReview,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -81,9 +108,18 @@ export default function GameplayReviewBar() {
       }
 
       setReviewText('');
-      addToast('Review appended to Fixes.md.', 'success');
+      addToast('Nota adicionada ao Fixes.md.', 'success');
     } catch {
-      addToast('Could not write to Fixes.md. Use the local dev server for direct review capture.', 'danger');
+      const fixesEntry = formatFixesEntry(payload);
+      const storedDrafts = JSON.parse(window.localStorage.getItem('fixesDrafts') ?? '[]') as string[];
+      window.localStorage.setItem('fixesDrafts', JSON.stringify([...storedDrafts, fixesEntry]));
+
+      try {
+        await navigator.clipboard.writeText(fixesEntry);
+        addToast('GitHub Pages não escreve ficheiros. A nota foi copiada e guardada em rascunhos locais.', 'warning');
+      } catch {
+        addToast('GitHub Pages não escreve ficheiros. A nota ficou guardada em rascunhos locais.', 'warning');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -95,9 +131,9 @@ export default function GameplayReviewBar() {
         <div className="flex items-center justify-between gap-3 px-4 py-2 md:px-6">
           <div className="flex min-w-0 items-center gap-2">
             <Bug size={14} className="text-text-accent" />
-            <span className="text-[10px] font-mono uppercase tracking-[0.22em] text-text-muted">Gameplay Review hidden</span>
+            <span className="text-[10px] font-mono uppercase tracking-[0.22em] text-text-muted">Barra de revisão oculta</span>
             <span className="hidden truncate text-[11px] text-text-secondary sm:inline">
-              QA jump and Fixes.md submission are still available.
+              Os checkpoints de teste e as notas para o Fixes.md continuam disponíveis.
             </span>
           </div>
           <button
@@ -106,7 +142,7 @@ export default function GameplayReviewBar() {
             className="inline-flex items-center gap-2 rounded-[var(--radius-md)] border border-border-subtle bg-surface-default px-3 py-1.5 text-[11px] font-semibold text-text-primary transition-colors hover:border-border-accent hover:text-text-accent"
           >
             <ChevronDown size={13} />
-            Show Review Bar
+            Mostrar barra
           </button>
         </div>
       </section>
@@ -123,9 +159,9 @@ export default function GameplayReviewBar() {
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <p className="text-[11px] font-mono uppercase tracking-[0.24em] text-text-accent">Gameplay Review</p>
+                <p className="text-[11px] font-mono uppercase tracking-[0.24em] text-text-accent">Revisão de gameplay</p>
                 <span className="rounded-full border border-border-subtle bg-surface-default px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-text-muted">
-                  QA Jump Bar
+                  Barra QA
                 </span>
                 <button
                   type="button"
@@ -133,18 +169,18 @@ export default function GameplayReviewBar() {
                   className="inline-flex items-center gap-1 rounded-full border border-border-subtle bg-surface-default px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-text-muted transition-colors hover:border-border-accent hover:text-text-accent"
                 >
                   <ChevronUp size={12} />
-                  Hide
+                  Ocultar
                 </button>
               </div>
               <p className="mt-1 text-[12px] text-text-secondary">
-                Salta para fases e subfases coerentes para testes e envia feedback direto para <span className="font-mono text-text-primary">Fixes.md</span>.
+                Salta para fases e subfases coerentes para testes. Em local, as notas são gravadas em <span className="font-mono text-text-primary">Fixes.md</span>; em GitHub Pages ficam copiadas/guardadas como rascunho.
               </p>
             </div>
           </div>
 
           <div className="grid gap-2 md:grid-cols-[minmax(0,180px)_minmax(0,280px)_auto] xl:min-w-[560px]">
             <label className="flex flex-col gap-1">
-              <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-text-muted">Phase</span>
+              <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-text-muted">Fase</span>
               <div className="relative">
                 <select
                   value={selectedPhase}
@@ -162,7 +198,7 @@ export default function GameplayReviewBar() {
             </label>
 
             <label className="flex flex-col gap-1">
-              <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-text-muted">Subphase</span>
+              <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-text-muted">Subfase</span>
               <div className="relative">
                 <select
                   value={selectedCheckpointId}
@@ -186,7 +222,7 @@ export default function GameplayReviewBar() {
               className="mt-[18px] inline-flex items-center justify-center gap-2 rounded-[var(--radius-md)] border border-border-accent bg-accent-primary px-4 py-2 text-[12px] font-semibold text-white transition-all hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
             >
               <SkipForward size={14} />
-              {isJumping ? 'Loading…' : 'Jump To Checkpoint'}
+              {isJumping ? 'A carregar...' : 'Ir para checkpoint'}
             </button>
           </div>
         </div>
@@ -194,22 +230,22 @@ export default function GameplayReviewBar() {
         {selectedCheckpoint && (
           <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
             <div className="rounded-[var(--radius-md)] border border-border-subtle bg-surface-default px-3 py-3">
-              <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-text-muted">Selected Scenario</p>
+              <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-text-muted">Cenário selecionado</p>
               <p className="mt-1 text-[13px] font-semibold text-text-primary">
                 {`P${selectedCheckpoint.phase} — ${selectedCheckpoint.label}`}
               </p>
               <p className="mt-1 text-[12px] text-text-secondary">{selectedCheckpoint.description}</p>
               <p className="mt-2 text-[11px] font-mono text-text-muted">
-                Route target: <span className="text-text-primary">{selectedCheckpoint.route}</span>
+                Rota: <span className="text-text-primary">{selectedCheckpoint.route}</span>
               </p>
             </div>
 
             <div className="rounded-[var(--radius-md)] border border-border-subtle bg-surface-default px-3 py-3">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-text-muted">Review Submission</p>
+                  <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-text-muted">Nota de revisão</p>
                   <p className="mt-1 text-[12px] text-text-secondary">
-                    Descreve bugs, edge cases ou ajustes de UX encontrados neste checkpoint.
+                    Descreve bugs, casos-limite ou ajustes de UX encontrados neste checkpoint.
                   </p>
                 </div>
                 <button
@@ -219,7 +255,7 @@ export default function GameplayReviewBar() {
                   className="inline-flex shrink-0 items-center gap-2 rounded-[var(--radius-md)] border border-border-default bg-bg-panel px-3 py-2 text-[12px] font-semibold text-text-primary transition-colors hover:border-border-accent hover:text-text-accent disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <Send size={14} />
-                  {isSubmitting ? 'Submitting…' : 'Send To Fixes.md'}
+                  {isSubmitting ? 'A enviar...' : 'Enviar para Fixes.md'}
                 </button>
               </div>
               <textarea

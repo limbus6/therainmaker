@@ -5,17 +5,17 @@
 export type PhaseId = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 
 export const PHASE_NAMES: Record<PhaseId, string> = {
-  0: 'Deal Origination',
+  0: 'Originação do deal',
   1: 'Pitch & Mandate',
-  2: 'Preparation',
-  3: 'Market Outreach',
+  2: 'Preparação',
+  3: 'Outreach ao mercado',
   4: 'Shortlist',
-  5: 'Non-Binding Offers',
+  5: 'Ofertas não vinculativas',
   6: 'Due Diligence',
-  7: 'Final Offers',
-  8: 'SPA Negotiation',
+  7: 'Ofertas finais',
+  8: 'Negociação do SPA',
   9: 'Signing',
-  10: 'Closing & Execution',
+  10: 'Closing e execução',
 };
 
 // --- Resources ---
