@@ -91,3 +91,12 @@ It's taking too long to have exclusivity agreement prepared. and we could have a
 - Context: Binding offers are on the table.
 
 The buyer that is moving to sign is not what I selected as preferred.
+
+
+## 2026-05-19 11:39:06.583 UTC
+- Phase: P9 — Signing
+- Checkpoint: Signing Desk
+- Route: /timeline
+- Context: Documents almost ready for signature.
+
+I can finalize because risk level is too high. comittee does not allow more budget, and there are risks that are not relevant anymore.
