@@ -73,3 +73,12 @@ It is not advancing for next phase, despite we have already receive the Binding 
 - Context: Q&A tracker launched and buyer DD streams opened.
 
 on the dashboard the deliverables are showing stuff from very initial phases. it shoudl update accordding to the phase.
+
+
+## 2026-05-19 11:19:27.876 UTC
+- Phase: P6 — Due Diligence
+- Checkpoint: DD Live
+- Route: /dataroom
+- Context: Q&A tracker launched and buyer DD streams opened.
+
+It's taking too long to have exclusivity agreement prepared. and we could have a possibility to simply attribute exclusivity to whoever we would want not the one htat is asking.
