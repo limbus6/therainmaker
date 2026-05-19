@@ -106,7 +106,7 @@ function calculateCareerScore(state, financialScore, processScore) {
     };
 }
 // --- Key Drivers ---
-function generateKeyDrivers(state, _scores) {
+function generateKeyDrivers(state) {
     const drivers = [];
     // Financial drivers — evaluate against total game budget (TOTAL_GAME_BUDGET k€)
     const currentPhaseSpentForDrivers = Math.max(0, state.resources.budgetMax - state.resources.budget);
@@ -190,7 +190,7 @@ export function buildResultsBoard(state) {
         overallDealScore,
         overallGrade,
     };
-    const keyDrivers = generateKeyDrivers(state, scores);
+    const keyDrivers = generateKeyDrivers(state);
     return {
         dealOutcome,
         financial: {

@@ -50,6 +50,11 @@ import { retireObsoleteRisks, updatePhaseWorkstreamProgress } from '../utils/gam
 import { loadPhaseContent } from '../content/loadPhaseContent';
 
 // ============================================
+// Phase 0 Origination Constants
+// ============================================
+export const INVESTIGATION_COST_K = 2; // k€ per investigation dimension — single source of truth
+
+// ============================================
 // Initial Phase 0: Deal Origination Seed Data
 // ============================================
 
@@ -454,7 +459,7 @@ function generateClientNote(
     notes.push('The retainer is a stretch, but I could live with it if the other terms improve.');
   }
   if (rSuccessFee === 'red') {
-    notes.push(`That success fee percentage doesn\'t work for me. I\'d need to see something closer to ${profile === 'serious_demanding' ? '1.5%' : '2%'}.`);
+    notes.push(`That success fee percentage doesn't work for me. I'd need to see something closer to ${profile === 'serious_demanding' ? '1.5%' : '2%'}.`);
   } else if (rSuccessFee === 'yellow') {
     notes.push('The fee is a bit rich, but I understand your rationale. What can you give me on the other terms?');
   }
@@ -924,8 +929,7 @@ function applySPAProgressiveLocking(
 function evaluateSPARound(
   terms: Pick<SPARound, 'playerWarrantyScope' | 'playerWarrantyCap' | 'playerEscrowPercent' | 'playerSpecificIndemnity'>,
   buyerState: SPABuyerState,
-  round: number,
-  _resources: import('../types/game').PlayerResources
+  round: number
 ): Omit<SPARound, 'round' | 'playerWarrantyScope' | 'playerWarrantyCap' | 'playerEscrowPercent' | 'playerSpecificIndemnity'> {
 
   // Scope reaction
@@ -1068,6 +1072,9 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     // Unlock tasks whose dependencies are now met
     const unlockedTasks = unlockTasks(updatedTasks);
 
+    // Fix 5: track pitch document readiness — set when task-15 (Prepare Pitch Deck) completes
+    const pitchDocumentReady = state.pitchDocumentReady || result.tasksCompleted.some((t) => t.id === 'task-15');
+
     // Apply resource changes
     const newResources = { ...state.resources };
     for (const [key, value] of Object.entries(result.resourceChanges)) {
@@ -1091,10 +1098,14 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     const newEvents = [...state.events, ...result.newEvents];
 
     // Create competitor threats from competing advisor events
+    const isCompetitorEvent = (ev: GameEvent) =>
+      ev.title?.includes('Competing Advisor') || ev.id?.includes('rivalpitch');
     const newCompetitorThreats = [...state.competitorThreats];
     for (const event of result.newEvents) {
-      if (event.title?.includes('Competing Advisor')) {
-        const advisorName = event.description?.includes('firm') ? 'Competing Advisory Firm' : 'Rival Advisor';
+      if (isCompetitorEvent(event)) {
+        const advisorName = event.id?.includes('rivalpitch')
+          ? 'Beacon Partners'
+          : event.description?.includes('firm') ? 'Competing Advisory Firm' : 'Rival Advisor';
         newCompetitorThreats.push({
           id: `threat-${event.id}`,
           advisorName,
@@ -1237,9 +1248,10 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       weekSummary: result.narrativeSummary,
       weekHistory: [...state.weekHistory, { day: newDay, week: newWeekNum, daysAdvanced: daysToAdvance, summary: result.narrativeSummary, phase: state.phase }],
       isWeekInProgress: true,
-      savedAt: new Date().toISOString() as any,
+      savedAt: new Date().toISOString(),
       lastWeekResult: result,
       phaseGate: gate,
+      pitchDocumentReady,
       bindingOffersReceived: updatedBindingOffersReceived,
       ...(isGameComplete ? { gameComplete: true } : {}),
       ...(collapse.collapsed ? {
@@ -1269,7 +1281,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     let newDeliverables = state.deliverables;
     let newRisks = state.risks;
     let newHeadlines = state.headlines;
-    let newWorkstreams = state.workstreams;
+    const newWorkstreams = state.workstreams;
     let newBuyers = state.buyers;
     let newClient = state.client;
     if (nextPhase >= 1) {
@@ -1328,7 +1340,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       totalBudgetSpent: newTotalBudgetSpent,
       phaseBudget: { phaseBase, carryover },
       feeNegotiation: null,
-      agreedFeeTerms: null,
+      // agreedFeeTerms intentionally preserved — fee terms negotiated in Phase 1 must survive to resultsEngine
       phaseDeadline: null,
       pitchDocumentReady: false,
       bindingOffersReceived: nextBindingOffersReceived,
@@ -1524,7 +1536,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     const risks = retireObsoleteRisks(state.risks, checkpoint.phase, bindingOffersReceived);
     const workstreams = updatePhaseWorkstreamProgress(state.workstreams, tasks, checkpoint.phase);
 
-    let spaNegotiation = checkpoint.phase >= 8 && checkpoint.preferredBidderId
+    const spaNegotiation = checkpoint.phase >= 8 && checkpoint.preferredBidderId
       ? (() => {
           const preferredBuyer = buyers.find((buyer) => buyer.id === checkpoint.preferredBidderId);
           if (!preferredBuyer) return null;
@@ -1760,7 +1772,6 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       t.id === taskId && t.status === 'in_progress' ? { ...t, status: 'completed' as const } : t
     );
     const unlockedUpdated = unlockTasks(updated);
-
     const updatedWorkstreams = updatePhaseWorkstreamProgress(state.workstreams, unlockedUpdated, state.phase);
 
     return {
@@ -1769,6 +1780,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       workstreams: updatedWorkstreams,
       deliverables: syncDeliverables(state.deliverables, unlockedUpdated),
       team: syncTeamLoad(state.team, unlockedUpdated),
+      pitchDocumentReady: state.pitchDocumentReady || taskId === 'task-15',
     };
   }),
 
@@ -1829,8 +1841,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
 
     const success = Math.random() < plan.successChance;
     const effects = success ? plan.onSuccess : plan.onFailure;
-    const probabilityDelta = effects.probabilityDelta ?? 0;
-    const { probabilityDelta: _, ...resourceDeltas } = effects;
+    const { probabilityDelta = 0, ...resourceDeltas } = effects;
 
     const mergedResources = { ...baseResources };
     for (const [key, delta] of Object.entries(resourceDeltas)) {
@@ -1925,62 +1936,56 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
 
   // ─── Phase 0 Qualification ───────────────────────────────────────────────
   investigateDimension: (leadId, dimension) => set((state) => {
-    const cost = 2; // k€
+    const cost = INVESTIGATION_COST_K;
     if (state.resources.budget < cost) return {};
 
     const leadIndex = state.leads.findIndex((l) => l.id === leadId);
     if (leadIndex === -1) return {};
 
-    const taskId = `task-investigate-${leadId}-${dimension}`;
-    const updatedTasks = state.tasks.map((task) =>
-      task.id === taskId && (task.status === 'available' || task.status === 'recommended')
-        ? { ...task, status: 'in_progress' as const }
-        : task
-    );
-    const unlockedTasks = unlockTasks(updatedTasks);
+    // Guard: already investigated or in progress
+    const currentStatus = state.leads[leadIndex].investigation[dimension];
+    if (currentStatus === 'completed' || currentStatus === 'in_progress') return {};
 
     const updatedLeads = [...state.leads];
+    // Investigation completes immediately — no phantom task dependency needed.
     updatedLeads[leadIndex] = {
       ...updatedLeads[leadIndex],
       investigation: {
         ...updatedLeads[leadIndex].investigation,
-        [dimension]: 'in_progress'
-      }
+        [dimension]: 'completed' as const,
+      },
     };
 
     const dimensionNames = {
       sector: 'Sector Dynamics',
       company: 'Company Fundamentals',
       shareholder: 'Shareholder Objectives',
-      market: 'Market Read'
+      market: 'Market Read',
     };
 
     const newNote: QualificationNote = {
       id: `qn-${Date.now()}-${dimension}`,
       week: state.week,
       source: 'team_research',
-      content: `Investigated ${dimensionNames[dimension]} for ${updatedLeads[leadIndex].companyName}. Findings look viable for a structured process.`,
+      content: `${dimensionNames[dimension]} investigation complete for ${updatedLeads[leadIndex].companyName}. Findings look viable for a structured process.`,
       sentiment: 'neutral',
     };
 
     return {
       resources: normalizeResources({
         ...state.resources,
-        budget: state.resources.budget - cost
+        budget: state.resources.budget - cost,
       }),
-      tasks: unlockedTasks,
-      leads: syncLeadsFromTasks(updatedLeads, unlockedTasks),
-      deliverables: syncDeliverables(state.deliverables, unlockedTasks),
-      team: syncTeamLoad(state.team, unlockedTasks),
+      leads: updatedLeads,
       qualificationNotes: [...state.qualificationNotes, newNote],
       toasts: [
         ...state.toasts,
         {
           id: `t-${Date.now()}`,
-          message: `Investigating ${dimensionNames[dimension]} for ${updatedLeads[leadIndex].companyName}.`,
-          type: 'info'
-        }
-      ]
+          message: `${dimensionNames[dimension]} investigation complete for ${updatedLeads[leadIndex].companyName}.`,
+          type: 'success',
+        },
+      ],
     };
   }),
 
@@ -2293,7 +2298,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
         : terms.playerEscrowPercent,
     };
 
-    const rawResult = evaluateSPARound(effectiveTerms, neg.buyerState, round, state.resources);
+    const rawResult = evaluateSPARound(effectiveTerms, neg.buyerState, round);
 
     // Override locked component reactions to always green
     const reactionScope: ComponentReaction  = lockedComponents.includes('scope')     ? 'green' : rawResult.reactionScope;
@@ -2463,6 +2468,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
   partialize: (state) => {
     // Exclude transient UI state from persistence
     const { lastWeekResult, phaseGate, isWeekInProgress, toasts, ...persisted } = state;
+    void lastWeekResult; void phaseGate; void isWeekInProgress; void toasts;
     return persisted;
   },
 }));

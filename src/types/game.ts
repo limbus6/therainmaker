@@ -145,7 +145,7 @@ export interface Deliverable {
 
 // --- Risks ---
 
-export type RiskCategory = 'client' | 'buyer' | 'diligence' | 'legal' | 'financing' | 'timing' | 'team' | 'market';
+export type RiskCategory = 'client' | 'buyer' | 'diligence' | 'legal' | 'financing' | 'timing' | 'team' | 'market' | 'operational' | 'commercial';
 export type RiskSeverity = 'low' | 'medium' | 'high' | 'critical';
 
 export interface Risk {
@@ -158,6 +158,7 @@ export interface Risk {
   mitigated: boolean;
   surfacedWeek: number;
   surfacedPhase: PhaseId;
+  mitigationCost?: number;  // optional one-time budget cost (k€) to mitigate
   retired?: boolean;
   retiredReason?: string;
   expiresAfterPhase?: PhaseId;

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { formatNumber } from '../../utils/numberFormat';
 
 interface KpiTileProps {
@@ -31,17 +31,17 @@ const trendColor = {
 
 export default function KpiTile({ label, value, trend, color = 'default', onClick }: KpiTileProps) {
   const [flash, setFlash] = useState(false);
-  const [prevValue, setPrevValue] = useState(value);
+  const prevValueRef = useRef(value);
 
   useEffect(() => {
-    if (value !== prevValue) {
-      setFlash(true);
-      setPrevValue(value);
-      const timer = setTimeout(() => setFlash(false), 600);
-      return () => clearTimeout(timer);
+    if (value !== prevValueRef.current) {
+      prevValueRef.current = value;
+      const onTimer = setTimeout(() => setFlash(true), 0);
+      const offTimer = setTimeout(() => setFlash(false), 600);
+      return () => { clearTimeout(onTimer); clearTimeout(offTimer); };
     }
     return undefined;
-  }, [value, prevValue]);
+  }, [value]);
 
   const renderedValue = typeof value === 'number' ? formatNumber(value) : value;
 

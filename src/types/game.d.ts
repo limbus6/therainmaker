@@ -101,7 +101,7 @@ export interface Deliverable {
     dependencies?: string[];
     deadline?: number;
 }
-export type RiskCategory = 'client' | 'buyer' | 'diligence' | 'legal' | 'financing' | 'timing' | 'team' | 'market';
+export type RiskCategory = 'client' | 'buyer' | 'diligence' | 'legal' | 'financing' | 'timing' | 'team' | 'market' | 'operational' | 'commercial';
 export type RiskSeverity = 'low' | 'medium' | 'high' | 'critical';
 export interface Risk {
     id: string;
@@ -113,6 +113,7 @@ export interface Risk {
     mitigated: boolean;
     surfacedWeek: number;
     surfacedPhase: PhaseId;
+    mitigationCost?: number;
     retired?: boolean;
     retiredReason?: string;
     expiresAfterPhase?: PhaseId;

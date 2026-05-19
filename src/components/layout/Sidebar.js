@@ -33,7 +33,7 @@ export default function Sidebar({ onNavigate }) {
     };
     const visibleNavItems = [
         ...NAV_ITEMS,
-        ...(phase >= 5 ? [{ to: '/dataroom', label: 'Data Room', icon: _jsx(Database, { size: 18 }) }] : []),
+        ...(phase >= 6 ? [{ to: '/dataroom', label: 'Data Room', icon: _jsx(Database, { size: 18 }) }] : []),
         ...(phase >= 7 ? [{ to: '/final-offers', label: 'Final Offers', icon: _jsx(Trophy, { size: 18 }) }] : []),
     ];
     return (_jsxs("aside", { className: "w-52 h-full bg-bg-secondary border-r border-border-subtle flex flex-col py-3 overflow-y-auto", children: [_jsx("nav", { className: "flex flex-col gap-0.5 px-2", children: visibleNavItems.map((item) => {

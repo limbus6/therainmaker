@@ -72,10 +72,9 @@ export default function FeeNegotiationModal({ onClose }: Props) {
   const patienceBarRef = useRef<HTMLDivElement>(null);
   const reactionRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  if (!feeNegotiation) return null;
-
-  const { clientState, rounds, status } = feeNegotiation;
-  const latestRound = rounds.at(-1);
+  // Derive status before hooks so it can be used as a dependency.
+  // All hooks must run unconditionally; the null guard moves to after the effects.
+  const status = feeNegotiation?.status;
 
   // Entrance animation
   useEffect(() => {
@@ -113,6 +112,11 @@ export default function FeeNegotiationModal({ onClose }: Props) {
       }
     }
   }, [showReactions, feeNegotiation]);
+
+  // Guard and destructure after all hooks so hook call order is stable.
+  if (!feeNegotiation) return null;
+  const { clientState, rounds } = feeNegotiation;
+  const latestRound = rounds.at(-1);
 
   const maxRounds = resources.clientTrust > 60 ? 4 : 3;
   const ev = client.valuationExpectationEV ?? 100;

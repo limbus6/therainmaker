@@ -1,5 +1,5 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useRef, useState, useCallback, useEffect, useLayoutEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import Topbar from './Topbar';
 import Sidebar from './Sidebar';
@@ -28,13 +28,13 @@ export default function AppShell() {
             return;
         if (collapseHeadline) {
             // Deal collapsed — show cinematic overlay first
-            setShowCollapse(true);
+            const t = setTimeout(() => setShowCollapse(true), 0);
+            return () => clearTimeout(t);
         }
-        else {
-            // Deal succeeded — navigate straight to results
-            hasNavigatedRef.current = true;
-            navigate('/results');
-        }
+        // Deal succeeded — navigate straight to results
+        hasNavigatedRef.current = true;
+        navigate('/results');
+        return undefined;
     }, [gameComplete, collapseHeadline, navigate]);
     const handleCollapseComplete = useCallback(() => {
         setShowCollapse(false);
@@ -42,11 +42,13 @@ export default function AppShell() {
         navigate('/results');
     }, [navigate]);
     const [transition, setTransition] = useState(null);
-    // Detect phase changes
-    if (phase !== prevPhaseRef.current && !transition) {
-        setTransition({ from: prevPhaseRef.current, to: phase });
-        prevPhaseRef.current = phase;
-    }
+    // Detect phase changes — must run in useLayoutEffect, not during render.
+    useLayoutEffect(() => {
+        if (phase !== prevPhaseRef.current && !transition) {
+            setTransition({ from: prevPhaseRef.current, to: phase });
+            prevPhaseRef.current = phase;
+        }
+    }, [phase, transition]);
     const handleTransitionComplete = useCallback(() => {
         setTransition(null);
     }, []);

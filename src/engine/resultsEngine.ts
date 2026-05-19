@@ -189,7 +189,7 @@ function calculateCareerScore(state: GameStore, financialScore: number, processS
 }
 
 // --- Key Drivers ---
-function generateKeyDrivers(state: GameStore, _scores: ResultsBoard['scores']): string[] {
+function generateKeyDrivers(state: GameStore): string[] {
   const drivers: string[] = [];
 
   // Financial drivers — evaluate against total game budget (TOTAL_GAME_BUDGET k€)
@@ -288,7 +288,7 @@ export function buildResultsBoard(state: GameStore): ResultsBoard {
     overallGrade,
   };
 
-  const keyDrivers = generateKeyDrivers(state, scores);
+  const keyDrivers = generateKeyDrivers(state);
 
   return {
     dealOutcome,

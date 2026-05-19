@@ -1,4 +1,4 @@
-import { useGameStore } from '../store/gameStore';
+import { useGameStore, INVESTIGATION_COST_K } from '../store/gameStore';
 import type { Lead } from '../types/game';
 import Panel from './ui/Panel';
 import StatusChip from './ui/StatusChip';
@@ -102,7 +102,7 @@ function LeadActionPanel({ lead }: { lead: Lead }) {
     scheduleMeeting(lead.id);
   };
 
-  const budgetCost = 5;
+  const budgetCost = INVESTIGATION_COST_K;
   const canAfford = resources.budget >= budgetCost;
 
   return (
@@ -115,21 +115,24 @@ function LeadActionPanel({ lead }: { lead: Lead }) {
           <div className="space-y-2">
             {(['sector', 'company', 'shareholder', 'market'] as const).map((dim) => {
               const isDone = lead.investigation[dim] === 'completed';
+              const isInProgress = lead.investigation[dim] === 'in_progress';
               return (
                 <button
                   key={dim}
                   onClick={() => handleInvestigate(dim)}
-                  disabled={isDone || !canAfford}
+                  disabled={isDone || isInProgress || !canAfford}
                   className={`w-full flex items-center justify-between px-3 py-2 rounded border text-[12px] font-medium transition-colors ${
-                    isDone 
+                    isDone
                       ? 'border-green-500/30 bg-green-500/5 text-green-400 cursor-not-allowed'
-                      : canAfford
-                        ? 'border-accent-primary/40 text-text-accent hover:bg-accent-primary/10'
-                        : 'border-border-subtle text-text-muted opacity-50 cursor-not-allowed'
+                      : isInProgress
+                        ? 'border-yellow-500/30 bg-yellow-500/5 text-yellow-400 cursor-not-allowed'
+                        : canAfford
+                          ? 'border-accent-primary/40 text-text-accent hover:bg-accent-primary/10'
+                          : 'border-border-subtle text-text-muted opacity-50 cursor-not-allowed'
                   }`}
                 >
                   <span className="capitalize">{dim} Deep-Dive</span>
-                  <span>{isDone ? '✓' : `€${budgetCost}k`}</span>
+                  <span>{isDone ? '✓' : isInProgress ? '…' : `€${budgetCost}k`}</span>
                 </button>
               );
             })}

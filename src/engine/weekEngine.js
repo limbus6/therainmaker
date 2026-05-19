@@ -320,7 +320,7 @@ function progressBuyers(buyers, completedTasks, phase, momentum) {
     const changes = [];
     const completedIds = new Set(completedTasks.map((t) => t.id));
     const updated = buyers.map((buyer) => {
-        let newBuyer = { ...buyer };
+        const newBuyer = { ...buyer };
         // Phase 3: Outreach progression
         if (phase === 3) {
             // Outreach launched → buyers become contacted
@@ -431,6 +431,17 @@ function progressBuyers(buyers, completedTasks, phase, momentum) {
         return newBuyer;
     });
     return { buyers: updated, changes };
+}
+// ============================================
+// Event System
+// ============================================
+const NON_FX_GEOGRAPHIES = new Set([
+    'Germany', 'France', 'Spain', 'Portugal', 'Italy', 'Netherlands',
+    'Belgium', 'Denmark', 'Nordics', 'Sweden', 'Norway', 'Finland',
+    'Europe', 'EU',
+]);
+function isFxExposedBuyer(buyer) {
+    return !NON_FX_GEOGRAPHIES.has(buyer.geography);
 }
 const EVENT_POOL = [
     // Phase 0-1: Early deal events
@@ -866,6 +877,7 @@ const EVENT_POOL = [
                 probability: 55,
                 mitigated: false,
                 surfacedWeek: s.week + 1,
+                surfacedPhase: s.phase,
                 mitigationCost: 18,
             },
             emailGenerated: {
@@ -975,6 +987,7 @@ const EVENT_POOL = [
                 probability: 45,
                 mitigated: false,
                 surfacedWeek: s.week + 1,
+                surfacedPhase: s.phase,
                 mitigationCost: 12,
             },
             emailGenerated: {
@@ -1201,7 +1214,7 @@ const EVENT_POOL = [
         id: 'evt-fx-concern',
         phases: [4, 5, 6],
         probability: 0.11,
-        condition: (s) => s.buyers.some((b) => b.geography !== 'Europe' && !['dropped', 'excluded'].includes(b.status)),
+        condition: (s) => s.buyers.some((b) => isFxExposedBuyer(b) && !['dropped', 'excluded'].includes(b.status)),
         generate: (s) => ({
             event: {
                 id: `evt-${s.week}-fx`,
@@ -2841,12 +2854,13 @@ export function checkPhaseGate(state) {
             };
         }
         case 1: { // Pitch & Mandate → Preparation
+            const pitchDocReady = state.pitchDocumentReady === true;
             const pitchPresented = state.feeNegotiation?.pitchPresented === true;
             const feeAgreed = state.feeNegotiation?.status === 'agreed' || state.agreedFeeTerms !== null;
             return {
-                canTransition: pitchPresented && feeAgreed,
+                canTransition: pitchDocReady && pitchPresented && feeAgreed,
                 requirements: [
-                    { label: 'Pitch document prepared', met: state.pitchDocumentReady === true },
+                    { label: 'Pitch document prepared (task-15)', met: pitchDocReady },
                     { label: 'Pitch presented to client', met: pitchPresented },
                     { label: 'Fee terms agreed', met: feeAgreed },
                 ],

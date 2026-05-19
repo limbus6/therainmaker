@@ -230,7 +230,7 @@ export const phase2Emails: Email[] = [
     sender: 'Ricardo Mendes',
     senderRole: 'Founder & CEO, Solara Systems',
     subject: 'VDD — external advisors asking difficult questions',
-    body: 'Your VDD team is thorough, I\'ll give them that. But some of their questions are making my team nervous:\n\n- They\'re asking about historical related-party transactions (my brother\'s consulting firm did some work for us 3 years ago — it was legitimate but looks bad)\n- They flagged our IP assignment chain — apparently two early patents were filed under a previous entity\n- Tax structuring on our Portuguese subsidiary needs \"further analysis\"\n\nNone of this is a dealbreaker, but I need to know: are these things that will scare buyers away? Should we fix them before going to market, or will they just come up in buyer DD anyway?\n\nI\'m getting anxious about the timeline.',
+    body: 'Your VDD team is thorough, I\'ll give them that. But some of their questions are making my team nervous:\n\n- They\'re asking about historical related-party transactions (my brother\'s consulting firm did some work for us 3 years ago — it was legitimate but looks bad)\n- They flagged our IP assignment chain — apparently two early patents were filed under a previous entity\n- Tax structuring on our Portuguese subsidiary needs "further analysis"\n\nNone of this is a dealbreaker, but I need to know: are these things that will scare buyers away? Should we fix them before going to market, or will they just come up in buyer DD anyway?\n\nI\'m getting anxious about the timeline.',
     preview: 'VDD surfacing issues — client getting anxious...',
     category: 'client',
     state: 'unread',

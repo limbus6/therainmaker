@@ -47,8 +47,8 @@ export default function DataroomScreen() {
     const buyers = useGameStore((s) => s.buyers);
     const tasks = useGameStore((s) => s.tasks);
     const resources = useGameStore((s) => s.resources);
-    if (phase < 5) {
-        return (_jsx("div", { className: "flex items-center justify-center h-full", children: _jsxs("div", { className: "text-center", children: [_jsx(Database, { size: 32, className: "text-text-muted/20 mx-auto mb-3" }), _jsx("p", { className: "text-[13px] text-text-muted", children: "The data room opens in Phase 5 \u2014 Non-Binding Offers." }), _jsx("p", { className: "text-[11px] text-text-muted/60 mt-1", children: "Buyers will gain access once shortlisting is complete." })] }) }));
+    if (phase < 6) {
+        return (_jsx("div", { className: "flex items-center justify-center h-full", children: _jsxs("div", { className: "text-center", children: [_jsx(Database, { size: 32, className: "text-text-muted/20 mx-auto mb-3" }), _jsx("p", { className: "text-[13px] text-text-muted", children: "The data room opens in Phase 6 \u2014 Due Diligence." }), _jsx("p", { className: "text-[11px] text-text-muted/60 mt-1", children: "Buyers will gain access once the shortlist is confirmed and DD begins." })] }) }));
     }
     const activeBuyers = buyers.filter((b) => !['dropped', 'excluded'].includes(b.status));
     const exposureRisk = computeExposureRisk(dataroomCategories);
