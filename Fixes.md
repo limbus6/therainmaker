@@ -46,3 +46,12 @@ In the buyers list there should be a column for valuation
 - Context: Q&A tracker launched and buyer DD streams opened.
 
 Most urgent issues to mitigate should be on top
+
+
+## 2026-05-19 10:47:01.458 UTC
+- Phase: P6 — Due Diligence
+- Checkpoint: DD Live
+- Route: /dataroom
+- Context: Q&A tracker launched and buyer DD streams opened.
+
+Overall: costs of tasks and Budget is not ballanced. There are costs of tasks that should 0 in terms of monye but should be a burden in capacituy.
