@@ -82,3 +82,12 @@ on the dashboard the deliverables are showing stuff from very initial phases. it
 - Context: Q&A tracker launched and buyer DD streams opened.
 
 It's taking too long to have exclusivity agreement prepared. and we could have a possibility to simply attribute exclusivity to whoever we would want not the one htat is asking.
+
+
+## 2026-05-19 11:35:55.268 UTC
+- Phase: P7 — Final Offers
+- Checkpoint: Final Offers Live
+- Route: /final-offers
+- Context: Binding offers are on the table.
+
+The buyer that is moving to sign is not what I selected as preferred.
