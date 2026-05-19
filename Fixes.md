@@ -55,3 +55,12 @@ Most urgent issues to mitigate should be on top
 - Context: Q&A tracker launched and buyer DD streams opened.
 
 Overall: costs of tasks and Budget is not ballanced. There are costs of tasks that should 0 in terms of monye but should be a burden in capacituy.
+
+
+## 2026-05-19 10:55:14.799 UTC
+- Phase: P6 — Due Diligence
+- Checkpoint: DD Live
+- Route: /dataroom
+- Context: Q&A tracker launched and buyer DD streams opened.
+
+It is not advancing for next phase, despite we have already receive the Binding offers. Now we should be in the phase to attribute exclusivity or negotiate more with the bidders.
