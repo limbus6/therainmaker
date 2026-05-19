@@ -10,3 +10,12 @@ This file receives feedback submitted from the gameplay review bar in the local 
 - Context: Fresh origination, no board approval or qualification notes yet.
 
 Deal momentum in this phase should indicate a possible deal.
+
+
+## 2026-05-19 10:33:01.357 UTC
+- Phase: P6 — Due Diligence
+- Checkpoint: DD Live
+- Route: /dataroom
+- Context: Q&A tracker launched and buyer DD streams opened.
+
+In this phase we are seeing in the section "RISKS" some risks to be addressed that are related to other phases, such is: Competing advisor - this is for pitch and once the client signs the mandate the risk probabloty goes to 0, therefore should disapear. There are ohher risks that could disapear by the phase end such the "NDA processing bottleneck". Additionally, stuff like "Material Quality Risk" is the kind of issues that are more probable to generate a problem before the DD phase, as it is the support for the NBO's.
