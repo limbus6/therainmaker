@@ -25,12 +25,16 @@ export default function ClientScreen() {
 
   const activeThreats = competitorThreats.filter((t) => !t.resolved);
   const meetingNotes = qualificationNotes.filter((n) => n.source === 'meeting');
+  const relationshipLabel = phase === 0 ? 'Prospect' : 'Client';
+  const relationshipDescription = phase === 0
+    ? 'Qualify the prospective seller relationship before pitching for the mandate'
+    : 'Manage the seller relationship';
 
   return (
     <div className="space-y-6 max-w-[1200px]">
       <div>
-        <h1 className="text-2xl font-display font-semibold text-text-primary">Client</h1>
-        <p className="text-[12px] text-text-muted mt-1">Manage the seller relationship</p>
+        <h1 className="text-2xl font-display font-semibold text-text-primary">{relationshipLabel}</h1>
+        <p className="text-[12px] text-text-muted mt-1">{relationshipDescription}</p>
       </div>
 
       {/* Competitor threat banner */}
@@ -56,7 +60,7 @@ export default function ClientScreen() {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KpiTile label="Trust" value={client.trust} color={client.trust > 60 ? 'success' : client.trust > 40 ? 'warning' : 'danger'} />
+        <KpiTile label={phase === 0 ? 'Prospect Trust' : 'Trust'} value={client.trust} color={client.trust > 60 ? 'success' : client.trust > 40 ? 'warning' : 'danger'} />
         <KpiTile label="Confidence" value={client.confidence} color={client.confidence > 60 ? 'success' : 'warning'} />
         <KpiTile label="Valuation Target" value={client.valuationExpectation} color="default" />
         <KpiTile label="Time Sensitivity" value={client.timeSensitivity} color={client.timeSensitivity === 'high' ? 'danger' : 'default'} />

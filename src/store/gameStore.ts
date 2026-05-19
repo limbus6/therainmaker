@@ -483,36 +483,6 @@ const initialLeads: Lead[] = [
     hiddenGrowth: 'high',
     hiddenRisk: 'low',
     researchNotes: []
-  },
-  {
-    id: 'lead-2',
-    companyName: 'Zephyr Logistics',
-    sector: 'Supply Chain Tech',
-    founderName: 'Amina Al-Fayed',
-    origin: 'Outbound origination campaign',
-    description: 'Asset-light freight forwarding platform using AI for route optimisation. €45M GMV. Margins are tight but volume is scaling fast.',
-    investmentCaseSummary: 'A scale play. Potential for margin expansion under the umbrella of a larger logistics incumbent.',
-    investigation: { sector: 'none', company: 'none', shareholder: 'none', market: 'none' },
-    meetingDone: false,
-    hiddenMotivations: 'Needs a large cash injection to survive price war with competitors.',
-    hiddenGrowth: 'moderate',
-    hiddenRisk: 'high',
-    researchNotes: []
-  },
-  {
-    id: 'lead-3',
-    companyName: 'Nexus BioPharma',
-    sector: 'Healthcare / Biotech',
-    founderName: 'Dr. Elias Vance',
-    origin: 'Conference meeting',
-    description: 'Contract Research Organisation (CRO) specializing in rare disease trials. Highly profitable, €15M EBITDA, but reliant on 3 key clients.',
-    investmentCaseSummary: 'Cash cow with high customer concentration risk. Excellent target for PE roll-up strategies.',
-    investigation: { sector: 'none', company: 'none', shareholder: 'none', market: 'none' },
-    meetingDone: false,
-    hiddenMotivations: 'Wants to cash out and return to pure academic research.',
-    hiddenGrowth: 'low',
-    hiddenRisk: 'moderate',
-    researchNotes: []
   }
 ];
 
@@ -1028,7 +998,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
   week: 1,
   totalDays: 1,
   leads: initialLeads,
-  activeLeadId: undefined,
+  activeLeadId: 'lead-1',
   resources: initialResources,
   client: initialClient,
   team: initialTeam,

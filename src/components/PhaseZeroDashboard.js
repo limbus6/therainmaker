@@ -12,7 +12,7 @@ export default function PhaseZeroDashboard() {
     const setActiveLead = (id) => {
         setStore({ activeLeadId: id });
     };
-    return (_jsxs("div", { className: "space-y-4", children: [_jsxs("div", { className: "flex items-center justify-between mb-4", children: [_jsx("h2", { className: "text-lg font-display font-semibold text-text-primary", children: "Source & Qualify Leads" }), _jsx("p", { className: "text-[12px] text-text-muted", children: "Investigate dimensions to build an investment case before pitching to the Board." })] }), _jsx("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-4", children: leads.map((lead) => {
+    return (_jsxs("div", { className: "space-y-4", children: [_jsxs("div", { className: "flex items-center justify-between mb-4", children: [_jsx("h2", { className: "text-lg font-display font-semibold text-text-primary", children: "Qualify the Priority Lead" }), _jsx("p", { className: "text-[12px] text-text-muted", children: "Solara is not a client yet. Build the evidence needed before asking the board to approve a pitch." })] }), _jsx("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-4", children: leads.map((lead) => {
                     const isActive = activeLeadId === lead.id;
                     return (_jsxs("div", { onClick: () => setActiveLead(lead.id), className: `rounded-[var(--radius-lg)] border p-4 transition-all cursor-pointer ${isActive
                             ? 'border-accent-primary bg-surface-default shadow-[var(--shadow-glow-soft)]'
@@ -32,7 +32,7 @@ function LeadActionPanel({ lead }) {
     };
     const budgetCost = 5;
     const canAfford = resources.budget >= budgetCost;
-    return (_jsx(Panel, { title: `Active Lead Actions: ${lead.companyName}`, variant: "accent", className: "mt-6", children: _jsxs("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-4", children: [_jsxs("div", { className: "bg-bg-secondary border border-border-subtle rounded-[var(--radius-md)] p-4", children: [_jsx("h4", { className: "text-[13px] font-semibold text-text-primary mb-3", children: "Conduct Research" }), _jsxs("p", { className: "text-[11px] text-text-muted mb-4", children: ["Assign team time to uncover hidden attributes. Costs \u20AC", budgetCost, "k."] }), _jsx("div", { className: "space-y-2", children: ['sector', 'company', 'shareholder', 'market'].map((dim) => {
+    return (_jsx(Panel, { title: `Lead Actions: ${lead.companyName}`, variant: "accent", className: "mt-6", children: _jsxs("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-4", children: [_jsxs("div", { className: "bg-bg-secondary border border-border-subtle rounded-[var(--radius-md)] p-4", children: [_jsx("h4", { className: "text-[13px] font-semibold text-text-primary mb-3", children: "Conduct Research" }), _jsxs("p", { className: "text-[11px] text-text-muted mb-4", children: ["Assign team time to uncover hidden attributes. Costs \u20AC", budgetCost, "k."] }), _jsx("div", { className: "space-y-2", children: ['sector', 'company', 'shareholder', 'market'].map((dim) => {
                                 const isDone = lead.investigation[dim] === 'completed';
                                 return (_jsxs("button", { onClick: () => handleInvestigate(dim), disabled: isDone || !canAfford, className: `w-full flex items-center justify-between px-3 py-2 rounded border text-[12px] font-medium transition-colors ${isDone
                                         ? 'border-green-500/30 bg-green-500/5 text-green-400 cursor-not-allowed'

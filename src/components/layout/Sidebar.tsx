@@ -68,6 +68,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       <nav className="flex flex-col gap-0.5 px-2">
         {visibleNavItems.map((item) => {
           const count = item.badgeKey ? badges[item.badgeKey] : 0;
+          const label = phase === 0 && item.to === '/client' ? 'Prospect' : item.label;
           return (
             <NavLink
               key={item.to}
@@ -83,7 +84,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               }
             >
               <span className="shrink-0 opacity-80 group-hover:opacity-100">{item.icon}</span>
-              <span className="flex-1">{item.label}</span>
+              <span className="flex-1">{label}</span>
               {count > 0 && (
                 <span className="min-w-[20px] h-5 flex items-center justify-center rounded-full bg-accent-primary/20 text-text-accent text-[10px] font-mono font-semibold px-1.5">
                   {count}

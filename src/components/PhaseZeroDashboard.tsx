@@ -18,8 +18,8 @@ export default function PhaseZeroDashboard() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-display font-semibold text-text-primary">Source & Qualify Leads</h2>
-        <p className="text-[12px] text-text-muted">Investigate dimensions to build an investment case before pitching to the Board.</p>
+        <h2 className="text-lg font-display font-semibold text-text-primary">Qualify the Priority Lead</h2>
+        <p className="text-[12px] text-text-muted">Solara is not a client yet. Build the evidence needed before asking the board to approve a pitch.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -106,7 +106,7 @@ function LeadActionPanel({ lead }: { lead: Lead }) {
   const canAfford = resources.budget >= budgetCost;
 
   return (
-    <Panel title={`Active Lead Actions: ${lead.companyName}`} variant="accent" className="mt-6">
+    <Panel title={`Lead Actions: ${lead.companyName}`} variant="accent" className="mt-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Investigation Actions */}
         <div className="bg-bg-secondary border border-border-subtle rounded-[var(--radius-md)] p-4">

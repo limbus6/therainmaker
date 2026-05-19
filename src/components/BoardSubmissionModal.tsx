@@ -17,7 +17,7 @@ export default function BoardSubmissionModal({ onClose }: Props) {
   const activeThreats = competitorThreats.filter((t) => !t.resolved);
 
   const [recommendation, setRecommendation] = useState<'proceed' | 'decline'>('proceed');
-  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(() => useGameStore.getState().leads[0]?.id ?? null);
   const [selectedPoints, setSelectedPoints] = useState<string[]>([]);
 
   const PROCEED_POINTS = [
@@ -26,7 +26,7 @@ export default function BoardSubmissionModal({ onClose }: Props) {
     { id: 'workable_risk', text: 'It is a good opportunity with risks we can manage.' },
     { id: 'fee', text: 'The mandate can generate an attractive fee for the firm.' },
     { id: 'founder_fit', text: 'The founder fit and sector position justify moving quickly.' },
-    { id: 'trust', text: 'Client engagement is strong enough to justify a full push.' },
+    { id: 'trust', text: 'Founder engagement is strong enough to justify a full pitch.' },
   ];
 
   const DECLINE_POINTS = [
@@ -72,7 +72,7 @@ export default function BoardSubmissionModal({ onClose }: Props) {
         <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle shrink-0">
           <div>
             <h2 className="text-[15px] font-semibold text-text-primary">Board Recommendation</h2>
-            <p className="text-[12px] text-text-muted mt-0.5">Should we pursue the Solara Systems mandate?</p>
+            <p className="text-[12px] text-text-muted mt-0.5">Should we pursue Solara Systems and pitch Ricardo for the mandate?</p>
           </div>
           <button
             onClick={onClose}
@@ -182,9 +182,9 @@ export default function BoardSubmissionModal({ onClose }: Props) {
                 <div>
                   <h3 className="text-[12px] font-semibold text-text-muted uppercase tracking-widest mb-3 flex items-center gap-1.5">
                     <CheckCircle size={12} />
-                    Target Lead Selection
+                    Target Lead
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+                  <div className="grid grid-cols-1 gap-3 mb-6">
                     {leads.map(lead => (
                       <button
                         key={lead.id}

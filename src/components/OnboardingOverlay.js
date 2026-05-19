@@ -4,17 +4,17 @@ import { useGameStore } from '../store/gameStore';
 const SLIDES = [
     {
         title: 'Welcome to M&A Rainmaker',
-        body: `You are a sell-side M&A banker at Clearwater Advisory. Your client, Ricardo Mendes, has hired you to run a full sale process for Solara Systems, his industrial automation company.\n\nYour objective: find the right buyer, manage the process, and close the deal on the best possible terms.`,
+        body: `You are a sell-side M&A banker at Clearwater Advisory. You do not have the mandate yet.\n\nA priority lead has surfaced: Ricardo Mendes, founder of Solara Systems. Your first objective is to decide whether this opportunity is worth pursuing, win internal approval, and then pitch for the mandate.`,
         cta: 'Got it →',
     },
     {
         title: 'How the Game Works',
-        body: `The deal advances across 11 phases, from origination to closing. Each week you should:\n\n• Complete tasks to push the process forward\n• Respond to emails from the client, team, and buyers\n• Mitigate risks before they derail the deal\n• Advance time when you are ready\n\nYour resources — budget, momentum, trust, and team capacity — determine whether the deal reaches closing.`,
+        body: `The deal advances across 11 phases, from origination to closing. Each week you should:\n\n• Complete tasks to push the process forward\n• Respond to emails from prospects, the client, your team, and buyers\n• Mitigate risks before they derail the deal\n• Advance time when you are ready\n\nYour resources — budget, momentum, trust, and team capacity — determine whether the deal reaches closing.`,
         cta: 'Understood →',
     },
     {
         title: 'Phase 0 — Deal Origination',
-        body: `You start in Phase 0: Deal Origination.\n\nImmediate objectives:\n1. Screen the market and confirm Solara is ready to sell\n2. Meet Ricardo and assess his motivations\n3. Align internally on whether the mandate is worth pursuing\n4. Prepare to enter Phase 1 (Pitch & Mandate)\n\nStart with the Inbox and Tasks. Good luck.`,
+        body: `You start in Phase 0: Deal Origination.\n\nImmediate objectives:\n1. Screen the market backdrop around Solara\n2. Meet Ricardo and assess his motivations\n3. Build enough evidence for a board recommendation\n4. If approved, enter Phase 1 and pitch for the mandate\n\nStart with the Inbox and Tasks. Good luck.`,
         cta: 'Start the Deal →',
     },
 ];
