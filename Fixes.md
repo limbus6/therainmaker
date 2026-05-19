@@ -37,3 +37,12 @@ On the Tasks there is Active workstreams and it show "Origination & Qualificatio
 - Context: Q&A tracker launched and buyer DD streams opened.
 
 In the buyers list there should be a column for valuation
+
+
+## 2026-05-19 10:44:37.258 UTC
+- Phase: P6 — Due Diligence
+- Checkpoint: DD Live
+- Route: /dataroom
+- Context: Q&A tracker launched and buyer DD streams opened.
+
+Most urgent issues to mitigate should be on top
