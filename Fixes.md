@@ -19,3 +19,12 @@ Deal momentum in this phase should indicate a possible deal.
 - Context: Q&A tracker launched and buyer DD streams opened.
 
 In this phase we are seeing in the section "RISKS" some risks to be addressed that are related to other phases, such is: Competing advisor - this is for pitch and once the client signs the mandate the risk probabloty goes to 0, therefore should disapear. There are ohher risks that could disapear by the phase end such the "NDA processing bottleneck". Additionally, stuff like "Material Quality Risk" is the kind of issues that are more probable to generate a problem before the DD phase, as it is the support for the NBO's.
+
+
+## 2026-05-19 10:37:22.656 UTC
+- Phase: P6 — Due Diligence
+- Checkpoint: DD Live
+- Route: /dataroom
+- Context: Q&A tracker launched and buyer DD streams opened.
+
+On the Tasks there is Active workstreams and it show "Origination & Qualifications" at 8% - when we are at thte dd phase.
