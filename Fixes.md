@@ -64,3 +64,12 @@ Overall: costs of tasks and Budget is not ballanced. There are costs of tasks th
 - Context: Q&A tracker launched and buyer DD streams opened.
 
 It is not advancing for next phase, despite we have already receive the Binding offers. Now we should be in the phase to attribute exclusivity or negotiate more with the bidders.
+
+
+## 2026-05-19 10:56:43.825 UTC
+- Phase: P6 — Due Diligence
+- Checkpoint: DD Live
+- Route: /dataroom
+- Context: Q&A tracker launched and buyer DD streams opened.
+
+on the dashboard the deliverables are showing stuff from very initial phases. it shoudl update accordding to the phase.
