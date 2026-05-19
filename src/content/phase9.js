@@ -7,7 +7,7 @@ export const phase9Tasks = [
     {
         id: 'task-110', name: 'Run Signability Review',
         description: 'Conduct a full signability audit across all transaction documents. Check that every negotiated term has been correctly reflected, all schedules are populated, and no placeholder language remains. One overlooked bracket could delay signing by days.',
-        phase: 9, category: 'deliverable', status: 'recommended', cost: 2, work: 14, complexity: 'high',
+        phase: 9, category: 'deliverable', status: 'recommended', cost: 0, work: 14, complexity: 'high',
         effectSummary: 'Catches document errors before they become crises',
         linkedDeliverableId: 'del-90',
     },
@@ -21,7 +21,7 @@ export const phase9Tasks = [
     {
         id: 'task-112', name: 'Finalise Document Version',
         description: 'Lock down the definitive version of the SPA and all ancillary documents. Reconcile any discrepancies between seller counsel, buyer counsel, and internal tracked versions. Version control is life or death here.',
-        phase: 9, category: 'deliverable', status: 'locked', cost: 1, work: 12, complexity: 'high',
+        phase: 9, category: 'deliverable', status: 'locked', cost: 0, work: 12, complexity: 'high',
         effectSummary: 'Produces the single authoritative document set',
         dependencies: ['task-111'],
         linkedDeliverableId: 'del-90',
@@ -35,7 +35,7 @@ export const phase9Tasks = [
     {
         id: 'task-114', name: 'Lock Signature Version',
         description: 'Generate the final execution version — clean, undated, with signature blocks. Circulate to all parties for confirmation that this is the document they will sign. No further changes after this point.',
-        phase: 9, category: 'deliverable', status: 'locked', cost: 1, work: 6, complexity: 'medium',
+        phase: 9, category: 'deliverable', status: 'locked', cost: 0, work: 6, complexity: 'medium',
         effectSummary: 'Creates the definitive signing copy',
         dependencies: ['task-112', 'task-113'],
         linkedDeliverableId: 'del-90',
@@ -72,7 +72,7 @@ export const phase9Tasks = [
     {
         id: 'task-119', name: 'Trigger Signing Ceremony',
         description: 'Coordinate the simultaneous execution of all transaction documents. Manage the signing sequence: seller signs, buyer signs, escrow funded, conditions confirmed. One misstep in the choreography and the whole thing unravels.',
-        phase: 9, category: 'strategic', status: 'locked', cost: 3, work: 10, complexity: 'high',
+        phase: 9, category: 'strategic', status: 'locked', cost: 0, work: 10, complexity: 'high',
         effectSummary: 'Executes the deal — the culmination of the entire process',
         dependencies: ['task-115', 'task-116'],
     },

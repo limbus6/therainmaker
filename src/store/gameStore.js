@@ -5,6 +5,7 @@ import { PHASE_BASE_BUDGETS, STAFF_PROFILES, CONTRACTOR_PROFILES, MITIGATION_ACT
 import { getRiskMitigationPlans } from '../config/riskMitigation';
 import { REVIEW_CHECKPOINTS_BY_ID } from '../config/reviewCheckpoints';
 import { round2 } from '../utils/numberFormat';
+import { retireObsoleteRisks, updatePhaseWorkstreamProgress } from '../utils/gameplayState';
 import { loadPhaseContent } from '../content/loadPhaseContent';
 // ============================================
 // Initial Phase 0: Deal Origination Seed Data
@@ -16,7 +17,7 @@ const initialResources = {
     teamCapacityMax: 100,
     morale: 80,
     clientTrust: 40,
-    dealMomentum: 15,
+    dealMomentum: 25,
     riskLevel: 10,
     reputation: 40,
 };
@@ -851,21 +852,13 @@ export const useGameStore = create()(persist((set, get) => ({
                 newResources[key] = value;
             }
         }
-        // Update workstream progress based on completed tasks
-        const updatedWorkstreams = state.workstreams.map((ws) => {
-            if (!ws.active)
-                return ws;
-            // Find tasks linked to this workstream, or all phase tasks for 'preparation'
-            const wsTasks = unlockedTasks.filter((t) => t.workstreamId === ws.id || (ws.id === 'preparation' && t.phase === state.phase && !t.workstreamId));
-            if (wsTasks.length === 0)
-                return ws;
-            const completed = wsTasks.filter((t) => t.status === 'completed').length;
-            return { ...ws, progress: Math.round((completed / wsTasks.length) * 100) };
-        });
+        // Update only the current phase's active workstreams.
+        const updatedWorkstreams = updatePhaseWorkstreamProgress(state.workstreams, unlockedTasks, state.phase);
         // Apply buyer progression from engine
         const updatedBuyers = result._updatedBuyers.length > 0 ? result._updatedBuyers : state.buyers;
-        // Add new risks, emails, headlines from engine
-        const newRisks = [...state.risks, ...result.newRisks];
+        const updatedBindingOffersReceived = state.bindingOffersReceived + (result.bindingOfferDelta ?? 0);
+        // Add new risks, emails, headlines from engine and retire risks that no longer apply.
+        const newRisks = retireObsoleteRisks([...state.risks, ...result.newRisks], state.phase, updatedBindingOffersReceived);
         const newEmails = [...state.emails, ...result.newEmails];
         const newHeadlines = [...state.headlines, ...result.newHeadlines];
         const newEvents = [...state.events, ...result.newEvents];
@@ -940,9 +933,11 @@ export const useGameStore = create()(persist((set, get) => ({
             week: newWeekNum,
             tasks: unlockedTasks,
             resources: newResources,
+            risks: newRisks,
             buyers: updatedBuyers,
             boardSubmission: resolvedBoardSub,
             qualificationNotes: newQualNotes,
+            bindingOffersReceived: updatedBindingOffersReceived,
         };
         const gate = checkPhaseGate(nextState);
         // Phase 10 gate met = game complete (success)
@@ -1004,7 +999,7 @@ export const useGameStore = create()(persist((set, get) => ({
             savedAt: new Date().toISOString(),
             lastWeekResult: result,
             phaseGate: gate,
-            bindingOffersReceived: state.bindingOffersReceived + (result.bindingOfferDelta ?? 0),
+            bindingOffersReceived: updatedBindingOffersReceived,
             ...(isGameComplete ? { gameComplete: true } : {}),
             ...(collapse.collapsed ? {
                 gameComplete: true,
@@ -1059,52 +1054,6 @@ export const useGameStore = create()(persist((set, get) => ({
                     };
                 }
             }
-            newWorkstreams = state.workstreams.map((ws) => {
-                if (['financials', 'marketing_materials', 'buyer_outreach'].includes(ws.id)) {
-                    return { ...ws, active: true };
-                }
-                return ws;
-            });
-        }
-        else if (nextPhase === 2) {
-            newWorkstreams = state.workstreams.map((ws) => {
-                if (ws.id === 'management' || ws.id === 'due_diligence') {
-                    return { ...ws, active: true };
-                }
-                return ws;
-            });
-        }
-        else if (nextPhase === 4) {
-            newWorkstreams = state.workstreams.map((ws) => {
-                if (ws.id === 'negotiation') {
-                    return { ...ws, active: true };
-                }
-                return ws;
-            });
-        }
-        else if (nextPhase === 6) {
-            newWorkstreams = state.workstreams.map((ws) => {
-                if (ws.id === 'due_diligence') {
-                    return { ...ws, active: true };
-                }
-                return ws;
-            });
-        }
-        else if (nextPhase === 8) {
-            newWorkstreams = state.workstreams.map((ws) => {
-                if (ws.id === 'negotiation') {
-                    return { ...ws, active: true };
-                }
-                return ws;
-            });
-        }
-        else if (nextPhase === 10) {
-            newWorkstreams = state.workstreams.map((ws) => {
-                if (ws.id === 'closing') {
-                    return { ...ws, active: true };
-                }
-                return ws;
-            });
         }
         const phaseSpent = Math.max(0, state.resources.budgetMax - state.resources.budget);
         const newTotalBudgetSpent = state.totalBudgetSpent + phaseSpent;
@@ -1114,14 +1063,18 @@ export const useGameStore = create()(persist((set, get) => ({
         const newFinalOffers = nextPhase === 7
             ? generateFinalOffers(newBuyers, state.resources.dealMomentum, state.week + 1)
             : state.finalOffers;
+        const nextBindingOffersReceived = nextPhase === 7 ? state.bindingOffersReceived : 0;
+        const unlockedPhaseTasks = unlockTasks(newTasks);
+        const phaseWorkstreams = updatePhaseWorkstreamProgress(newWorkstreams, unlockedPhaseTasks, nextPhase);
+        const phaseRisks = retireObsoleteRisks(newRisks, nextPhase, nextBindingOffersReceived);
         set({
             phase: nextPhase,
-            tasks: unlockTasks(newTasks),
+            tasks: unlockedPhaseTasks,
             emails: newEmails,
             deliverables: newDeliverables,
-            risks: newRisks,
+            risks: phaseRisks,
             headlines: newHeadlines,
-            workstreams: newWorkstreams,
+            workstreams: phaseWorkstreams,
             buyers: newBuyers,
             client: newClient,
             phaseGate: null,
@@ -1136,10 +1089,10 @@ export const useGameStore = create()(persist((set, get) => ({
             agreedFeeTerms: null,
             phaseDeadline: null,
             pitchDocumentReady: false,
-            bindingOffersReceived: 0,
+            bindingOffersReceived: nextBindingOffersReceived,
             unaddressedQACount: 0,
             finalOffers: newFinalOffers,
-            preferredBidderId: null,
+            preferredBidderId: nextPhase === 7 ? null : state.preferredBidderId,
         });
     },
     debugJumpToPhase: async (targetPhase) => {
@@ -1171,12 +1124,15 @@ export const useGameStore = create()(persist((set, get) => ({
             ...state.resources,
             budget: baseBudget,
             budgetMax: baseBudget,
-            dealMomentum: targetPhase === 0 ? 15 : 50,
+            dealMomentum: targetPhase === 0 ? 25 : 50,
             clientTrust: targetPhase === 0 ? 40 : 60,
             riskLevel: targetPhase >= 6 ? 28 : 25,
             morale: 78,
         });
+        const bindingOffersReceived = targetPhase >= 7 ? 1 : 0;
         const finalOffers = targetPhase >= 7 ? generateFinalOffers(buyers, resources.dealMomentum, week) : [];
+        const risks = retireObsoleteRisks(accumulatedRisks, targetPhase, bindingOffersReceived);
+        const workstreams = updatePhaseWorkstreamProgress(initialWorkstreams, unlockedTasks, targetPhase);
         set({
             phase: targetPhase,
             week,
@@ -1186,8 +1142,9 @@ export const useGameStore = create()(persist((set, get) => ({
             client: syncClient(state.client, resources),
             tasks: unlockedTasks,
             deliverables: newDeliverables,
-            risks: accumulatedRisks,
+            risks,
             headlines: accumulatedHeadlines,
+            workstreams,
             buyers,
             phaseBudget: { phaseBase: baseBudget, carryover: 0 },
             emails: [], // clear inbox for a clean jump
@@ -1221,7 +1178,7 @@ export const useGameStore = create()(persist((set, get) => ({
             competitorThreats: [],
             phaseDeadline: null,
             pitchDocumentReady: targetPhase >= 1,
-            bindingOffersReceived: targetPhase >= 7 ? 1 : 0,
+            bindingOffersReceived,
             unaddressedQACount: 0,
             finalOffers,
             preferredBidderId: targetPhase >= 8 ? 'buyer-03' : null,
@@ -1304,6 +1261,9 @@ export const useGameStore = create()(persist((set, get) => ({
             agreedTerms: agreedFeeTerms ?? undefined,
         } : state.feeNegotiation;
         const agreedSPATerms = checkpoint.spaAgreed ? { ...DEBUG_SPA_TERMS, agreedWeek: checkpointWeek } : state.agreedSPATerms;
+        const bindingOffersReceived = checkpoint.bindingOffersReceived ?? state.bindingOffersReceived;
+        const risks = retireObsoleteRisks(state.risks, checkpoint.phase, bindingOffersReceived);
+        const workstreams = updatePhaseWorkstreamProgress(state.workstreams, tasks, checkpoint.phase);
         let spaNegotiation = checkpoint.phase >= 8 && checkpoint.preferredBidderId
             ? (() => {
                 const preferredBuyer = buyers.find((buyer) => buyer.id === checkpoint.preferredBidderId);
@@ -1333,7 +1293,9 @@ export const useGameStore = create()(persist((set, get) => ({
             leads,
             tasks,
             deliverables: syncDeliverables(deliverables, tasks),
+            workstreams,
             buyers,
+            risks,
             qualificationNotes,
             boardSubmission: checkpoint.boardApproved
                 ? {
@@ -1348,7 +1310,7 @@ export const useGameStore = create()(persist((set, get) => ({
             feeNegotiation,
             pitchDocumentReady: checkpoint.pitchDocumentReady ?? state.pitchDocumentReady,
             phaseDeadline: checkpoint.phaseDeadlineDay ?? state.phaseDeadline,
-            bindingOffersReceived: checkpoint.bindingOffersReceived ?? state.bindingOffersReceived,
+            bindingOffersReceived,
             preferredBidderId: checkpoint.preferredBidderId ?? state.preferredBidderId,
             finalOffers,
             spaNegotiation,
@@ -1369,7 +1331,9 @@ export const useGameStore = create()(persist((set, get) => ({
                 leads,
                 tasks,
                 deliverables: syncDeliverables(deliverables, tasks),
+                workstreams,
                 buyers,
+                risks,
                 qualificationNotes,
                 boardSubmission: checkpoint.boardApproved
                     ? {
@@ -1384,7 +1348,7 @@ export const useGameStore = create()(persist((set, get) => ({
                 feeNegotiation,
                 pitchDocumentReady: checkpoint.pitchDocumentReady ?? state.pitchDocumentReady,
                 phaseDeadline: checkpoint.phaseDeadlineDay ?? state.phaseDeadline,
-                bindingOffersReceived: checkpoint.bindingOffersReceived ?? state.bindingOffersReceived,
+                bindingOffersReceived,
                 preferredBidderId: checkpoint.preferredBidderId ?? state.preferredBidderId,
                 finalOffers,
                 spaNegotiation,
@@ -1488,12 +1452,19 @@ export const useGameStore = create()(persist((set, get) => ({
         };
     }),
     startTask: (taskId) => set((state) => {
+        const task = state.tasks.find((t) => t.id === taskId && (t.status === 'available' || t.status === 'recommended'));
+        if (!task)
+            return {};
         const updated = state.tasks.map((t) => t.id === taskId && (t.status === 'available' || t.status === 'recommended')
             ? { ...t, status: 'in_progress' }
             : t);
         const unlockedUpdated = unlockTasks(updated);
         return {
             tasks: unlockedUpdated,
+            resources: normalizeResources({
+                ...state.resources,
+                budget: Math.max(0, state.resources.budget - task.cost),
+            }),
             leads: syncLeadsFromTasks(state.leads, unlockedUpdated),
             deliverables: syncDeliverables(state.deliverables, unlockedUpdated),
             team: syncTeamLoad(state.team, unlockedUpdated),
@@ -1502,16 +1473,7 @@ export const useGameStore = create()(persist((set, get) => ({
     completeTask: (taskId) => set((state) => {
         const updated = state.tasks.map((t) => t.id === taskId && t.status === 'in_progress' ? { ...t, status: 'completed' } : t);
         const unlockedUpdated = unlockTasks(updated);
-        // Sync workstream progress
-        const updatedWorkstreams = state.workstreams.map((ws) => {
-            if (!ws.active)
-                return ws;
-            const wsTasks = unlockedUpdated.filter((t) => t.workstreamId === ws.id || (ws.id === 'preparation' && t.phase === state.phase && !t.workstreamId));
-            if (wsTasks.length === 0)
-                return ws;
-            const completed = wsTasks.filter((t) => t.status === 'completed').length;
-            return { ...ws, progress: Math.round((completed / wsTasks.length) * 100) };
-        });
+        const updatedWorkstreams = updatePhaseWorkstreamProgress(state.workstreams, unlockedUpdated, state.phase);
         return {
             tasks: unlockedUpdated,
             leads: syncLeadsFromTasks(state.leads, unlockedUpdated),

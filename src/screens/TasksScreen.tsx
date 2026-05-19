@@ -5,6 +5,7 @@ import StatusChip from '../components/ui/StatusChip';
 import ProgressBar from '../components/ui/ProgressBar';
 import { Play, CheckCircle2, Lock, ChevronDown, ChevronRight } from 'lucide-react';
 import type { TaskStatus, TaskCategory, GameTask } from '../types/game';
+import { applyPhaseWorkstreams } from '../utils/gameplayState';
 
 const statusVariant: Record<TaskStatus, 'default' | 'accent' | 'muted' | 'info' | 'success' | 'warning'> = {
   available: 'default',
@@ -41,7 +42,7 @@ export default function TasksScreen() {
     }
   });
 
-  const activeWorkstreams = workstreams.filter((w) => w.active);
+  const activeWorkstreams = applyPhaseWorkstreams(workstreams, phase).filter((w) => w.active);
 
   const filters: { key: ViewFilter; label: string }[] = [
     { key: 'all', label: 'All' },

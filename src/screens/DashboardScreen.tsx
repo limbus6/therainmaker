@@ -16,6 +16,7 @@ import FeeNegotiationModal from '../components/FeeNegotiationModal';
 import SPANegotiationModal from '../components/SPANegotiationModal';
 import PhaseZeroDashboard from '../components/PhaseZeroDashboard';
 import PhaseDeadlineModal from '../components/PhaseDeadlineModal';
+import { getActiveRisks, getDashboardDeliverables, getMomentumLabel } from '../utils/gameplayState';
 import { ArrowRight, Mail, AlertTriangle, ChevronRight, Wallet, Users, Presentation, FileText, Handshake, Trophy, ScrollText, Clock } from 'lucide-react';
 
 function kpiColor(value: number, thresholds: [number, number] = [30, 60]) {
@@ -64,7 +65,8 @@ export default function DashboardScreen() {
   const urgentEmails = emails.filter((e) => e.priority === 'urgent' || e.priority === 'high');
   const activeTasks = tasks.filter((t) => t.status === 'available' || t.status === 'recommended');
   const activeWorkstreams = workstreams.filter((w) => w.active);
-  const activeRisks = risks.filter((r) => !r.mitigated);
+  const activeRisks = getActiveRisks(risks, phase);
+  const dashboardDeliverables = getDashboardDeliverables(deliverables, phase);
   const activeThreats = competitorThreats.filter((t) => !t.resolved);
   const pendingBudgetRequest = budgetRequests.find((r) => r.status === 'pending' && r.phase === phase);
   const isBudgetLow = resources.budget < BUDGET_LOW_THRESHOLD;
@@ -108,7 +110,7 @@ export default function DashboardScreen() {
       {activeThreats.length > 0 && <CompetitorMitigationPanel />}
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-        <KpiTile label="Deal Momentum" value={resources.dealMomentum} color={kpiColor(resources.dealMomentum)} trend="stable" />
+        <KpiTile label={getMomentumLabel(phase)} value={resources.dealMomentum} color={kpiColor(resources.dealMomentum)} trend="stable" />
         <KpiTile label="Client Trust" value={resources.clientTrust} color={kpiColor(resources.clientTrust)} onClick={() => navigate('/client')} />
         <KpiTile label="Team Capacity" value={`${resources.teamCapacity}%`} color={kpiColor(resources.teamCapacity)} onClick={() => navigate('/team')} />
         <KpiTile label="Budget" value={`€${resources.budget}k`} color={isBudgetLow ? 'danger' : resources.budget < 30 ? 'warning' : 'default'} onClick={() => setModal('budget')} />
@@ -272,7 +274,7 @@ export default function DashboardScreen() {
 
             <Panel title="Deliverables" headerRight={<Link to="/deliverables" className="text-[11px] text-text-accent hover:underline">View all</Link>}>
               <div className="space-y-2.5">
-                {deliverables.slice(0, 5).map((del) => (
+                {dashboardDeliverables.map((del) => (
                   <Link key={del.id} to="/deliverables" className="block space-y-1 group">
                     <div className="flex items-center justify-between">
                       <span className="text-[12px] text-text-secondary group-hover:text-text-accent transition-colors">{del.name}</span>

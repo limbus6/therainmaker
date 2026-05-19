@@ -158,6 +158,9 @@ export interface Risk {
   mitigated: boolean;
   surfacedWeek: number;
   surfacedPhase: PhaseId;
+  retired?: boolean;
+  retiredReason?: string;
+  expiresAfterPhase?: PhaseId;
 }
 
 // --- Events ---

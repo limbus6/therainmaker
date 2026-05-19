@@ -113,6 +113,9 @@ export interface Risk {
     mitigated: boolean;
     surfacedWeek: number;
     surfacedPhase: PhaseId;
+    retired?: boolean;
+    retiredReason?: string;
+    expiresAfterPhase?: PhaseId;
 }
 export type EventType = 'active' | 'passive' | 'cascade';
 export interface GameEvent {

@@ -12,6 +12,7 @@ import type {
   QualificationNote,
 } from '../types/game';
 import type { GameStore } from '../store/gameStore';
+import { isActiveRisk } from '../utils/gameplayState';
 
 // ============================================
 // Week Resolution Engine
@@ -67,7 +68,7 @@ function clamp(value: number, min = 0, max = 100): number {
 
 function createGameplayDirectorSignal(state: GameStore): GameplayDirectorSignal {
   const unresolvedRiskPressure = state.risks
-    .filter((risk) => !risk.mitigated)
+    .filter(isActiveRisk)
     .reduce((total, risk) => total + (risk.severity === 'critical' ? 10 : risk.severity === 'high' ? 7 : risk.severity === 'medium' ? 4 : 2), 0);
   const inProgressWork = state.tasks
     .filter((task) => task.status === 'in_progress')
@@ -292,9 +293,7 @@ function calculateResourceConsumption(
   let workLoad = 0;
 
   for (const task of inProgressTasks) {
-    const weeklyBudget = task.complexity === 'low' ? task.cost : Math.ceil(task.cost / 2);
     const weeklyWork = task.complexity === 'low' ? task.work : Math.ceil(task.work / 2);
-    budgetSpent += weeklyBudget * scale;
     workLoad += weeklyWork * scale;
   }
 
@@ -3231,22 +3230,22 @@ export function checkPhaseGate(state: GameStore): PhaseGateResult {
       };
     }
 
-    case 6: { // Due Diligence → Final Offers (process letter deadline-gated)
+    case 6: { // Due Diligence → Final Offers
       const processLetter = tasks.some((t) => t.phase === 6 && t.linkedDeliverableId === 'del-63' && t.status === 'completed');
       const deadlineSet = state.phaseDeadline !== null;
       const deadlinePassed = deadlineSet && state.day >= (state.phaseDeadline ?? Infinity);
       const bindingOffersIn = state.bindingOffersReceived > 0;
       const activeDDBuyers = state.buyers.filter(b => !['dropped', 'excluded'].includes(b.status)).length;
+      const finalDdReady = processLetter && bindingOffersIn && activeDDBuyers >= 1;
 
       return {
-        canTransition: !!processLetter && deadlinePassed && bindingOffersIn && activeDDBuyers >= 1 && resources.dealMomentum >= 40,
+        canTransition: finalDdReady,
         requirements: [
           { label: 'Process letter issued (sets binding offer deadline)', met: !!processLetter },
           { label: 'Binding offer deadline set', met: deadlineSet },
-          { label: 'Binding offer deadline passed', met: deadlinePassed },
+          { label: deadlinePassed ? 'Binding offer deadline reached' : 'Binding offers can supersede deadline wait', met: deadlinePassed || bindingOffersIn },
           { label: `Binding offers received: ${state.bindingOffersReceived} (need ≥1)`, met: bindingOffersIn },
           { label: `Active buyers remain: ${activeDDBuyers} (need ≥1)`, met: activeDDBuyers >= 1 },
-          { label: 'Deal momentum ≥40', met: resources.dealMomentum >= 40 },
         ],
         nextPhase: 7,
       };
@@ -3257,10 +3256,10 @@ export function checkPhaseGate(state: GameStore): PhaseGateResult {
       const exclusivityReady = tasks.some((t) => t.phase === 7 && t.linkedDeliverableId === 'del-72' && t.status === 'completed');
 
       return {
-        canTransition: preferredSelected && exclusivityReady,
+        canTransition: preferredSelected,
         requirements: [
           { label: 'Preferred bidder selected', met: preferredSelected },
-          { label: 'Exclusivity agreement prepared', met: exclusivityReady },
+          { label: 'Exclusivity agreement prepared (quality boost)', met: exclusivityReady },
         ],
         nextPhase: 8,
       };
@@ -3285,11 +3284,11 @@ export function checkPhaseGate(state: GameStore): PhaseGateResult {
       const signedOff = tasks.some((t) => t.phase === 9 && t.linkedDeliverableId === 'del-90' && t.status === 'completed');
 
       return {
-        canTransition: !!docLocked && !!signedOff && resources.riskLevel < 40,
+        canTransition: !!docLocked && !!signedOff,
         requirements: [
           { label: 'Signature version locked', met: !!docLocked },
           { label: 'SPA signed', met: !!signedOff },
-          { label: 'Risk level below 40', met: resources.riskLevel < 40 },
+          { label: resources.riskLevel >= 40 ? 'High residual risk flagged (non-blocking)' : 'Residual risk acceptable', met: true },
         ],
         nextPhase: 10,
       };

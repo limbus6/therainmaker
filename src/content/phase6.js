@@ -7,7 +7,7 @@ export const phase6Tasks = [
     {
         id: 'task-80', name: 'Launch Structured Q&A Tracker',
         description: 'Build a centralised tracker to log every DD question across all buyer streams. Categorise by topic (financial, legal, commercial, technical, HR), assign owners, and set SLA response targets. Without this, questions fall through the cracks and buyers lose confidence.',
-        phase: 6, category: 'deliverable', status: 'recommended', cost: 2, work: 14, complexity: 'medium',
+        phase: 6, category: 'deliverable', status: 'recommended', cost: 0, work: 14, complexity: 'medium',
         effectSummary: 'Foundation for DD management — prevents chaos',
         linkedDeliverableId: 'del-60',
     },
@@ -49,7 +49,7 @@ export const phase6Tasks = [
     {
         id: 'task-86', name: 'Draft Issue Response Memo',
         description: 'Document all DD issues surfaced by buyers, with root cause analysis, mitigation narrative, and supporting evidence. This memo is the deal\'s immune system — it pre-empts buyer objections and prevents issues from metastasising into price reductions.',
-        phase: 6, category: 'deliverable', status: 'locked', cost: 3, work: 12, complexity: 'high',
+        phase: 6, category: 'deliverable', status: 'locked', cost: 0, work: 12, complexity: 'high',
         effectSummary: 'Contains emerging issues before they erode value',
         dependencies: ['task-85'],
         linkedDeliverableId: 'del-61',
@@ -57,14 +57,14 @@ export const phase6Tasks = [
     {
         id: 'task-87', name: 'Build Mitigation Pack',
         description: 'For each material DD finding, prepare a mitigation narrative with supporting documentation: management commentary, third-party validation, trend data, and comparable benchmarks. Buyers need reasons to look past issues, not just explanations.',
-        phase: 6, category: 'strategic', status: 'locked', cost: 5, work: 12, complexity: 'high',
+        phase: 6, category: 'strategic', status: 'locked', cost: 0, work: 12, complexity: 'high',
         effectSummary: 'Converts issues into managed risks in buyer minds',
         dependencies: ['task-86'],
     },
     {
         id: 'task-88', name: 'Refresh Data Room',
         description: 'Upload new documents requested during DD, re-index folders, fix broken links, and ensure version control. Buyers judge process quality by data room hygiene. A messy room signals a messy company.',
-        phase: 6, category: 'internal', status: 'available', cost: 2, work: 10, complexity: 'medium',
+        phase: 6, category: 'internal', status: 'available', cost: 0, work: 10, complexity: 'medium',
         effectSummary: '+4 reputation, demonstrates process rigour',
         linkedDeliverableId: 'del-62',
     },

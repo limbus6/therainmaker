@@ -115,7 +115,7 @@ export default function BoardSubmissionModal({ onClose }: Props) {
             <div className="grid grid-cols-3 gap-3">
               {[
                 { label: 'Client Trust', value: resources.clientTrust, threshold: 40 },
-                { label: 'Deal Momentum', value: resources.dealMomentum, threshold: 10 },
+                { label: 'Opportunity Signal', value: resources.dealMomentum, threshold: 10 },
                 { label: 'Research Notes', value: qualificationNotes.length, threshold: 2, max: 5 },
               ].map(({ label, value, threshold, max = 100 }) => {
                 const pct = Math.min(100, (value / max) * 100);

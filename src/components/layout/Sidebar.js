@@ -1,6 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { NavLink } from 'react-router-dom';
 import { useGameStore } from '../../store/gameStore';
+import { getActiveRisks } from '../../utils/gameplayState';
 import { LayoutDashboard, Inbox, Users, UserCircle, Briefcase, ListChecks, FileText, Newspaper, AlertTriangle, Clock, Trophy, Database, } from 'lucide-react';
 const NAV_ITEMS = [
     { to: '/game', label: 'Dashboard', icon: _jsx(LayoutDashboard, { size: 18 }) },
@@ -27,7 +28,7 @@ export default function Sidebar({ onNavigate }) {
         : null;
     const badges = {
         unreadEmails: emails.filter((e) => e.state === 'unread').length,
-        activeRisks: risks.filter((r) => !r.mitigated && r.severity !== 'low').length,
+        activeRisks: getActiveRisks(risks, phase).filter((r) => r.severity !== 'low').length,
         pendingTasks: tasks.filter((t) => t.status === 'available' || t.status === 'recommended').length,
     };
     const visibleNavItems = [

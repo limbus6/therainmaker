@@ -7,7 +7,7 @@ export const REVIEW_CHECKPOINTS = [
         route: '/game',
         day: 1,
         clientTrust: 40,
-        dealMomentum: 15,
+        dealMomentum: 25,
         riskLevel: 10,
     },
     {

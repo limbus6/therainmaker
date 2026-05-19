@@ -12,7 +12,7 @@ export const phase10Tasks: GameTask[] = [
   {
     id: 'task-120', name: 'Build CP Completion Tracker',
     description: 'Construct a master tracker of every condition precedent from the SPA: regulatory approvals, third-party consents, board resolutions, financing confirmations, and landlord waivers. Assign owners, deadlines, and RAG status to each item. This is the nerve centre of the closing process.',
-    phase: 10, category: 'deliverable', status: 'recommended', cost: 2, work: 14, complexity: 'high',
+    phase: 10, category: 'deliverable', status: 'recommended', cost: 0, work: 14, complexity: 'high',
     effectSummary: 'Creates visibility over all closing conditions — critical path tool',
     linkedDeliverableId: 'del-100',
     workstreamId: 'closing',
@@ -39,7 +39,7 @@ export const phase10Tasks: GameTask[] = [
   {
     id: 'task-124', name: 'Review Closing Readiness Checklist',
     description: 'Two weeks before target closing, convene all parties — seller counsel, buyer counsel, escrow agent, lenders — for a formal closing readiness review. Walk through every document, every signature block, every funds flow instruction. Nothing can be left to closing day improvisation.',
-    phase: 10, category: 'internal', status: 'locked', cost: 1, work: 12, complexity: 'high',
+    phase: 10, category: 'internal', status: 'locked', cost: 0, work: 12, complexity: 'high',
     effectSummary: 'Gate check — confirms all parties aligned for closing mechanics',
     dependencies: ['task-120', 'task-121'],
   },
@@ -61,7 +61,7 @@ export const phase10Tasks: GameTask[] = [
   {
     id: 'task-127', name: 'Resolve Signature Mismatch',
     description: 'A last-minute review reveals that two SPA schedules reference different entity names for a Solara subsidiary. The buyer\'s counsel flags it as a potential closing blocker. Draft a side letter to correct the discrepancy and get all parties to countersign before the wire is released.',
-    phase: 10, category: 'deliverable', status: 'locked', cost: 1, work: 5, complexity: 'medium',
+    phase: 10, category: 'deliverable', status: 'locked', cost: 0, work: 5, complexity: 'medium',
     effectSummary: 'Clears mechanical blocker — prevents closing-day panic',
     dependencies: ['task-124'],
   },

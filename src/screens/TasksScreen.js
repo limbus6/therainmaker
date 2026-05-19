@@ -5,6 +5,7 @@ import Panel from '../components/ui/Panel';
 import StatusChip from '../components/ui/StatusChip';
 import ProgressBar from '../components/ui/ProgressBar';
 import { Play, CheckCircle2, Lock, ChevronDown, ChevronRight } from 'lucide-react';
+import { applyPhaseWorkstreams } from '../utils/gameplayState';
 const statusVariant = {
     available: 'default',
     recommended: 'accent',
@@ -34,7 +35,7 @@ export default function TasksScreen() {
             default: return true;
         }
     });
-    const activeWorkstreams = workstreams.filter((w) => w.active);
+    const activeWorkstreams = applyPhaseWorkstreams(workstreams, phase).filter((w) => w.active);
     const filters = [
         { key: 'all', label: 'All' },
         { key: 'available', label: 'Available' },

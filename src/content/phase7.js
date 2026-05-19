@@ -13,14 +13,14 @@ export const phase7Tasks = [
     {
         id: 'task-91', name: 'Clarify Final Bid Terms',
         description: 'Review each offer for ambiguous language, undefined conditions, and structural gaps. Request written clarifications from buyers on any term that could shift effective value. No assumptions — every word matters at this stage.',
-        phase: 7, category: 'deliverable', status: 'locked', cost: 2, work: 14, complexity: 'high',
+        phase: 7, category: 'deliverable', status: 'locked', cost: 0, work: 14, complexity: 'high',
         effectSummary: 'Exposes hidden conditions and earn-out traps',
         dependencies: ['task-90'],
     },
     {
         id: 'task-92', name: 'Compare Final Offer Values',
         description: 'Build a like-for-like comparison of headline enterprise value, equity value, cash vs. deferred consideration, earn-out structures, escrow holdbacks, and net certainty-adjusted proceeds. Strip away the marketing — what does the client actually receive?',
-        phase: 7, category: 'deliverable', status: 'locked', cost: 3, work: 14, complexity: 'high',
+        phase: 7, category: 'deliverable', status: 'locked', cost: 0, work: 14, complexity: 'high',
         effectSummary: 'Core analytical output — reveals true economic value of each bid',
         dependencies: ['task-91'],
         linkedDeliverableId: 'del-70',
@@ -35,7 +35,7 @@ export const phase7Tasks = [
     {
         id: 'task-94', name: 'Assess Hidden Conditional Drag',
         description: 'Deep-dive into earn-out triggers, milestone definitions, and conditional payment mechanisms across all offers. Model realistic scenarios: what happens if targets are missed by 10%? 20%? What is the probability-weighted effective value?',
-        phase: 7, category: 'strategic', status: 'locked', cost: 2, work: 12, complexity: 'high',
+        phase: 7, category: 'strategic', status: 'locked', cost: 0, work: 12, complexity: 'high',
         effectSummary: 'Critical for unmasking false winner — exposes Schneider earn-out risk',
         dependencies: ['task-91'],
     },
@@ -49,7 +49,7 @@ export const phase7Tasks = [
     {
         id: 'task-96', name: 'Build Final Recommendation Matrix',
         description: 'Construct the definitive buyer comparison: headline value, certainty-adjusted value, executability score, strategic fit, client chemistry, timeline to close, and key risk flags. This is the single most important document in the process.',
-        phase: 7, category: 'deliverable', status: 'locked', cost: 3, work: 12, complexity: 'high',
+        phase: 7, category: 'deliverable', status: 'locked', cost: 0, work: 12, complexity: 'high',
         effectSummary: 'The analytical foundation for the biggest decision of the deal',
         dependencies: ['task-92', 'task-93', 'task-95'],
         linkedDeliverableId: 'del-70',
@@ -93,7 +93,7 @@ export const phase7Tasks = [
     {
         id: 'task-102', name: 'Prepare Exclusivity Transition Pack',
         description: 'Assemble the documentation package for exclusivity grant: draft exclusivity agreement, confirmatory DD scope, SPA process letter, and timeline to signing. The transition must feel seamless — any delay signals indecision.',
-        phase: 7, category: 'deliverable', status: 'locked', cost: 4, work: 14, complexity: 'high',
+        phase: 7, category: 'deliverable', status: 'locked', cost: 0, work: 14, complexity: 'high',
         effectSummary: 'Enables immediate transition to SPA negotiation',
         dependencies: ['task-101'],
         linkedDeliverableId: 'del-72',

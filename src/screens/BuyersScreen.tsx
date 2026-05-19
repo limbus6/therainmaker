@@ -3,6 +3,7 @@ import Panel from '../components/ui/Panel';
 import StatusChip from '../components/ui/StatusChip';
 import { Briefcase, Users } from 'lucide-react';
 import type { BuyerInterest, BuyerStatus } from '../types/game';
+import { getBuyerOfferLabel } from '../utils/gameplayState';
 
 const interestVariant: Record<BuyerInterest, 'muted' | 'default' | 'info' | 'warning' | 'danger'> = {
   cold: 'muted',
@@ -27,6 +28,7 @@ const statusVariant: Record<BuyerStatus, 'muted' | 'default' | 'info' | 'success
 
 export default function BuyersScreen() {
   const buyers = useGameStore((s) => s.buyers);
+  const finalOffers = useGameStore((s) => s.finalOffers);
   const phase = useGameStore((s) => s.phase);
 
   return (
@@ -73,7 +75,7 @@ export default function BuyersScreen() {
             <table className="w-full min-w-[600px]">
               <thead>
                 <tr className="border-b border-border-subtle">
-                  {['Name', 'Type', 'Geography', 'Interest', 'Status', 'Valuation', 'Exec. Cred.'].map((h) => (
+                  {['Name', 'Type', 'Geography', 'Interest', 'Status', 'Valuation / Offer', 'Exec. Cred.'].map((h) => (
                     <th key={h} className="text-left text-[10px] font-mono uppercase tracking-wider text-text-muted pb-2 px-2">{h}</th>
                   ))}
                 </tr>
@@ -86,7 +88,7 @@ export default function BuyersScreen() {
                     <td className="py-2.5 px-2 text-[12px] text-text-secondary">{buyer.geography}</td>
                     <td className="py-2.5 px-2"><StatusChip label={buyer.interest.replace('_', ' ')} variant={interestVariant[buyer.interest]} /></td>
                     <td className="py-2.5 px-2"><StatusChip label={buyer.status.replace('_', ' ')} variant={statusVariant[buyer.status]} /></td>
-                    <td className="py-2.5 px-2 text-[12px] text-text-secondary capitalize">{buyer.valuationPosture}</td>
+                    <td className="py-2.5 px-2 text-[12px] text-text-secondary">{getBuyerOfferLabel(buyer, finalOffers)}</td>
                     <td className="py-2.5 px-2 text-[12px] font-mono text-text-muted">{buyer.executionCredibility}%</td>
                   </tr>
                 ))}

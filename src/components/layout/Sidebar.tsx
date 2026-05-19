@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { useGameStore } from '../../store/gameStore';
 import type { PhaseId } from '../../types/game';
+import { getActiveRisks } from '../../utils/gameplayState';
 import {
   LayoutDashboard,
   Inbox,
@@ -52,7 +53,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
   const badges: Record<string, number> = {
     unreadEmails: emails.filter((e) => e.state === 'unread').length,
-    activeRisks: risks.filter((r) => !r.mitigated && r.severity !== 'low').length,
+    activeRisks: getActiveRisks(risks, phase).filter((r) => r.severity !== 'low').length,
     pendingTasks: tasks.filter((t) => t.status === 'available' || t.status === 'recommended').length,
   };
 

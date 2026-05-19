@@ -185,6 +185,7 @@ export const phase1Risks: Risk[] = [
     mitigated: false,
     surfacedWeek: 4,
     surfacedPhase: 1,
+    expiresAfterPhase: 1,
   },
   {
     id: 'risk-11',

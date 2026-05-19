@@ -10,7 +10,7 @@ export const phase8Tasks: GameTask[] = [
   {
     id: 'task-100', name: 'Build Clause Priority Map',
     description: 'Map every SPA clause into three tiers: non-negotiable (fundamental warranties, cap structure), tradeable (operational reps, disclosure timing), and concedable (minor scheduling, notice periods). Without this framework every clause becomes a war.',
-    phase: 8, category: 'deliverable', status: 'recommended', cost: 2, work: 14, complexity: 'high',
+    phase: 8, category: 'deliverable', status: 'recommended', cost: 0, work: 14, complexity: 'high',
     effectSummary: 'Creates negotiation framework — prevents value leakage',
     linkedDeliverableId: 'del-80',
   },
@@ -24,7 +24,7 @@ export const phase8Tasks: GameTask[] = [
   {
     id: 'task-102', name: 'Push Back Aggressive Markup',
     description: 'Sarah Jenkins has returned the SPA with over 140 markups. Systematically reject overreach on liability caps, broad indemnity language, and open-ended warranty claims. Set the tone: this is a negotiation, not a capitulation.',
-    phase: 8, category: 'strategic', status: 'locked', cost: 3, work: 14, complexity: 'high',
+    phase: 8, category: 'strategic', status: 'locked', cost: 0, work: 14, complexity: 'high',
     effectSummary: 'Defends value, signals strength — risk of stalling if overdone',
     dependencies: ['task-100'],
   },
@@ -71,7 +71,7 @@ export const phase8Tasks: GameTask[] = [
   {
     id: 'task-109', name: 'Build Signing Checklist',
     description: 'Compile the full conditions precedent for signing: board resolutions, regulatory clearances, escrow account setup, disclosure schedules finalised, side letters executed. Every unresolved item is a reason to delay.',
-    phase: 8, category: 'deliverable', status: 'locked', cost: 1, work: 12, complexity: 'medium',
+    phase: 8, category: 'deliverable', status: 'locked', cost: 0, work: 12, complexity: 'medium',
     effectSummary: 'Prevents last-minute surprises at signing table',
     dependencies: ['task-105'],
     linkedDeliverableId: 'del-82',
@@ -87,7 +87,7 @@ export const phase8Tasks: GameTask[] = [
   {
     id: 'task-111', name: 'Reduce Residual Legal Drag',
     description: 'Resolve the remaining open items on the disclosure schedules and side letters. Each unresolved point is friction that could delay signing or give Kestrel a reason to re-open settled terms.',
-    phase: 8, category: 'internal', status: 'locked', cost: 2, work: 10, complexity: 'medium',
+    phase: 8, category: 'internal', status: 'locked', cost: 0, work: 10, complexity: 'medium',
     effectSummary: 'Clears path to signing — removes excuses for delay',
     dependencies: ['task-109'],
   },

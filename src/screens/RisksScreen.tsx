@@ -5,6 +5,7 @@ import { AlertTriangle, Shield, Wrench } from 'lucide-react';
 import type { RiskSeverity } from '../types/game';
 import { getRiskMitigationPlans } from '../config/riskMitigation';
 import { formatNumber } from '../utils/numberFormat';
+import { getActiveRisks, getRetiredRisks } from '../utils/gameplayState';
 
 const severityVariant: Record<RiskSeverity, 'muted' | 'warning' | 'danger'> = {
   low: 'muted',
@@ -15,10 +16,12 @@ const severityVariant: Record<RiskSeverity, 'muted' | 'warning' | 'danger'> = {
 
 export default function RisksScreen() {
   const risks = useGameStore((s) => s.risks);
+  const phase = useGameStore((s) => s.phase);
   const budget = useGameStore((s) => s.resources.budget);
   const teamCapacity = useGameStore((s) => s.resources.teamCapacity);
   const executeRiskMitigationPlan = useGameStore((s) => s.executeRiskMitigationPlan);
-  const activeRisks = risks.filter((r) => !r.mitigated);
+  const activeRisks = getActiveRisks(risks, phase);
+  const retiredRisks = getRetiredRisks(risks);
   const mitigatedRisks = risks.filter((r) => r.mitigated);
 
   return (
@@ -123,6 +126,22 @@ export default function RisksScreen() {
                 <Shield size={14} className="text-state-success" />
                 <span className="text-[12px] text-text-secondary">{risk.name}</span>
                 <StatusChip label="Mitigated" variant="success" />
+              </div>
+            ))}
+          </div>
+        </Panel>
+      )}
+
+      {/* Retired / No Longer Relevant */}
+      {retiredRisks.length > 0 && (
+        <Panel title="Retired Risks" subtitle="Resolved by phase progression or changed deal context">
+          <div className="space-y-2">
+            {retiredRisks.map((risk) => (
+              <div key={risk.id} className="flex items-center gap-3 p-2 rounded-[var(--radius-md)] bg-surface-default opacity-70">
+                <Shield size={14} className="text-text-muted" />
+                <span className="text-[12px] text-text-secondary">{risk.name}</span>
+                <StatusChip label="No longer relevant" variant="muted" />
+                {risk.retiredReason && <span className="text-[10px] text-text-muted">{risk.retiredReason}</span>}
               </div>
             ))}
           </div>
