@@ -100,3 +100,12 @@ The buyer that is moving to sign is not what I selected as preferred.
 - Context: Documents almost ready for signature.
 
 I can finalize because risk level is too high. comittee does not allow more budget, and there are risks that are not relevant anymore.
+
+
+## 2026-05-19 11:51:07.007 UTC
+- Phase: P9 — Signing
+- Checkpoint: Signing Desk
+- Route: /timeline
+- Context: Documents almost ready for signature.
+
+I have no more acrions to do, and rick level continuies high not letting close the deal. It does not make sense. Risk level should not be a condition to not close the deal. I think.
