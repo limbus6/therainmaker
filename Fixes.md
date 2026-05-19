@@ -28,3 +28,12 @@ In this phase we are seeing in the section "RISKS" some risks to be addressed th
 - Context: Q&A tracker launched and buyer DD streams opened.
 
 On the Tasks there is Active workstreams and it show "Origination & Qualifications" at 8% - when we are at thte dd phase.
+
+
+## 2026-05-19 10:39:20.181 UTC
+- Phase: P6 — Due Diligence
+- Checkpoint: DD Live
+- Route: /dataroom
+- Context: Q&A tracker launched and buyer DD streams opened.
+
+In the buyers list there should be a column for valuation
