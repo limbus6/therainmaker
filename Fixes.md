@@ -109,3 +109,12 @@ I can finalize because risk level is too high. comittee does not allow more budg
 - Context: Documents almost ready for signature.
 
 I have no more acrions to do, and rick level continuies high not letting close the deal. It does not make sense. Risk level should not be a condition to not close the deal. I think.
+
+
+## 2026-05-20 11:52:39.304 UTC
+- Phase: P0 — Deal Origination
+- Checkpoint: Kickoff
+- Route: /game
+- Context: Fresh origination, no board approval or qualification notes yet.
+
+recebi um email a dizer que vou receber leads, e não apareceram.
