@@ -159,3 +159,12 @@ recebi um email a dizer que vou receber leads, e não apareceram.
 Opções para avançar tarefas (mais velocidade com algum custo)
 
 > ✅ Fixed — Sprint / Standard / Deliberate pace selector added to Dashboard. Sprint speeds task completion ×1.35, increases contractor cost ×1.25, costs −5 morale but adds +2 deal momentum. Deliberate slows completion to ×0.75, reduces contractor cost ×0.8, recovers +7 morale and suppresses idle momentum decay.
+
+
+## 2026-05-20 15:28:39.786 UTC
+- Phase: P0 — Deal Origination
+- Checkpoint: Kickoff
+- Route: /game
+- Context: Fresh origination, no board approval or qualification notes yet.
+
+Os deep dive e research adicionais não deveriam ter custo financeiro mas sim ser sobrecarga na equipa
