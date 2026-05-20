@@ -2,6 +2,18 @@ import { useState, useEffect } from 'react';
 import { PHASE_NAMES } from '../types/game';
 import type { PhaseId } from '../types/game';
 
+const PHASE_ENTRY_NARRATIVES: Partial<Record<PhaseId, string>> = {
+  2: "The mandate is signed. Now build the story buyers will pay a premium for.",
+  3: "The desk is ready. The market is about to see Solara for the first time.",
+  4: "Responses are in. Now separate serious buyers from market tourists.",
+  5: "The shortlist is set. Buyers know they're competing. This is where price is made or lost.",
+  6: "DD is open. Every question they ask is a negotiation in disguise.",
+  7: "Schneider's offer landed first and looks strong — but three other buyers are still in the room.",
+  8: "Preferred bidder selected. Now the lawyers take over and every word counts.",
+  9: "Contracts in agreed form. One signature stands between Ricardo and the wire.",
+  10: "Conditions satisfied. The deal is closing.",
+};
+
 const PHASE_TAGLINES: Record<PhaseId, string> = {
   0: 'Source, qualify, and assess the opportunity.',
   1: 'Build the investment case. Win the mandate.',
@@ -62,6 +74,13 @@ export default function PhaseTransitionOverlay({ fromPhase, toPhase, onComplete 
         <p className="text-[14px] text-text-secondary max-w-md mx-auto leading-relaxed">
           {PHASE_TAGLINES[toPhase]}
         </p>
+
+        {/* Entry narrative */}
+        {PHASE_ENTRY_NARRATIVES[toPhase] && (
+          <p className="text-[12px] text-text-accent/80 max-w-md mx-auto italic leading-relaxed">
+            {PHASE_ENTRY_NARRATIVES[toPhase]}
+          </p>
+        )}
 
         {/* Divider */}
         <div className="w-24 h-px bg-accent-primary/40 mx-auto" />

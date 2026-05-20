@@ -16,7 +16,7 @@ import FeeNegotiationModal from '../components/FeeNegotiationModal';
 import SPANegotiationModal from '../components/SPANegotiationModal';
 import PhaseZeroDashboard from '../components/PhaseZeroDashboard';
 import PhaseDeadlineModal from '../components/PhaseDeadlineModal';
-import { getActiveRisks, getDashboardDeliverables, getMomentumLabel } from '../utils/gameplayState';
+import { getActiveRisks, getDashboardDeliverables, getMomentumLabel, applyPhaseWorkstreams } from '../utils/gameplayState';
 import { ArrowRight, Mail, AlertTriangle, ChevronRight, Wallet, Users, Presentation, FileText, Handshake, Trophy, ScrollText, Clock } from 'lucide-react';
 
 function kpiColor(value: number, thresholds: [number, number] = [30, 60]) {
@@ -32,6 +32,7 @@ export default function DashboardScreen() {
     phase, day, week, resources, emails, tasks, workstreams, buyers, risks, deliverables, headlines,
     advanceWeek, isWeekInProgress, weekHistory,
     budgetRequests, boardSubmission, feeNegotiation, agreedFeeTerms, competitorThreats, advancePhase,
+    weekPace, setWeekPace, tempCapacityAllocations,
   } = useGameStore();
 
   const phaseBudget = useGameStore((s) => s.phaseBudget);
@@ -56,7 +57,7 @@ export default function DashboardScreen() {
 
   const needsDeadline = (phase === 3 || phase === 4 || phase === 6) && phaseDeadline === null;
   const daysUntilDeadline = phaseDeadline !== null ? Math.max(0, phaseDeadline - day) : null;
-  void bindingOffersReceived; // consumed by phase gate display
+
 
   const [modal, setModal] = useState<ModalId>(null);
   const navigate = useNavigate();
@@ -64,8 +65,8 @@ export default function DashboardScreen() {
   const unreadEmails = emails.filter((e) => e.state === 'unread');
   const urgentEmails = emails.filter((e) => e.priority === 'urgent' || e.priority === 'high');
   const activeTasks = tasks.filter((t) => t.status === 'available' || t.status === 'recommended');
-  const activeWorkstreams = workstreams.filter((w) => w.active);
-  const activeRisks = getActiveRisks(risks, phase);
+  const activeWorkstreams = applyPhaseWorkstreams(workstreams, phase).filter((w) => w.active);
+  const activeRisks = getActiveRisks(risks, phase, bindingOffersReceived);
   const dashboardDeliverables = getDashboardDeliverables(deliverables, phase);
   const activeThreats = competitorThreats.filter((t) => !t.resolved);
   const pendingBudgetRequest = budgetRequests.find((r) => r.status === 'pending' && r.phase === phase);
@@ -98,6 +99,16 @@ export default function DashboardScreen() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <div className="flex items-center gap-0.5 bg-surface-default rounded-[var(--radius-md)] p-0.5">
+            {(['deliberate', 'standard', 'sprint'] as const).map((p) => (
+              <button key={p} onClick={() => setWeekPace(p)}
+                className={`px-2 py-1 text-[11px] rounded-[var(--radius-sm)] capitalize transition-all ${
+                  weekPace === p ? 'bg-accent-soft text-text-accent font-medium' : 'text-text-muted hover:text-text-secondary'
+                }`}>
+                {p}
+              </button>
+            ))}
+          </div>
           <button onClick={() => setModal('staffing')} className="flex items-center gap-1.5 px-3 py-2 border border-border-subtle rounded-[var(--radius-md)] text-[12px] text-text-secondary hover:bg-surface-hover hover:text-text-primary transition-colors">
             <Users size={13} /> Staffing
           </button>
@@ -182,6 +193,14 @@ export default function DashboardScreen() {
             )}
             {pendingBudgetRequest && <span className="text-[11px] text-yellow-400 flex items-center gap-1"><Wallet size={11} /> Budget request pending</span>}
             {phaseBudget && <span className="text-[10px] text-text-muted">Phase budget: €{phaseBudget.phaseBase}k + €{phaseBudget.carryover}k carryover</span>}
+            {(() => {
+              const contractorDrain = tempCapacityAllocations.reduce((sum, a) => sum + a.weeklyRate, 0);
+              if (contractorDrain === 0) return null;
+              const projected = Math.round(contractorDrain * daysPreview / 7);
+              return (
+                <span className="text-[10px] text-text-muted font-mono">~€{projected}k contractors this advance</span>
+              );
+            })()}
           </div>
         </div>
       </div>

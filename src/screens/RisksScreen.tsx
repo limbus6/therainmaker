@@ -17,10 +17,11 @@ const severityVariant: Record<RiskSeverity, 'muted' | 'warning' | 'danger'> = {
 export default function RisksScreen() {
   const risks = useGameStore((s) => s.risks);
   const phase = useGameStore((s) => s.phase);
+  const bindingOffersReceived = useGameStore((s) => s.bindingOffersReceived);
   const budget = useGameStore((s) => s.resources.budget);
   const teamCapacity = useGameStore((s) => s.resources.teamCapacity);
   const executeRiskMitigationPlan = useGameStore((s) => s.executeRiskMitigationPlan);
-  const activeRisks = getActiveRisks(risks, phase);
+  const activeRisks = getActiveRisks(risks, phase, bindingOffersReceived);
   const retiredRisks = getRetiredRisks(risks);
   const mitigatedRisks = risks.filter((r) => r.mitigated);
 

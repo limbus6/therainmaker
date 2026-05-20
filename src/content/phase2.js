@@ -53,7 +53,7 @@ export const phase2Tasks = [
     {
         id: 'task-26', name: 'Prepare NDA Template',
         description: 'Work with legal to draft a standard NDA for buyer engagement. Balance confidentiality protection with speed of execution — buyers dislike overly aggressive NDAs.',
-        phase: 2, category: 'internal', status: 'available', cost: 3, work: 4, complexity: 'low',
+        phase: 2, category: 'internal', status: 'available', cost: 0, work: 4, complexity: 'low',
         effectSummary: 'Required for outreach, streamlines NDA process',
     },
     {
@@ -83,7 +83,7 @@ export const phase2Tasks = [
     {
         id: 'task-30', name: 'Quality Review — All Materials',
         description: 'Comprehensive review of CIM, teaser, financial model, and process letter. Senior review for accuracy, consistency, and narrative strength before market launch.',
-        phase: 2, category: 'internal', status: 'locked', cost: 2, work: 6, complexity: 'high',
+        phase: 2, category: 'internal', status: 'locked', cost: 0, work: 6, complexity: 'high',
         effectSummary: 'Gate to Phase 3 — ensures material quality',
         dependencies: ['task-21', 'task-22', 'task-20', 'task-29'],
     },

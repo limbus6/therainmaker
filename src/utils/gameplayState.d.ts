@@ -5,7 +5,7 @@ export declare function isActiveRisk(risk: Risk): boolean;
 export declare function retireObsoleteRisks(risks: Risk[], phase: PhaseId, bindingOffersReceived?: number): Risk[];
 export declare function riskUrgencyScore(risk: Risk, currentPhase: PhaseId): number;
 export declare function sortRisksByUrgency(risks: Risk[], currentPhase: PhaseId): Risk[];
-export declare function getActiveRisks(risks: Risk[], currentPhase: PhaseId): Risk[];
+export declare function getActiveRisks(risks: Risk[], currentPhase: PhaseId, bindingOffersReceived?: number): Risk[];
 export declare function getRetiredRisks(risks: Risk[]): Risk[];
 export declare function applyPhaseWorkstreams(workstreams: Workstream[], phase: PhaseId): Workstream[];
 export declare function updatePhaseWorkstreamProgress(workstreams: Workstream[], tasks: GameTask[], phase: PhaseId): Workstream[];

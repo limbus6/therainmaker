@@ -59,7 +59,7 @@ export const phase3Tasks: GameTask[] = [
   {
     id: 'task-47', name: 'Tighten Confidentiality Controls',
     description: 'Monitor for leaks and tighten information flow. Restrict data room access logs, enforce NDA compliance, and address any rumour signals in the market.',
-    phase: 3, category: 'internal', status: 'available', cost: 5, work: 8, complexity: 'low',
+    phase: 3, category: 'internal', status: 'available', cost: 0, work: 8, complexity: 'low',
     effectSummary: '-10 risk level, protects client trust',
   },
   {

@@ -112,9 +112,14 @@ export default function TasksScreen() {
                   <p className="text-[12px] text-text-secondary leading-relaxed">{task.description}</p>
                   <div className="flex items-center gap-4 text-[11px]">
                     <span className="text-text-muted">Effect: <span className="text-text-secondary">{task.effectSummary}</span></span>
-                    {task.dependencies && task.dependencies.length > 0 && (
-                      <span className="text-state-warning">Requires: {task.dependencies.join(', ')}</span>
-                    )}
+                    {task.status === 'locked' && task.dependencies && task.dependencies.length > 0 && (() => {
+                      const unmetNames = task.dependencies
+                        .filter(depId => tasks.find(t => t.id === depId)?.status !== 'completed')
+                        .map(depId => tasks.find(t => t.id === depId)?.name ?? depId);
+                      return unmetNames.length > 0
+                        ? <span className="text-state-warning">Blocked by: {unmetNames.join(', ')}</span>
+                        : null;
+                    })()}
                   </div>
                   {isActionable && (
                     <button

@@ -231,6 +231,7 @@ export const phase4Headlines: Headline[] = [
   { id: 'hl-40', week: 21, text: 'Vektor Industries reports record Q3 revenues — acquisition war chest grows.', category: 'buyer_strategy' },
   { id: 'hl-41', week: 22, text: 'PE-backed industrials outperform strategic acquirers in post-deal integration.', category: 'sector' },
   { id: 'hl-42', week: 22, text: 'Schneider Digital announces new Chief Strategy Officer — internal reshuffling.', category: 'buyer_strategy' },
+  { id: 'hl-40-signal', week: 23, text: 'Buyers\' advisors note "valuation discipline" as recurring IC theme in current processes — below-reserve NDAs on the rise.', category: 'sector' },
   { id: 'hl-43', week: 23, text: 'Competitive auctions driving 15-20% valuation premiums over bilateral deals.', category: 'comparable' },
   { id: 'hl-44', week: 24, text: 'European M&A activity holds steady despite macro uncertainty.', category: 'macro' },
 ];

@@ -383,6 +383,7 @@ export const phase6Risks: Risk[] = [
 ];
 
 export const phase6Headlines: Headline[] = [
+  { id: 'hl-60-schneider', week: 28, text: 'Schneider Digital M&A team seen touring three European energy-tech assets this quarter — sources say they are under board pressure to close before year end.', category: 'buyer_strategy' },
   { id: 'hl-60', week: 29, text: 'KPMG publishes annual M&A DD survey — average deal sees 12% EBITDA adjustment during diligence.', category: 'sector' },
   { id: 'hl-61', week: 30, text: 'European data protection authority announces increased enforcement actions — DD data handling under scrutiny.', category: 'regulatory' },
   { id: 'hl-62', week: 31, text: 'Kestrel Capital closes Fund VII at €2.4B — well above target, signalling strong LP confidence.', category: 'buyer_strategy' },

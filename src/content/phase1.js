@@ -67,7 +67,7 @@ export const phase1Tasks = [
     {
         id: 'task-18', name: 'Team Capacity Planning',
         description: 'Assess internal bandwidth. Confirm Ana, James, and Sofia can commit for the full engagement. Flag any resource conflicts with other active mandates.',
-        phase: 1, category: 'internal', status: 'available', cost: 1, work: 2, complexity: 'low',
+        phase: 1, category: 'internal', status: 'available', cost: 0, work: 2, complexity: 'low',
         effectSummary: '+5 capacity, de-risks execution',
     },
 ];

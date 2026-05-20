@@ -15,10 +15,11 @@ const severityVariant = {
 export default function RisksScreen() {
     const risks = useGameStore((s) => s.risks);
     const phase = useGameStore((s) => s.phase);
+    const bindingOffersReceived = useGameStore((s) => s.bindingOffersReceived);
     const budget = useGameStore((s) => s.resources.budget);
     const teamCapacity = useGameStore((s) => s.resources.teamCapacity);
     const executeRiskMitigationPlan = useGameStore((s) => s.executeRiskMitigationPlan);
-    const activeRisks = getActiveRisks(risks, phase);
+    const activeRisks = getActiveRisks(risks, phase, bindingOffersReceived);
     const retiredRisks = getRetiredRisks(risks);
     const mitigatedRisks = risks.filter((r) => r.mitigated);
     return (_jsxs("div", { className: "space-y-6 max-w-[1200px]", children: [_jsxs("div", { children: [_jsx("h1", { className: "text-2xl font-display font-semibold text-text-primary", children: "Risks & Issues" }), _jsx("p", { className: "text-[12px] text-text-muted mt-1", children: "Structured transaction risk management" })] }), _jsx("div", { className: "grid grid-cols-4 gap-3", children: ['critical', 'high', 'medium', 'low'].map((sev) => {

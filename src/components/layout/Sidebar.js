@@ -21,6 +21,7 @@ export default function Sidebar({ onNavigate }) {
     const risks = useGameStore((s) => s.risks);
     const tasks = useGameStore((s) => s.tasks);
     const phase = useGameStore((s) => s.phase);
+    const bindingOffersReceived = useGameStore((s) => s.bindingOffersReceived);
     const playerName = useGameStore((s) => s.playerName);
     const savedAt = useGameStore((s) => s.savedAt);
     const lastSaved = savedAt
@@ -28,7 +29,7 @@ export default function Sidebar({ onNavigate }) {
         : null;
     const badges = {
         unreadEmails: emails.filter((e) => e.state === 'unread').length,
-        activeRisks: getActiveRisks(risks, phase).filter((r) => r.severity !== 'low').length,
+        activeRisks: getActiveRisks(risks, phase, bindingOffersReceived).filter((r) => r.severity !== 'low').length,
         pendingTasks: tasks.filter((t) => t.status === 'available' || t.status === 'recommended').length,
     };
     const visibleNavItems = [

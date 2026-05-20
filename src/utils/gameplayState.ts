@@ -72,8 +72,9 @@ export function sortRisksByUrgency(risks: Risk[], currentPhase: PhaseId): Risk[]
   });
 }
 
-export function getActiveRisks(risks: Risk[], currentPhase: PhaseId): Risk[] {
-  return sortRisksByUrgency(risks.filter(isActiveRisk), currentPhase);
+export function getActiveRisks(risks: Risk[], currentPhase: PhaseId, bindingOffersReceived = 0): Risk[] {
+  const retired = retireObsoleteRisks(risks, currentPhase, bindingOffersReceived);
+  return sortRisksByUrgency(retired.filter(isActiveRisk), currentPhase);
 }
 
 export function getRetiredRisks(risks: Risk[]): Risk[] {
@@ -109,7 +110,7 @@ export function updatePhaseWorkstreamProgress(workstreams: Workstream[], tasks: 
 
 export function getDashboardDeliverables(deliverables: Deliverable[], phase: PhaseId): Deliverable[] {
   const relevant = deliverables.filter((deliverable) => deliverable.phase === phase || deliverable.phase === Math.min(phase + 1, 10));
-  const pool = relevant.length > 0 ? relevant : deliverables;
+  const pool = relevant;
   return [...pool]
     .sort((a, b) => {
       const phaseSort = b.phase - a.phase;

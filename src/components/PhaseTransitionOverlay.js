@@ -1,6 +1,17 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useState, useEffect } from 'react';
 import { PHASE_NAMES } from '../types/game';
+const PHASE_ENTRY_NARRATIVES = {
+    2: "The mandate is signed. Now build the story buyers will pay a premium for.",
+    3: "The desk is ready. The market is about to see Solara for the first time.",
+    4: "Responses are in. Now separate serious buyers from market tourists.",
+    5: "The shortlist is set. Buyers know they're competing. This is where price is made or lost.",
+    6: "DD is open. Every question they ask is a negotiation in disguise.",
+    7: "Schneider's offer landed first and looks strong — but three other buyers are still in the room.",
+    8: "Preferred bidder selected. Now the lawyers take over and every word counts.",
+    9: "Contracts in agreed form. One signature stands between Ricardo and the wire.",
+    10: "Conditions satisfied. The deal is closing.",
+};
 const PHASE_TAGLINES = {
     0: 'Source, qualify, and assess the opportunity.',
     1: 'Build the investment case. Win the mandate.',
@@ -22,6 +33,6 @@ export default function PhaseTransitionOverlay({ fromPhase, toPhase, onComplete 
         const t3 = setTimeout(onComplete, 3600);
         return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
     }, [onComplete]);
-    return (_jsxs("div", { className: `fixed inset-0 z-[60] flex items-center justify-center bg-bg-primary transition-opacity duration-600 ${stage === 'fade-in' ? 'opacity-0' : stage === 'hold' ? 'opacity-100' : 'opacity-0'}`, children: [_jsx("div", { className: "absolute inset-0 overflow-hidden", children: _jsx("div", { className: "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-accent-primary/10 blur-[120px]" }) }), _jsxs("div", { className: "relative text-center space-y-6", children: [_jsxs("div", { className: "text-[11px] font-mono uppercase tracking-widest text-text-muted", children: ["Phase ", fromPhase, ": ", PHASE_NAMES[fromPhase], _jsx("span", { className: "mx-3 text-accent-primary", children: "\u2192" })] }), _jsxs("div", { children: [_jsxs("div", { className: "text-[10px] font-mono uppercase tracking-[0.3em] text-accent-primary mb-3", children: ["Phase ", toPhase] }), _jsx("h1", { className: "text-4xl font-display font-bold text-text-primary tracking-tight", children: PHASE_NAMES[toPhase] })] }), _jsx("p", { className: "text-[14px] text-text-secondary max-w-md mx-auto leading-relaxed", children: PHASE_TAGLINES[toPhase] }), _jsx("div", { className: "w-24 h-px bg-accent-primary/40 mx-auto" })] })] }));
+    return (_jsxs("div", { className: `fixed inset-0 z-[60] flex items-center justify-center bg-bg-primary transition-opacity duration-600 ${stage === 'fade-in' ? 'opacity-0' : stage === 'hold' ? 'opacity-100' : 'opacity-0'}`, children: [_jsx("div", { className: "absolute inset-0 overflow-hidden", children: _jsx("div", { className: "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-accent-primary/10 blur-[120px]" }) }), _jsxs("div", { className: "relative text-center space-y-6", children: [_jsxs("div", { className: "text-[11px] font-mono uppercase tracking-widest text-text-muted", children: ["Phase ", fromPhase, ": ", PHASE_NAMES[fromPhase], _jsx("span", { className: "mx-3 text-accent-primary", children: "\u2192" })] }), _jsxs("div", { children: [_jsxs("div", { className: "text-[10px] font-mono uppercase tracking-[0.3em] text-accent-primary mb-3", children: ["Phase ", toPhase] }), _jsx("h1", { className: "text-4xl font-display font-bold text-text-primary tracking-tight", children: PHASE_NAMES[toPhase] })] }), _jsx("p", { className: "text-[14px] text-text-secondary max-w-md mx-auto leading-relaxed", children: PHASE_TAGLINES[toPhase] }), PHASE_ENTRY_NARRATIVES[toPhase] && (_jsx("p", { className: "text-[12px] text-text-accent/80 max-w-md mx-auto italic leading-relaxed", children: PHASE_ENTRY_NARRATIVES[toPhase] })), _jsx("div", { className: "w-24 h-px bg-accent-primary/40 mx-auto" })] })] }));
 }
 //# sourceMappingURL=PhaseTransitionOverlay.js.map

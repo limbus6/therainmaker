@@ -59,6 +59,7 @@ export interface GameStore {
     pitchDocumentReady: boolean;
     bindingOffersReceived: number;
     unaddressedQACount: number;
+    weekPace: 'sprint' | 'standard' | 'deliberate';
     advanceWeek: () => void;
     advancePhase: () => Promise<void>;
     debugJumpToPhase: (targetPhase: PhaseId) => Promise<void>;
@@ -99,6 +100,7 @@ export interface GameStore {
     initSPANegotiation: () => void;
     submitSPARound: (terms: Pick<SPARound, 'playerWarrantyScope' | 'playerWarrantyCap' | 'playerEscrowPercent' | 'playerSpecificIndemnity'>) => void;
     acceptSPATerms: () => void;
+    setWeekPace: (pace: 'sprint' | 'standard' | 'deliberate') => void;
 }
 export declare const useGameStore: import("zustand").UseBoundStore<Omit<import("zustand").StoreApi<GameStore>, "setState" | "persist"> & {
     setState(partial: GameStore | Partial<GameStore> | ((state: GameStore) => GameStore | Partial<GameStore>), replace?: false | undefined): unknown;

@@ -52,8 +52,8 @@ const initialEmails = [
         sender: 'Marcus Aldridge',
         senderRole: 'Managing Partner',
         subject: 'Q3 Mandate Objective',
-        body: 'We are behind on our origination targets for this quarter. I need you to secure a new sell-side mandate within the next few weeks to close the gap.\n\nThe Deal Origination team is currently scanning the market and should have a shortlist of actionable targets for you shortly. In the meantime, you have a €50k origination budget to deploy. Use it to build a solid investment case once the targets are identified.\n\nStart warming up your broader market read now so we\'re ready to move fast.',
-        preview: 'We need a mandate this quarter. Deal Origination is...',
+        body: 'We are behind on our origination targets for this quarter. I need you to secure a new sell-side mandate within the next few weeks to close the gap.\n\nA referral just came in — Solara Systems, a founder-led industrial IoT platform. Ricardo Mendes is considering a full exit. This looks like the right profile: strong SaaS metrics, credible buyer universe. I\'ve already briefed the team.\n\nYou have a €50k origination budget. Get into the opportunity, run the qualification, and come back to me with a recommendation. Move fast — the window is open now.',
+        preview: 'A referral just came in — Solara Systems. Get into it fast.',
         category: 'partner',
         state: 'unread',
         priority: 'high',
@@ -72,7 +72,7 @@ const initialTasks = [
     },
     {
         id: 'task-gen-02', name: 'Research Market Momentum', description: 'Deep dive into sector-agnostic market momentum. Which sectors are seeing the highest multiples and buyer activity? Prepares the team to evaluate upcoming targets.',
-        phase: 0, category: 'internal', status: 'recommended', cost: 2, work: 4, complexity: 'medium',
+        phase: 0, category: 'internal', status: 'recommended', cost: 0, work: 4, complexity: 'medium',
         effectSummary: 'Prepares team for execution, +5 momentum',
     },
     {
@@ -800,6 +800,7 @@ export const useGameStore = create()(persist((set, get) => ({
     pitchDocumentReady: false,
     bindingOffersReceived: 0,
     unaddressedQACount: 0,
+    weekPace: 'standard',
     // Actions
     advanceWeek: () => {
         const state = get();
@@ -1895,7 +1896,9 @@ export const useGameStore = create()(persist((set, get) => ({
     })),
     // SPA actions
     initSPANegotiation: () => set((state) => {
-        const preferredBuyer = state.buyers.find((b) => b.id === state.preferredBidderId || b.status === 'preferred');
+        const preferredBuyer = state.preferredBidderId
+            ? state.buyers.find((b) => b.id === state.preferredBidderId)
+            : null;
         if (!preferredBuyer)
             return {};
         const buyerState = generateSPABuyerState(preferredBuyer);
@@ -2061,6 +2064,7 @@ export const useGameStore = create()(persist((set, get) => ({
             }),
         };
     }),
+    setWeekPace: (pace) => set({ weekPace: pace }),
 }), {
     name: 'ma-rainmaker-save',
     version: 2,

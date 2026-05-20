@@ -67,12 +67,12 @@ function createGameplayDirectorSignal(state) {
 //   medium weekly = 60% → per-day = 1 - 0.4^(1/7) ≈ 12.9%
 //   high weekly   = 40% → per-day = 1 - 0.6^(1/7) ≈ 8.0%
 // In N days: P(complete) = 1 - (1-weeklyP)^(N/7)
-function resolveTaskProgress(task, _week, tempAllocations = [], daysToAdvance = 7, budget = 0) {
+function resolveTaskProgress(task, _week, tempAllocations = [], daysToAdvance = 7, budget = 0, paceCompletionMult = 1.0) {
     const alloc = tempAllocations.find((a) => a.taskId === task.id);
     // Validate budget sufficiency for contractor allocation
     if (alloc && budget < alloc.weeklyRate) {
         // Cannot afford contractor, treat as no allocation
-        const ratio = (daysToAdvance / 7);
+        const ratio = (daysToAdvance / 7) * paceCompletionMult;
         if (task.complexity === 'low')
             return 'completed';
         if (task.complexity === 'medium') {
@@ -83,7 +83,7 @@ function resolveTaskProgress(task, _week, tempAllocations = [], daysToAdvance = 
         return Math.random() < Math.min(0.92, prob) ? 'completed' : 'progressed';
     }
     const boost = alloc ? alloc.speedMultiplier : 1.0;
-    const ratio = (daysToAdvance / 7) * boost;
+    const ratio = (daysToAdvance / 7) * boost * paceCompletionMult;
     if (task.complexity === 'low')
         return 'completed';
     if (task.complexity === 'medium') {
@@ -2357,11 +2357,15 @@ export function resolveWeek(state, daysToAdvance = 7) {
     const newDay = state.day + daysToAdvance;
     const newWeek = Math.ceil(newDay / 7);
     const directorSignal = createGameplayDirectorSignal(state);
+    const weekPace = state.weekPace ?? 'standard';
+    const paceCompletionMult = weekPace === 'sprint' ? 1.35 : weekPace === 'deliberate' ? 0.75 : 1.0;
+    const paceMoraleDelta = weekPace === 'sprint' ? -5 : weekPace === 'deliberate' ? 7 : 0;
+    const paceContractorMult = weekPace === 'sprint' ? 1.25 : weekPace === 'deliberate' ? 0.8 : 1.0;
     // 1. Resolve task progress
     const tasksCompleted = [];
     const tasksProgressed = [];
     for (const task of inProgressTasks) {
-        const outcome = resolveTaskProgress(task, newWeek, state.tempCapacityAllocations, daysToAdvance, state.resources.budget);
+        const outcome = resolveTaskProgress(task, newWeek, state.tempCapacityAllocations, daysToAdvance, state.resources.budget, paceCompletionMult);
         if (outcome === 'completed') {
             tasksCompleted.push(task);
         }
@@ -2371,13 +2375,14 @@ export function resolveWeek(state, daysToAdvance = 7) {
     }
     // 2. Calculate resource consumption
     const resourceConsumption = calculateResourceConsumption(inProgressTasks, state.resources, state.tempCapacityAllocations, daysToAdvance);
-    // 2b. Deduct contractor costs from budget
+    // 2b. Deduct contractor costs from budget (scaled by pace)
     for (const alloc of state.tempCapacityAllocations) {
+        const allocCost = alloc.weeklyRate * paceContractorMult;
         if (resourceConsumption.budget === undefined) {
-            resourceConsumption.budget = state.resources.budget - alloc.weeklyRate;
+            resourceConsumption.budget = state.resources.budget - allocCost;
         }
         else {
-            resourceConsumption.budget -= alloc.weeklyRate;
+            resourceConsumption.budget -= allocCost;
         }
     }
     // 3. Calculate state changes from completions
@@ -2566,6 +2571,21 @@ export function resolveWeek(state, daysToAdvance = 7) {
     }
     // Apply stochastic noise — small random drift makes each advance feel unique
     resourceChanges = applyResourceNoise(resourceChanges, state, directorSignal);
+    // Pace: morale adjustment
+    if (paceMoraleDelta !== 0) {
+        const currentMorale = resourceChanges.morale ?? state.resources.morale;
+        resourceChanges.morale = Math.max(0, Math.min(100, currentMorale + paceMoraleDelta));
+    }
+    // Pace: momentum interaction
+    if (weekPace === 'sprint') {
+        const currentMomentum = resourceChanges.dealMomentum ?? state.resources.dealMomentum;
+        resourceChanges.dealMomentum = Math.max(0, Math.min(100, currentMomentum + 2));
+    }
+    else if (weekPace === 'deliberate' && tasksCompleted.length === 0) {
+        // Suppress idle momentum decay — preserve current level
+        const current = resourceChanges.dealMomentum ?? state.resources.dealMomentum;
+        resourceChanges.dealMomentum = Math.max(current, state.resources.dealMomentum);
+    }
     // ─── Phase 6: Binding Offer Deadline Evaluation ──────────────────────────────
     // When the process letter deadline passes, evaluate each active buyer's likelihood
     // of submitting a binding offer. Three dropout risk factors:
@@ -2955,7 +2975,7 @@ export function checkPhaseGate(state) {
             return {
                 canTransition: finalDdReady,
                 requirements: [
-                    { label: 'Process letter issued (sets binding offer deadline)', met: !!processLetter },
+                    { label: 'Final DD Readiness Review completed (process gate)', met: !!processLetter },
                     { label: 'Binding offer deadline set', met: deadlineSet },
                     { label: deadlinePassed ? 'Binding offer deadline reached' : 'Binding offers can supersede deadline wait', met: deadlinePassed || bindingOffersIn },
                     { label: `Binding offers received: ${state.bindingOffersReceived} (need ≥1)`, met: bindingOffersIn },
@@ -2996,7 +3016,6 @@ export function checkPhaseGate(state) {
                 requirements: [
                     { label: 'Signature version locked', met: !!docLocked },
                     { label: 'SPA signed', met: !!signedOff },
-                    { label: resources.riskLevel >= 40 ? 'High residual risk flagged (non-blocking)' : 'Residual risk acceptable', met: true },
                 ],
                 nextPhase: 10,
             };
