@@ -130,7 +130,7 @@ export default function LandingPage() {
               onClick={handleContinue}
               className="w-full px-5 py-3 rounded-xl bg-accent-primary hover:bg-accent-primary/90 active:scale-95 transition-all duration-150 text-base font-bold text-text-primary shadow-xl"
             >
-              Carregar Jogo Gravado
+              Continue
             </button>
 
             {/* New game */}
