@@ -168,3 +168,12 @@ Opções para avançar tarefas (mais velocidade com algum custo)
 - Context: Fresh origination, no board approval or qualification notes yet.
 
 Os deep dive e research adicionais não deveriam ter custo financeiro mas sim ser sobrecarga na equipa
+
+
+## 2026-05-22 22:05:52.896 UTC
+- Phase: P0 — Deal Origination
+- Checkpoint: Kickoff
+- Route: /game
+- Context: Fresh origination, no board approval or qualification notes yet.
+
+no dashboard o Lead actions: Solara systems, em particular "conduct Research" mostra opções de conduct research que são supostamente possiveis de ativar mas supostamente ativei, gastou budget e aquilo não mudou para in progress. Depois verifiquei que essas atividades não estavam disponivies para escolher em selecionar. Depois quando aveicei uns dias, já apareceram essas tasks e funcionou normalmente. É importante corrigir estas assincronias.
