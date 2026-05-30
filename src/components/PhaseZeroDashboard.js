@@ -1,5 +1,5 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { useGameStore, INVESTIGATION_COST_K } from '../store/gameStore';
+import { useGameStore, INVESTIGATION_CAPACITY_COST } from '../store/gameStore';
 import Panel from './ui/Panel';
 import StatusChip from './ui/StatusChip';
 import { Building2, LineChart, Users, Globe, Handshake, ChevronRight } from 'lucide-react';
@@ -23,25 +23,21 @@ function DimensionRow({ label, icon, status }) {
     return (_jsxs("div", { className: "flex items-center justify-between text-[12px]", children: [_jsxs("div", { className: "flex items-center gap-2 text-text-secondary", children: [_jsx("span", { className: "text-text-muted", children: icon }), label] }), _jsx(StatusChip, { label: status === 'completed' ? 'Done' : status === 'in_progress' ? 'Active' : 'Missing', variant: status === 'completed' ? 'success' : status === 'in_progress' ? 'accent' : 'default' })] }));
 }
 function LeadActionPanel({ lead }) {
-    const { investigateDimension, scheduleMeeting, resources } = useGameStore();
+    const { investigateDimension, scheduleMeeting } = useGameStore();
     const handleInvestigate = (dim) => {
         investigateDimension(lead.id, dim);
     };
     const handleMeet = () => {
         scheduleMeeting(lead.id);
     };
-    const budgetCost = INVESTIGATION_COST_K;
-    const canAfford = resources.budget >= budgetCost;
-    return (_jsx(Panel, { title: `Lead Actions: ${lead.companyName}`, variant: "accent", className: "mt-6", children: _jsxs("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-4", children: [_jsxs("div", { className: "bg-bg-secondary border border-border-subtle rounded-[var(--radius-md)] p-4", children: [_jsx("h4", { className: "text-[13px] font-semibold text-text-primary mb-3", children: "Conduct Research" }), _jsxs("p", { className: "text-[11px] text-text-muted mb-4", children: ["Assign team time to uncover hidden attributes. Costs \u20AC", budgetCost, "k."] }), _jsx("div", { className: "space-y-2", children: ['sector', 'company', 'shareholder', 'market'].map((dim) => {
+    return (_jsx(Panel, { title: `Lead Actions: ${lead.companyName}`, variant: "accent", className: "mt-6", children: _jsxs("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-4", children: [_jsxs("div", { className: "bg-bg-secondary border border-border-subtle rounded-[var(--radius-md)] p-4", children: [_jsx("h4", { className: "text-[13px] font-semibold text-text-primary mb-3", children: "Conduct Research" }), _jsxs("p", { className: "text-[11px] text-text-muted mb-4", children: ["Assign internal team time to uncover hidden attributes. No direct budget cost; uses ", INVESTIGATION_CAPACITY_COST, "% team capacity."] }), _jsx("div", { className: "space-y-2", children: ['sector', 'company', 'shareholder', 'market'].map((dim) => {
                                 const isDone = lead.investigation[dim] === 'completed';
                                 const isInProgress = lead.investigation[dim] === 'in_progress';
-                                return (_jsxs("button", { onClick: () => handleInvestigate(dim), disabled: isDone || isInProgress || !canAfford, className: `w-full flex items-center justify-between px-3 py-2 rounded border text-[12px] font-medium transition-colors ${isDone
+                                return (_jsxs("button", { onClick: () => handleInvestigate(dim), disabled: isDone || isInProgress, className: `w-full flex items-center justify-between px-3 py-2 rounded border text-[12px] font-medium transition-colors ${isDone
                                         ? 'border-green-500/30 bg-green-500/5 text-green-400 cursor-not-allowed'
                                         : isInProgress
                                             ? 'border-yellow-500/30 bg-yellow-500/5 text-yellow-400 cursor-not-allowed'
-                                            : canAfford
-                                                ? 'border-accent-primary/40 text-text-accent hover:bg-accent-primary/10'
-                                                : 'border-border-subtle text-text-muted opacity-50 cursor-not-allowed'}`, children: [_jsxs("span", { className: "capitalize", children: [dim, " Deep-Dive"] }), _jsx("span", { children: isDone ? '✓' : isInProgress ? '…' : `€${budgetCost}k` })] }, dim));
+                                            : 'border-accent-primary/40 text-text-accent hover:bg-accent-primary/10'}`, children: [_jsxs("span", { className: "capitalize", children: [dim, " Deep-Dive"] }), _jsx("span", { children: isDone ? 'Done' : isInProgress ? '...' : `${INVESTIGATION_CAPACITY_COST}% cap.` })] }, dim));
                             }) })] }), _jsxs("div", { className: "space-y-4", children: [_jsxs("div", { className: "bg-bg-secondary border border-border-subtle rounded-[var(--radius-md)] p-4", children: [_jsx("h4", { className: "text-[13px] font-semibold text-text-primary mb-3", children: "Founder Engagement" }), _jsx("p", { className: "text-[11px] text-text-muted mb-4", children: "Request introductory meeting to gauge motivation." }), _jsxs("button", { onClick: handleMeet, disabled: lead.meetingDone, className: `w-full flex items-center justify-center gap-2 px-3 py-2 rounded border text-[12px] font-medium transition-colors ${lead.meetingDone
                                         ? 'border-green-500/30 bg-green-500/5 text-green-400 cursor-not-allowed'
                                         : 'border-accent-primary/40 text-text-accent hover:bg-accent-primary/10'}`, children: [_jsx(Handshake, { size: 14 }), lead.meetingDone ? 'Meeting Completed' : 'Schedule Intro'] })] }), (lead.investigation.company === 'completed' || lead.meetingDone) && (_jsxs("div", { className: "bg-surface-default border border-border-subtle rounded-[var(--radius-md)] p-4", children: [_jsx("h4", { className: "text-[12px] font-semibold text-text-primary mb-2", children: "Discovered Insights" }), _jsxs("ul", { className: "space-y-2 text-[11px] text-text-secondary leading-relaxed", children: [lead.investigation.company === 'completed' && (_jsxs("li", { children: [_jsx("strong", { children: "Growth Profile:" }), " ", lead.hiddenGrowth, " potential"] })), lead.investigation.market === 'completed' && (_jsxs("li", { children: [_jsx("strong", { children: "Risk Profile:" }), " ", lead.hiddenRisk, " severity risks identified"] })), lead.meetingDone && (_jsxs("li", { children: [_jsx("strong", { children: "Vendor Motivation:" }), " \"", lead.hiddenMotivations, "\""] }))] })] }))] })] }) }));

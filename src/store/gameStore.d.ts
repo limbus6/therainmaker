@@ -1,6 +1,7 @@
 import type { PhaseId, Email, GameTask, Workstream, Deliverable, Risk, Headline, Client, Lead, PlayerResources, TeamMember, StaffProfile, ContractorProfile, MitigationActionId, QualificationNote, BoardSubmission, TempCapacityAllocation, FeeNegotiation, FeeTerms, NegotiationRound, Toast, FinalOffer, DataroomCategory, DataroomAccessLevel, SPANegotiation, SPARound, SPATerms, GameEvent, BudgetRequest, Buyer, CompetitorThreat } from '../types/game';
 import type { WeekResult, PhaseGateResult } from '../engine/weekEngine';
-export declare const INVESTIGATION_COST_K = 2;
+export declare const INVESTIGATION_COST_K = 0;
+export declare const INVESTIGATION_CAPACITY_COST = 4;
 export interface GameStore {
     phase: PhaseId;
     day: number;

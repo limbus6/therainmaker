@@ -1,4 +1,4 @@
-import { useGameStore, INVESTIGATION_COST_K } from '../store/gameStore';
+import { useGameStore, INVESTIGATION_CAPACITY_COST } from '../store/gameStore';
 import type { Lead } from '../types/game';
 import Panel from './ui/Panel';
 import StatusChip from './ui/StatusChip';
@@ -92,7 +92,7 @@ function DimensionRow({ label, icon, status }: { label: string, icon: React.Reac
 }
 
 function LeadActionPanel({ lead }: { lead: Lead }) {
-  const { investigateDimension, scheduleMeeting, resources } = useGameStore();
+  const { investigateDimension, scheduleMeeting } = useGameStore();
 
   const handleInvestigate = (dim: keyof Lead['investigation']) => {
     investigateDimension(lead.id, dim);
@@ -102,16 +102,13 @@ function LeadActionPanel({ lead }: { lead: Lead }) {
     scheduleMeeting(lead.id);
   };
 
-  const budgetCost = INVESTIGATION_COST_K;
-  const canAfford = resources.budget >= budgetCost;
-
   return (
     <Panel title={`Lead Actions: ${lead.companyName}`} variant="accent" className="mt-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Investigation Actions */}
         <div className="bg-bg-secondary border border-border-subtle rounded-[var(--radius-md)] p-4">
           <h4 className="text-[13px] font-semibold text-text-primary mb-3">Conduct Research</h4>
-          <p className="text-[11px] text-text-muted mb-4">Assign team time to uncover hidden attributes. Costs €{budgetCost}k.</p>
+          <p className="text-[11px] text-text-muted mb-4">Assign internal team time to uncover hidden attributes. No direct budget cost; uses {INVESTIGATION_CAPACITY_COST}% team capacity.</p>
           <div className="space-y-2">
             {(['sector', 'company', 'shareholder', 'market'] as const).map((dim) => {
               const isDone = lead.investigation[dim] === 'completed';
@@ -120,19 +117,17 @@ function LeadActionPanel({ lead }: { lead: Lead }) {
                 <button
                   key={dim}
                   onClick={() => handleInvestigate(dim)}
-                  disabled={isDone || isInProgress || !canAfford}
+                  disabled={isDone || isInProgress}
                   className={`w-full flex items-center justify-between px-3 py-2 rounded border text-[12px] font-medium transition-colors ${
                     isDone
                       ? 'border-green-500/30 bg-green-500/5 text-green-400 cursor-not-allowed'
                       : isInProgress
                         ? 'border-yellow-500/30 bg-yellow-500/5 text-yellow-400 cursor-not-allowed'
-                        : canAfford
-                          ? 'border-accent-primary/40 text-text-accent hover:bg-accent-primary/10'
-                          : 'border-border-subtle text-text-muted opacity-50 cursor-not-allowed'
+                        : 'border-accent-primary/40 text-text-accent hover:bg-accent-primary/10'
                   }`}
                 >
                   <span className="capitalize">{dim} Deep-Dive</span>
-                  <span>{isDone ? '✓' : isInProgress ? '…' : `€${budgetCost}k`}</span>
+                  <span>{isDone ? 'Done' : isInProgress ? '...' : `${INVESTIGATION_CAPACITY_COST}% cap.`}</span>
                 </button>
               );
             })}

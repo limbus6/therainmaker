@@ -52,7 +52,8 @@ import { loadPhaseContent } from '../content/loadPhaseContent';
 // ============================================
 // Phase 0 Origination Constants
 // ============================================
-export const INVESTIGATION_COST_K = 2; // k€ per investigation dimension — single source of truth
+export const INVESTIGATION_COST_K = 0; // kEUR per investigation dimension - research uses capacity, not budget
+export const INVESTIGATION_CAPACITY_COST = 4; // % team capacity per investigation dimension
 
 // ============================================
 // Initial Phase 0: Deal Origination Seed Data
@@ -1940,7 +1941,6 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
   // ─── Phase 0 Qualification ───────────────────────────────────────────────
   investigateDimension: (leadId, dimension) => set((state) => {
     const cost = INVESTIGATION_COST_K;
-    if (state.resources.budget < cost) return {};
 
     const leadIndex = state.leads.findIndex((l) => l.id === leadId);
     if (leadIndex === -1) return {};
@@ -1978,6 +1978,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       resources: normalizeResources({
         ...state.resources,
         budget: state.resources.budget - cost,
+        teamCapacity: Math.max(0, state.resources.teamCapacity - INVESTIGATION_CAPACITY_COST),
       }),
       leads: updatedLeads,
       qualificationNotes: [...state.qualificationNotes, newNote],

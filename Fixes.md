@@ -169,6 +169,8 @@ Opções para avançar tarefas (mais velocidade com algum custo)
 
 Os deep dive e research adicionais não deveriam ter custo financeiro mas sim ser sobrecarga na equipa
 
+> ✅ Fixed — Phase 0 deep dives / research now have €0k direct budget cost and consume team capacity instead. The Conduct Research UI now presents them as internal team-time actions, not budget-spend actions.
+
 
 ## 2026-05-22 22:05:52.896 UTC
 - Phase: P0 — Deal Origination
@@ -177,3 +179,5 @@ Os deep dive e research adicionais não deveriam ter custo financeiro mas sim se
 - Context: Fresh origination, no board approval or qualification notes yet.
 
 no dashboard o Lead actions: Solara systems, em particular "conduct Research" mostra opções de conduct research que são supostamente possiveis de ativar mas supostamente ativei, gastou budget e aquilo não mudou para in progress. Depois verifiquei que essas atividades não estavam disponivies para escolher em selecionar. Depois quando aveicei uns dias, já apareceram essas tasks e funcionou normalmente. É importante corrigir estas assincronias.
+
+> ✅ Fixed — Conduct Research actions now resolve directly from the lead action panel, update the lead investigation state immediately, generate qualification notes, disable completed research dimensions, and no longer rely on hidden delayed tasks or budget spend.
