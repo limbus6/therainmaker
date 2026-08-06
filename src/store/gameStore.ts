@@ -47,7 +47,7 @@ import { REVIEW_CHECKPOINTS_BY_ID } from '../config/reviewCheckpoints';
 import { round2 } from '../utils/numberFormat';
 import { retireObsoleteRisks, updatePhaseWorkstreamProgress } from '../utils/gameplayState';
 
-import { loadPhaseContent } from '../content/loadPhaseContent';
+import { loadPhaseContent, type PhaseContent } from '../content/loadPhaseContent';
 
 // ============================================
 // Phase 0 Origination Constants
@@ -613,7 +613,8 @@ function syncDeliverables(deliverables: Deliverable[], tasks: GameTask[]): Deliv
       return { ...del, status: 'approved' as const, completion: 100, quality: 'good' as const };
     }
     if (linkedTask.status === 'in_progress') {
-      return { ...del, status: 'drafting' as const, completion: Math.max(del.completion, 30) };
+      const taskProgress = Math.min(90, Math.round(linkedTask.progress ?? 15));
+      return { ...del, status: 'drafting' as const, completion: Math.max(del.completion, taskProgress) };
     }
     return del;
   });
@@ -622,8 +623,8 @@ function syncDeliverables(deliverables: Deliverable[], tasks: GameTask[]): Deliv
 // ============================================
 // Helper: sync team workload from in-progress tasks
 // ============================================
-function syncTeamLoad(team: TeamMember[], tasks: GameTask[]): TeamMember[] {
-  const inProgress = tasks.filter((t) => t.status === 'in_progress');
+function syncTeamLoad(team: TeamMember[], tasks: GameTask[], phase: PhaseId): TeamMember[] {
+  const inProgress = tasks.filter((t) => t.status === 'in_progress' && t.phase === phase);
   const totalWork = inProgress.reduce((sum, t) => sum + t.work, 0);
 
   // Distribute work across team proportionally by seniority
@@ -690,6 +691,59 @@ function normalizeResources(resources: PlayerResources): PlayerResources {
     riskLevel: Math.max(0, Math.min(100, round2(resources.riskLevel))),
     reputation: Math.max(0, Math.min(100, round2(resources.reputation))),
   };
+}
+
+const DEFAULT_PREFERRED_BUYER = 'Kestrel Capital';
+const DEFAULT_FALLBACK_BUYER = 'Vektor Industries';
+
+function possessive(name: string): string {
+  return name.endsWith('s') ? `${name}'` : `${name}'s`;
+}
+
+function replacePreferredBuyerText(text: string, preferredBuyerName: string): string {
+  if (preferredBuyerName === DEFAULT_PREFERRED_BUYER) return text;
+
+  const preferredToken = '__SELECTED_BUYER__';
+  const preferredPossessiveToken = '__SELECTED_BUYER_POSSESSIVE__';
+  let personalized = text
+    .replaceAll(`${DEFAULT_PREFERRED_BUYER}'s`, preferredPossessiveToken)
+    .replaceAll(DEFAULT_PREFERRED_BUYER, preferredToken)
+    .replaceAll("Kestrel's", preferredPossessiveToken)
+    .replace(/\bKestrel\b/g, preferredToken);
+
+  // Phase 8 assumes Vektor is the warm fallback. If Vektor wins, swap Kestrel
+  // into that role so the preferred bidder is never presented as its own backup.
+  if (preferredBuyerName === DEFAULT_FALLBACK_BUYER) {
+    personalized = personalized
+      .replaceAll(`${DEFAULT_FALLBACK_BUYER}'s`, possessive(DEFAULT_PREFERRED_BUYER))
+      .replaceAll(DEFAULT_FALLBACK_BUYER, DEFAULT_PREFERRED_BUYER)
+      .replaceAll("Vektor's", possessive(DEFAULT_PREFERRED_BUYER))
+      .replace(/\bVektor\b/g, DEFAULT_PREFERRED_BUYER);
+  }
+
+  return personalized
+    .replaceAll(preferredPossessiveToken, possessive(preferredBuyerName))
+    .replaceAll(preferredToken, preferredBuyerName);
+}
+
+function personalizeNarrativeValue<T>(value: T, preferredBuyerName: string): T {
+  if (typeof value === 'string') {
+    return replacePreferredBuyerText(value, preferredBuyerName) as T;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => personalizeNarrativeValue(item, preferredBuyerName)) as T;
+  }
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [key, personalizeNarrativeValue(item, preferredBuyerName)])
+    ) as T;
+  }
+  return value;
+}
+
+function personalizePhaseContent(content: PhaseContent, preferredBuyerName?: string): PhaseContent {
+  if (!preferredBuyerName || preferredBuyerName === DEFAULT_PREFERRED_BUYER) return content;
+  return personalizeNarrativeValue(content, preferredBuyerName);
 }
 
 // ============================================
@@ -1063,9 +1117,12 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
 
     // Apply task status changes
     const updatedTasks = state.tasks.map((t) => {
-      if (result.tasksCompleted.find((c) => c.id === t.id)) {
-        return { ...t, status: 'completed' as const };
+      const completed = result.tasksCompleted.find((task) => task.id === t.id && task.phase === t.phase);
+      if (completed) {
+        return { ...t, status: 'completed' as const, progress: 100 };
       }
+      const progressed = result.tasksProgressed.find((task) => task.id === t.id && task.phase === t.phase);
+      if (progressed) return { ...t, progress: progressed.progress };
       return t;
     });
 
@@ -1163,10 +1220,13 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
 
     // Auto-release temp capacity allocations for tasks that completed this week
     const releasedAllocations = state.tempCapacityAllocations.filter(
-      (alloc) => completedTaskIds.has(alloc.taskId)
+      (alloc) => (
+        (alloc.phase === undefined || alloc.phase === state.phase) &&
+        completedTaskIds.has(alloc.taskId)
+      )
     );
     const updatedTempAllocations = state.tempCapacityAllocations.filter(
-      (alloc) => !completedTaskIds.has(alloc.taskId)
+      (alloc) => !releasedAllocations.some((released) => released.id === alloc.id)
     );
 
     // Apply resolved board submission (for accurate phase gate check this week)
@@ -1227,7 +1287,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       leads: syncLeadsFromTasks(state.leads, unlockedTasks),
       workstreams: updatedWorkstreams,
       deliverables: syncDeliverables(state.deliverables, unlockedTasks),
-      team: syncTeamLoad(state.team, unlockedTasks),
+      team: syncTeamLoad(state.team, unlockedTasks, state.phase),
       client: syncClient(state.client, normalizedResources),
       risks: newRisks,
       emails: newEmails,
@@ -1289,7 +1349,13 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     let newBuyers = state.buyers;
     let newClient = state.client;
     if (nextPhase >= 1) {
-      const phaseContent = await loadPhaseContent(nextPhase as Exclude<PhaseId, 0>);
+      const rawPhaseContent = await loadPhaseContent(nextPhase as Exclude<PhaseId, 0>);
+      const preferredBuyerName = state.preferredBidderId
+        ? state.buyers.find((buyer) => buyer.id === state.preferredBidderId)?.name
+        : undefined;
+      const phaseContent = nextPhase >= 8
+        ? personalizePhaseContent(rawPhaseContent, preferredBuyerName)
+        : rawPhaseContent;
       newTasks = [...state.tasks, ...phaseContent.tasks];
       newEmails = [...state.emails, ...stampEmails(phaseContent.emails)];
       newDeliverables = [...state.deliverables, ...phaseContent.deliverables];
@@ -1334,6 +1400,8 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       headlines: newHeadlines,
       workstreams: phaseWorkstreams,
       buyers: newBuyers,
+      team: syncTeamLoad(state.team, unlockedPhaseTasks, nextPhase),
+      tempCapacityAllocations: [],
       client: newClient,
       phaseGate: null,
       resources: normalizeResources({
@@ -1749,13 +1817,15 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
 
   startTask: (taskId) => set((state) => {
     const task = state.tasks.find((t) =>
-      t.id === taskId && (t.status === 'available' || t.status === 'recommended')
+      t.id === taskId &&
+      t.phase === state.phase &&
+      (t.status === 'available' || t.status === 'recommended')
     );
-    if (!task) return {};
+    if (!task || state.resources.budget < task.cost) return {};
 
     const updated = state.tasks.map((t) =>
-      t.id === taskId && (t.status === 'available' || t.status === 'recommended')
-        ? { ...t, status: 'in_progress' as const }
+      t.id === taskId && t.phase === state.phase && (t.status === 'available' || t.status === 'recommended')
+        ? { ...t, status: 'in_progress' as const, progress: t.progress ?? 0 }
         : t
     );
     const unlockedUpdated = unlockTasks(updated);
@@ -1767,13 +1837,13 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       }),
       leads: syncLeadsFromTasks(state.leads, unlockedUpdated),
       deliverables: syncDeliverables(state.deliverables, unlockedUpdated),
-      team: syncTeamLoad(state.team, unlockedUpdated),
+      team: syncTeamLoad(state.team, unlockedUpdated, state.phase),
     };
   }),
 
   completeTask: (taskId) => set((state) => {
     const updated = state.tasks.map((t) =>
-      t.id === taskId && t.status === 'in_progress' ? { ...t, status: 'completed' as const } : t
+      t.id === taskId && t.phase === state.phase && t.status === 'in_progress' ? { ...t, status: 'completed' as const, progress: 100 } : t
     );
     const unlockedUpdated = unlockTasks(updated);
     const updatedWorkstreams = updatePhaseWorkstreamProgress(state.workstreams, unlockedUpdated, state.phase);
@@ -1783,7 +1853,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       leads: syncLeadsFromTasks(state.leads, unlockedUpdated),
       workstreams: updatedWorkstreams,
       deliverables: syncDeliverables(state.deliverables, unlockedUpdated),
-      team: syncTeamLoad(state.team, unlockedUpdated),
+      team: syncTeamLoad(state.team, unlockedUpdated, state.phase),
       pitchDocumentReady: state.pitchDocumentReady || taskId === 'task-15',
     };
   }),
@@ -2082,6 +2152,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     const allocation: TempCapacityAllocation = {
       id: `tca-${Date.now()}`,
       taskId,
+      phase: state.phase,
       profile,
       weeklyRate: cfg.weeklyRate,
       speedMultiplier: cfg.speedMultiplier,
@@ -2454,7 +2525,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
   setWeekPace: (pace) => set({ weekPace: pace }),
 }), {
   name: 'ma-rainmaker-save',
-  version: 2,
+  version: 4,
   migrate: (persistedState: unknown, fromVersion: number) => {
     const s = persistedState as Record<string, unknown>;
     if (fromVersion < 2) {
@@ -2469,6 +2540,52 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
           day: entry.day ?? ((entry.week as number) * 7),
           daysAdvanced: entry.daysAdvanced ?? 7,
         }));
+      }
+    }
+    if (fromVersion < 3) {
+      const currentPhase = (s.phase as PhaseId | undefined) ?? 0;
+      if (Array.isArray(s.tasks)) {
+        s.tasks = (s.tasks as GameTask[]).map((task) => ({
+          ...task,
+          progress: task.status === 'completed' ? 100 : task.status === 'in_progress' ? 20 : task.progress,
+        }));
+      }
+      if (Array.isArray(s.tempCapacityAllocations)) {
+        s.tempCapacityAllocations = (s.tempCapacityAllocations as TempCapacityAllocation[]).map((allocation) => ({
+          ...allocation,
+          phase: allocation.phase ?? currentPhase,
+        }));
+      }
+    }
+    if (fromVersion < 4) {
+      const currentPhase = (s.phase as PhaseId | undefined) ?? 0;
+      const preferredBidderId = s.preferredBidderId as string | null | undefined;
+      const preferredBuyerName = Array.isArray(s.buyers)
+        ? (s.buyers as Buyer[]).find((buyer) => buyer.id === preferredBidderId)?.name
+        : undefined;
+
+      if (currentPhase >= 8 && preferredBuyerName && preferredBuyerName !== DEFAULT_PREFERRED_BUYER) {
+        const personalizeLatePhaseItems = <T extends { phase: PhaseId }>(items: unknown): T[] | unknown => (
+          Array.isArray(items)
+            ? (items as T[]).map((item) => item.phase >= 8
+              ? personalizeNarrativeValue(item, preferredBuyerName)
+              : item)
+            : items
+        );
+
+        s.tasks = personalizeLatePhaseItems<GameTask>(s.tasks);
+        s.emails = personalizeLatePhaseItems<Email>(s.emails);
+        s.deliverables = personalizeLatePhaseItems<Deliverable>(s.deliverables);
+        if (Array.isArray(s.risks)) {
+          s.risks = (s.risks as Risk[]).map((risk) => risk.surfacedPhase >= 8
+            ? personalizeNarrativeValue(risk, preferredBuyerName)
+            : risk);
+        }
+        if (Array.isArray(s.headlines)) {
+          s.headlines = (s.headlines as Headline[]).map((headline) => headline.week >= 40
+            ? personalizeNarrativeValue(headline, preferredBuyerName)
+            : headline);
+        }
       }
     }
     return s;

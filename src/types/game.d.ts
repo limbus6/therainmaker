@@ -79,6 +79,7 @@ export interface GameTask {
     deadline?: number;
     owner?: string;
     targetId?: string;
+    progress?: number;
 }
 export type WorkstreamId = 'preparation' | 'financials' | 'marketing_materials' | 'buyer_outreach' | 'management' | 'due_diligence' | 'negotiation' | 'closing';
 export interface Workstream {
@@ -214,6 +215,7 @@ export type ContractorProfile = 'freelance_analyst' | 'external_specialist' | 's
 export interface TempCapacityAllocation {
     id: string;
     taskId: string;
+    phase?: PhaseId;
     profile: ContractorProfile;
     weeklyRate: number;
     speedMultiplier: number;

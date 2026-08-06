@@ -112,6 +112,7 @@ export interface GameTask {
   deadline?: number; // week number
   owner?: string;
   targetId?: string; // Links task to a specific lead/target in Phase 0
+  progress?: number; // 0-100 accumulated execution progress
 }
 
 // --- Workstreams ---
@@ -303,6 +304,7 @@ export type ContractorProfile = 'freelance_analyst' | 'external_specialist' | 's
 export interface TempCapacityAllocation {
   id: string;
   taskId: string;          // locked to a specific task
+  phase?: PhaseId;         // prevents duplicate task IDs in other phases from inheriting the allocation
   profile: ContractorProfile;
   weeklyRate: number;      // k€/week
   speedMultiplier: number; // e.g. 1.4 = task completes 40% faster

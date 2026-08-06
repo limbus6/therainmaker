@@ -41,6 +41,9 @@ function retireReasonForRisk(risk, phase, bindingOffersReceived) {
     if (name.includes('material quality risk') && (phase > 5 || bindingOffersReceived > 0)) {
         return 'Marketing materials have already supported the NBO and binding-offer process.';
     }
+    if (phase > risk.surfacedPhase + 2) {
+        return `The deal has progressed beyond this risk's active decision window (Phase ${risk.surfacedPhase}).`;
+    }
     return null;
 }
 export function retireObsoleteRisks(risks, phase, bindingOffersReceived = 0) {
@@ -95,8 +98,14 @@ export function updatePhaseWorkstreamProgress(workstreams, tasks, phase) {
         const workstreamTasks = getWorkstreamTasks(tasks, workstream.id, phase);
         if (workstreamTasks.length === 0)
             return workstream;
-        const completed = workstreamTasks.filter((task) => task.status === 'completed').length;
-        return { ...workstream, progress: Math.round((completed / workstreamTasks.length) * 100) };
+        const totalProgress = workstreamTasks.reduce((sum, task) => {
+            if (task.status === 'completed')
+                return sum + 100;
+            if (task.status === 'in_progress')
+                return sum + (task.progress ?? 0);
+            return sum;
+        }, 0);
+        return { ...workstream, progress: Math.round(totalProgress / workstreamTasks.length) };
     });
 }
 export function getDashboardDeliverables(deliverables, phase) {

@@ -235,10 +235,17 @@ Actions mais importantes:
 Cuidados:
 
 - Nao contar riscos `retired` como ativos.
+- Riscos sem metadata explicita ficam ativos na fase em que surgem e nas duas fases seguintes; depois passam ao historico.
 - Nao cobrar `task.cost` semanalmente; custo de tarefa e one-time em `startTask`.
+- Tarefas em curso acumulam `progress`; nunca voltar a uma resolucao semanal puramente aleatoria e sem memoria.
+- Existem IDs legacy repetidos entre fases; todos os lookups e updates de tarefas devem usar `(phase, id)`. Novas tarefas devem continuar a receber IDs globais unicos.
 - Contractor/temp capacity pode ter burn semanal.
 - Workstreams devem ser phase-aware via `WORKSTREAMS_BY_PHASE`.
 - Debug jumps devem aplicar retirement de riscos e workstreams atuais.
+- O phase gate mostrado no Dashboard deve ser derivado do estado atual, para reagir imediatamente a deadlines e selecao de bidder.
+- Requisitos opcionais melhoram qualidade/risco mas nao podem bloquear a transicao.
+- Na Fase 10, um gate concluido chama `completeGame` e abre Results; nunca tentar avancar para uma Fase 11.
+- O conteudo das Fases 8-10 deve usar `preferredBidderId`; Kestrel e apenas o default editorial, nao um vencedor fixo.
 
 ## 9. Conteudo, UI e componentes
 
@@ -321,7 +328,7 @@ Regras de narrativa:
 
 - Solara Systems e o ativo central.
 - Ricardo Mendes e founder/prospect na Fase 0 e cliente depois do mandato.
-- Kestrel, Vektor e Schneider sao compradores relevantes mais tarde.
+- Kestrel, Vektor e Schneider sao compradores relevantes mais tarde; a narrativa legal deve seguir o bidder realmente selecionado.
 - A narrativa deve evoluir de origination para pitch, preparacao, outreach, offers, DD, SPA, signing e closing.
 
 ## 12. Checklist antes de entregar alteracoes

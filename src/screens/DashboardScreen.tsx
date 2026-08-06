@@ -17,6 +17,7 @@ import SPANegotiationModal from '../components/SPANegotiationModal';
 import PhaseZeroDashboard from '../components/PhaseZeroDashboard';
 import PhaseDeadlineModal from '../components/PhaseDeadlineModal';
 import { getActiveRisks, getDashboardDeliverables, getMomentumLabel, applyPhaseWorkstreams } from '../utils/gameplayState';
+import { checkPhaseGate } from '../engine/weekEngine';
 import { ArrowRight, Mail, AlertTriangle, ChevronRight, Wallet, Users, Presentation, FileText, Handshake, Trophy, ScrollText, Clock } from 'lucide-react';
 
 function kpiColor(value: number, thresholds: [number, number] = [30, 60]) {
@@ -28,19 +29,20 @@ function kpiColor(value: number, thresholds: [number, number] = [30, 60]) {
 type ModalId = 'budget' | 'board' | 'staffing' | 'pitch' | 'fee' | 'spa' | null;
 
 export default function DashboardScreen() {
+  const gameState = useGameStore();
   const {
     phase, day, week, resources, emails, tasks, workstreams, buyers, risks, deliverables, headlines,
     advanceWeek, isWeekInProgress, weekHistory,
-    budgetRequests, boardSubmission, feeNegotiation, agreedFeeTerms, competitorThreats, advancePhase,
+    budgetRequests, boardSubmission, feeNegotiation, agreedFeeTerms, competitorThreats, advancePhase, completeGame,
     weekPace, setWeekPace, tempCapacityAllocations,
-  } = useGameStore();
+  } = gameState;
 
   const phaseBudget = useGameStore((s) => s.phaseBudget);
-  const phaseGate = useGameStore((s) => s.phaseGate);
+  const phaseGate = checkPhaseGate(gameState);
 
   const daysPreview = useGameStore((s) => {
-    if (s.emails.some((e) => e.priority === 'urgent' && e.state === 'unread')) return 1;
-    const inProg = s.tasks.filter((t) => t.status === 'in_progress');
+    if (s.emails.some((e) => e.phase === s.phase && e.priority === 'urgent' && e.state === 'unread')) return 1;
+    const inProg = s.tasks.filter((t) => t.status === 'in_progress' && t.phase === s.phase);
     if (inProg.some((t) => t.complexity === 'low')) return 1;
     if (inProg.some((t) => t.complexity === 'medium')) return 2;
     if (inProg.some((t) => t.complexity === 'high')) return 3;
@@ -62,9 +64,13 @@ export default function DashboardScreen() {
   const [modal, setModal] = useState<ModalId>(null);
   const navigate = useNavigate();
 
-  const unreadEmails = emails.filter((e) => e.state === 'unread');
-  const urgentEmails = emails.filter((e) => e.priority === 'urgent' || e.priority === 'high');
-  const activeTasks = tasks.filter((t) => t.status === 'available' || t.status === 'recommended');
+  const priorityRank = { urgent: 0, high: 1, normal: 2, low: 3 };
+  const dashboardEmails = emails
+    .filter((email) => email.phase === phase && email.state === 'unread')
+    .sort((a, b) => priorityRank[a.priority] - priorityRank[b.priority]);
+  const activeTasks = tasks.filter((t) =>
+    t.phase === phase && (t.status === 'available' || t.status === 'recommended')
+  );
   const activeWorkstreams = applyPhaseWorkstreams(workstreams, phase).filter((w) => w.active);
   const activeRisks = getActiveRisks(risks, phase, bindingOffersReceived);
   const dashboardDeliverables = getDashboardDeliverables(deliverables, phase);
@@ -75,7 +81,8 @@ export default function DashboardScreen() {
   const pitchPresented = feeNegotiation?.pitchPresented ?? false;
   const feeAgreed = feeNegotiation?.status === 'agreed' || !!agreedFeeTerms;
   const boardApproved = boardSubmission?.status === 'approved';
-  const engineGateMet = phaseGate?.canTransition ?? false;
+  const engineGateMet = phaseGate.canTransition;
+  const blockingStepsRemaining = phaseGate.requirements.filter((req) => !req.optional && !req.met).length;
 
   const canAdvancePhase =
     phase === 0 ? (boardApproved && engineGateMet) :
@@ -132,6 +139,9 @@ export default function DashboardScreen() {
         <div className="flex items-center gap-2 mb-3">
           <span className="text-[11px] font-semibold text-text-muted uppercase tracking-widest">Phase Gate</span>
           {canAdvancePhase && <StatusChip label="Ready to advance" variant="success" />}
+          {!canAdvancePhase && phase > 1 && (
+            <StatusChip label={`${blockingStepsRemaining} blocking step${blockingStepsRemaining === 1 ? '' : 's'} left`} variant="warning" />
+          )}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {phase === 0 ? (
@@ -152,11 +162,16 @@ export default function DashboardScreen() {
             </>
           ) : (
             <>
-              {phaseGate ? (
-                <div className="flex flex-wrap items-center gap-2">
-                  {phaseGate.requirements.map((req, i) => (
-                    <span key={i} className={`text-[11px] px-2 py-1 rounded border ${req.met ? 'border-green-500/30 bg-green-500/5 text-green-400' : 'border-border-subtle text-text-muted'}`}>
-                      {req.met ? '✓' : '○'} {req.label}
+              <div className="flex flex-wrap items-center gap-2">
+                {phaseGate.requirements.map((req, i) => (
+                    <span key={i} className={`text-[11px] px-2 py-1 rounded border ${
+                      req.met
+                        ? 'border-green-500/30 bg-green-500/5 text-green-400'
+                        : req.optional
+                          ? 'border-blue-500/20 bg-blue-500/5 text-blue-300'
+                          : 'border-border-subtle text-text-muted'
+                    }`}>
+                      {req.met ? '✓' : req.optional ? '◇' : '○'} {req.label}
                     </span>
                   ))}
                   {phase === 7 && (
@@ -169,18 +184,15 @@ export default function DashboardScreen() {
                       <ScrollText size={12} /> {agreedSPATerms ? '✓ SPA Agreed' : 'Negotiate SPA'}
                     </button>
                   )}
-                </div>
-              ) : (
-                <span className="text-[11px] text-text-muted">Complete phase tasks and advance week to unlock gate check.</span>
-              )}
+              </div>
             </>
           )}
 
           {canAdvancePhase && (
             <>
               <ChevronRight size={14} className="text-text-muted/40" />
-              <button onClick={() => advancePhase()} className="flex items-center gap-1.5 px-4 py-2 bg-green-600 hover:bg-green-500 text-white text-[12px] font-semibold rounded-[var(--radius-md)] transition-colors">
-                Advance to Phase {phase + 1} <ArrowRight size={13} />
+              <button onClick={() => phase === 10 ? completeGame() : advancePhase()} className="flex items-center gap-1.5 px-4 py-2 bg-green-600 hover:bg-green-500 text-white text-[12px] font-semibold rounded-[var(--radius-md)] transition-colors">
+                {phase === 10 ? 'View Results' : `Advance to Phase ${phase + 1}`} <ArrowRight size={13} />
               </button>
             </>
           )}
@@ -196,7 +208,8 @@ export default function DashboardScreen() {
             {(() => {
               const contractorDrain = tempCapacityAllocations.reduce((sum, a) => sum + a.weeklyRate, 0);
               if (contractorDrain === 0) return null;
-              const projected = Math.round(contractorDrain * daysPreview / 7);
+              const paceCostMultiplier = weekPace === 'sprint' ? 1.25 : weekPace === 'deliberate' ? 0.8 : 1;
+              const projected = Math.round(contractorDrain * daysPreview / 7 * paceCostMultiplier * 10) / 10;
               return (
                 <span className="text-[10px] text-text-muted font-mono">~€{projected}k contractors this advance</span>
               );
@@ -248,12 +261,12 @@ export default function DashboardScreen() {
               </div>
             </Panel>
 
-            <Panel title="Inbox" subtitle={`${unreadEmails.length} unread`} headerRight={<Link to="/inbox" className="text-[11px] text-text-accent hover:underline">Open</Link>}>
-              {unreadEmails.length === 0 && urgentEmails.length === 0 ? (
+            <Panel title="Inbox" subtitle={`${dashboardEmails.length} unread this phase`} headerRight={<Link to="/inbox" className="text-[11px] text-text-accent hover:underline">Open</Link>}>
+              {dashboardEmails.length === 0 ? (
                 <p className="text-[12px] text-text-muted">Your inbox is clear.</p>
               ) : (
                 <div className="space-y-1.5">
-                  {[...unreadEmails, ...urgentEmails].slice(0, 3).map((email) => (
+                  {dashboardEmails.slice(0, 3).map((email) => (
                     <Link key={email.id} to="/inbox" className="flex items-center gap-3 p-2 rounded-[var(--radius-md)] hover:bg-surface-hover transition-colors group">
                       <Mail size={14} className="text-text-muted shrink-0" />
                       <div className="flex-1 min-w-0">

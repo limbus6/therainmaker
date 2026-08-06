@@ -71,11 +71,11 @@ function createGameplayDirectorSignal(state: GameStore): GameplayDirectorSignal 
     .filter(isActiveRisk)
     .reduce((total, risk) => total + (risk.severity === 'critical' ? 10 : risk.severity === 'high' ? 7 : risk.severity === 'medium' ? 4 : 2), 0);
   const inProgressWork = state.tasks
-    .filter((task) => task.status === 'in_progress')
+    .filter((task) => task.status === 'in_progress' && task.phase === state.phase)
     .reduce((total, task) => total + task.work, 0);
   const activeBuyers = state.buyers.filter((buyer) => !['dropped', 'excluded'].includes(buyer.status));
   const fragileBuyerCount = activeBuyers.filter((buyer) => buyer.interest === 'cold' || buyer.ddFriction === 'high').length;
-  const urgentInboxPressure = state.emails.filter((email) => email.state !== 'resolved' && ['urgent', 'high'].includes(email.priority)).length * 3;
+  const urgentInboxPressure = state.emails.filter((email) => email.phase === state.phase && email.state !== 'resolved' && ['urgent', 'high'].includes(email.priority)).length * 3;
   const deadlinePressure = state.phaseDeadline && state.day <= state.phaseDeadline
     ? Math.max(0, 14 - (state.phaseDeadline - state.day))
     : 0;
@@ -136,39 +136,30 @@ function createGameplayDirectorSignal(state: GameStore): GameplayDirectorSignal 
   };
 }
 
-// Determine if a task completes in the given number of days
-// Uses per-day probability derived from weekly baseline:
-//   medium weekly = 60% → per-day = 1 - 0.4^(1/7) ≈ 12.9%
-//   high weekly   = 40% → per-day = 1 - 0.6^(1/7) ≈ 8.0%
-// In N days: P(complete) = 1 - (1-weeklyP)^(N/7)
-function resolveTaskProgress(task: GameTask, _week: number, tempAllocations: TempCapacityAllocation[] = [], daysToAdvance: number = 7, budget: number = 0, paceCompletionMult: number = 1.0): 'completed' | 'progressed' {
-  const alloc = tempAllocations.find((a) => a.taskId === task.id);
+interface TaskProgressResult {
+  outcome: 'completed' | 'progressed';
+  progress: number;
+}
 
-  // Validate budget sufficiency for contractor allocation
-  if (alloc && budget < alloc.weeklyRate) {
-    // Cannot afford contractor, treat as no allocation
-    const ratio = (daysToAdvance / 7) * paceCompletionMult;
-    if (task.complexity === 'low') return 'completed';
-    if (task.complexity === 'medium') {
-      const prob = 1 - Math.pow(0.4, ratio);
-      return Math.random() < Math.min(0.97, prob) ? 'completed' : 'progressed';
-    }
-    const prob = 1 - Math.pow(0.6, ratio);
-    return Math.random() < Math.min(0.92, prob) ? 'completed' : 'progressed';
-  }
+// Progress accumulates on every advance. Small variance keeps timing organic,
+// while persistent progress prevents a task from failing the same random roll forever.
+function resolveTaskProgress(task: GameTask, tempAllocations: TempCapacityAllocation[] = [], daysToAdvance: number = 7, budget: number = 0, paceCompletionMult: number = 1.0): TaskProgressResult {
+  const alloc = tempAllocations.find((a) =>
+    a.taskId === task.id && (a.phase === undefined || a.phase === task.phase)
+  );
+  const contractorCost = alloc ? alloc.weeklyRate * (daysToAdvance / 7) : 0;
+  const contractorFunded = !!alloc && budget >= contractorCost;
+  const speedMultiplier = contractorFunded ? alloc.speedMultiplier : 1;
+  const baseDailyProgress = task.complexity === 'low' ? 100 : task.complexity === 'medium' ? 26 : 17;
+  const workloadFactor = clamp(10 / Math.max(task.work, 6), 0.75, 1.2);
+  const timingVariance = 0.9 + Math.random() * 0.2;
+  const increment = daysToAdvance * baseDailyProgress * workloadFactor * speedMultiplier * paceCompletionMult * timingVariance;
+  const progress = Math.min(100, Math.round(((task.progress ?? 0) + increment) * 10) / 10);
 
-  const boost = alloc ? alloc.speedMultiplier : 1.0;
-  const ratio = (daysToAdvance / 7) * boost * paceCompletionMult;
-
-  if (task.complexity === 'low') return 'completed';
-  if (task.complexity === 'medium') {
-    // 1 - (1 - 0.6)^ratio = 1 - 0.4^ratio
-    const prob = 1 - Math.pow(0.4, ratio);
-    return Math.random() < Math.min(0.97, prob) ? 'completed' : 'progressed';
-  }
-  // High: 1 - (1 - 0.4)^ratio = 1 - 0.6^ratio
-  const prob = 1 - Math.pow(0.6, ratio);
-  return Math.random() < Math.min(0.92, prob) ? 'completed' : 'progressed';
+  return {
+    outcome: progress >= 100 ? 'completed' : 'progressed',
+    progress,
+  };
 }
 
 // Hidden workload check — some tasks trigger surprise extra work
@@ -285,23 +276,14 @@ function applyResourceNoise(resourceChanges: Partial<PlayerResources>, state: Ga
 function calculateResourceConsumption(
   inProgressTasks: GameTask[],
   resources: PlayerResources,
-  tempCapacityAllocations: TempCapacityAllocation[] = [],
   daysToAdvance: number = 7,
 ): Partial<PlayerResources> {
   const scale = daysToAdvance / 7;
-  let budgetSpent = 0;
   let workLoad = 0;
 
   for (const task of inProgressTasks) {
     const weeklyWork = task.complexity === 'low' ? task.work : Math.ceil(task.work / 2);
     workLoad += weeklyWork * scale;
-  }
-
-  // Deduct contractor rates pro-rated for days elapsed
-  for (const alloc of tempCapacityAllocations) {
-    if (inProgressTasks.some((t) => t.id === alloc.taskId)) {
-      budgetSpent += alloc.weeklyRate * scale;
-    }
   }
 
   const capacityUsed = Math.min(workLoad, 25 * scale);
@@ -315,7 +297,6 @@ function calculateResourceConsumption(
     : 3 * scale; // idle = recovery
 
   return {
-    budget: Math.max(0, resources.budget - Math.round(budgetSpent)),
     teamCapacity: Math.min(resources.teamCapacityMax, newCapacity + 8 * scale),
     morale: Math.max(0, Math.min(100, Math.round(resources.morale + moraleDelta))),
   };
@@ -2555,7 +2536,7 @@ function rollEvents(state: GameStore, directorSignal: GameplayDirectorSignal): {
 // ============================================
 
 export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekResult {
-  const inProgressTasks = state.tasks.filter((t) => t.status === 'in_progress');
+  const inProgressTasks = state.tasks.filter((t) => t.status === 'in_progress' && t.phase === state.phase);
   const newDay = state.day + daysToAdvance;
   const newWeek = Math.ceil(newDay / 7);
   const directorSignal = createGameplayDirectorSignal(state);
@@ -2570,25 +2551,30 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
   const tasksProgressed: GameTask[] = [];
 
   for (const task of inProgressTasks) {
-    const outcome = resolveTaskProgress(task, newWeek, state.tempCapacityAllocations, daysToAdvance, state.resources.budget, paceCompletionMult);
-    if (outcome === 'completed') {
-      tasksCompleted.push(task);
+    const result = resolveTaskProgress(task, state.tempCapacityAllocations, daysToAdvance, state.resources.budget, paceCompletionMult);
+    const progressedTask = { ...task, progress: result.progress };
+    if (result.outcome === 'completed') {
+      tasksCompleted.push(progressedTask);
     } else {
-      tasksProgressed.push(task);
+      tasksProgressed.push(progressedTask);
     }
   }
 
   // 2. Calculate resource consumption
-  const resourceConsumption = calculateResourceConsumption(inProgressTasks, state.resources, state.tempCapacityAllocations, daysToAdvance);
+  const resourceConsumption = calculateResourceConsumption(inProgressTasks, state.resources, daysToAdvance);
 
-  // 2b. Deduct contractor costs from budget (scaled by pace)
-  for (const alloc of state.tempCapacityAllocations) {
-    const allocCost = alloc.weeklyRate * paceContractorMult;
-    if (resourceConsumption.budget === undefined) {
-      resourceConsumption.budget = state.resources.budget - allocCost;
-    } else {
-      resourceConsumption.budget -= allocCost;
-    }
+  // Contractors are the only recurring task cost. Charge once and pro-rate it.
+  const contractorSpend = state.tempCapacityAllocations
+    .filter((alloc) => (
+      (alloc.phase === undefined || alloc.phase === state.phase) &&
+      inProgressTasks.some((task) => task.id === alloc.taskId)
+    ))
+    .reduce((sum, alloc) => sum + alloc.weeklyRate * (daysToAdvance / 7) * paceContractorMult, 0);
+  if (contractorSpend > 0) {
+    resourceConsumption.budget = Math.max(
+      0,
+      Math.round((state.resources.budget - contractorSpend) * 100) / 100,
+    );
   }
 
   // 3. Calculate state changes from completions
@@ -3016,12 +3002,12 @@ export function calcDaysToAdvance(state: GameStore): number {
   let days = 7; // default: advance a full week if nothing is urgent
 
   // Urgent unread emails: check inbox tomorrow
-  if (state.emails.some((e) => e.priority === 'urgent' && e.state === 'unread')) {
+  if (state.emails.some((e) => e.phase === state.phase && e.priority === 'urgent' && e.state === 'unread')) {
     days = Math.min(days, 1);
   }
 
   // Low complexity tasks: complete in 1 day
-  const inProgress = state.tasks.filter((t) => t.status === 'in_progress');
+  const inProgress = state.tasks.filter((t) => t.status === 'in_progress' && t.phase === state.phase);
   if (inProgress.some((t) => t.complexity === 'low')) {
     days = Math.min(days, 1);
   }
@@ -3127,15 +3113,16 @@ export function checkDealCollapse(state: GameStore): CollapseResult {
 
 export interface PhaseGateResult {
   canTransition: boolean;
-  requirements: { label: string; met: boolean }[];
+  requirements: { label: string; met: boolean; optional?: boolean }[];
   nextPhase: PhaseId;
 }
 
 export function checkPhaseGate(state: GameStore): PhaseGateResult {
-  const { phase, tasks, resources } = state;
+  const { phase, tasks } = state;
   const phaseTasks = tasks.filter((t) => t.phase === phase);
   const completedCount = phaseTasks.filter((t) => t.status === 'completed').length;
   const totalCount = phaseTasks.length;
+  const currentTaskCompleted = (taskId: string) => phaseTasks.find((task) => task.id === taskId)?.status === 'completed';
 
   switch (phase) {
     case 0: { // Deal Origination → Pitch & Mandate
@@ -3177,10 +3164,10 @@ export function checkPhaseGate(state: GameStore): PhaseGateResult {
     }
 
     case 2: { // Preparation → Market Outreach
-      const modelDone = tasks.find((t) => t.id === 'task-20')?.status === 'completed';
-      const cimDone = tasks.find((t) => t.id === 'task-21')?.status === 'completed';
-      const teaserDone = tasks.find((t) => t.id === 'task-22')?.status === 'completed';
-      const buyerListDone = tasks.find((t) => t.id === 'task-25')?.status === 'completed';
+      const modelDone = currentTaskCompleted('task-20');
+      const cimDone = currentTaskCompleted('task-21');
+      const teaserDone = currentTaskCompleted('task-22');
+      const buyerListDone = currentTaskCompleted('task-25');
 
       return {
         canTransition: !!modelDone && !!cimDone && !!teaserDone && !!buyerListDone,
@@ -3195,10 +3182,10 @@ export function checkPhaseGate(state: GameStore): PhaseGateResult {
     }
 
     case 3: { // Market Outreach → Shortlist — deadline-gated
-      const outreachLaunched = tasks.find((t) => t.id === 'task-40')?.status === 'completed';
-      const ndasProcessed = tasks.find((t) => t.id === 'task-42')?.status === 'completed';
-      const qaResponded = tasks.find((t) => t.id === 'task-46')?.status === 'completed';
-      const buyerQualified = tasks.find((t) => t.id === 'task-48')?.status === 'completed';
+      const outreachLaunched = currentTaskCompleted('task-40');
+      const ndasProcessed = currentTaskCompleted('task-42');
+      const qaResponded = currentTaskCompleted('task-46');
+      const buyerQualified = currentTaskCompleted('task-48');
       const activeBuyersWithNDA = state.buyers.filter(b => b.status === 'nda_signed' || b.status === 'reviewing' || b.status === 'active' || b.status === 'shortlisted' || b.status === 'bidding').length;
       const deadlineSet = state.phaseDeadline !== null;
       const deadlinePassed = deadlineSet && state.day >= (state.phaseDeadline ?? Infinity);
@@ -3206,7 +3193,7 @@ export function checkPhaseGate(state: GameStore): PhaseGateResult {
       const enoughBuyers = activeBuyersWithNDA >= requiredNdaBuyers;
 
       return {
-        canTransition: !!outreachLaunched && !!ndasProcessed && !!qaResponded && !!buyerQualified && (enoughBuyers || deadlinePassed),
+        canTransition: deadlineSet && outreachLaunched && ndasProcessed && qaResponded && buyerQualified && (enoughBuyers || deadlinePassed),
         requirements: [
           { label: 'Outreach deadline set', met: deadlineSet },
           { label: 'Tier 1 outreach launched', met: !!outreachLaunched },
@@ -3220,22 +3207,22 @@ export function checkPhaseGate(state: GameStore): PhaseGateResult {
     }
 
     case 4: { // Shortlist → Non-Binding Offers — deadline-gated
-      const shortlistBuilt = tasks.find((t) => t.id === 'task-61')?.status === 'completed';
-      const clientApproved = tasks.find((t) => t.id === 'task-63')?.status === 'completed';
-      const processNote = tasks.find((t) => t.id === 'task-64')?.status === 'completed';
+      const shortlistBuilt = currentTaskCompleted('task-61');
+      const clientApproved = currentTaskCompleted('task-63');
+      const processNote = currentTaskCompleted('task-64');
       const shortlistedBuyers = state.buyers.filter(b => b.status === 'shortlisted' || b.status === 'bidding').length;
       const deadlineSet = state.phaseDeadline !== null;
       const deadlinePassed = deadlineSet && state.day >= (state.phaseDeadline ?? Infinity);
 
       return {
-        canTransition: !!shortlistBuilt && !!clientApproved && !!processNote && shortlistedBuyers >= 2 && deadlinePassed,
+        canTransition: deadlineSet && shortlistBuilt && clientApproved && processNote && shortlistedBuyers >= 2,
         requirements: [
           { label: 'NBO deadline set', met: deadlineSet },
-          { label: 'Shortlist built', met: !!shortlistBuilt },
-          { label: 'Client approved shortlist', met: !!clientApproved },
-          { label: 'Process note sent to buyers', met: !!processNote },
+          { label: 'Shortlist built', met: shortlistBuilt },
+          { label: 'Client approved shortlist', met: clientApproved },
+          { label: 'Process note sent to buyers', met: processNote },
           { label: `Shortlisted buyers: ${shortlistedBuyers}/2 required`, met: shortlistedBuyers >= 2 },
-          { label: 'NBO deadline reached', met: deadlinePassed },
+          { label: 'Wait for NBO deadline (optional)', met: deadlinePassed, optional: true },
         ],
         nextPhase: 5,
       };
@@ -3265,12 +3252,12 @@ export function checkPhaseGate(state: GameStore): PhaseGateResult {
     }
 
     case 6: { // Due Diligence → Final Offers
-      const processLetter = tasks.some((t) => t.phase === 6 && t.linkedDeliverableId === 'del-63' && t.status === 'completed');
+      const processLetter = phaseTasks.some((t) => t.linkedDeliverableId === 'del-63' && t.status === 'completed');
       const deadlineSet = state.phaseDeadline !== null;
       const deadlinePassed = deadlineSet && state.day >= (state.phaseDeadline ?? Infinity);
       const bindingOffersIn = state.bindingOffersReceived > 0;
       const activeDDBuyers = state.buyers.filter(b => !['dropped', 'excluded'].includes(b.status)).length;
-      const finalDdReady = processLetter && bindingOffersIn && activeDDBuyers >= 1;
+      const finalDdReady = deadlineSet && processLetter && bindingOffersIn && activeDDBuyers >= 1;
 
       return {
         canTransition: finalDdReady,
@@ -3293,7 +3280,7 @@ export function checkPhaseGate(state: GameStore): PhaseGateResult {
         canTransition: preferredSelected,
         requirements: [
           { label: 'Preferred bidder selected', met: preferredSelected },
-          { label: 'Exclusivity agreement prepared (quality boost)', met: exclusivityReady },
+          { label: 'Exclusivity agreement prepared (optional quality boost)', met: exclusivityReady, optional: true },
         ],
         nextPhase: 8,
       };
@@ -3328,13 +3315,18 @@ export function checkPhaseGate(state: GameStore): PhaseGateResult {
     }
 
     default: {
-      // Phase 10 (Closing): final gate = game completion
-      const completionRatio = totalCount > 0 ? completedCount / totalCount : 0;
+      const fundsReleased = currentTaskCompleted('task-126');
+      const ownershipTransferred = currentTaskCompleted('task-128');
+      const closingMemoReady = currentTaskCompleted('task-129');
+      const successFeeRealised = currentTaskCompleted('task-130');
       return {
-        canTransition: completionRatio >= 0.7 && resources.dealMomentum >= 40,
+        canTransition: fundsReleased && ownershipTransferred && closingMemoReady && successFeeRealised,
         requirements: [
-          { label: `Phase tasks completed (${completedCount}/${totalCount})`, met: completionRatio >= 0.7 },
-          { label: 'Deal momentum above 40', met: resources.dealMomentum >= 40 },
+          { label: 'Purchase funds released', met: fundsReleased },
+          { label: 'Ownership transfer confirmed', met: ownershipTransferred },
+          { label: 'Closing memorandum completed', met: closingMemoReady },
+          { label: 'Success fee realised', met: successFeeRealised },
+          { label: `Optional closing work completed (${completedCount}/${totalCount})`, met: completedCount === totalCount, optional: true },
         ],
         nextPhase: Math.min(phase + 1, 10) as PhaseId,
       };
@@ -3351,7 +3343,11 @@ export function unlockTasks(tasks: GameTask[]): GameTask[] {
     if (task.status !== 'locked' || !task.dependencies) return task;
 
     const allDepsMet = task.dependencies.every((depId) => {
-      const dep = tasks.find((t) => t.id === depId);
+      // IDs in legacy saves can repeat across phases. Resolve within the task's
+      // own phase first, then allow an intentional dependency on prior work.
+      const dep = tasks.find((candidate) => candidate.id === depId && candidate.phase === task.phase)
+        ?? tasks.find((candidate) => candidate.id === depId && candidate.phase < task.phase && candidate.status === 'completed')
+        ?? tasks.find((candidate) => candidate.id === depId);
       return dep?.status === 'completed';
     });
 

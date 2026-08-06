@@ -12,6 +12,8 @@ export default function WeekSummaryOverlay() {
   const buyers = useGameStore((s) => s.buyers);
   const dismiss = useGameStore((s) => s.dismissWeekSummary);
   const advancePhase = useGameStore((s) => s.advancePhase);
+  const completeGame = useGameStore((s) => s.completeGame);
+  const phase = useGameStore((s) => s.phase);
 
   if (!result) return null;
 
@@ -85,10 +87,10 @@ export default function WeekSummaryOverlay() {
               </div>
             ))}
             {result.tasksProgressed.map((t) => (
-              <div key={t.id} className="flex items-center gap-3 p-2 rounded-[var(--radius-md)] bg-surface-default">
+              <div key={`${t.phase}-${t.id}`} className="flex items-center gap-3 p-2 rounded-[var(--radius-md)] bg-surface-default">
                 <Clock size={14} className="text-text-muted shrink-0" />
-                <span className="text-[12px] text-text-secondary">{t.name}</span>
-                <StatusChip label="In Progress" variant="info" />
+                <span className="text-[12px] text-text-secondary flex-1">{t.name}</span>
+                <StatusChip label={`${Math.round(t.progress ?? 0)}% complete`} variant="info" />
               </div>
             ))}
           </div>
@@ -209,17 +211,25 @@ export default function WeekSummaryOverlay() {
             <div className="space-y-2">
               {phaseGate.requirements.map((req) => (
                 <div key={req.label} className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${req.met ? 'bg-state-success' : 'bg-border-subtle'}`} />
-                  <span className={`text-[11px] ${req.met ? 'text-text-primary' : 'text-text-muted'}`}>{req.label}</span>
+                  <div className={`w-2 h-2 rounded-full ${req.met ? 'bg-state-success' : req.optional ? 'bg-state-info' : 'bg-border-subtle'}`} />
+                  <span className={`text-[11px] ${
+                    req.met ? 'text-text-primary' : req.optional ? 'text-state-info' : 'text-text-muted'
+                  }`}>
+                    {req.label}
+                  </span>
                 </div>
               ))}
             </div>
             {phaseGate.canTransition && (
               <button
-                onClick={() => { advancePhase(); dismiss(); }}
+                onClick={() => {
+                  if (phase === 10) completeGame();
+                  else advancePhase();
+                  dismiss();
+                }}
                 className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-accent-primary hover:bg-accent-hover text-white text-[13px] font-semibold rounded-[var(--radius-md)] transition-colors shadow-[var(--shadow-glow-strong)]"
               >
-                Advance to Next Phase
+                {phase === 10 ? 'View Results' : 'Advance to Next Phase'}
                 <ArrowRight size={14} />
               </button>
             )}

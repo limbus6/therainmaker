@@ -312,7 +312,7 @@ export const REVIEW_CHECKPOINTS = [
         id: 'p10-results-ready',
         phase: 10,
         label: 'Results Ready',
-        description: 'More than 70% of the phase complete; almost at final scoring.',
+        description: 'Funds released, ownership transferred, closing memo complete and success fee realised.',
         route: '/game',
         day: 214,
         clientTrust: 88,

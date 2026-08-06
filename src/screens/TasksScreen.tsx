@@ -28,11 +28,12 @@ const categoryLabels: Record<TaskCategory, string> = {
 type ViewFilter = 'all' | 'available' | 'in_progress' | 'completed';
 
 export default function TasksScreen() {
-  const { tasks, workstreams, startTask, phase, leads } = useGameStore();
+  const { tasks, workstreams, startTask, phase, leads, resources } = useGameStore();
   const [filter, setFilter] = useState<ViewFilter>('all');
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
 
   const filteredTasks = tasks.filter((t) => {
+    if (t.phase !== phase) return false;
     switch (filter) {
       case 'available': return t.status === 'available' || t.status === 'recommended';
       case 'in_progress': return t.status === 'in_progress';
@@ -56,6 +57,8 @@ export default function TasksScreen() {
       {taskList.map((task) => {
         const isExpanded = expandedTask === task.id;
         const isActionable = task.status === 'available' || task.status === 'recommended';
+        const canAfford = resources.budget >= task.cost;
+        const taskProgress = task.status === 'completed' ? 100 : Math.round(task.progress ?? 0);
 
         return (
           <div key={task.id} className={`rounded-[var(--radius-md)] border transition-all duration-150 ${
@@ -81,6 +84,9 @@ export default function TasksScreen() {
                 <div className={`text-[13px] ${task.status === 'locked' ? 'text-text-muted' : 'text-text-primary'} font-medium break-words sm:truncate`}>
                   {task.name}
                 </div>
+                {task.status === 'in_progress' && (
+                  <div className="mt-2 max-w-sm"><ProgressBar value={taskProgress} color="info" showLabel /></div>
+                )}
                 <div className="mt-2 flex flex-wrap items-center gap-2 sm:hidden">
                   <StatusChip label={categoryLabels[task.category]} variant="muted" />
                   <StatusChip label={task.status.replace('_', ' ')} variant={statusVariant[task.status]} />
@@ -114,8 +120,11 @@ export default function TasksScreen() {
                     <span className="text-text-muted">Effect: <span className="text-text-secondary">{task.effectSummary}</span></span>
                     {task.status === 'locked' && task.dependencies && task.dependencies.length > 0 && (() => {
                       const unmetNames = task.dependencies
-                        .filter(depId => tasks.find(t => t.id === depId)?.status !== 'completed')
-                        .map(depId => tasks.find(t => t.id === depId)?.name ?? depId);
+                        .map(depId => tasks.find(t => t.id === depId && t.phase === task.phase)
+                          ?? tasks.find(t => t.id === depId && t.phase < task.phase && t.status === 'completed')
+                          ?? tasks.find(t => t.id === depId))
+                        .filter(dep => dep?.status !== 'completed')
+                        .map(dep => dep?.name ?? 'Required prior task');
                       return unmetNames.length > 0
                         ? <span className="text-state-warning">Blocked by: {unmetNames.join(', ')}</span>
                         : null;
@@ -124,9 +133,14 @@ export default function TasksScreen() {
                   {isActionable && (
                     <button
                       onClick={(e) => { e.stopPropagation(); startTask(task.id); }}
-                      className="flex items-center gap-2 px-4 py-2 bg-accent-primary hover:bg-accent-hover text-white text-[12px] font-semibold rounded-[var(--radius-md)] transition-colors shadow-[var(--shadow-glow-soft)]"
+                      disabled={!canAfford}
+                      className={`flex items-center gap-2 px-4 py-2 text-[12px] font-semibold rounded-[var(--radius-md)] transition-colors ${
+                        canAfford
+                          ? 'bg-accent-primary hover:bg-accent-hover text-white shadow-[var(--shadow-glow-soft)]'
+                          : 'bg-surface-default border border-border-subtle text-text-muted cursor-not-allowed'
+                      }`}
                     >
-                      <Play size={12} /> Start Task
+                      <Play size={12} /> {canAfford ? 'Start Task' : `Need €${task.cost}k budget`}
                     </button>
                   )}
                 </div>
@@ -179,7 +193,7 @@ export default function TasksScreen() {
     <div className="space-y-6 max-w-[1200px]">
       <div>
         <h1 className="text-2xl font-display font-semibold text-text-primary">Tasks & Workstreams</h1>
-        <p className="text-[12px] text-text-muted mt-1">Operational control — manage execution and resource allocation</p>
+        <p className="text-[12px] text-text-muted mt-1">Current phase execution — progress accumulates every time you advance</p>
       </div>
 
       {/* Workstream Progress */}

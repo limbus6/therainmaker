@@ -181,3 +181,26 @@ Os deep dive e research adicionais não deveriam ter custo financeiro mas sim se
 no dashboard o Lead actions: Solara systems, em particular "conduct Research" mostra opções de conduct research que são supostamente possiveis de ativar mas supostamente ativei, gastou budget e aquilo não mudou para in progress. Depois verifiquei que essas atividades não estavam disponivies para escolher em selecionar. Depois quando aveicei uns dias, já apareceram essas tasks e funcionou normalmente. É importante corrigir estas assincronias.
 
 > ✅ Fixed — Conduct Research actions now resolve directly from the lead action panel, update the lead investigation state immediately, generate qualification notes, disable completed research dimensions, and no longer rely on hidden delayed tasks or budget spend.
+
+
+## 2026-08-06 — Full Playability Review
+- Scope: P0 to P10 progression, task economy, phase gates, risk lifecycle, preferred bidder continuity, and endgame.
+- Status: Implemented and verified locally.
+
+> ✅ Fixed — In-progress tasks now accumulate visible progress instead of repeating memoryless completion rolls. Complexity, workload, contractors, and pace still affect completion speed.
+
+> ✅ Fixed — Duplicate legacy task IDs are resolved phase-safely. Starting, completing, unlocking, and weekly resolution no longer target a task from the wrong phase.
+
+> ✅ Fixed — Task cost is charged once when work starts. Contractor capacity remains the only recurring burn and is charged once, prorated to elapsed days.
+
+> ✅ Fixed — Dashboard, Tasks, Inbox pressure, deliverables, and workstream progress now use current-phase context instead of stale early-game items.
+
+> ✅ Fixed — Phase gates react immediately to player decisions. Optional quality tasks are visually distinct and do not create hidden blockers; Phase 4, Phase 6, and Phase 7 no longer force artificial waiting after the commercial decision is ready.
+
+> ✅ Fixed — Risks automatically move to historical/retired status after their active decision window. Retired risks no longer inflate active counts or dilute final risk-control scoring.
+
+> ✅ Fixed — The bidder selected in Phase 7 is preserved into SPA negotiation. Phase 8-10 risks, tasks, emails, and headlines are personalized to that bidder, with a coherent fallback buyer when Vektor is selected.
+
+> ✅ Fixed — Phase 10 uses concrete closing milestones and now ends with `View Results`; it no longer attempts to advance to a non-existent Phase 11.
+
+> ✅ Verified — Production build passes. Browser QA covered Phase 6 accumulated progress, immediate Phase 7 exclusivity, Vektor-to-SPA narrative continuity, and P10-to-Results routing.

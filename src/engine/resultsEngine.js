@@ -81,8 +81,10 @@ function calculateProcessScore(state) {
     const activeBuyers = state.buyers.filter((b) => !['dropped', 'excluded'].includes(b.status)).length;
     const totalBuyers = state.buyers.length;
     const buyerRetention = totalBuyers > 0 ? activeBuyers / totalBuyers : 0;
-    const mitigatedRisks = state.risks.filter((r) => r.mitigated).length;
-    const totalRisks = state.risks.length;
+    // Retired risks remain in the historical log but no longer dilute execution quality.
+    const scoreableRisks = state.risks.filter((risk) => !risk.retired);
+    const mitigatedRisks = scoreableRisks.filter((risk) => risk.mitigated).length;
+    const totalRisks = scoreableRisks.length;
     const riskMitigation = totalRisks > 0 ? mitigatedRisks / totalRisks : 1;
     const processQuality = Math.round(completionRate * 100);
     const buyerManagement = Math.round(buyerRetention * 60 + state.resources.dealMomentum * 0.4);

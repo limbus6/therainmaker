@@ -73,6 +73,7 @@ export interface PhaseGateResult {
     requirements: {
         label: string;
         met: boolean;
+        optional?: boolean;
     }[];
     nextPhase: PhaseId;
 }
