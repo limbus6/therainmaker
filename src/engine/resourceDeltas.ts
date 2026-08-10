@@ -64,8 +64,27 @@ function attributeReason(
     return { reason: `${task.name} completed`, sourceEntity: task.name };
   }
 
-  // 6. Generic fallback — never block the feature on missing attribution
-  return { reason: delta < 0 ? 'Weekly operations & burn' : 'Steady execution' };
+  // 6. Routine engine effects still name their concrete mechanism. Never show
+  // a made-up "steady execution" label for a movement the player cannot audit.
+  if (resource === 'budget') {
+    return { reason: delta < 0 ? 'Execution and contractor spend' : 'Budget carryover adjustment' };
+  }
+  if (resource === 'teamCapacity') {
+    return { reason: delta < 0 ? 'Active work allocation' : 'Capacity recovered between workstreams' };
+  }
+  if (resource === 'morale') {
+    return { reason: delta < 0 ? 'Sustained delivery load' : 'Recovery between workstreams' };
+  }
+  if (resource === 'riskLevel') {
+    return { reason: delta < 0 ? 'Completed work reduced execution risk' : 'No completed milestone increased execution risk' };
+  }
+  if (resource === 'dealMomentum') {
+    return { reason: delta < 0 ? 'No completed milestone this turn' : 'Execution pace improved process momentum' };
+  }
+  if (resource === 'clientTrust') {
+    return { reason: delta < 0 ? 'Client confidence weakened during execution' : 'Client confidence improved through execution' };
+  }
+  return { reason: delta < 0 ? 'Market standing weakened' : 'Market standing improved' };
 }
 
 /**
@@ -82,7 +101,7 @@ export function buildResourceDeltas(
     const b = before[resource];
     const a = after[resource];
     if (typeof b !== 'number' || typeof a !== 'number') continue;
-    const delta = Math.round((a - b) * 10) / 10;
+    const delta = Math.round(a - b);
     if (delta === 0) continue;
     deltas.push({ resource, before: b, after: a, delta, ...attributeReason(resource, delta, result) });
   }

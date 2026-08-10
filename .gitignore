@@ -12,6 +12,13 @@ dist
 dist-ssr
 *.local
 
+# TypeScript source is compiled by Vite; do not recreate legacy artifacts in src.
+src/**/*.js
+src/**/*.js.map
+src/**/*.d.ts
+src/**/*.d.ts.map
+tsconfig.tsbuildinfo
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

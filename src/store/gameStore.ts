@@ -44,12 +44,12 @@ import type {
 import type { ActionCommitment } from '../types/dealBeat';
 import { createInitialEventDirectorState } from '../engine/eventDirector';
 import { buildResourceDeltas } from '../engine/resourceDeltas';
+import { createRng, deriveSeed } from '../engine/rng';
 import { resolveWeek, checkPhaseGate, unlockTasks, checkDealCollapse, calcDaysToAdvance } from '../engine/weekEngine';
 import type { WeekResult, PhaseGateResult } from '../engine/weekEngine';
 import { PHASE_BASE_BUDGETS, STAFF_PROFILES, CONTRACTOR_PROFILES, MITIGATION_ACTIONS } from '../config/phaseBudgets';
 import { getRiskMitigationPlans } from '../config/riskMitigation';
 import { REVIEW_CHECKPOINTS_BY_ID } from '../config/reviewCheckpoints';
-import { round2 } from '../utils/numberFormat';
 import { retireObsoleteRisks, updatePhaseWorkstreamProgress } from '../utils/gameplayState';
 
 import { loadPhaseContent, type PhaseContent } from '../content/loadPhaseContent';
@@ -731,22 +731,45 @@ function syncLeadsFromTasks(leads: Lead[], tasks: GameTask[]): Lead[] {
 }
 
 function normalizeResources(resources: PlayerResources): PlayerResources {
+  const whole = (value: number) => Math.round(Number.isFinite(value) ? value : 0);
   return {
     ...resources,
-    budget: Math.max(0, round2(resources.budget)),
-    budgetMax: Math.max(0, round2(resources.budgetMax)),
-    teamCapacity: Math.max(0, Math.min(resources.teamCapacityMax, round2(resources.teamCapacity))),
-    teamCapacityMax: Math.max(0, round2(resources.teamCapacityMax)),
-    morale: Math.max(0, Math.min(100, round2(resources.morale))),
-    clientTrust: Math.max(0, Math.min(100, round2(resources.clientTrust))),
-    dealMomentum: Math.max(0, Math.min(100, round2(resources.dealMomentum))),
-    riskLevel: Math.max(0, Math.min(100, round2(resources.riskLevel))),
-    reputation: Math.max(0, Math.min(100, round2(resources.reputation))),
+    budget: Math.max(0, whole(resources.budget)),
+    budgetMax: Math.max(0, whole(resources.budgetMax)),
+    teamCapacity: Math.max(0, Math.min(whole(resources.teamCapacityMax), whole(resources.teamCapacity))),
+    teamCapacityMax: Math.max(0, whole(resources.teamCapacityMax)),
+    morale: Math.max(0, Math.min(100, whole(resources.morale))),
+    clientTrust: Math.max(0, Math.min(100, whole(resources.clientTrust))),
+    dealMomentum: Math.max(0, Math.min(100, whole(resources.dealMomentum))),
+    riskLevel: Math.max(0, Math.min(100, whole(resources.riskLevel))),
+    reputation: Math.max(0, Math.min(100, whole(resources.reputation))),
   };
 }
 
 const DEFAULT_PREFERRED_BUYER = 'Kestrel Capital';
 const DEFAULT_FALLBACK_BUYER = 'Vektor Industries';
+const SAVE_SCHEMA_VERSION = 6;
+
+function hashIdentifier(value: string): number {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function createActionRng(state: Pick<GameStore, 'rngSeed' | 'day' | 'week' | 'phase'>, action: string) {
+  return createRng(deriveSeed(state.rngSeed, state.day, state.week, state.phase, hashIdentifier(action)));
+}
+
+function logCausalChange(action: string, details: Record<string, unknown>): void {
+  const isLocalDevelopment = typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  if (isLocalDevelopment) {
+    console.info(`[Rainmaker causal] ${action}`, details);
+  }
+}
 
 function possessive(name: string): string {
   return name.endsWith('s') ? `${name}'` : `${name}'s`;
@@ -834,9 +857,15 @@ function personalizeClientContent(content: PhaseContent, clientName?: string, co
 // ============================================
 // Helper: generate Final Offers for Phase 7
 // ============================================
-function generateFinalOffers(buyers: import('../types/game').Buyer[], momentum: number, week: number): FinalOffer[] {
+function generateFinalOffers(
+  buyers: import('../types/game').Buyer[],
+  momentum: number,
+  week: number,
+  rngSeed: number,
+): FinalOffer[] {
   const BASE_EV = 120; // €M Solara baseline
   const offers: FinalOffer[] = [];
+  const rng = createRng(deriveSeed(rngSeed, week, Math.round(momentum), buyers.length, 7));
 
   for (const buyer of buyers) {
     if (['dropped', 'excluded'].includes(buyer.status)) continue;
@@ -852,12 +881,12 @@ function generateFinalOffers(buyers: import('../types/game').Buyer[], momentum: 
 
     // Structure based on buyer type
     const structure: FinalOffer['structure'] =
-      buyer.type === 'pe' ? (Math.random() > 0.5 ? 'mixed' : 'earnout_heavy') :
-      buyer.type === 'strategic' ? (Math.random() > 0.4 ? 'full_cash' : 'mixed') :
+      buyer.type === 'pe' ? (rng.nextBool(0.5) ? 'mixed' : 'earnout_heavy') :
+      buyer.type === 'strategic' ? (rng.nextBool(0.6) ? 'full_cash' : 'mixed') :
       'full_cash';
 
     // Earnout based on structure
-    const earnoutPct = structure === 'full_cash' ? 0 : structure === 'mixed' ? 0.15 + Math.random() * 0.1 : 0.3 + Math.random() * 0.15;
+    const earnoutPct = structure === 'full_cash' ? 0 : structure === 'mixed' ? rng.nextFloat(0.15, 0.25) : rng.nextFloat(0.3, 0.45);
     const earnoutAmount = Math.round(rawEV * earnoutPct * 10) / 10;
     const cashEV = Math.round((rawEV - earnoutAmount) * 10) / 10;
     const totalEV = Math.round((cashEV + earnoutAmount) * 10) / 10;
@@ -902,7 +931,11 @@ function generateFinalOffers(buyers: import('../types/game').Buyer[], momentum: 
 // ============================================
 // Helper: generate SPA buyer state
 // ============================================
-function generateSPABuyerState(buyer: import('../types/game').Buyer): SPABuyerState {
+function generateSPABuyerState(
+  buyer: import('../types/game').Buyer,
+  rngSeed: number,
+  day: number,
+): SPABuyerState {
   const profile =
     buyer.type === 'pe' ? 'aggressive_buyer' :
     buyer.type === 'strategic' ? 'reasonable_buyer' : 'conservative_buyer';
@@ -913,8 +946,8 @@ function generateSPABuyerState(buyer: import('../types/game').Buyer): SPABuyerSt
     conservative_buyer:{ cap: 15, escrow: 4,  ps: 3, pc: 5, pe: 4, pi: 3 },
   }[profile];
 
-  // Small random variation
-  const jitter = (n: number, range: number) => Math.round(n + (Math.random() * range * 2 - range));
+  const rng = createRng(deriveSeed(rngSeed, day, hashIdentifier(buyer.id), 8));
+  const jitter = (n: number, range: number) => Math.round(n + rng.nextFloat(-range, range));
 
   return {
     profile,
@@ -1213,7 +1246,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     }
 
     const newCommitment: ActionCommitment = {
-      id: `commit-${taskId}-${Date.now()}`,
+      id: `commit-${taskId}-${state.day}`,
       actionId: taskId,
       actionName: task.name,
       startDay: state.day,
@@ -1311,7 +1344,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       if (l.meetingScheduled && !l.meetingDone) {
         totalMeetingCost += meetingCost;
         newQualNotes.push({
-          id: `qn-${Date.now()}-${l.id}-intro`,
+          id: `qn-${newDay}-${l.id}-intro`,
           week: newWeekNum,
           source: 'meeting',
           content: `Introductory meeting with ${l.founderName} (${l.companyName}). Client is receptive to our advisory approach.`,
@@ -1330,7 +1363,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       // General macro tasks
       if (completedTaskIds.has('task-gen-02') && !newQualNotes.some((n) => n.content.includes('Market momentum'))) {
         newQualNotes.push({
-          id: `qn-${Date.now()}-gen02`,
+          id: `qn-${newDay}-gen02`,
           week: newWeekNum,
           source: 'team_research',
           content: 'Market momentum research complete. Elevated M&A activity in tech-enabled services and SaaS. Multiples healthy at 8-14x EBITDA for quality assets.',
@@ -1343,7 +1376,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
         const shareholderTaskId = `task-investigate-${lead.id}-shareholder`;
         if (completedTaskIds.has(companyTaskId) && !newQualNotes.some((n) => n.content.includes(lead.companyName) && n.source === 'team_research')) {
           newQualNotes.push({
-            id: `qn-${Date.now()}-${lead.id}-company`,
+            id: `qn-${newDay}-${lead.id}-company`,
             week: newWeekNum,
             source: 'team_research',
             content: `Company screening complete for ${lead.companyName}. Financial profile and sector fit confirmed. Viable profile for a structured process.`,
@@ -1352,7 +1385,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
         }
         if (completedTaskIds.has(shareholderTaskId) && !newQualNotes.some((n) => n.content.includes(lead.companyName) && n.source === 'meeting')) {
           newQualNotes.push({
-            id: `qn-${Date.now()}-${lead.id}-shareholder`,
+            id: `qn-${newDay}-${lead.id}-shareholder`,
             week: newWeekNum,
             source: 'meeting',
             content: `Shareholder assessment complete for ${lead.companyName}. Founder appears motivated, timeline realistic, and valuation expectations within market range.`,
@@ -1424,6 +1457,16 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
 
     // Attributable resource deltas for the turn tape and KPI chips
     const resourceDeltas = buildResourceDeltas(state.resources, normalizedResources, result);
+
+    logCausalChange('advance', {
+      phase: state.phase,
+      fromDay: state.day,
+      toDay: newDay,
+      rng: result.rngTrace,
+      tasksCompleted: result.tasksCompleted.map((task) => task.id),
+      events: result.newEvents.map((event) => event.id),
+      deltas: resourceDeltas,
+    });
 
     // The Situation Report only auto-opens on major beats; routine turns play
     // out on the dashboard tape without blocking input.
@@ -1555,7 +1598,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     const phaseBase = PHASE_BASE_BUDGETS[nextPhase] ?? 0;
     const newBudget = carryover + phaseBase;
     const newFinalOffers = nextPhase === 7
-      ? generateFinalOffers(newBuyers, state.resources.dealMomentum, state.week + 1)
+      ? generateFinalOffers(newBuyers, state.resources.dealMomentum, state.week + 1, state.rngSeed)
       : state.finalOffers;
     const nextBindingOffersReceived = nextPhase === 7 ? state.bindingOffersReceived : 0;
     const unlockedPhaseTasks = unlockTasks(newTasks);
@@ -1642,7 +1685,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       morale: 78,
     });
     const bindingOffersReceived = targetPhase >= 7 ? 1 : 0;
-    const finalOffers = targetPhase >= 7 ? generateFinalOffers(buyers, resources.dealMomentum, week) : [];
+    const finalOffers = targetPhase >= 7 ? generateFinalOffers(buyers, resources.dealMomentum, week, state.rngSeed) : [];
     const risks = retireObsoleteRisks(accumulatedRisks, targetPhase, bindingOffersReceived);
     const workstreams = updatePhaseWorkstreamProgress(initialWorkstreams, unlockedTasks, targetPhase);
 
@@ -1780,7 +1823,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
 
     const checkpointWeek = Math.max(1, Math.ceil(checkpoint.day / 7));
     const agreedFeeTerms = checkpoint.feeAgreed ? { ...DEBUG_FEE_TERMS, agreedWeek: checkpointWeek } : state.agreedFeeTerms;
-    const finalOffers = checkpoint.phase >= 7 ? generateFinalOffers(buyers, resources.dealMomentum, checkpointWeek) : [];
+    const finalOffers = checkpoint.phase >= 7 ? generateFinalOffers(buyers, resources.dealMomentum, checkpointWeek, state.rngSeed) : [];
     const feeNegotiation = checkpoint.feeAgreed ? {
       phase: 1 as PhaseId,
       pitchPresented: true,
@@ -1798,7 +1841,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       ? (() => {
           const preferredBuyer = buyers.find((buyer) => buyer.id === checkpoint.preferredBidderId);
           if (!preferredBuyer) return null;
-          const buyerState = generateSPABuyerState(preferredBuyer);
+          const buyerState = generateSPABuyerState(preferredBuyer, state.rngSeed, state.day);
           return {
             phase: checkpoint.phase,
             preferredBuyerId: checkpoint.preferredBidderId,
@@ -1979,8 +2022,8 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     const email = state.emails.find((e) => e.id === emailId);
     const response = email?.responseOptions?.find((r) => r.id === responseId);
 
-    // Apply resource effects from the chosen response — with ±25% variance
-    // The same decision can play out slightly differently each time
+    // Apply the effect exactly as promised. Narrative events can vary, but a
+    // response label such as "+2 trust" must never resolve to a different number.
     let newResources = state.resources;
     if (response?.resourceEffects) {
       newResources = { ...state.resources };
@@ -1988,17 +2031,21 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
         const k = key as keyof PlayerResources;
         const current = newResources[k];
         if (typeof current === 'number' && typeof delta === 'number') {
-          // Apply ±25% noise to the effect magnitude (keeps sign intact)
-          const noise = 1 + (Math.random() - 0.5) * 0.5;
-          const variedDelta = Math.round(delta * noise);
           const maxVal = k === 'budget' ? newResources.budgetMax : k === 'teamCapacity' ? newResources.teamCapacityMax : 100;
-          (newResources as unknown as Record<string, number>)[k] = Math.max(0, Math.min(maxVal, current + variedDelta));
+          (newResources as unknown as Record<string, number>)[k] = Math.max(0, Math.min(maxVal, current + delta));
         }
       }
     }
 
+    const normalizedResources = normalizeResources(newResources);
+    logCausalChange('email_response', {
+      emailId,
+      responseId,
+      effects: response?.resourceEffects ?? {},
+    });
+
     return {
-      resources: normalizeResources(newResources),
+      resources: normalizedResources,
       emails: state.emails.map((e) =>
         e.id === emailId ? { ...e, state: 'resolved' as const } : e
       ),
@@ -2077,6 +2124,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
 
     if (state.resources.budget < plan.budgetCost) return {};
     if (state.resources.teamCapacity < plan.capacityCost) return {};
+    const rng = createActionRng(state, `mitigation:${riskId}:${planId}`);
 
     let baseResources: PlayerResources = {
       ...state.resources,
@@ -2085,7 +2133,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     };
 
     const catastrophicFail =
-      !!plan.catastrophicFailureChance && Math.random() < plan.catastrophicFailureChance;
+      !!plan.catastrophicFailureChance && rng.nextBool(plan.catastrophicFailureChance);
     if (catastrophicFail) {
       baseResources = normalizeResources({ ...baseResources, clientTrust: 0, dealMomentum: 0, riskLevel: 100 });
       return {
@@ -2098,12 +2146,12 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
           'The mitigation move backfired and the client terminated the engagement.',
         toasts: [
           ...state.toasts,
-          { id: Math.random().toString(36).substr(2, 9), message: 'Mitigation backfired: client exited the process.', type: 'danger' as const },
+          { id: `toast-mitigation-${riskId}-${planId}-${state.day}`, message: 'Mitigation backfired: client exited the process.', type: 'danger' as const },
         ],
       };
     }
 
-    const success = Math.random() < plan.successChance;
+    const success = rng.nextBool(plan.successChance);
     const effects = success ? plan.onSuccess : plan.onFailure;
     const { probabilityDelta = 0, ...resourceDeltas } = effects;
 
@@ -2133,7 +2181,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
         r.id === riskId
           ? {
               ...r,
-              probability: round2(nextRiskProbability),
+              probability: Math.round(nextRiskProbability),
               mitigated: success ? true : r.mitigated,
             }
           : r
@@ -2142,7 +2190,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       toasts: [
         ...state.toasts,
         {
-          id: Math.random().toString(36).substr(2, 9),
+          id: `toast-mitigation-${riskId}-${planId}-${state.day}`,
           message: success
             ? plan.boardRecommendation && !state.boardSubmission
               ? 'Mitigation executed and board memo submitted.'
@@ -2181,7 +2229,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     budgetRequests: [
       ...state.budgetRequests,
       {
-        id: `br-${Date.now()}`,
+        id: `br-${state.day}-${state.budgetRequests.length + 1}`,
         week: state.week,
         phase: state.phase,
         amount,
@@ -2236,7 +2284,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     };
 
     const newNote: QualificationNote = {
-      id: `qn-${Date.now()}-${dimension}`,
+      id: `qn-${state.day}-${leadId}-${dimension}`,
       week: state.week,
       source: 'team_research',
       content: `${dimensionNames[dimension]} investigation complete for ${updatedLeads[leadIndex].companyName}. Findings look viable for a structured process.`,
@@ -2254,7 +2302,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       toasts: [
         ...state.toasts,
         {
-          id: `t-${Date.now()}`,
+          id: `toast-investigation-${state.day}-${leadId}-${dimension}`,
           message: `${dimensionNames[dimension]} investigation complete for ${updatedLeads[leadIndex].companyName}.`,
           type: 'success',
         },
@@ -2277,7 +2325,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       toasts: [
         ...state.toasts,
         {
-          id: `t-${Date.now()}`,
+          id: `toast-meeting-${state.day}-${leadId}`,
           message: `Introductory meeting scheduled for ${updatedLeads[leadIndex].companyName}.`,
           type: 'success'
         }
@@ -2288,7 +2336,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
   addQualificationNote: (note) => set((state) => ({
     qualificationNotes: [
       ...state.qualificationNotes,
-      { ...note, id: `qn-${Date.now()}` },
+      { ...note, id: `qn-${state.day}-${state.qualificationNotes.length + 1}` },
     ],
   })),
 
@@ -2308,7 +2356,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     if (!cfg) return {};
     if (state.resources.budget < cfg.hireCost) return {};
     const newMember: TeamMember = {
-      id: `tm-hired-${Date.now()}`,
+      id: `tm-hired-${state.day}-${state.team.length + 1}`,
       name: cfg.label,
       role: cfg.role,
       seniority: cfg.seniority,
@@ -2333,7 +2381,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     const cfg = CONTRACTOR_PROFILES.find((p) => p.id === profile);
     if (!cfg) return {};
     const allocation: TempCapacityAllocation = {
-      id: `tca-${Date.now()}`,
+      id: `tca-${taskId}-${state.day}`,
       taskId,
       phase: state.phase,
       profile,
@@ -2531,7 +2579,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       ? state.buyers.find((b) => b.id === state.preferredBidderId)
       : null;
     if (!preferredBuyer) return {};
-    const buyerState = generateSPABuyerState(preferredBuyer);
+    const buyerState = generateSPABuyerState(preferredBuyer, state.rngSeed, state.day);
     return {
       spaNegotiation: {
         phase: state.phase,
@@ -2682,7 +2730,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
 
   // Toast actions
   addToast: (message, type) => set((state) => ({
-    toasts: [...state.toasts, { id: Math.random().toString(36).substr(2, 9), message, type }],
+    toasts: [...state.toasts, { id: `toast-${state.day}-${state.toasts.length + 1}`, message, type }],
   })),
   removeToast: (id) => set((state) => ({
     toasts: state.toasts.filter((t) => t.id !== id),
@@ -2714,12 +2762,12 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
   setWeekPace: (pace) => set({ weekPace: pace }),
 }), {
   name: 'ma-rainmaker-save',
-  version: 5,
+  version: SAVE_SCHEMA_VERSION,
   migrate: (persistedState: unknown, fromVersion: number) => {
-    if (fromVersion < 5) {
-      return undefined as unknown; // clear state and use initial state for old versions
+    if (!persistedState || typeof persistedState !== 'object') {
+      return undefined as unknown;
     }
-    const s = persistedState as Record<string, unknown>;
+    const s = { ...(persistedState as Record<string, unknown>) };
     if (fromVersion < 2) {
       // Add day/totalDays fields introduced in v2 (day-based time system)
       const week = (s.week as number | undefined) ?? 1;
@@ -2779,6 +2827,25 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
             : headline);
         }
       }
+    }
+    if (fromVersion < 5) {
+      // Fluidity v2 introduced deterministic event-director state. Give
+      // existing runs a stable, state-derived seed rather than discarding them.
+      const day = typeof s.day === 'number' ? s.day : 1;
+      const phase = typeof s.phase === 'number' ? s.phase : 0;
+      if (typeof s.rngSeed !== 'number') {
+        s.rngSeed = ((day * 73856093) ^ (phase * 19349663) ^ 0x1f123bb5) >>> 0;
+      }
+      if (!s.eventDirectorState || typeof s.eventDirectorState !== 'object') {
+        s.eventDirectorState = createInitialEventDirectorState();
+      }
+      if (!Array.isArray(s.commitments)) s.commitments = [];
+    }
+    if (fromVersion < SAVE_SCHEMA_VERSION && s.resources && typeof s.resources === 'object') {
+      // M0 makes all visible resource values integer-valued at the engine
+      // boundary. Migrate existing fractional saves once, rather than showing
+      // a mixed-format run after upgrade.
+      s.resources = normalizeResources(s.resources as PlayerResources);
     }
     return s;
   },

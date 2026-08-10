@@ -11,8 +11,10 @@
  */
 export function createRng(seed: number): SeededRng {
   let state = seed | 0;
+  let drawCount = 0;
 
   function next(): number {
+    drawCount += 1;
     state = (state + 0x6D2B79F5) | 0;
     let t = Math.imul(state ^ (state >>> 15), 1 | state);
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
@@ -60,7 +62,33 @@ export function createRng(seed: number): SeededRng {
     return items[items.length - 1];
   }
 
-  return { next, nextInt, nextFloat, nextBool, shuffle, weightedPick, getSeed: () => seed };
+  return {
+    next,
+    nextInt,
+    nextFloat,
+    nextBool,
+    shuffle,
+    weightedPick,
+    getSeed: () => seed,
+    getDrawCount: () => drawCount,
+    getState: () => state >>> 0,
+  };
+}
+
+/**
+ * Derives a stable child seed without consuming the parent generator.
+ *
+ * A turn's outcomes can therefore be reproduced from the run seed plus its
+ * calendar context, even after reloading a persisted game.
+ */
+export function deriveSeed(seed: number, ...parts: number[]): number {
+  let mixed = seed | 0;
+  for (const part of parts) {
+    mixed ^= part | 0;
+    mixed = Math.imul(mixed ^ (mixed >>> 16), 0x45d9f3b);
+    mixed ^= mixed >>> 16;
+  }
+  return mixed >>> 0;
 }
 
 export interface SeededRng {
@@ -78,4 +106,8 @@ export interface SeededRng {
   weightedPick<T>(items: T[], weights: number[]): T | undefined;
   /** Returns the original seed */
   getSeed(): number;
+  /** Number of draws consumed by this generator. Useful in deterministic QA logs. */
+  getDrawCount(): number;
+  /** Current internal state, for diagnostic logs only. */
+  getState(): number;
 }

@@ -1,0 +1,81 @@
+import { describe, expect, it } from 'vitest';
+import { getAdvancePacePreview, resolveWeek } from '../weekEngine';
+import { useGameStore } from '../../store/gameStore';
+import type { Email, PlayerResources } from '../../types/game';
+
+function makeResources(overrides: Partial<PlayerResources> = {}): PlayerResources {
+  return {
+    budget: 100,
+    budgetMax: 100,
+    teamCapacity: 80,
+    teamCapacityMax: 100,
+    morale: 70,
+    clientTrust: 40,
+    dealMomentum: 50,
+    riskLevel: 20,
+    reputation: 50,
+    ...overrides,
+  };
+}
+
+describe('M0 — trustworthy advancement', () => {
+  it('uses the same seeded outcome for the same game state and turn', () => {
+    const state = useGameStore.getState();
+
+    const first = resolveWeek(state, 3);
+    const second = resolveWeek(state, 3);
+
+    expect(second).toEqual(first);
+    expect(first.rngTrace.draws).toBeGreaterThan(0);
+  });
+
+  it('explains the exact reason for the next advance', () => {
+    const state = useGameStore.getState();
+    const urgentEmail: Email = {
+      id: 'm0-urgent',
+      week: state.week,
+      phase: state.phase,
+      sender: 'Ricardo Mendes',
+      subject: 'Need your answer',
+      body: 'Please respond today.',
+      preview: 'Please respond today.',
+      category: 'client',
+      state: 'unread',
+      priority: 'urgent',
+      timestamp: 'Day 1',
+    };
+
+    expect(getAdvancePacePreview({ ...state, emails: [urgentEmail] }).days).toBe(1);
+    expect(getAdvancePacePreview({ ...state, emails: [urgentEmail] }).reason).toContain('Urgent reply pending');
+  });
+
+  it('applies email response effects exactly and normalises visible resources to integers', () => {
+    const state = useGameStore.getState();
+    const responseEmail: Email = {
+      id: 'm0-response',
+      week: state.week,
+      phase: state.phase,
+      sender: 'Ricardo Mendes',
+      subject: 'Alignment check',
+      body: 'How do you want to respond?',
+      preview: 'How do you want to respond?',
+      category: 'client',
+      state: 'unread',
+      priority: 'high',
+      timestamp: 'Day 1',
+      responseOptions: [{ id: 'commit', label: 'Commit', resourceEffects: { clientTrust: 2, dealMomentum: -3 } }],
+    };
+
+    useGameStore.setState({
+      resources: makeResources({ clientTrust: 40.4, dealMomentum: 50.6 }),
+      emails: [responseEmail],
+    });
+
+    useGameStore.getState().respondToEmail(responseEmail.id, 'commit');
+    const resources = useGameStore.getState().resources;
+
+    expect(resources.clientTrust).toBe(42);
+    expect(resources.dealMomentum).toBe(48);
+    expect(Object.values(resources).every(Number.isInteger)).toBe(true);
+  });
+});

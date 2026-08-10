@@ -21,7 +21,7 @@ import PhaseDeadlineModal from '../components/PhaseDeadlineModal';
 import TurnTape from '../components/TurnTape';
 import DeskDecisionCard from '../components/DeskDecisionCard';
 import { getActiveRisks, getDashboardDeliverables, getMomentumLabel, applyPhaseWorkstreams } from '../utils/gameplayState';
-import { checkPhaseGate } from '../engine/weekEngine';
+import { checkPhaseGate, getAdvancePacePreview } from '../engine/weekEngine';
 import { getMissionsForPhase } from '../content/missions';
 import { getMissionProgress, getActiveMission } from '../utils/missionProgress';
 import { pulseGlow, staggerReveal } from '../utils/motion';
@@ -113,17 +113,8 @@ export default function DashboardScreen() {
   const phaseBudget = useGameStore((s) => s.phaseBudget);
   const phaseGate = checkPhaseGate(gameState);
 
-  const daysPreview = useGameStore((s) => {
-    if (s.emails.some((e) => e.phase === s.phase && e.priority === 'urgent' && e.state === 'unread')) return 1;
-    const inProg = s.tasks.filter((t) => t.status === 'in_progress' && t.phase === s.phase);
-    if (inProg.some((t) => t.complexity === 'low')) return 1;
-    if (inProg.some((t) => t.complexity === 'medium')) return 2;
-    if (inProg.some((t) => t.complexity === 'high')) return 3;
-    if (s.boardSubmission?.status === 'pending') return 2;
-    if (s.budgetRequests.some((r) => r.status === 'pending')) return 2;
-    if (s.competitorThreats.some((t) => !t.resolved)) return 2;
-    return 7;
-  });
+  const advancePreview = getAdvancePacePreview(gameState);
+  const daysPreview = advancePreview.days;
   const preferredBidderId = useGameStore((s) => s.preferredBidderId);
   const spaNegotiation = useGameStore((s) => s.spaNegotiation);
   const agreedSPATerms = useGameStore((s) => s.agreedSPATerms);
@@ -225,9 +216,12 @@ export default function DashboardScreen() {
           <button onClick={() => setModal('staffing')} className="flex items-center gap-1.5 px-3 py-2 border border-border-subtle rounded-[var(--radius-md)] text-[12px] text-text-secondary hover:bg-surface-hover hover:text-text-primary transition-colors">
             <Users size={13} /> Staffing
           </button>
-          <button onClick={advanceWeek} disabled={isWeekInProgress} className="flex items-center gap-2 px-4 py-2 bg-accent-primary hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-white text-[13px] font-semibold rounded-[var(--radius-md)] transition-colors duration-150 shadow-[var(--shadow-glow-soft)]">
-            Advance <span className="text-[11px] font-mono opacity-70">~{daysPreview}d</span> <ArrowRight size={14} />
-          </button>
+          <div className="flex flex-col items-end gap-1">
+            <button onClick={advanceWeek} disabled={isWeekInProgress} className="flex items-center gap-2 px-4 py-2 bg-accent-primary hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-white text-[13px] font-semibold rounded-[var(--radius-md)] transition-colors duration-150 shadow-[var(--shadow-glow-soft)]">
+              Advance <span className="text-[11px] font-mono opacity-70">~{daysPreview}d</span> <ArrowRight size={14} />
+            </button>
+            <span className="max-w-64 text-right text-[10px] leading-tight text-text-muted">{advancePreview.reason}</span>
+          </div>
         </div>
       </div>
 

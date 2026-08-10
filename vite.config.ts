@@ -76,5 +76,11 @@ function reviewCapturePlugin() {
 
 export default defineConfig({
   base: '/therainmaker/',
+  // TypeScript is the single runtime source. Historical generated .js files
+  // remain in the repository until their cleanup migration, but extensionless
+  // imports must never resolve to them ahead of .ts/.tsx.
+  resolve: {
+    extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'],
+  },
   plugins: [react(), tailwindcss(), reviewCapturePlugin()],
 })

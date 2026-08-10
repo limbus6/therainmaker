@@ -13,7 +13,7 @@ import type {
 } from '../types/game';
 import type { GameStore } from '../store/gameStore';
 import { isActiveRisk } from '../utils/gameplayState';
-import { createRng } from './rng';
+import { createRng, deriveSeed, type SeededRng } from './rng';
 import { selectEvents, createInitialEventDirectorState, type EventDirectorConfig } from './eventDirector';
 import type { EventDirectorState } from '../types/game';
 
@@ -47,6 +47,8 @@ export interface WeekResult {
   /** How many buyers submitted binding offers this advance (Phase 6 deadline trigger) */
   bindingOfferDelta: number;
   directorSignal: GameplayDirectorSignal;
+  /** Reproduction metadata for development diagnostics. */
+  rngTrace: { seed: number; draws: number; state: number };
 }
 
 export interface BuyerChange {
@@ -148,7 +150,14 @@ interface TaskProgressResult {
 
 // Progress accumulates on every advance. Small variance keeps timing organic,
 // while persistent progress prevents a task from failing the same random roll forever.
-function resolveTaskProgress(task: GameTask, tempAllocations: TempCapacityAllocation[] = [], daysToAdvance: number = 7, budget: number = 0, paceCompletionMult: number = 1.0): TaskProgressResult {
+function resolveTaskProgress(
+  task: GameTask,
+  rng: SeededRng,
+  tempAllocations: TempCapacityAllocation[] = [],
+  daysToAdvance: number = 7,
+  budget: number = 0,
+  paceCompletionMult: number = 1.0,
+): TaskProgressResult {
   const alloc = tempAllocations.find((a) =>
     a.taskId === task.id && (a.phase === undefined || a.phase === task.phase)
   );
@@ -157,7 +166,7 @@ function resolveTaskProgress(task: GameTask, tempAllocations: TempCapacityAlloca
   const speedMultiplier = contractorFunded ? alloc.speedMultiplier : 1;
   const baseDailyProgress = task.complexity === 'low' ? 100 : task.complexity === 'medium' ? 26 : 17;
   const workloadFactor = clamp(10 / Math.max(task.work, 6), 0.75, 1.2);
-  const timingVariance = 0.9 + Math.random() * 0.2;
+  const timingVariance = rng.nextFloat(0.9, 1.1);
   const increment = daysToAdvance * baseDailyProgress * workloadFactor * speedMultiplier * paceCompletionMult * timingVariance;
   const progress = Math.min(100, Math.round(((task.progress ?? 0) + increment) * 10) / 10);
 
@@ -168,12 +177,16 @@ function resolveTaskProgress(task: GameTask, tempAllocations: TempCapacityAlloca
 }
 
 // Hidden workload check — some tasks trigger surprise extra work
-function checkHiddenWorkload(completedTasks: GameTask[], directorSignal: GameplayDirectorSignal): WeekResult['hiddenWorkload'] {
+function checkHiddenWorkload(
+  completedTasks: GameTask[],
+  directorSignal: GameplayDirectorSignal,
+  rng: SeededRng,
+): WeekResult['hiddenWorkload'] {
   for (const task of completedTasks) {
     // Higher complexity = higher chance of hidden workload
     const baseChance = task.complexity === 'high' ? 0.34 : task.complexity === 'medium' ? 0.16 : 0.04;
     const chance = clamp((baseChance + directorSignal.complicationBias) * 100, 2, 42) / 100;
-    if (Math.random() < chance) {
+    if (rng.nextBool(chance)) {
       const descriptions = [
         `${task.name} revealed inconsistencies that require additional clean-up.`,
         `Partner review of ${task.name} flagged items requiring revision.`,
@@ -186,8 +199,8 @@ function checkHiddenWorkload(completedTasks: GameTask[], directorSignal: Gamepla
       ];
       return {
         taskId: task.id,
-        description: descriptions[Math.floor(Math.random() * descriptions.length)],
-        extraWork: Math.ceil(task.work * (0.2 + Math.random() * 0.3)),
+        description: descriptions[rng.nextInt(0, descriptions.length - 1)],
+        extraWork: Math.ceil(task.work * rng.nextFloat(0.2, 0.5)),
       };
     }
   }
@@ -197,7 +210,12 @@ function checkHiddenWorkload(completedTasks: GameTask[], directorSignal: Gamepla
 // Critical outcome roll — tasks can occasionally deliver exceptional or poor results
 type CriticalOutcome = { taskId: string; taskName: string; type: 'success' | 'failure'; description: string; bonus: Partial<PlayerResources> };
 
-function rollCriticalOutcomes(completedTasks: GameTask[], morale: number = 50, directorSignal?: GameplayDirectorSignal): CriticalOutcome[] {
+function rollCriticalOutcomes(
+  completedTasks: GameTask[],
+  rng: SeededRng,
+  morale: number = 50,
+  directorSignal: GameplayDirectorSignal | undefined,
+): CriticalOutcome[] {
   const outcomes: CriticalOutcome[] = [];
 
   const successPool: Record<string, { description: string; bonus: Partial<PlayerResources> }[]> = {
@@ -245,36 +263,19 @@ function rollCriticalOutcomes(completedTasks: GameTask[], morale: number = 50, d
     const successChance = Math.min(0.32, baseSuccessChance + moraleFactor + Math.max(0, directorRecovery * 0.35));
     const failChance = Math.max(0.01, baseFailChance - moraleFactor * 0.5 + Math.max(0, directorComplication * 0.25) - Math.max(0, directorRecovery * 0.3));
 
-    const roll = Math.random();
+    const roll = rng.next();
 
     if (roll < successChance) {
       const pool = successPool[task.category] ?? successPool['internal'];
-      const pick = pool[Math.floor(Math.random() * pool.length)];
+      const pick = pool[rng.nextInt(0, pool.length - 1)];
       outcomes.push({ taskId: task.id, taskName: task.name, type: 'success', ...pick });
     } else if (roll < successChance + failChance) {
-      const pick = failurePool[Math.floor(Math.random() * failurePool.length)];
+      const pick = failurePool[rng.nextInt(0, failurePool.length - 1)];
       outcomes.push({ taskId: task.id, taskName: task.name, type: 'failure', ...pick });
     }
   }
 
   return outcomes;
-}
-
-// Small stochastic noise applied to resources each advance — the market never stands still
-function applyResourceNoise(resourceChanges: Partial<PlayerResources>, state: GameStore, directorSignal: GameplayDirectorSignal): Partial<PlayerResources> {
-  const volatility = state.phase >= 6 ? 1.6 : state.phase >= 3 ? 1.1 : 0.6;
-  const directorVolatility = directorSignal.tensionBand === 'danger' ? 0.65 : directorSignal.tensionBand === 'live' ? 1.18 : 1;
-  const noised = { ...resourceChanges };
-
-  const moraleNoise = Math.round((Math.random() - 0.5) * 4 * volatility * directorVolatility);
-  const currentMorale = (noised.morale as number | undefined) ?? state.resources.morale;
-  noised.morale = clamp(currentMorale + moraleNoise + Math.round(Math.max(0, directorSignal.recoveryBias) * 6));
-
-  const momentumNoise = Math.round((Math.random() - 0.5) * 6 * volatility * directorVolatility);
-  const currentMomentum = (noised.dealMomentum as number | undefined) ?? state.resources.dealMomentum;
-  noised.dealMomentum = clamp(currentMomentum + momentumNoise + Math.round(Math.max(0, directorSignal.recoveryBias) * 5));
-
-  return noised;
 }
 
 // Calculate resource consumption, scaled to the number of days advanced
@@ -346,9 +347,10 @@ function calculateStateChanges(
 
 // Generate narrative summary
 function generateSummary(
-  result: Omit<WeekResult, 'narrativeSummary' | '_updatedBuyers' | 'criticalOutcomes' | 'directorSignal'> & { criticalOutcomes: CriticalOutcome[] },
+  result: Omit<WeekResult, 'narrativeSummary' | '_updatedBuyers' | 'criticalOutcomes' | 'directorSignal' | 'rngTrace'> & { criticalOutcomes: CriticalOutcome[] },
   _week: number,
   directorSignal: GameplayDirectorSignal,
+  rng: SeededRng,
 ): string {
   const parts: string[] = [];
   parts.push(directorSignal.headline);
@@ -409,7 +411,7 @@ function generateSummary(
       'Routine progress. The deal remains on track.',
       'Calm period — good time to prepare for the next phase.',
     ];
-    parts.push(quietLines[Math.floor(Math.random() * quietLines.length)]);
+    parts.push(quietLines[rng.nextInt(0, quietLines.length - 1)]);
   }
 
   parts.push(`Next pressure: ${directorSignal.nextPressure}`);
@@ -429,6 +431,7 @@ function progressBuyers(
   completedTasks: GameTask[],
   phase: number,
   momentum: number,
+  rng: SeededRng,
 ): { buyers: Buyer[]; changes: BuyerChange[] } {
   if (buyers.length === 0) return { buyers, changes: [] };
 
@@ -451,7 +454,7 @@ function progressBuyers(
       if (buyer.status === 'contacted' && completedIds.has('task-42')) {
         // Higher execution credibility = higher chance of signing
         const signChance = (buyer.executionCredibility / 100) * 0.7 + (momentum / 100) * 0.3;
-        if (Math.random() < signChance) {
+        if (rng.nextBool(signChance)) {
           newBuyer.status = 'nda_signed';
           changes.push({ buyerId: buyer.id, field: 'status', from: 'contacted', to: 'nda_signed' });
         }
@@ -496,7 +499,7 @@ function progressBuyers(
 
      // Phase 5-6: Due Diligence dropout risk
      if ((phase === 5 || phase === 6) && buyer.ddDropoutRisk && buyer.ddDropoutRisk > 0) {
-       if (Math.random() < buyer.ddDropoutRisk) {
+       if (rng.nextBool(buyer.ddDropoutRisk)) {
           const oldStatus = newBuyer.status;
           newBuyer.status = 'dropped';
           changes.push({
@@ -526,7 +529,7 @@ function progressBuyers(
       if (currentIdx < INTEREST_ORDER.length - 1) {
         // Chance to warm up: momentum-driven + random
         const warmChance = momentum > 60 ? 0.25 : momentum > 40 ? 0.15 : 0.05;
-        if (Math.random() < warmChance) {
+        if (rng.nextBool(warmChance)) {
           const oldInterest = newBuyer.interest;
           newBuyer.interest = INTEREST_ORDER[currentIdx + 1];
           changes.push({ buyerId: buyer.id, field: 'interest', from: oldInterest, to: newBuyer.interest });
@@ -534,7 +537,7 @@ function progressBuyers(
       }
 
       // Interest cooling — low momentum cools buyers
-      if (momentum < 30 && currentIdx > 0 && Math.random() < 0.15) {
+      if (momentum < 30 && currentIdx > 0 && rng.nextBool(0.15)) {
         const oldInterest = newBuyer.interest;
         newBuyer.interest = INTEREST_ORDER[currentIdx - 1];
         changes.push({ buyerId: buyer.id, field: 'interest', from: oldInterest, to: newBuyer.interest });
@@ -542,13 +545,13 @@ function progressBuyers(
 
       // Unpredictable mood swings — buyers can act independently of momentum
       // "Cold feet" — 4% chance any active buyer cools unexpectedly
-      if (currentIdx > 1 && Math.random() < 0.04) {
+      if (currentIdx > 1 && rng.nextBool(0.04)) {
         const oldInterest = newBuyer.interest;
         newBuyer.interest = INTEREST_ORDER[currentIdx - 1];
         changes.push({ buyerId: buyer.id, field: 'interest', from: oldInterest, to: newBuyer.interest });
       }
       // "Breakthrough interest" — 3% chance a lukewarm/warm buyer jumps two levels
-      if (currentIdx >= 1 && currentIdx <= 2 && Math.random() < 0.03) {
+      if (currentIdx >= 1 && currentIdx <= 2 && rng.nextBool(0.03)) {
         const jumpIdx = Math.min(currentIdx + 2, INTEREST_ORDER.length - 1);
         const oldInterest = newBuyer.interest;
         newBuyer.interest = INTEREST_ORDER[jumpIdx];
@@ -581,7 +584,7 @@ interface EventTemplate {
   phases: number[];
   probability: number;
   condition?: (state: GameStore) => boolean;
-  generate: (state: GameStore) => {
+  generate: (state: GameStore, rng: SeededRng) => {
     event: GameEvent;
     resourceEffects?: Partial<PlayerResources>;
     riskGenerated?: Risk;
@@ -1916,9 +1919,9 @@ const EVENT_POOL: EventTemplate[] = [
     phases: [4],
     probability: 0.09,
     condition: (s) => s.buyers.filter((b) => b.status === 'shortlisted').length >= 2,
-    generate: (s) => {
+    generate: (s, rng) => {
       const shortlisted = s.buyers.filter((b) => b.status === 'shortlisted');
-      const acquired = shortlisted[Math.floor(Math.random() * shortlisted.length)];
+      const acquired = shortlisted[rng.nextInt(0, shortlisted.length - 1)];
       return {
         event: {
           id: `evt-${s.week}-buyeracq`,
@@ -2468,7 +2471,8 @@ const EVENT_POOL: EventTemplate[] = [
 function rollEvents(
   state: GameStore,
   daysToAdvance: number,
-  directorSignal: GameplayDirectorSignal
+  directorSignal: GameplayDirectorSignal,
+  rng: SeededRng,
 ): {
   events: GameEvent[];
   resourceEffects: Partial<PlayerResources>;
@@ -2476,7 +2480,6 @@ function rollEvents(
   emails: Email[];
   nextDirectorState?: EventDirectorState;
 } {
-  const rng = createRng(state.rngSeed || Date.now());
   const directorState = state.eventDirectorState || createInitialEventDirectorState();
 
   const directorPool: EventDirectorConfig<GameStore>[] = EVENT_POOL.map((t) => ({
@@ -2484,7 +2487,7 @@ function rollEvents(
     phases: t.phases,
     baseProbability: t.probability,
     condition: t.condition,
-    generate: (s) => t.generate(s),
+    generate: (s, eventRng) => t.generate(s, eventRng),
   }));
 
   const maxEvents = directorSignal.tensionBand === 'danger' ? 1 : directorSignal.tensionBand === 'live' ? 3 : 2;
@@ -2542,6 +2545,14 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
   const newDay = state.day + daysToAdvance;
   const newWeek = Math.ceil(newDay / 7);
   const directorSignal = createGameplayDirectorSignal(state);
+  const turnSeed = deriveSeed(
+    state.rngSeed,
+    state.day,
+    state.phase,
+    daysToAdvance,
+    state.eventDirectorState?.tensionScore ?? 0,
+  );
+  const rng = createRng(turnSeed);
 
   const weekPace = state.weekPace ?? 'standard';
   const paceCompletionMult = weekPace === 'sprint' ? 1.35 : weekPace === 'deliberate' ? 0.75 : 1.0;
@@ -2553,7 +2564,7 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
   const tasksProgressed: GameTask[] = [];
 
   for (const task of inProgressTasks) {
-    const result = resolveTaskProgress(task, state.tempCapacityAllocations, daysToAdvance, state.resources.budget, paceCompletionMult);
+    const result = resolveTaskProgress(task, rng, state.tempCapacityAllocations, daysToAdvance, state.resources.budget, paceCompletionMult);
     const progressedTask = { ...task, progress: result.progress };
     if (result.outcome === 'completed') {
       tasksCompleted.push(progressedTask);
@@ -2583,10 +2594,10 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
   const stateChanges = calculateStateChanges(tasksCompleted, state.resources);
 
   // 4. Check for hidden workload
-  const hiddenWorkload = checkHiddenWorkload(tasksCompleted, directorSignal);
+  const hiddenWorkload = checkHiddenWorkload(tasksCompleted, directorSignal, rng);
 
   // 4b. Roll critical outcomes for completed tasks
-  const criticalOutcomes = rollCriticalOutcomes(tasksCompleted, state.resources.morale, directorSignal);
+  const criticalOutcomes = rollCriticalOutcomes(tasksCompleted, rng, state.resources.morale, directorSignal);
 
   // 4c. Generate qualification notes for Phase 0 tasks
   const newQualificationNotes: Omit<QualificationNote, 'id' | 'week'>[] = [];
@@ -2625,7 +2636,7 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
   }
 
   // 5. Combine all resource changes
-  let resourceChanges: Partial<PlayerResources> = {
+  const resourceChanges: Partial<PlayerResources> = {
     ...resourceConsumption,
     ...stateChanges,
   };
@@ -2647,10 +2658,10 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
   resourceChanges.riskLevel = Math.max(0, Math.min(100, state.resources.riskLevel + riskDelta));
 
   // 7. Buyer progression
-  const buyerResult = progressBuyers(state.buyers, tasksCompleted, state.phase, state.resources.dealMomentum);
+  const buyerResult = progressBuyers(state.buyers, tasksCompleted, state.phase, state.resources.dealMomentum, rng);
 
   // 9. Event system
-  const eventResult = rollEvents(state, daysToAdvance, directorSignal);
+  const eventResult = rollEvents(state, daysToAdvance, directorSignal, rng);
 
   // 9b. Resolve pending budget requests (Board decision)
   const resolvedRequests: { id: string; approved: boolean; amount: number; justification: string }[] = [];
@@ -2662,7 +2673,7 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
       const riskFactor = (state.resources.riskLevel / 100) * 0.2;
       const phaseFactor = state.phase >= 3 ? 0.1 : 0; // Easier to approve in later phases
       const approvalChance = Math.max(0.1, Math.min(0.9, 0.5 + trustFactor - riskFactor + phaseFactor));
-      const approved = Math.random() < approvalChance;
+      const approved = rng.nextBool(approvalChance);
       const approvedAmount = approved ? req.amount : 0;
 
       // Generate reasoning
@@ -2735,7 +2746,7 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
     }
     approvalChance = Math.min(0.95, approvalChance); // cap at 95%
 
-    const approved = Math.random() < approvalChance;
+    const approved = rng.nextBool(approvalChance);
 
     const notes = approved
       ? "The Investment Committee has reviewed the Solara Systems opportunity. The qualification signals and sector dynamics support the case for mandate. We approve — proceed to formal pitch and fee negotiation."
@@ -2776,9 +2787,6 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
       }
     }
   }
-
-  // Apply stochastic noise — small random drift makes each advance feel unique
-  resourceChanges = applyResourceNoise(resourceChanges, state, directorSignal);
 
   // Pace: morale adjustment
   if (paceMoraleDelta !== 0) {
@@ -2842,7 +2850,7 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
 
       dropoutP = Math.min(0.95, dropoutP);
 
-      const rolled = Math.random();
+      const rolled = rng.next();
       const submits = rolled > dropoutP;
 
       const idx = updatedBuyersAfterDeadline.findIndex(b => b.id === buyer.id);
@@ -2850,7 +2858,7 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
         updatedBuyersAfterDeadline[idx] = { ...buyer, bindingOfferSubmitted: true, status: 'bidding' };
         bindingOfferDelta += 1;
         eventResult.emails.push({
-          id: `email-bindoffer-${buyer.id}-${Date.now()}`,
+          id: `email-bindoffer-${buyer.id}-${newDay}`,
           week: newWeek,
           phase: 6,
           sender: buyer.name,
@@ -2875,7 +2883,7 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
 
         updatedBuyersAfterDeadline[idx] = { ...buyer, status: 'dropped', bindingOfferSubmitted: false };
         eventResult.emails.push({
-          id: `email-dropout-${buyer.id}-${Date.now()}`,
+          id: `email-dropout-${buyer.id}-${newDay}`,
           week: newWeek,
           phase: 6,
           sender: buyer.name,
@@ -2984,7 +2992,7 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
     directorSignal,
   };
 
-  const narrativeSummary = generateSummary(partialResult, newWeek, directorSignal);
+  const narrativeSummary = generateSummary(partialResult, newWeek, directorSignal, rng);
 
   return {
     ...partialResult,
@@ -2994,6 +3002,11 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
     nextDirectorState: eventResult.nextDirectorState,
     bindingOfferDelta,
     newQualificationNotes,
+    rngTrace: {
+      seed: turnSeed,
+      draws: rng.getDrawCount(),
+      state: rng.getState(),
+    },
   };
 }
 
@@ -3001,46 +3014,51 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
 // Calculate Days to Next Meaningful Event
 // ============================================
 
-export function calcDaysToAdvance(state: GameStore): number {
-  let days = 7; // default: advance a full week if nothing is urgent
+export interface AdvancePacePreview {
+  days: number;
+  reason: string;
+}
 
-  // Urgent unread emails: check inbox tomorrow
+/**
+ * Explains the earliest real reason time will advance. This deliberately has
+ * no random component: the label on the CTA must match the engine outcome.
+ */
+export function getAdvancePacePreview(state: GameStore): AdvancePacePreview {
+  // Urgent unread emails: check inbox tomorrow.
   if (state.emails.some((e) => e.phase === state.phase && e.priority === 'urgent' && e.state === 'unread')) {
-    days = Math.min(days, 1);
+    return { days: 1, reason: 'Urgent reply pending — advancing to tomorrow.' };
   }
 
-  // Low complexity tasks: complete in 1 day
   const inProgress = state.tasks.filter((t) => t.status === 'in_progress' && t.phase === state.phase);
   if (inProgress.some((t) => t.complexity === 'low')) {
-    days = Math.min(days, 1);
+    return { days: 1, reason: 'Quick-turn work is underway — advancing to tomorrow.' };
   }
 
-  // Medium complexity tasks: 2-3 days
   if (inProgress.some((t) => t.complexity === 'medium')) {
-    days = Math.min(days, 2 + Math.floor(Math.random() * 2));
+    return { days: 2, reason: 'Medium-complexity work needs a short execution window.' };
   }
 
-  // High complexity tasks: 3-5 days (give the team time to work)
-  if (inProgress.some((t) => t.complexity === 'high') && days > 3) {
-    days = Math.min(days, 3 + Math.floor(Math.random() * 3));
+  if (inProgress.some((t) => t.complexity === 'high')) {
+    return { days: 3, reason: 'Complex work needs time to land before the next beat.' };
   }
 
-  // Pending board submission: board convenes in 2-3 days
   if (state.boardSubmission?.status === 'pending') {
-    days = Math.min(days, 2 + Math.floor(Math.random() * 2));
+    return { days: 2, reason: 'Investment Committee review is pending.' };
   }
 
-  // Pending budget request: IC responds in 2 days
   if (state.budgetRequests.some((r) => r.status === 'pending')) {
-    days = Math.min(days, 2);
+    return { days: 2, reason: 'Investment Committee response is due shortly.' };
   }
 
-  // Active competitor threat: urgent counter-action needed
   if (state.competitorThreats.some((t) => !t.resolved)) {
-    days = Math.min(days, 2 + Math.floor(Math.random() * 2));
+    return { days: 2, reason: 'A competitor threat needs a near-term response.' };
   }
 
-  return Math.max(1, Math.min(7, days));
+  return { days: 7, reason: 'No immediate deadline — advancing one week.' };
+}
+
+export function calcDaysToAdvance(state: GameStore): number {
+  return getAdvancePacePreview(state).days;
 }
 
 // ============================================

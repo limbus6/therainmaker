@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createRng } from '../rng';
+import { createRng, deriveSeed } from '../rng';
 
 describe('SeededRng', () => {
   it('produces deterministic sequences for the same seed', () => {
@@ -82,5 +82,19 @@ describe('SeededRng', () => {
   it('getSeed returns the original seed', () => {
     const rng = createRng(42);
     expect(rng.getSeed()).toBe(42);
+  });
+
+  it('derives a stable child seed from run and turn context', () => {
+    expect(deriveSeed(42, 7, 3, 2)).toBe(deriveSeed(42, 7, 3, 2));
+    expect(deriveSeed(42, 7, 3, 2)).not.toBe(deriveSeed(42, 8, 3, 2));
+  });
+
+  it('exposes draw metadata for reproducible diagnostics', () => {
+    const rng = createRng(42);
+    rng.next();
+    rng.nextInt(1, 3);
+
+    expect(rng.getDrawCount()).toBe(2);
+    expect(rng.getState()).toBeGreaterThanOrEqual(0);
   });
 });
