@@ -9,7 +9,7 @@ const SLIDES = [
   },
   {
     title: 'How the Game Works',
-    body: `The deal advances across 11 phases, from origination to closing. Each week you should:\n\n• Complete tasks to push the process forward\n• Respond to emails from prospects, the client, your team, and buyers\n• Mitigate risks before they derail the deal\n• Advance time when you are ready\n\nYour resources — budget, momentum, trust, and team capacity — determine whether the deal reaches closing.`,
+    body: `The deal advances across 11 phases, from origination to closing. Each week you should:\n\n• Choose a priority and use Start & Advance to see it move immediately\n• Queue several actions only when you want to set a broader workplan\n• Respond to emails from prospects, the client, your team, and buyers\n• Mitigate risks before they derail the deal\n\nYour resources — budget, momentum, trust, and team capacity — determine whether the deal reaches closing.`,
     cta: 'Understood →',
   },
   {

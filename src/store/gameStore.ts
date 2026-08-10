@@ -597,6 +597,7 @@ export interface GameStore {
   // GameActions
   selectMissionFocus: (missionId: string) => void;
   commitToAction: (taskId: string) => void;
+  commitAndAdvance: (taskId: string) => void;
   advanceWeek: () => void;
   advancePhase: () => Promise<void>;
   debugJumpToPhase: (targetPhase: PhaseId) => Promise<void>;
@@ -1259,6 +1260,20 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     set((s) => ({
       commitments: [...s.commitments.filter((c) => c.linkedTaskId !== taskId), newCommitment],
     }));
+  },
+  commitAndAdvance: (taskId: string) => {
+    const state = get();
+    const task = state.tasks.find((candidate) =>
+      candidate.id === taskId &&
+      candidate.phase === state.phase &&
+      (candidate.status === 'available' || candidate.status === 'recommended')
+    );
+    if (!task || state.resources.budget < task.cost || state.isWeekInProgress) return;
+
+    // Keep the decision and its first visible consequence in one deliberate
+    // action. Players can still use Commit only when they want to queue work.
+    get().commitToAction(taskId);
+    get().advanceWeek();
   },
   advanceWeek: () => {
     const state = get();

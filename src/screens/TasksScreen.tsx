@@ -28,7 +28,7 @@ const categoryLabels: Record<TaskCategory, string> = {
 type ViewFilter = 'all' | 'available' | 'in_progress' | 'completed';
 
 export default function TasksScreen() {
-  const { tasks, workstreams, startTask, phase, leads, resources } = useGameStore();
+  const { tasks, workstreams, startTask, commitAndAdvance, phase, leads, resources } = useGameStore();
   const [filter, setFilter] = useState<ViewFilter>('all');
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
 
@@ -131,17 +131,27 @@ export default function TasksScreen() {
                     })()}
                   </div>
                   {isActionable && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); startTask(task.id); }}
-                      disabled={!canAfford}
-                      className={`flex items-center gap-2 px-4 py-2 text-[12px] font-semibold rounded-[var(--radius-md)] transition-colors ${
-                        canAfford
-                          ? 'bg-accent-primary hover:bg-accent-hover text-white shadow-[var(--shadow-glow-soft)]'
-                          : 'bg-surface-default border border-border-subtle text-text-muted cursor-not-allowed'
-                      }`}
-                    >
-                      <Play size={12} /> {canAfford ? 'Start Task' : `Need €${task.cost}k budget`}
-                    </button>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); commitAndAdvance(task.id); }}
+                        disabled={!canAfford}
+                        className={`flex items-center gap-2 px-4 py-2 text-[12px] font-semibold rounded-[var(--radius-md)] transition-colors ${
+                          canAfford
+                            ? 'bg-accent-primary hover:bg-accent-hover text-white shadow-[var(--shadow-glow-soft)]'
+                            : 'bg-surface-default border border-border-subtle text-text-muted cursor-not-allowed'
+                        }`}
+                      >
+                        <Play size={12} /> {canAfford ? 'Start & Advance' : `Need €${task.cost}k budget`}
+                      </button>
+                      {canAfford && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); startTask(task.id); }}
+                          className="px-3 py-2 text-[12px] font-semibold rounded-[var(--radius-md)] border border-border-accent bg-border-accent/10 text-text-accent hover:bg-border-accent/20 transition-colors"
+                        >
+                          Queue only
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>

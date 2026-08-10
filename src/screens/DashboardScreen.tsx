@@ -35,10 +35,11 @@ function kpiColor(value: number, thresholds: [number, number] = [30, 60]) {
 
 type ModalId = 'budget' | 'board' | 'staffing' | 'pitch' | 'fee' | 'spa' | null;
 
-function MissionActionCard({ task, commitment, onCommit }: {
+function MissionActionCard({ task, commitment, onCommit, onCommitAndAdvance }: {
   task: GameTask;
   commitment?: ActionCommitment;
   onCommit: (taskId: string) => void;
+  onCommitAndAdvance: (taskId: string) => void;
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [justCommitted, setJustCommitted] = useState(false);
@@ -87,14 +88,24 @@ function MissionActionCard({ task, commitment, onCommit }: {
             <ProgressBar value={task.progress ?? commitment?.progress ?? 0} color="accent" size="sm" />
           </div>
         ) : (
-          <button
-            type="button"
-            onClick={handleCommit}
-            className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-[var(--radius-sm)] border border-border-accent bg-border-accent/10 text-text-accent text-[12px] font-semibold hover:bg-border-accent/20 transition-colors"
-          >
-            <Target size={13} />
-            <span>Commit to Action</span>
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => onCommitAndAdvance(task.id)}
+              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-[var(--radius-sm)] bg-accent-primary text-white text-[12px] font-semibold hover:bg-accent-hover transition-colors"
+            >
+              <Target size={13} />
+              <span>Commit &amp; Advance</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleCommit}
+              title="Queue this action without advancing time"
+              className="px-2.5 py-1.5 rounded-[var(--radius-sm)] border border-border-accent bg-border-accent/10 text-text-accent text-[11px] font-semibold hover:bg-border-accent/20 transition-colors"
+            >
+              Queue
+            </button>
+          </div>
         )}
       </div>
     </div>
@@ -107,7 +118,7 @@ export default function DashboardScreen() {
     phase, day, week, resources, emails, tasks, workstreams, buyers, risks, deliverables, headlines,
     advanceWeek, isWeekInProgress, weekHistory,
     budgetRequests, boardSubmission, feeNegotiation, agreedFeeTerms, competitorThreats, advancePhase, completeGame,
-    weekPace, setWeekPace, tempCapacityAllocations,
+    weekPace, setWeekPace, tempCapacityAllocations, commitAndAdvance,
   } = gameState;
 
   const phaseBudget = useGameStore((s) => s.phaseBudget);
@@ -323,6 +334,7 @@ export default function DashboardScreen() {
                     task={task}
                     commitment={commitments.find((c) => c.linkedTaskId === task.id)}
                     onCommit={gameState.commitToAction}
+                    onCommitAndAdvance={commitAndAdvance}
                   />
                 ))}
               </div>

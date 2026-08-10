@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { getAdvancePacePreview, resolveWeek } from '../weekEngine';
 import { useGameStore } from '../../store/gameStore';
-import type { Email, PlayerResources } from '../../types/game';
+import type { Email, GameTask, PlayerResources } from '../../types/game';
 
 function makeResources(overrides: Partial<PlayerResources> = {}): PlayerResources {
   return {
@@ -77,5 +77,40 @@ describe('M0 — trustworthy advancement', () => {
     expect(resources.clientTrust).toBe(42);
     expect(resources.dealMomentum).toBe(48);
     expect(Object.values(resources).every(Number.isInteger)).toBe(true);
+  });
+
+  it('keeps a committed priority and its first consequence in one action', () => {
+    const priority: GameTask = {
+      id: 'm05-priority',
+      name: 'Prepare buyer call brief',
+      description: 'A focused short-turn priority.',
+      phase: 0,
+      category: 'relationship',
+      status: 'available',
+      cost: 0,
+      work: 3,
+      complexity: 'low',
+      effectSummary: 'Strengthens the upcoming buyer conversation.',
+    };
+
+    useGameStore.setState({
+      phase: 0,
+      day: 1,
+      week: 1,
+      totalDays: 1,
+      isWeekInProgress: false,
+      resources: makeResources(),
+      tasks: [priority],
+      emails: [],
+      events: [],
+      commitments: [],
+    });
+
+    useGameStore.getState().commitAndAdvance(priority.id);
+    const next = useGameStore.getState();
+
+    expect(next.day).toBe(2);
+    expect(next.tasks[0].status).toBe('completed');
+    expect(next.lastWeekResult?.daysAdvanced).toBe(1);
   });
 });
