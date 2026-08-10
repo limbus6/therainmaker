@@ -4,6 +4,7 @@ import Panel from '../components/ui/Panel';
 import StatusChip from '../components/ui/StatusChip';
 import { Trophy, CheckCircle2, AlertTriangle, Star, TrendingUp, Lock } from 'lucide-react';
 import type { FinalOffer } from '../types/game';
+import OfferRevealOverlay from '../components/OfferRevealOverlay';
 
 const STRUCTURE_LABELS: Record<FinalOffer['structure'], string> = {
   full_cash: 'Full Cash',
@@ -36,6 +37,8 @@ export default function FinalOffersScreen() {
   const preferredBidderConfirmed = useGameStore((s) => s.preferredBidderConfirmed);
   const buyers = useGameStore((s) => s.buyers);
   const selectPreferredBidder = useGameStore((s) => s.selectPreferredBidder);
+  const offerReveal = useGameStore((s) => s.offerReveal);
+  const completeOfferReveal = useGameStore((s) => s.completeOfferReveal);
 
   const [confirmModalBuyerId, setConfirmModalBuyerId] = useState<string | null>(null);
 
@@ -215,6 +218,7 @@ export default function FinalOffersScreen() {
               {/* Advisor note */}
               <div className="mt-3 pt-3 border-t border-border-subtle/50">
                 <p className="text-[11px] text-text-muted italic">{offer.advisorNote}</p>
+                <p className="mt-1.5 text-[10px] text-text-secondary">Driver: {(offer.drivers ?? [])[0] ?? 'Offer terms reflect buyer profile and current deal conditions.'}</p>
               </div>
             </Panel>
           );
@@ -250,6 +254,14 @@ export default function FinalOffersScreen() {
             </div>
           </Panel>
         </div>
+      )}
+
+      {offerReveal.status === 'pending' && (
+        <OfferRevealOverlay
+          offers={finalOffers}
+          buyers={buyers}
+          onComplete={completeOfferReveal}
+        />
       )}
     </div>
   );

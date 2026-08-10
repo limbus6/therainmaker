@@ -9,6 +9,7 @@ export default function TimelineScreen() {
   const phase = useGameStore((s) => s.phase);
   const day = useGameStore((s) => s.day);
   const phaseEntryDay = useGameStore((s) => s.phaseEntryDay) || {};
+  const upcomingBeats = useGameStore((s) => s.eventDirectorState.upcomingBeats);
   const currentWeek = Math.ceil(day / 7);
 
   const phases = (Object.keys(PHASE_NAMES) as unknown as PhaseId[]).map(Number) as PhaseId[];
@@ -103,6 +104,27 @@ export default function TimelineScreen() {
           </div>
         </div>
       </Panel>
+
+      {upcomingBeats.length > 0 && (
+        <Panel title="What Happens Next" subtitle="Only scheduled developments are shown here.">
+          <div className="space-y-3">
+            {upcomingBeats.map((beat) => {
+              const daysUntil = Math.max(0, beat.dueDay - day);
+              return (
+                <div key={beat.id} className="flex items-start justify-between gap-4 border-b border-border-subtle/60 pb-3 last:border-0 last:pb-0">
+                  <div>
+                    <p className="text-[12px] text-text-secondary">{beat.label}</p>
+                    <p className="mt-1 text-[10px] font-mono uppercase tracking-wider text-text-muted">{beat.source.replace('_', ' ')}</p>
+                  </div>
+                  <span className="shrink-0 rounded-full border border-border-accent/30 bg-accent-soft px-2 py-0.5 text-[10px] font-mono text-text-accent">
+                    {daysUntil === 0 ? 'Today' : daysUntil === 1 ? 'Tomorrow' : `${daysUntil}d`}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </Panel>
+      )}
 
       {/* Week marker */}
       <Panel title="Current Position">

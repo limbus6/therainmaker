@@ -40,13 +40,15 @@ import type {
   CompetitorThreat,
   EventDirectorState,
   ResourceDelta,
+  OfferRevealState,
 } from '../types/game';
 import type { ActionCommitment } from '../types/dealBeat';
 import { createInitialEventDirectorState } from '../engine/eventDirector';
 import { buildResourceDeltas } from '../engine/resourceDeltas';
 import { createRng, deriveSeed } from '../engine/rng';
-import { resolveWeek, checkPhaseGate, unlockTasks, checkDealCollapse, calcDaysToAdvance } from '../engine/weekEngine';
+import { resolveWeek, checkPhaseGate, unlockTasks, checkDealCollapse, calcDaysToAdvance, buildUpcomingBeats } from '../engine/weekEngine';
 import type { WeekResult, PhaseGateResult } from '../engine/weekEngine';
+import { getGoldenMandateOfferDriver } from '../engine/goldenMandate';
 import { PHASE_BASE_BUDGETS, STAFF_PROFILES, CONTRACTOR_PROFILES, MITIGATION_ACTIONS } from '../config/phaseBudgets';
 import { getRiskMitigationPlans } from '../config/riskMitigation';
 import { REVIEW_CHECKPOINTS_BY_ID } from '../config/reviewCheckpoints';
@@ -574,6 +576,7 @@ export interface GameStore {
   competitorThreats: CompetitorThreat[];
   toasts: Toast[];
   finalOffers: FinalOffer[];
+  offerReveal: OfferRevealState;
   preferredBidderId: string | null;
   spaNegotiation: SPANegotiation | null;
   agreedSPATerms: SPATerms | null;
@@ -644,6 +647,7 @@ export interface GameStore {
   setPhaseDeadline: (weeks: number) => void;
   // Final Offers
   selectPreferredBidder: (buyerId: string, confirmed?: boolean) => void;
+  completeOfferReveal: (status: 'completed' | 'skipped', revealedBuyerIds: string[]) => void;
   // Dataroom
   setDataroomAccess: (categoryId: string, level: DataroomAccessLevel) => void;
   // SPA
@@ -749,7 +753,7 @@ function normalizeResources(resources: PlayerResources): PlayerResources {
 
 const DEFAULT_PREFERRED_BUYER = 'Kestrel Capital';
 const DEFAULT_FALLBACK_BUYER = 'Vektor Industries';
-const SAVE_SCHEMA_VERSION = 6;
+const SAVE_SCHEMA_VERSION = 7;
 
 function hashIdentifier(value: string): number {
   let hash = 2166136261;
@@ -863,6 +867,7 @@ function generateFinalOffers(
   momentum: number,
   week: number,
   rngSeed: number,
+  storyFlags: Record<string, string> = {},
 ): FinalOffer[] {
   const BASE_EV = 120; // €M Solara baseline
   const offers: FinalOffer[] = [];
@@ -878,7 +883,15 @@ function generateFinalOffers(
 
     // Momentum adds up to ±10%
     const momentumMod = (momentum - 50) / 500; // ±10% at extremes
-    const rawEV = BASE_EV * postureMultiplier * (1 + momentumMod);
+    const goldenDriver = getGoldenMandateOfferDriver(buyer.id, storyFlags);
+    const goldenModifier = buyer.id === 'buyer-01'
+      ? storyFlags['golden-ricardo-stance'] === 'hold-process'
+        ? 1.04
+        : storyFlags['golden-ricardo-stance'] === 'private-lane'
+          ? 0.97
+          : 1
+      : 1;
+    const rawEV = BASE_EV * postureMultiplier * (1 + momentumMod) * goldenModifier;
 
     // Structure based on buyer type
     const structure: FinalOffer['structure'] =
@@ -907,7 +920,24 @@ function generateFinalOffers(
       ? `Strong execution track record. Offer is ${structure === 'full_cash' ? 'clean and fully funded' : 'mixed but credible'}.`
       : buyer.executionCredibility >= 50
         ? `Reasonable execution profile. ${earnoutAmount > 0 ? 'Earnout adds risk — verify covenants.' : 'Monitor closing conditions.'}`
-        : `Execution risk is elevated. ${conditionality === 'heavy_conditions' ? 'Heavy conditions — recommend close scrutiny.' : 'Proceed with caution.'}`;
+      : `Execution risk is elevated. ${conditionality === 'heavy_conditions' ? 'Heavy conditions — recommend close scrutiny.' : 'Proceed with caution.'}`;
+
+    const drivers = [
+      buyer.valuationPosture === 'aggressive'
+        ? 'Aggressive valuation posture supports the headline value.'
+        : buyer.valuationPosture === 'fair'
+          ? 'Fair valuation posture anchors the offer near the process range.'
+          : 'Conservative valuation posture limits the headline value.',
+      momentum >= 60
+        ? 'Strong competitive momentum supports buyer urgency.'
+        : momentum < 45
+          ? 'Muted process momentum gives the buyer more room on price.'
+          : 'Current process momentum keeps the offer near the core valuation range.',
+      buyer.ddFriction === 'low'
+        ? 'Low diligence friction supports cleaner conditionality.'
+        : `Diligence friction drives ${conditionality.replace('_', ' ')}.`,
+      ...(goldenDriver ? [goldenDriver] : []),
+    ];
 
     offers.push({
       buyerId: buyer.id,
@@ -922,6 +952,7 @@ function generateFinalOffers(
       exclusivityRequested: buyer.type === 'pe' || buyer.valuationPosture === 'aggressive',
       impliedMultiple: Math.round((totalEV / 12) * 10) / 10, // assume ~€12M EBITDA
       advisorNote: note,
+      drivers,
     });
   }
 
@@ -1214,6 +1245,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
   competitorThreats: [],
   toasts: [],
   finalOffers: [],
+  offerReveal: { status: 'completed', revealedBuyerIds: [] },
   preferredBidderId: null,
   spaNegotiation: null,
   agreedSPATerms: null,
@@ -1613,12 +1645,31 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     const phaseBase = PHASE_BASE_BUDGETS[nextPhase] ?? 0;
     const newBudget = carryover + phaseBase;
     const newFinalOffers = nextPhase === 7
-      ? generateFinalOffers(newBuyers, state.resources.dealMomentum, state.week + 1, state.rngSeed)
+      ? generateFinalOffers(newBuyers, state.resources.dealMomentum, state.week + 1, state.rngSeed, state.eventDirectorState.storyFlags)
       : state.finalOffers;
+    const nextOfferReveal: OfferRevealState = nextPhase === 7 && newFinalOffers.length > 0
+      ? { status: 'pending', revealedBuyerIds: [] }
+      : state.offerReveal;
     const nextBindingOffersReceived = nextPhase === 7 ? state.bindingOffersReceived : 0;
     const unlockedPhaseTasks = unlockTasks(newTasks);
     const phaseWorkstreams = updatePhaseWorkstreamProgress(newWorkstreams, unlockedPhaseTasks, nextPhase);
     const phaseRisks = retireObsoleteRisks(newRisks, nextPhase, nextBindingOffersReceived);
+    const phaseDirectorState = {
+      ...state.eventDirectorState,
+      storyFlags: { ...(state.eventDirectorState.storyFlags ?? {}) },
+      upcomingBeats: [],
+    };
+    const phaseProjection = {
+      ...state,
+      phase: nextPhase,
+      tasks: unlockedPhaseTasks,
+      resources: normalizeResources({ ...state.resources, budget: newBudget, budgetMax: newBudget }),
+      client: newClient,
+      buyers: newBuyers,
+      risks: phaseRisks,
+      phaseDeadline: null,
+      eventDirectorState: phaseDirectorState,
+    } as GameStore;
     set({
       phase: nextPhase,
       phaseEntryDay: { ...state.phaseEntryDay, [nextPhase]: state.day },
@@ -1640,6 +1691,10 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       }),
       totalBudgetSpent: newTotalBudgetSpent,
       phaseBudget: { phaseBase, carryover },
+      eventDirectorState: {
+        ...phaseDirectorState,
+        upcomingBeats: buildUpcomingBeats(phaseProjection),
+      },
       feeNegotiation: null,
       // agreedFeeTerms intentionally preserved — fee terms negotiated in Phase 1 must survive to resultsEngine
       phaseDeadline: null,
@@ -1647,6 +1702,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       bindingOffersReceived: nextBindingOffersReceived,
       unaddressedQACount: 0,
       finalOffers: newFinalOffers,
+      offerReveal: nextOfferReveal,
       preferredBidderId: nextPhase === 7 ? null : state.preferredBidderId,
     });
   },
@@ -1700,9 +1756,28 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       morale: 78,
     });
     const bindingOffersReceived = targetPhase >= 7 ? 1 : 0;
-    const finalOffers = targetPhase >= 7 ? generateFinalOffers(buyers, resources.dealMomentum, week, state.rngSeed) : [];
+    const finalOffers = targetPhase >= 7 ? generateFinalOffers(buyers, resources.dealMomentum, week, state.rngSeed, state.eventDirectorState.storyFlags) : [];
     const risks = retireObsoleteRisks(accumulatedRisks, targetPhase, bindingOffersReceived);
     const workstreams = updatePhaseWorkstreamProgress(initialWorkstreams, unlockedTasks, targetPhase);
+    const debugDirectorState = {
+      ...state.eventDirectorState,
+      storyFlags: {},
+      upcomingBeats: [],
+    };
+    const debugProjection = {
+      ...state,
+      phase: targetPhase,
+      day,
+      week,
+      resources,
+      tasks: unlockedTasks,
+      buyers,
+      emails: accumulatedEmails,
+      events: [],
+      risks,
+      phaseDeadline: null,
+      eventDirectorState: debugDirectorState,
+    } as GameStore;
 
     const newPhaseEntryDay: Partial<Record<number, number>> = {};
     for (let p = 0; p <= targetPhase; p++) {
@@ -1758,6 +1833,13 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       bindingOffersReceived,
       unaddressedQACount: 0,
       finalOffers,
+      eventDirectorState: {
+        ...debugDirectorState,
+        upcomingBeats: buildUpcomingBeats(debugProjection),
+      },
+      offerReveal: targetPhase === 7 && finalOffers.length > 0
+        ? { status: 'pending', revealedBuyerIds: [] }
+        : { status: 'completed', revealedBuyerIds: finalOffers.map((offer) => offer.buyerId) },
       preferredBidderId: targetPhase >= 8 ? 'buyer-03' : null,
       spaNegotiation: null,
       agreedSPATerms: null,
@@ -1838,7 +1920,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
 
     const checkpointWeek = Math.max(1, Math.ceil(checkpoint.day / 7));
     const agreedFeeTerms = checkpoint.feeAgreed ? { ...DEBUG_FEE_TERMS, agreedWeek: checkpointWeek } : state.agreedFeeTerms;
-    const finalOffers = checkpoint.phase >= 7 ? generateFinalOffers(buyers, resources.dealMomentum, checkpointWeek, state.rngSeed) : [];
+    const finalOffers = checkpoint.phase >= 7 ? generateFinalOffers(buyers, resources.dealMomentum, checkpointWeek, state.rngSeed, state.eventDirectorState.storyFlags) : [];
     const feeNegotiation = checkpoint.feeAgreed ? {
       phase: 1 as PhaseId,
       pitchPresented: true,
@@ -1904,6 +1986,9 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       bindingOffersReceived,
       preferredBidderId: checkpoint.preferredBidderId ?? state.preferredBidderId,
       finalOffers,
+      offerReveal: checkpoint.phase === 7 && finalOffers.length > 0
+        ? { status: 'pending', revealedBuyerIds: [] }
+        : { status: 'completed', revealedBuyerIds: finalOffers.map((offer) => offer.buyerId) },
       spaNegotiation,
       agreedSPATerms,
       dataroomCategories: createInitialDataroomCategories(),
@@ -2053,17 +2138,36 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     }
 
     const normalizedResources = normalizeResources(newResources);
+    const nextEmails = state.emails.map((e) =>
+      e.id === emailId ? { ...e, state: 'resolved' as const } : e
+    );
+    const currentDirectorState = state.eventDirectorState ?? createInitialEventDirectorState();
+    const nextDirectorState = {
+      ...currentDirectorState,
+      storyFlags: response?.storyDecision
+        ? { ...(currentDirectorState.storyFlags ?? {}), [response.storyDecision.key]: response.storyDecision.value }
+        : { ...(currentDirectorState.storyFlags ?? {}) },
+    };
+    const stateAfterResponse = {
+      ...state,
+      resources: normalizedResources,
+      emails: nextEmails,
+      eventDirectorState: nextDirectorState,
+    } as GameStore;
     logCausalChange('email_response', {
       emailId,
       responseId,
       effects: response?.resourceEffects ?? {},
+      storyDecision: response?.storyDecision,
     });
 
     return {
       resources: normalizedResources,
-      emails: state.emails.map((e) =>
-        e.id === emailId ? { ...e, state: 'resolved' as const } : e
-      ),
+      emails: nextEmails,
+      eventDirectorState: {
+        ...nextDirectorState,
+        upcomingBeats: buildUpcomingBeats(stateAfterResponse),
+      },
     };
   }),
 
@@ -2588,6 +2692,10 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     };
   }),
 
+  completeOfferReveal: (status, revealedBuyerIds) => set({
+    offerReveal: { status, revealedBuyerIds },
+  }),
+
   // SPA actions
   initSPANegotiation: () => set((state) => {
     const preferredBuyer = state.preferredBidderId
@@ -2855,6 +2963,21 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
         s.eventDirectorState = createInitialEventDirectorState();
       }
       if (!Array.isArray(s.commitments)) s.commitments = [];
+    }
+    if (fromVersion < 7) {
+      const savedDirector = s.eventDirectorState && typeof s.eventDirectorState === 'object'
+        ? s.eventDirectorState as Partial<EventDirectorState>
+        : {};
+      s.eventDirectorState = {
+        ...createInitialEventDirectorState(),
+        ...savedDirector,
+        upcomingBeats: Array.isArray(savedDirector.upcomingBeats) ? savedDirector.upcomingBeats : [],
+        storyFlags: savedDirector.storyFlags && typeof savedDirector.storyFlags === 'object' ? savedDirector.storyFlags : {},
+      };
+      if (!s.offerReveal || typeof s.offerReveal !== 'object') {
+        const existingOffers = Array.isArray(s.finalOffers) ? s.finalOffers as FinalOffer[] : [];
+        s.offerReveal = { status: 'completed', revealedBuyerIds: existingOffers.map((offer) => offer.buyerId) };
+      }
     }
     if (fromVersion < SAVE_SCHEMA_VERSION && s.resources && typeof s.resources === 'object') {
       // M0 makes all visible resource values integer-valued at the engine

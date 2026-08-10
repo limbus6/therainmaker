@@ -31,6 +31,8 @@ export function createInitialEventDirectorState(): EventDirectorState {
     activeThreatsCount: 0,
     lastEventDays: {},
     activeChains: {},
+    upcomingBeats: [],
+    storyFlags: {},
   };
 }
 

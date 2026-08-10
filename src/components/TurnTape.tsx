@@ -7,7 +7,7 @@
 
 import { useEffect, useRef } from 'react';
 import gsap from 'gsap';
-import { CheckCircle2, Mail, Users, AlertTriangle, Zap, FileText, FastForward } from 'lucide-react';
+import { CheckCircle2, Mail, Users, AlertTriangle, Zap, FileText, FastForward, Clock3 } from 'lucide-react';
 import { useGameStore } from '../store/gameStore';
 import { animateCounter, staggerReveal, prefersReducedMotion } from '../utils/motion';
 import type { WeekResult } from '../engine/weekEngine';
@@ -70,6 +70,7 @@ export default function TurnTape() {
   const playback = useGameStore((s) => s.turnPlayback);
   const result = useGameStore((s) => s.lastWeekResult);
   const deltas = useGameStore((s) => s.lastResourceDeltas);
+  const upcomingBeat = useGameStore((s) => s.eventDirectorState.upcomingBeats[0]);
   const completeTurnPlayback = useGameStore((s) => s.completeTurnPlayback);
   const openWeekReport = useGameStore((s) => s.openWeekReport);
 
@@ -191,6 +192,16 @@ export default function TurnTape() {
               +{hiddenCount} more in the Situation Report
             </button>
           )}
+        </div>
+      )}
+
+      {upcomingBeat && (
+        <div className="mt-3 flex items-start gap-2 border-t border-border-subtle pt-2.5 text-[11px]">
+          <Clock3 size={13} className="mt-0.5 shrink-0 text-text-accent" />
+          <div>
+            <span className="font-mono uppercase tracking-widest text-[9px] text-text-muted">Next on the tape</span>
+            <p className="mt-0.5 text-text-secondary">{upcomingBeat.label}</p>
+          </div>
         </div>
       )}
     </div>

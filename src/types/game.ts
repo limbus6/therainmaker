@@ -54,6 +54,8 @@ export interface EmailResponseOption {
   label: string;
   effects?: string;
   resourceEffects?: Partial<Record<keyof PlayerResources, number>>;
+  /** A remembered narrative choice whose later payoff must be explainable. */
+  storyDecision?: { key: string; value: string };
 }
 
 export interface Email {
@@ -194,6 +196,15 @@ export interface Risk {
 
 export type EventType = 'active' | 'passive' | 'cascade';
 export type TensionCategory = 'danger' | 'pressure' | 'recovery' | 'agency';
+export type UpcomingBeatSource = 'event_chain' | 'email' | 'task' | 'deadline' | 'buyer' | 'decision';
+
+/** A real, already-scheduled development the player can look forward to. */
+export interface UpcomingBeat {
+  id: string;
+  dueDay: number;
+  label: string;
+  source: UpcomingBeatSource;
+}
 
 export interface EventDirectorState {
   tensionScore: number; // 0-100
@@ -201,6 +212,8 @@ export interface EventDirectorState {
   activeThreatsCount: number;
   lastEventDays: Record<string, number>; // templateId -> day it last fired
   activeChains: Record<string, { chainId: string; currentStep: number; startedDay: number }>;
+  upcomingBeats: UpcomingBeat[];
+  storyFlags: Record<string, string>;
 }
 
 export interface GameEvent {
@@ -509,6 +522,13 @@ export interface FinalOffer {
   exclusivityRequested: boolean;
   impliedMultiple: number;  // totalEV / ~EBITDA (synthetic)
   advisorNote: string;      // generated recommendation blurb
+  /** The named, run-specific causes behind the terms shown to the player. */
+  drivers?: string[];
+}
+
+export interface OfferRevealState {
+  status: 'pending' | 'completed' | 'skipped';
+  revealedBuyerIds: string[];
 }
 
 // ============================================

@@ -123,6 +123,7 @@ export default function DashboardScreen() {
 
   const phaseBudget = useGameStore((s) => s.phaseBudget);
   const phaseGate = checkPhaseGate(gameState);
+  const nextScheduledBeat = gameState.eventDirectorState.upcomingBeats[0];
 
   const advancePreview = getAdvancePacePreview(gameState);
   const daysPreview = advancePreview.days;
@@ -237,6 +238,23 @@ export default function DashboardScreen() {
       </div>
 
       <TurnTape />
+
+      {phase >= 5 && phase <= 7 && (
+        <div className="grid gap-3 rounded-[var(--radius-lg)] border border-border-accent/25 bg-accent-soft/20 p-4 md:grid-cols-3">
+          <div>
+            <p className="text-[10px] font-mono uppercase tracking-widest text-text-muted">Previously</p>
+            <p className="mt-1 text-[12px] leading-relaxed text-text-secondary">{weekHistory[weekHistory.length - 1]?.summary ?? 'The NBO round is beginning; buyer conviction and Ricardo’s confidence are both live.'}</p>
+          </div>
+          <div>
+            <p className="text-[10px] font-mono uppercase tracking-widest text-text-muted">What matters now</p>
+            <p className="mt-1 text-[12px] leading-relaxed text-text-secondary">{phaseGate.requirements.find((requirement) => !requirement.met)?.label ?? 'The phase gate is clear — protect the quality of the decision.'}</p>
+          </div>
+          <div>
+            <p className="text-[10px] font-mono uppercase tracking-widest text-text-muted">What happens next</p>
+            <p className="mt-1 text-[12px] leading-relaxed text-text-secondary">{nextScheduledBeat?.label ?? (phase === 7 ? 'Binding offers are ready to be opened and compared.' : 'Complete the priority work to move the buyer process forward.')}</p>
+          </div>
+        </div>
+      )}
 
       <DeskDecisionCard />
 

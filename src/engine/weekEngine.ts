@@ -10,12 +10,14 @@ import type {
   BuyerInterest,
   TempCapacityAllocation,
   QualificationNote,
+  UpcomingBeat,
 } from '../types/game';
 import type { GameStore } from '../store/gameStore';
 import { isActiveRisk } from '../utils/gameplayState';
 import { createRng, deriveSeed, type SeededRng } from './rng';
 import { selectEvents, createInitialEventDirectorState, type EventDirectorConfig } from './eventDirector';
 import type { EventDirectorState } from '../types/game';
+import { getGoldenMandateUpcomingBeat, resolveGoldenMandateBeat } from './goldenMandate';
 
 // ============================================
 // Week Resolution Engine
@@ -2663,6 +2665,33 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
   // 9. Event system
   const eventResult = rollEvents(state, daysToAdvance, directorSignal, rng);
 
+  // V1's authored Golden Mandate beats are scheduled and telegraphed before
+  // they resolve. They sit alongside (rather than inside) the weighted pool so
+  // a setup can never be silently skipped by a random draw.
+  const goldenBeat = resolveGoldenMandateBeat(state, newDay);
+  if (goldenBeat) {
+    eventResult.events.unshift(goldenBeat.event);
+    if (goldenBeat.email) eventResult.emails.unshift(goldenBeat.email);
+    const currentDirector = eventResult.nextDirectorState ?? state.eventDirectorState ?? createInitialEventDirectorState();
+    eventResult.nextDirectorState = {
+      ...currentDirector,
+      activeChains: {
+        ...currentDirector.activeChains,
+        [goldenBeat.event.chainId!]: {
+          chainId: goldenBeat.event.chainId!,
+          currentStep: goldenBeat.event.chainStep!,
+          startedDay: currentDirector.activeChains[goldenBeat.event.chainId!]?.startedDay ?? newDay,
+        },
+      },
+    };
+    if (goldenBeat.resourceEffects) {
+      for (const [key, value] of Object.entries(goldenBeat.resourceEffects)) {
+        const resource = key as keyof PlayerResources;
+        eventResult.resourceEffects[resource] = (eventResult.resourceEffects[resource] ?? 0) + (value ?? 0);
+      }
+    }
+  }
+
   // 9b. Resolve pending budget requests (Board decision)
   const resolvedRequests: { id: string; approved: boolean; amount: number; justification: string }[] = [];
   for (const req of state.budgetRequests) {
@@ -2970,6 +2999,24 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
     });
   }
 
+  // Persist only real forward pull: a scheduled V1 payoff, an urgent answer,
+  // active work, or a known deadline. This is intentionally a projection of
+  // state, so an old teaser cannot survive after its cause is resolved.
+  const directorState = eventResult.nextDirectorState ?? state.eventDirectorState ?? createInitialEventDirectorState();
+  const projectedState = {
+    ...state,
+    day: newDay,
+    week: newWeek,
+    events: [...state.events, ...eventResult.events],
+    emails: [...state.emails, ...eventResult.emails],
+    eventDirectorState: directorState,
+  } as GameStore;
+  eventResult.nextDirectorState = {
+    ...directorState,
+    upcomingBeats: buildUpcomingBeats(projectedState),
+    storyFlags: { ...(directorState.storyFlags ?? {}) },
+  };
+
   // Build result (without narrative first)
   const partialResult = {
     tasksCompleted,
@@ -3020,6 +3067,77 @@ export interface AdvancePacePreview {
 }
 
 /**
+ * Produces a small, ordered queue of developments which are already implied
+ * by game state. The same function feeds the CTA, tape, timeline and save
+ * state so they cannot disagree about what happens next.
+ */
+export function buildUpcomingBeats(state: GameStore): UpcomingBeat[] {
+  const beats: UpcomingBeat[] = [];
+  const add = (beat: UpcomingBeat | null) => {
+    if (beat && !beats.some((candidate) => candidate.id === beat.id)) beats.push(beat);
+  };
+
+  const urgentEmail = state.emails.find(
+    (email) => email.phase === state.phase && email.priority === 'urgent' && email.state === 'unread'
+  );
+  if (urgentEmail) {
+    add({
+      id: `email-${urgentEmail.id}`,
+      dueDay: state.day + 1,
+      label: `Reply due: ${urgentEmail.subject}`,
+      source: 'email',
+    });
+  }
+
+  add(getGoldenMandateUpcomingBeat(state));
+
+  const inProgress = state.tasks.filter((task) => task.status === 'in_progress' && task.phase === state.phase);
+  const nextTask = inProgress.sort((a, b) => a.work - b.work)[0];
+  if (nextTask) {
+    const days = nextTask.complexity === 'low' ? 1 : nextTask.complexity === 'medium' ? 2 : 3;
+    add({
+      id: `task-${nextTask.id}`,
+      dueDay: state.day + days,
+      label: `${nextTask.name} reaches its next review point.`,
+      source: 'task',
+    });
+  }
+
+  if (state.phaseDeadline !== null) {
+    add({
+      id: `deadline-phase-${state.phase}`,
+      dueDay: state.phaseDeadline,
+      label: `Phase deadline: ${Math.max(0, state.phaseDeadline - state.day)} days remaining.`,
+      source: 'deadline',
+    });
+  }
+
+  if (state.boardSubmission?.status === 'pending') {
+    add({ id: 'board-review', dueDay: state.day + 2, label: 'Investment Committee review is pending.', source: 'decision' });
+  }
+
+  if (state.budgetRequests.some((request) => request.status === 'pending')) {
+    add({ id: 'budget-review', dueDay: state.day + 2, label: 'Investment Committee response is due shortly.', source: 'decision' });
+  }
+
+  if (state.competitorThreats.some((threat) => !threat.resolved)) {
+    add({ id: 'competitor-response', dueDay: state.day + 2, label: 'A competitor threat needs a near-term response.', source: 'buyer' });
+  }
+
+  const sourcePriority: Record<UpcomingBeat['source'], number> = {
+    email: 0,
+    decision: 1,
+    event_chain: 2,
+    buyer: 3,
+    task: 4,
+    deadline: 5,
+  };
+  return beats
+    .sort((a, b) => a.dueDay - b.dueDay || sourcePriority[a.source] - sourcePriority[b.source])
+    .slice(0, 3);
+}
+
+/**
  * Explains the earliest real reason time will advance. This deliberately has
  * no random component: the label on the CTA must match the engine outcome.
  */
@@ -3027,6 +3145,14 @@ export function getAdvancePacePreview(state: GameStore): AdvancePacePreview {
   // Urgent unread emails: check inbox tomorrow.
   if (state.emails.some((e) => e.phase === state.phase && e.priority === 'urgent' && e.state === 'unread')) {
     return { days: 1, reason: 'Urgent reply pending — advancing to tomorrow.' };
+  }
+
+  const scheduledBeat = buildUpcomingBeats(state)[0];
+  if (scheduledBeat && scheduledBeat.id.startsWith('golden-')) {
+    return {
+      days: Math.max(1, scheduledBeat.dueDay - state.day),
+      reason: scheduledBeat.label,
+    };
   }
 
   const inProgress = state.tasks.filter((t) => t.status === 'in_progress' && t.phase === state.phase);
