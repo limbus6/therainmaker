@@ -5,22 +5,11 @@ import Panel from '../components/ui/Panel';
 import StatusChip from '../components/ui/StatusChip';
 import { CheckCircle2, Lock, MapPin } from 'lucide-react';
 
-const PHASE_WEEK_RANGES: Record<PhaseId, [number, number]> = {
-  0: [1, 3],       // Deal Origination — qualify the opportunity
-  1: [4, 7],       // Pitch & Mandate — win the engagement
-  2: [8, 14],      // Preparation — build materials, VDD, data room
-  3: [15, 20],     // Market Outreach — teaser, NDA, IM distribution
-  4: [21, 24],     // Shortlist — filter to serious buyers
-  5: [25, 28],     // Non-Binding Offers — NBOs received and analysed
-  6: [29, 36],     // Due Diligence — VDR, expert sessions, mgmt presentations
-  7: [37, 40],     // Final Offers — BAFO, SPA draft
-  8: [41, 44],     // SPA Negotiation — mark-ups, reps & warranties
-  9: [45, 47],     // Signing — contracts in agreed form
-  10: [48, 52],    // Closing & Execution — conditions precedent, wire
-};
-
 export default function TimelineScreen() {
-  const { phase, week } = useGameStore();
+  const phase = useGameStore((s) => s.phase);
+  const day = useGameStore((s) => s.day);
+  const phaseEntryDay = useGameStore((s) => s.phaseEntryDay) || {};
+  const currentWeek = Math.ceil(day / 7);
 
   const phases = (Object.keys(PHASE_NAMES) as unknown as PhaseId[]).map(Number) as PhaseId[];
 
@@ -42,7 +31,19 @@ export default function TimelineScreen() {
               const isCurrent = p === phase;
               const isCompleted = p < phase;
               const isFuture = p > phase;
-              const [weekStart, weekEnd] = PHASE_WEEK_RANGES[p];
+              
+              const startDay = phaseEntryDay[p];
+              const nextPhaseStartDay = phaseEntryDay[(p + 1) as PhaseId];
+              const hasStarted = startDay !== undefined;
+              
+              const startWeek = hasStarted ? Math.ceil(startDay / 7) : null;
+              
+              let durationDays = 0;
+              if (isCompleted && hasStarted && nextPhaseStartDay !== undefined) {
+                durationDays = nextPhaseStartDay - startDay;
+              } else if (isCurrent && hasStarted) {
+                durationDays = day - startDay;
+              }
 
               return (
                 <div key={p} className={`relative flex items-start gap-4 py-4 ${isCurrent ? '' : ''}`}>
@@ -75,19 +76,23 @@ export default function TimelineScreen() {
                       {PHASE_NAMES[p]}
                     </h3>
                     <div className="text-[11px] font-mono text-text-muted mt-1">
-                      Weeks {weekStart}–{weekEnd}
-                      {isCurrent && (
-                        <span className="ml-3 text-text-accent">
-                          Currently week {week}
-                        </span>
+                      {hasStarted ? (
+                        <>
+                          Started Day {startDay} (Week {startWeek})
+                          <span className="ml-3 text-text-muted/70">
+                            Duration: {durationDays} days
+                          </span>
+                        </>
+                      ) : (
+                        <span className="italic text-text-muted/50">upcoming</span>
                       )}
                     </div>
 
                     {/* Current phase detail */}
-                    {isCurrent && (
+                    {isCurrent && hasStarted && (
                       <div className="mt-3 p-3 rounded-[var(--radius-md)] bg-accent-soft/50 border border-border-accent/30">
                         <div className="text-[11px] text-text-secondary">
-                          Week {week} of {weekEnd} in this phase. {weekEnd - week} weeks remaining before expected transition.
+                          Currently week {currentWeek} (Day {day}). You have spent {durationDays} days in this phase.
                         </div>
                       </div>
                     )}
@@ -103,7 +108,7 @@ export default function TimelineScreen() {
       <Panel title="Current Position">
         <div className="flex items-center gap-4">
           <div className="text-center">
-            <div className="text-3xl font-mono font-bold text-text-accent">{week}</div>
+            <div className="text-3xl font-mono font-bold text-text-accent">{currentWeek}</div>
             <div className="text-[10px] font-mono uppercase tracking-widest text-text-muted">Week</div>
           </div>
           <div className="h-8 w-px bg-border-subtle" />

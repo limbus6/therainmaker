@@ -32,6 +32,17 @@ export interface PlayerResources {
   reputation: number;   // 0-100
 }
 
+// --- Resource Deltas (for causal attribution in UI) ---
+
+export interface ResourceDelta {
+  resource: keyof PlayerResources;
+  before: number;
+  after: number;
+  delta: number;
+  reason: string;
+  sourceEntity?: string; // buyer name, task name, etc.
+}
+
 // --- Emails / Inbox ---
 
 export type EmailCategory = 'client' | 'internal' | 'partner' | 'buyer' | 'advisor' | 'market' | 'system';
@@ -64,6 +75,18 @@ export interface Email {
   linkedEntityType?: 'buyer' | 'task' | 'deliverable' | 'risk';
   flagged?: boolean;
   escalated?: boolean;
+}
+
+// --- Resource Deltas ---
+
+/** A single attributable resource change produced by one advance. */
+export interface ResourceDelta {
+  resource: keyof PlayerResources;
+  before: number;
+  after: number;
+  delta: number;
+  reason: string;
+  sourceEntity?: string;
 }
 
 // --- Buyers ---
@@ -113,6 +136,8 @@ export interface GameTask {
   owner?: string;
   targetId?: string; // Links task to a specific lead/target in Phase 0
   progress?: number; // 0-100 accumulated execution progress
+  missionId?: string;
+  isBackgroundTask?: boolean;
 }
 
 // --- Workstreams ---
@@ -168,6 +193,15 @@ export interface Risk {
 // --- Events ---
 
 export type EventType = 'active' | 'passive' | 'cascade';
+export type TensionCategory = 'danger' | 'pressure' | 'recovery' | 'agency';
+
+export interface EventDirectorState {
+  tensionScore: number; // 0-100
+  recoveryCounter: number; // count of consecutive adverse events
+  activeThreatsCount: number;
+  lastEventDays: Record<string, number>; // templateId -> day it last fired
+  activeChains: Record<string, { chainId: string; currentStep: number; startedDay: number }>;
+}
 
 export interface GameEvent {
   id: string;
@@ -177,6 +211,9 @@ export interface GameEvent {
   title: string;
   description: string;
   resolved: boolean;
+  tensionCategory?: TensionCategory;
+  chainId?: string;
+  chainStep?: number;
 }
 
 // --- Headlines ---
@@ -261,6 +298,7 @@ export interface Lead {
   // Investigation metrics
   investigation: InvestigationStatus;
   meetingDone: boolean;
+  meetingScheduled?: boolean;
   
   // Hidden backend values to drive notes generation
   hiddenMotivations: string;

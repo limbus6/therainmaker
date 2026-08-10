@@ -13,6 +13,9 @@ import type {
 } from '../types/game';
 import type { GameStore } from '../store/gameStore';
 import { isActiveRisk } from '../utils/gameplayState';
+import { createRng } from './rng';
+import { selectEvents, createInitialEventDirectorState, type EventDirectorConfig } from './eventDirector';
+import type { EventDirectorState } from '../types/game';
 
 // ============================================
 // Week Resolution Engine
@@ -38,7 +41,9 @@ export interface WeekResult {
   /** How many calendar days this advance covered (1–7) */
   daysAdvanced: number;
   /** Internal: updated buyer array for store to apply */
-  _updatedBuyers: Buyer[];
+  _updatedBuyers?: Buyer[];
+  /** Internal: updated Event Director state for store to apply */
+  nextDirectorState?: EventDirectorState;
   /** How many buyers submitted binding offers this advance (Phase 6 deadline trigger) */
   bindingOfferDelta: number;
   directorSignal: GameplayDirectorSignal;
@@ -2460,52 +2465,51 @@ const EVENT_POOL: EventTemplate[] = [
   },
 ];
 
-function rollEvents(state: GameStore, directorSignal: GameplayDirectorSignal): {
+function rollEvents(
+  state: GameStore,
+  daysToAdvance: number,
+  directorSignal: GameplayDirectorSignal
+): {
   events: GameEvent[];
   resourceEffects: Partial<PlayerResources>;
   risks: Risk[];
   emails: Email[];
+  nextDirectorState?: EventDirectorState;
 } {
+  const rng = createRng(state.rngSeed || Date.now());
+  const directorState = state.eventDirectorState || createInitialEventDirectorState();
+
+  const directorPool: EventDirectorConfig<GameStore>[] = EVENT_POOL.map((t) => ({
+    id: t.id,
+    phases: t.phases,
+    baseProbability: t.probability,
+    condition: t.condition,
+    generate: (s) => t.generate(s),
+  }));
+
+  const maxEvents = directorSignal.tensionBand === 'danger' ? 1 : directorSignal.tensionBand === 'live' ? 3 : 2;
+  const { selectedTemplates, nextDirectorState } = selectEvents(
+    directorPool,
+    state,
+    directorState,
+    daysToAdvance,
+    rng,
+    maxEvents
+  );
+
   const result = {
     events: [] as GameEvent[],
     resourceEffects: {} as Record<string, number>,
     risks: [] as Risk[],
     emails: [] as Email[],
+    nextDirectorState,
   };
 
-  // Track fired event IDs to prevent duplicates within a session
   const firedIds = new Set(state.events.map((e) => e.id));
 
-  // Variable event density — some sessions are quiet, others chaotic
-  // Roll fresh each advance so density fluctuates naturally throughout a game
-  const densityRoll = Math.random();
-  const organicDensity = densityRoll < 0.20 ? 0.25   // 20%: very quiet stretch
-    : densityRoll < 0.50 ? 0.6                          // 30%: calm period
-    : densityRoll < 0.80 ? 1.0                          // 30%: normal activity
-    : densityRoll < 0.95 ? 1.5                          // 15%: busy period
-    : 2.2;                                               //  5%: everything happens at once
-  const densityMultiplier = organicDensity * directorSignal.eventBias;
-  const maxEvents = directorSignal.tensionBand === 'danger' ? 1 : directorSignal.tensionBand === 'live' ? 3 : 2;
+  for (const template of selectedTemplates) {
+    const generated = template.generate(state, rng);
 
-  for (const template of EVENT_POOL) {
-    // Phase check
-    if (!template.phases.includes(state.phase)) continue;
-
-    // Don't fire same event template twice in close succession
-    const recentlyFired = state.events.some(
-      (e) => e.id.includes(template.id.replace('evt-', '')) && state.week - e.week < 3
-    );
-    if (recentlyFired) continue;
-
-    // Condition check
-    if (template.condition && !template.condition(state)) continue;
-
-    // Probability roll with density scaling
-    if (Math.random() > template.probability * densityMultiplier) continue;
-
-    const generated = template.generate(state);
-
-    // Prevent duplicate event IDs
     if (firedIds.has(generated.event.id)) continue;
     firedIds.add(generated.event.id);
 
@@ -2524,8 +2528,6 @@ function rollEvents(state: GameStore, directorSignal: GameplayDirectorSignal): {
     if (generated.emailGenerated) {
       result.emails.push(generated.emailGenerated);
     }
-
-    if (result.events.length >= maxEvents) break;
   }
 
   return result;
@@ -2648,7 +2650,7 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
   const buyerResult = progressBuyers(state.buyers, tasksCompleted, state.phase, state.resources.dealMomentum);
 
   // 9. Event system
-  const eventResult = rollEvents(state, directorSignal);
+  const eventResult = rollEvents(state, daysToAdvance, directorSignal);
 
   // 9b. Resolve pending budget requests (Board decision)
   const resolvedRequests: { id: string; approved: boolean; amount: number; justification: string }[] = [];
@@ -2989,6 +2991,7 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
     daysAdvanced: daysToAdvance,
     narrativeSummary,
     _updatedBuyers: updatedBuyersAfterDeadline,
+    nextDirectorState: eventResult.nextDirectorState,
     bindingOfferDelta,
     newQualificationNotes,
   };

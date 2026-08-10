@@ -38,7 +38,12 @@ import type {
   BudgetRequest,
   Buyer,
   CompetitorThreat,
+  EventDirectorState,
+  ResourceDelta,
 } from '../types/game';
+import type { ActionCommitment } from '../types/dealBeat';
+import { createInitialEventDirectorState } from '../engine/eventDirector';
+import { buildResourceDeltas } from '../engine/resourceDeltas';
 import { resolveWeek, checkPhaseGate, unlockTasks, checkDealCollapse, calcDaysToAdvance } from '../engine/weekEngine';
 import type { WeekResult, PhaseGateResult } from '../engine/weekEngine';
 import { PHASE_BASE_BUDGETS, STAFF_PROFILES, CONTRACTOR_PROFILES, MITIGATION_ACTIONS } from '../config/phaseBudgets';
@@ -489,6 +494,36 @@ const initialLeads: Lead[] = [
     hiddenGrowth: 'high',
     hiddenRisk: 'low',
     researchNotes: []
+  },
+  {
+    id: 'lead-2',
+    companyName: 'Vektor Health Tech',
+    sector: 'MedTech / Diagnostic Software',
+    founderName: 'Dra. Clara Vance',
+    origin: 'Partner network intro',
+    description: 'AI-assisted diagnostic software for hospital radiology networks. €14M ARR, 48% YoY growth. High margin business but faces regulatory scrutiny in Germany.',
+    investmentCaseSummary: 'Rapid growth in high-demand sector. Strategic fit for healthcare conglomerates, though regulatory approvals add execution risk.',
+    investigation: { sector: 'none', company: 'none', shareholder: 'none', market: 'none' },
+    meetingDone: false,
+    hiddenMotivations: 'Wants a strategic buy-out to expand into US market.',
+    hiddenGrowth: 'high',
+    hiddenRisk: 'moderate',
+    researchNotes: []
+  },
+  {
+    id: 'lead-3',
+    companyName: 'Nexa Automation',
+    sector: 'Supply Chain Tech / Robotics',
+    founderName: 'Tomás Silva',
+    origin: 'Outreach campaign target',
+    description: 'Automated warehouse dispatch and fleet optimization platform. €19M revenue, 20% YoY growth. Solid cashflow, but heavy hardware dependency.',
+    investmentCaseSummary: 'Established enterprise client base with long-term contracts. Lower growth profile than Solara but reliable cashflow generation.',
+    investigation: { sector: 'none', company: 'none', shareholder: 'none', market: 'none' },
+    meetingDone: false,
+    hiddenMotivations: 'Co-founders have divergent views on valuation; timing is tight.',
+    hiddenGrowth: 'moderate',
+    hiddenRisk: 'high',
+    researchNotes: []
   }
 ];
 
@@ -501,6 +536,8 @@ export interface GameStore {
   // Phase 0 Mechanics
   leads: Lead[];
   activeLeadId?: string;
+  preferredBidderConfirmed: boolean;
+  phaseEntryDay: Partial<Record<number, number>>;
 
   resources: PlayerResources;
   client: Client;
@@ -546,8 +583,20 @@ export interface GameStore {
   bindingOffersReceived: number; // count of buyers who submitted binding offer before Phase 6 deadline
   unaddressedQACount: number;   // counter incremented by DD Q&A events; reduced by Q&A response task
   weekPace: 'sprint' | 'standard' | 'deliberate';
+  rngSeed: number;
+  eventDirectorState: EventDirectorState;
+  activeMissionId?: string;
+  commitments: ActionCommitment[];
+
+  // Turn playback (non-blocking live turn) — transient, not persisted
+  turnPlayback: { status: 'playing' | 'done'; fromDay: number; toDay: number } | null;
+  lastResourceDeltas: ResourceDelta[];
+  showWeekReport: boolean;
+  pendingReportAutoOpen: boolean;
 
   // GameActions
+  selectMissionFocus: (missionId: string) => void;
+  commitToAction: (taskId: string) => void;
   advanceWeek: () => void;
   advancePhase: () => Promise<void>;
   debugJumpToPhase: (targetPhase: PhaseId) => Promise<void>;
@@ -566,6 +615,8 @@ export interface GameStore {
   saveGame: () => void;
   completeGame: () => void;
   dismissWeekSummary: () => void;
+  completeTurnPlayback: () => void;
+  openWeekReport: () => void;
   // Budget
   requestBudget: (amount: number, justification: string) => void;
   resolveBudgetRequest: (id: string, approved: boolean, approvedAmount?: number) => void;
@@ -591,7 +642,7 @@ export interface GameStore {
   // Deadline
   setPhaseDeadline: (weeks: number) => void;
   // Final Offers
-  selectPreferredBidder: (buyerId: string) => void;
+  selectPreferredBidder: (buyerId: string, confirmed?: boolean) => void;
   // Dataroom
   setDataroomAccess: (categoryId: string, level: DataroomAccessLevel) => void;
   // SPA
@@ -668,6 +719,7 @@ function syncLeadsFromTasks(leads: Lead[], tasks: GameTask[]): Lead[] {
     const nextInvestigation: Lead['investigation'] = { ...lead.investigation };
 
     (Object.keys(PHASE_ZERO_DIMENSION_TASK_SUFFIX) as LeadInvestigationDimension[]).forEach((dimension) => {
+      if (lead.investigation[dimension] === 'completed') return;
       const taskId = `task-investigate-${lead.id}${PHASE_ZERO_DIMENSION_TASK_SUFFIX[dimension]}`;
       const task = tasks.find((t) => t.id === taskId);
       if (!task) return;
@@ -744,6 +796,39 @@ function personalizeNarrativeValue<T>(value: T, preferredBuyerName: string): T {
 function personalizePhaseContent(content: PhaseContent, preferredBuyerName?: string): PhaseContent {
   if (!preferredBuyerName || preferredBuyerName === DEFAULT_PREFERRED_BUYER) return content;
   return personalizeNarrativeValue(content, preferredBuyerName);
+}
+
+function replaceClientText(text: string, clientName?: string, companyName?: string): string {
+  if (!companyName || companyName === 'Solara Systems') return text;
+  const shortCompany = companyName.split(' ')[0];
+  const firstName = clientName ? clientName.split(' ')[0] : 'Ricardo';
+
+  return text
+    .replaceAll('Solara Systems', companyName)
+    .replaceAll('Solara', shortCompany)
+    .replaceAll('Ricardo Mendes', clientName || 'Ricardo Mendes')
+    .replaceAll('Ricardo', firstName);
+}
+
+function personalizeClientValue<T>(value: T, clientName?: string, companyName?: string): T {
+  if (!companyName || companyName === 'Solara Systems') return value;
+  if (typeof value === 'string') {
+    return replaceClientText(value, clientName, companyName) as T;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => personalizeClientValue(item, clientName, companyName)) as T;
+  }
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [key, personalizeClientValue(item, clientName, companyName)])
+    ) as T;
+  }
+  return value;
+}
+
+function personalizeClientContent(content: PhaseContent, clientName?: string, companyName?: string): PhaseContent {
+  if (!companyName || companyName === 'Solara Systems') return content;
+  return personalizeClientValue(content, clientName, companyName);
 }
 
 // ============================================
@@ -1101,11 +1186,47 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
   dataroomCategories: createInitialDataroomCategories(),
   phaseDeadline: null,
   pitchDocumentReady: false,
+  preferredBidderConfirmed: false,
+  phaseEntryDay: { 0: 1 },
   bindingOffersReceived: 0,
   unaddressedQACount: 0,
   weekPace: 'standard' as const,
+  rngSeed: Date.now(),
+  eventDirectorState: createInitialEventDirectorState(),
+  activeMissionId: undefined,
+  commitments: [],
+  turnPlayback: null,
+  lastResourceDeltas: [],
+  showWeekReport: false,
+  pendingReportAutoOpen: false,
 
   // Actions
+  selectMissionFocus: (missionId: string) => set({ activeMissionId: missionId }),
+
+  commitToAction: (taskId: string) => {
+    const state = get();
+    const task = state.tasks.find((t) => t.id === taskId);
+    if (!task) return;
+
+    if (task.status !== 'in_progress' && task.status !== 'completed') {
+      state.startTask(taskId);
+    }
+
+    const newCommitment: ActionCommitment = {
+      id: `commit-${taskId}-${Date.now()}`,
+      actionId: taskId,
+      actionName: task.name,
+      startDay: state.day,
+      expectedFinishDay: state.day + Math.max(1, Math.ceil(task.work / 3)),
+      progress: task.progress ?? 0,
+      workloadDays: Math.max(1, Math.ceil(task.work / 3)),
+      linkedTaskId: taskId,
+    };
+
+    set((s) => ({
+      commitments: [...s.commitments.filter((c) => c.linkedTaskId !== taskId), newCommitment],
+    }));
+  },
   advanceWeek: () => {
     const state = get();
 
@@ -1148,7 +1269,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     const updatedWorkstreams = updatePhaseWorkstreamProgress(state.workstreams, unlockedTasks, state.phase);
 
     // Apply buyer progression from engine
-    const updatedBuyers = result._updatedBuyers.length > 0 ? result._updatedBuyers : state.buyers;
+    const updatedBuyers = (result._updatedBuyers && result._updatedBuyers.length > 0) ? result._updatedBuyers : state.buyers;
 
     const updatedBindingOffersReceived = state.bindingOffersReceived + (result.bindingOfferDelta ?? 0);
 
@@ -1182,6 +1303,29 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     const newQualNotes = [...state.qualificationNotes];
     const newDay = state.day + daysToAdvance;
     const newWeekNum = Math.ceil(newDay / 7);
+
+    // Process scheduled meetings
+    const meetingCost = 5; // k€
+    let totalMeetingCost = 0;
+    const resolvedLeads = state.leads.map((l) => {
+      if (l.meetingScheduled && !l.meetingDone) {
+        totalMeetingCost += meetingCost;
+        newQualNotes.push({
+          id: `qn-${Date.now()}-${l.id}-intro`,
+          week: newWeekNum,
+          source: 'meeting',
+          content: `Introductory meeting with ${l.founderName} (${l.companyName}). Client is receptive to our advisory approach.`,
+          sentiment: 'positive',
+        });
+        return { ...l, meetingScheduled: false, meetingDone: true };
+      }
+      return l;
+    });
+
+    if (totalMeetingCost > 0) {
+      newResources.budget = Math.max(0, newResources.budget - totalMeetingCost);
+    }
+
     if (state.phase === 0) {
       // General macro tasks
       if (completedTaskIds.has('task-gen-02') && !newQualNotes.some((n) => n.content.includes('Market momentum'))) {
@@ -1278,13 +1422,24 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
 
     const normalizedResources = normalizeResources(newResources);
 
+    // Attributable resource deltas for the turn tape and KPI chips
+    const resourceDeltas = buildResourceDeltas(state.resources, normalizedResources, result);
+
+    // The Situation Report only auto-opens on major beats; routine turns play
+    // out on the dashboard tape without blocking input.
+    const wasGateReady = state.phaseGate?.canTransition ?? false;
+    const autoOpenReport =
+      (gate.canTransition && !wasGateReady) ||
+      result.criticalOutcomes.length > 0 ||
+      result.directorSignal.tensionBand === 'danger';
+
     set({
       day: newDay,
       week: newWeekNum,
       totalDays: state.totalDays + daysToAdvance,
       resources: normalizedResources,
       tasks: unlockedTasks,
-      leads: syncLeadsFromTasks(state.leads, unlockedTasks),
+      leads: syncLeadsFromTasks(resolvedLeads, unlockedTasks),
       workstreams: updatedWorkstreams,
       deliverables: syncDeliverables(state.deliverables, unlockedTasks),
       team: syncTeamLoad(state.team, unlockedTasks, state.phase),
@@ -1311,9 +1466,14 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       }),
       weekSummary: result.narrativeSummary,
       weekHistory: [...state.weekHistory, { day: newDay, week: newWeekNum, daysAdvanced: daysToAdvance, summary: result.narrativeSummary, phase: state.phase }],
+      eventDirectorState: result.nextDirectorState || state.eventDirectorState,
       isWeekInProgress: true,
       savedAt: new Date().toISOString(),
       lastWeekResult: result,
+      lastResourceDeltas: resourceDeltas,
+      turnPlayback: { status: 'playing' as const, fromDay: state.day, toDay: newDay },
+      showWeekReport: false,
+      pendingReportAutoOpen: autoOpenReport && !collapse.collapsed && !isGameComplete,
       phaseGate: gate,
       pitchDocumentReady,
       bindingOffersReceived: updatedBindingOffersReceived,
@@ -1348,23 +1508,6 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     const newWorkstreams = state.workstreams;
     let newBuyers = state.buyers;
     let newClient = state.client;
-    if (nextPhase >= 1) {
-      const rawPhaseContent = await loadPhaseContent(nextPhase as Exclude<PhaseId, 0>);
-      const preferredBuyerName = state.preferredBidderId
-        ? state.buyers.find((buyer) => buyer.id === state.preferredBidderId)?.name
-        : undefined;
-      const phaseContent = nextPhase >= 8
-        ? personalizePhaseContent(rawPhaseContent, preferredBuyerName)
-        : rawPhaseContent;
-      newTasks = [...state.tasks, ...phaseContent.tasks];
-      newEmails = [...state.emails, ...stampEmails(phaseContent.emails)];
-      newDeliverables = [...state.deliverables, ...phaseContent.deliverables];
-      newRisks = [...state.risks, ...phaseContent.risks];
-      newHeadlines = [...state.headlines, ...phaseContent.headlines];
-      if (phaseContent.buyers) {
-        newBuyers = [...state.buyers, ...phaseContent.buyers];
-      }
-    }
     if (nextPhase === 1) {
       if (state.boardSubmission?.leadId) {
         const chosenLead = state.leads.find(l => l.id === state.boardSubmission?.leadId);
@@ -1377,6 +1520,33 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
             description: chosenLead.description,
           };
         }
+      }
+    }
+
+    if (nextPhase >= 1) {
+      const rawPhaseContent = await loadPhaseContent(nextPhase as Exclude<PhaseId, 0>);
+      const preferredBuyerName = state.preferredBidderId
+        ? state.buyers.find((buyer) => buyer.id === state.preferredBidderId)?.name
+        : undefined;
+
+      const clientPersonalizedContent = personalizeClientContent(rawPhaseContent, newClient.name, newClient.companyName);
+      const phaseContent = nextPhase >= 8
+        ? personalizePhaseContent(clientPersonalizedContent, preferredBuyerName)
+        : clientPersonalizedContent;
+
+      newTasks = [...state.tasks, ...phaseContent.tasks];
+
+      // Mark obsolete Phase 0 emails as read when advancing to Phase 1+
+      const cleanedExistingEmails = state.emails.map((e) =>
+        e.phase === 0 ? { ...e, state: 'read' as const } : e
+      );
+
+      newEmails = [...cleanedExistingEmails, ...stampEmails(phaseContent.emails)];
+      newDeliverables = [...state.deliverables, ...phaseContent.deliverables];
+      newRisks = [...state.risks, ...phaseContent.risks];
+      newHeadlines = [...state.headlines, ...phaseContent.headlines];
+      if (phaseContent.buyers) {
+        newBuyers = [...state.buyers, ...phaseContent.buyers];
       }
     }
     const phaseSpent = Math.max(0, state.resources.budgetMax - state.resources.budget);
@@ -1393,6 +1563,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     const phaseRisks = retireObsoleteRisks(newRisks, nextPhase, nextBindingOffersReceived);
     set({
       phase: nextPhase,
+      phaseEntryDay: { ...state.phaseEntryDay, [nextPhase]: state.day },
       tasks: unlockedPhaseTasks,
       emails: newEmails,
       deliverables: newDeliverables,
@@ -1433,12 +1604,21 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     let accumulatedHeadlines: Headline[] = [];
     let currentBuyers: Buyer[] = [];
 
+    let accumulatedEmails: Email[] = targetPhase === 0 ? [...initialEmails] : [];
+
     for (let p = 1; p <= targetPhase; p++) {
       const content = await loadPhaseContent(p as Exclude<PhaseId, 0>);
       accumulatedTasks = [...accumulatedTasks, ...content.tasks];
       accumulatedDeliverables = [...accumulatedDeliverables, ...content.deliverables];
       accumulatedRisks = [...accumulatedRisks, ...content.risks];
       accumulatedHeadlines = [...accumulatedHeadlines, ...content.headlines];
+      if (content.emails) {
+        const stamped = content.emails.map((e) => ({
+          ...e,
+          state: p < targetPhase ? ('read' as const) : e.state,
+        }));
+        accumulatedEmails = [...accumulatedEmails, ...stamped];
+      }
       if (content.buyers) {
         currentBuyers = [...currentBuyers, ...content.buyers];
       }
@@ -1466,8 +1646,14 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     const risks = retireObsoleteRisks(accumulatedRisks, targetPhase, bindingOffersReceived);
     const workstreams = updatePhaseWorkstreamProgress(initialWorkstreams, unlockedTasks, targetPhase);
 
+    const newPhaseEntryDay: Partial<Record<number, number>> = {};
+    for (let p = 0; p <= targetPhase; p++) {
+      newPhaseEntryDay[p] = p === 0 ? 1 : p * 20;
+    }
+
     set({
       phase: targetPhase,
+      phaseEntryDay: newPhaseEntryDay,
       week,
       day,
       totalDays: day,
@@ -1480,7 +1666,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       workstreams,
       buyers,
       phaseBudget: { phaseBase: baseBudget, carryover: 0 },
-      emails: [], // clear inbox for a clean jump
+      emails: accumulatedEmails,
       events: [],
       qualificationNotes: targetPhase > 0 ? [{
         id: 'qn-debug-1',
@@ -1667,6 +1853,10 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       events: [],
       weekSummary: null,
       lastWeekResult: null,
+      turnPlayback: null,
+      lastResourceDeltas: [],
+      showWeekReport: false,
+      pendingReportAutoOpen: false,
       phaseGate: checkPhaseGate({
         ...state,
         phase: checkpoint.phase,
@@ -1970,7 +2160,16 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
   completeGame: () => set({ gameComplete: true }),
 
 
-  dismissWeekSummary: () => set({ lastWeekResult: null, isWeekInProgress: false }),
+  dismissWeekSummary: () => set({ showWeekReport: false, isWeekInProgress: false }),
+
+  completeTurnPlayback: () => set((s) => ({
+    turnPlayback: s.turnPlayback ? { ...s.turnPlayback, status: 'done' as const } : null,
+    isWeekInProgress: false,
+    showWeekReport: s.pendingReportAutoOpen ? true : s.showWeekReport,
+    pendingReportAutoOpen: false,
+  })),
+
+  openWeekReport: () => set({ showWeekReport: true }),
 
   // ─── Phase Deadline ──────────────────────────────────────────────────────
   setPhaseDeadline: (weeks) => set((state) => ({
@@ -2064,33 +2263,17 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
   }),
 
   scheduleMeeting: (leadId) => set((state) => {
-    const cost = 5; // k€
-    if (state.resources.budget < cost) return {};
-
     const leadIndex = state.leads.findIndex((l) => l.id === leadId);
     if (leadIndex === -1) return {};
 
     const updatedLeads = [...state.leads];
     updatedLeads[leadIndex] = {
       ...updatedLeads[leadIndex],
-      meetingDone: true
-    };
-
-    const newNote: QualificationNote = {
-      id: `qn-${Date.now()}-intro`,
-      week: state.week,
-      source: 'meeting',
-      content: `Introductory meeting with ${updatedLeads[leadIndex].founderName} (${updatedLeads[leadIndex].companyName}). Client is receptive to our advisory approach.`,
-      sentiment: 'positive',
+      meetingScheduled: true
     };
 
     return {
-      resources: normalizeResources({
-        ...state.resources,
-        budget: state.resources.budget - cost
-      }),
       leads: updatedLeads,
-      qualificationNotes: [...state.qualificationNotes, newNote],
       toasts: [
         ...state.toasts,
         {
@@ -2325,16 +2508,22 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
 
   // ─── Competitor Mitigation ───────────────────────────────────────────────
   // Final offer selection
-  selectPreferredBidder: (buyerId) => set((state) => ({
-    preferredBidderId: buyerId,
-    buyers: state.buyers.map((b) =>
-      b.id === buyerId
-        ? { ...b, status: 'preferred' as const }
-        : b.status === 'preferred'
-          ? { ...b, status: 'bidding' as const }
-          : b
-    ),
-  })),
+  selectPreferredBidder: (buyerId, confirmed = false) => set((state) => {
+    if (state.preferredBidderConfirmed) return {};
+    if (state.preferredBidderId && !confirmed) return {};
+
+    return {
+      preferredBidderId: buyerId,
+      preferredBidderConfirmed: confirmed,
+      buyers: state.buyers.map((b) =>
+        b.id === buyerId
+          ? { ...b, status: 'preferred' as const }
+          : b.status === 'preferred'
+            ? { ...b, status: 'bidding' as const }
+            : b
+      ),
+    };
+  }),
 
   // SPA actions
   initSPANegotiation: () => set((state) => {
@@ -2525,8 +2714,11 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
   setWeekPace: (pace) => set({ weekPace: pace }),
 }), {
   name: 'ma-rainmaker-save',
-  version: 4,
+  version: 5,
   migrate: (persistedState: unknown, fromVersion: number) => {
+    if (fromVersion < 5) {
+      return undefined as unknown; // clear state and use initial state for old versions
+    }
     const s = persistedState as Record<string, unknown>;
     if (fromVersion < 2) {
       // Add day/totalDays fields introduced in v2 (day-based time system)
@@ -2590,10 +2782,25 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     }
     return s;
   },
+  merge: (persistedState: unknown, currentState: GameStore) => {
+    const merged = {
+      ...currentState,
+      ...(persistedState as Partial<GameStore>),
+    };
+    if (merged.day !== undefined) {
+      merged.week = Math.ceil(merged.day / 7);
+    }
+    return merged;
+  },
   partialize: (state) => {
     // Exclude transient UI state from persistence
-    const { lastWeekResult, phaseGate, isWeekInProgress, toasts, ...persisted } = state;
-    void lastWeekResult; void phaseGate; void isWeekInProgress; void toasts;
+    const {
+      lastWeekResult, phaseGate, isWeekInProgress, toasts, week,
+      turnPlayback, lastResourceDeltas, showWeekReport, pendingReportAutoOpen,
+      ...persisted
+    } = state;
+    void lastWeekResult; void phaseGate; void isWeekInProgress; void toasts; void week;
+    void turnPlayback; void lastResourceDeltas; void showWeekReport; void pendingReportAutoOpen;
     return persisted;
   },
 }));

@@ -1,7 +1,8 @@
+import { useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import Panel from '../components/ui/Panel';
 import StatusChip from '../components/ui/StatusChip';
-import { Trophy, CheckCircle2, AlertTriangle, Star, TrendingUp } from 'lucide-react';
+import { Trophy, CheckCircle2, AlertTriangle, Star, TrendingUp, Lock } from 'lucide-react';
 import type { FinalOffer } from '../types/game';
 
 const STRUCTURE_LABELS: Record<FinalOffer['structure'], string> = {
@@ -32,12 +33,31 @@ export default function FinalOffersScreen() {
   const phase = useGameStore((s) => s.phase);
   const finalOffers = useGameStore((s) => s.finalOffers);
   const preferredBidderId = useGameStore((s) => s.preferredBidderId);
+  const preferredBidderConfirmed = useGameStore((s) => s.preferredBidderConfirmed);
   const buyers = useGameStore((s) => s.buyers);
   const selectPreferredBidder = useGameStore((s) => s.selectPreferredBidder);
+
+  const [confirmModalBuyerId, setConfirmModalBuyerId] = useState<string | null>(null);
 
   const getBuyer = (buyerId: string) => buyers.find((b) => b.id === buyerId);
   const preferredOffer = finalOffers.find((o) => o.buyerId === preferredBidderId);
   const preferredBuyer = preferredBidderId ? getBuyer(preferredBidderId) : null;
+
+  const handleSelectBidder = (buyerId: string) => {
+    if (preferredBidderConfirmed) return;
+    setConfirmModalBuyerId(buyerId);
+  };
+
+  const handleConfirm = () => {
+    if (confirmModalBuyerId) {
+      selectPreferredBidder(confirmModalBuyerId, true);
+      setConfirmModalBuyerId(null);
+    }
+  };
+
+  const handleCancel = () => {
+    setConfirmModalBuyerId(null);
+  };
 
   if (phase < 7) {
     return (
@@ -64,7 +84,7 @@ export default function FinalOffersScreen() {
   }
 
   return (
-    <div className="space-y-6 max-w-[1200px]">
+    <div className="space-y-6 max-w-[1200px] relative">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
@@ -75,9 +95,9 @@ export default function FinalOffersScreen() {
         </div>
         {preferredBuyer && (
           <div className="flex items-center gap-2 px-4 py-2 bg-green-500/10 border border-green-500/30 rounded-lg">
-            <CheckCircle2 size={14} className="text-green-400" />
+            {preferredBidderConfirmed ? <Lock size={14} className="text-green-400" /> : <CheckCircle2 size={14} className="text-green-400" />}
             <span className="text-[12px] text-green-400 font-medium">
-              Preferred: {preferredBuyer.name}
+              Preferred: {preferredBuyer.name} {preferredBidderConfirmed && '(Locked)'}
             </span>
           </div>
         )}
@@ -176,14 +196,17 @@ export default function FinalOffersScreen() {
                 {/* Right: Action */}
                 <div className="lg:w-40 shrink-0 flex lg:flex-col items-center lg:items-end gap-2">
                   <button
-                    onClick={() => selectPreferredBidder(offer.buyerId)}
+                    onClick={() => handleSelectBidder(offer.buyerId)}
+                    disabled={preferredBidderConfirmed}
                     className={`px-4 py-2 rounded-[var(--radius-md)] text-[12px] font-semibold transition-all duration-150 ${
                       isPreferred
                         ? 'bg-green-500/20 border border-green-500/40 text-green-400 cursor-default'
+                        : preferredBidderConfirmed
+                        ? 'bg-surface-elevated border border-border-subtle text-text-muted cursor-not-allowed opacity-50'
                         : 'bg-accent-soft border border-accent-primary/40 text-text-accent hover:bg-accent-primary/20 active:scale-95'
                     }`}
                   >
-                    {isPreferred ? '✓ Preferred' : 'Select as Preferred'}
+                    {isPreferred ? '✓ Preferred' : preferredBidderConfirmed ? 'Locked' : 'Select as Preferred'}
                   </button>
                   <p className="text-[10px] text-text-muted text-right hidden lg:block">{buyer.chemistryWithSeller}/100 chemistry</p>
                 </div>
@@ -202,6 +225,32 @@ export default function FinalOffersScreen() {
       <div className="text-[11px] text-text-muted/60 text-center pb-4">
         Recommending a preferred bidder sets them to exclusivity. The choice is final — advise Ricardo carefully.
       </div>
+
+      {/* Confirmation Modal */}
+      {confirmModalBuyerId && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+          <Panel variant="elevated" className="max-w-md w-full border-border-accent/30 shadow-[var(--shadow-glow-strong)]">
+            <h3 className="text-lg font-semibold text-text-primary mb-2">Confirm Preferred Bidder</h3>
+            <p className="text-[13px] text-text-secondary mb-6">
+              Are you sure you want to select {getBuyer(confirmModalBuyerId)?.name} as the preferred bidder? This decision is final.
+            </p>
+            <div className="flex items-center justify-end gap-3">
+              <button
+                onClick={handleCancel}
+                className="px-4 py-2 rounded-[var(--radius-md)] text-[13px] font-medium text-text-secondary hover:bg-surface-elevated border border-border-subtle transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirm}
+                className="px-4 py-2 rounded-[var(--radius-md)] text-[13px] font-medium bg-accent-primary text-black hover:bg-accent-primary/90 transition-colors"
+              >
+                Confirm
+              </button>
+            </div>
+          </Panel>
+        </div>
+      )}
     </div>
   );
 }

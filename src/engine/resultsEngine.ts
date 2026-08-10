@@ -59,10 +59,48 @@ export interface ResultsBoard {
 // --- Financial Score ---
 function calculateFinancialScore(state: GameStore): ResultsBoard['financial'] & { score: number } {
   const dealClosed = state.phase === 10;
-  // Base closing value derived from deal momentum and preparation quality
   const baseValue = 120; // €M baseline for Solara Systems
-  const momentumMod = state.resources.dealMomentum / 100;
-  const closingValue = dealClosed ? Math.round(baseValue * (0.7 + momentumMod * 0.5)) : 0;
+
+  let closingValue = 0;
+  let score = 0;
+  
+  const selectedOffer = state.finalOffers?.find((o) => o.buyerId === state.preferredBidderId);
+  const preferredBuyer = state.buyers?.find((b) => b.id === state.preferredBidderId);
+
+  if (dealClosed) {
+    if (selectedOffer && preferredBuyer) {
+      const executionMultiplier = preferredBuyer.executionCredibility / 100;
+      const conditionDiscount = 
+        selectedOffer.conditionality === 'clean' ? 1.0 :
+        selectedOffer.conditionality === 'light_conditions' ? 0.95 :
+        selectedOffer.conditionality === 'heavy_conditions' ? 0.85 : 1.0;
+        
+      closingValue = Math.round(selectedOffer.totalEV * executionMultiplier * conditionDiscount);
+      
+      const cashCertainty = selectedOffer.totalEV > 0 ? selectedOffer.cashEV / selectedOffer.totalEV : 0;
+      const structureScore = 
+        selectedOffer.structure === 'full_cash' ? 1.0 :
+        selectedOffer.structure === 'mixed' ? 0.75 : 0.5;
+      const combinedCashScore = (cashCertainty + structureScore) / 2;
+
+      const conditionScore = 
+        selectedOffer.conditionality === 'clean' ? 1.0 :
+        selectedOffer.conditionality === 'light_conditions' ? 0.75 :
+        0.5;
+        
+      const benchmarkMultiple = 10;
+      const multipleScore = Math.min(1.0, selectedOffer.impliedMultiple / benchmarkMultiple);
+      const executionScore = preferredBuyer.executionCredibility / 100;
+      
+      score += 25 * combinedCashScore;
+      score += 25 * conditionScore;
+      score += 25 * multipleScore;
+      score += 25 * executionScore;
+    } else {
+      const momentumMod = state.resources.dealMomentum / 100;
+      closingValue = Math.round(baseValue * (0.7 + momentumMod * 0.5));
+    }
+  }
 
   const feePercent = state.agreedFeeTerms
     ? state.agreedFeeTerms.successFeePercent / 100
@@ -79,20 +117,15 @@ function calculateFinancialScore(state: GameStore): ResultsBoard['financial'] & 
   const budgetEfficiency = Math.max(0, 1 - totalSpent / TOTAL_GAME_BUDGET);
   const budgetVariance = Math.round(TOTAL_GAME_BUDGET - totalSpent); // k€ unspent
 
-  // Score: 0-100
-  // 20 pts: deal closed base
-  // 20 pts: margin quality (net profit vs success fee)
-  // 25 pts: value creation (closing value vs baseline)
-  // 20 pts: budget efficiency (% of total game budget unspent)
-  // 15 pts: fee negotiated
-  let score = 0;
-  if (dealClosed) {
+  if (dealClosed && !(selectedOffer && preferredBuyer)) {
+    // Score: 0-100 fallback logic
     score += 20; // base for closing
     score += Math.min(20, Math.max(0, projectMargin) * 22);
     score += Math.min(25, (closingValue / baseValue) * 20);
     score += Math.min(20, budgetEfficiency * 25);
     score += Math.min(15, successFee > 0 ? 15 : 0);
   }
+  
   score = Math.round(Math.max(0, Math.min(100, score)));
 
   return {

@@ -1,4 +1,5 @@
-import type { PhaseId, Email, GameTask, Workstream, Deliverable, Risk, Headline, Client, Lead, PlayerResources, TeamMember, StaffProfile, ContractorProfile, MitigationActionId, QualificationNote, BoardSubmission, TempCapacityAllocation, FeeNegotiation, FeeTerms, NegotiationRound, Toast, FinalOffer, DataroomCategory, DataroomAccessLevel, SPANegotiation, SPARound, SPATerms, GameEvent, BudgetRequest, Buyer, CompetitorThreat } from '../types/game';
+import type { PhaseId, Email, GameTask, Workstream, Deliverable, Risk, Headline, Client, Lead, PlayerResources, TeamMember, StaffProfile, ContractorProfile, MitigationActionId, QualificationNote, BoardSubmission, TempCapacityAllocation, FeeNegotiation, FeeTerms, NegotiationRound, Toast, FinalOffer, DataroomCategory, DataroomAccessLevel, SPANegotiation, SPARound, SPATerms, GameEvent, BudgetRequest, Buyer, CompetitorThreat, EventDirectorState, ResourceDelta } from '../types/game';
+import type { ActionCommitment } from '../types/dealBeat';
 import type { WeekResult, PhaseGateResult } from '../engine/weekEngine';
 export declare const INVESTIGATION_COST_K = 0;
 export declare const INVESTIGATION_CAPACITY_COST = 4;
@@ -9,6 +10,8 @@ export interface GameStore {
     week: number;
     leads: Lead[];
     activeLeadId?: string;
+    preferredBidderConfirmed: boolean;
+    phaseEntryDay: Partial<Record<number, number>>;
     resources: PlayerResources;
     client: Client;
     team: TeamMember[];
@@ -61,6 +64,20 @@ export interface GameStore {
     bindingOffersReceived: number;
     unaddressedQACount: number;
     weekPace: 'sprint' | 'standard' | 'deliberate';
+    rngSeed: number;
+    eventDirectorState: EventDirectorState;
+    activeMissionId?: string;
+    commitments: ActionCommitment[];
+    turnPlayback: {
+        status: 'playing' | 'done';
+        fromDay: number;
+        toDay: number;
+    } | null;
+    lastResourceDeltas: ResourceDelta[];
+    showWeekReport: boolean;
+    pendingReportAutoOpen: boolean;
+    selectMissionFocus: (missionId: string) => void;
+    commitToAction: (taskId: string) => void;
     advanceWeek: () => void;
     advancePhase: () => Promise<void>;
     debugJumpToPhase: (targetPhase: PhaseId) => Promise<void>;
@@ -79,6 +96,8 @@ export interface GameStore {
     saveGame: () => void;
     completeGame: () => void;
     dismissWeekSummary: () => void;
+    completeTurnPlayback: () => void;
+    openWeekReport: () => void;
     requestBudget: (amount: number, justification: string) => void;
     resolveBudgetRequest: (id: string, approved: boolean, approvedAmount?: number) => void;
     investigateDimension: (leadId: string, dimension: keyof NonNullable<Lead['investigation']>) => void;
@@ -96,7 +115,7 @@ export interface GameStore {
     addToast: (message: string, type: Toast['type']) => void;
     removeToast: (id: string) => void;
     setPhaseDeadline: (weeks: number) => void;
-    selectPreferredBidder: (buyerId: string) => void;
+    selectPreferredBidder: (buyerId: string, confirmed?: boolean) => void;
     setDataroomAccess: (categoryId: string, level: DataroomAccessLevel) => void;
     initSPANegotiation: () => void;
     submitSPARound: (terms: Pick<SPARound, 'playerWarrantyScope' | 'playerWarrantyCap' | 'playerEscrowPercent' | 'playerSpecificIndemnity'>) => void;
@@ -107,13 +126,13 @@ export declare const useGameStore: import("zustand").UseBoundStore<Omit<import("
     setState(partial: GameStore | Partial<GameStore> | ((state: GameStore) => GameStore | Partial<GameStore>), replace?: false | undefined): unknown;
     setState(state: GameStore | ((state: GameStore) => GameStore), replace: true): unknown;
     persist: {
-        setOptions: (options: Partial<import("zustand/middleware").PersistOptions<GameStore, Record<string, unknown>, unknown>>) => void;
+        setOptions: (options: Partial<import("zustand/middleware").PersistOptions<GameStore, unknown, unknown>>) => void;
         clearStorage: () => void;
         rehydrate: () => Promise<void> | void;
         hasHydrated: () => boolean;
         onHydrate: (fn: (state: GameStore) => void) => () => void;
         onFinishHydration: (fn: (state: GameStore) => void) => () => void;
-        getOptions: () => Partial<import("zustand/middleware").PersistOptions<GameStore, Record<string, unknown>, unknown>>;
+        getOptions: () => Partial<import("zustand/middleware").PersistOptions<GameStore, unknown, unknown>>;
     };
 }>;
 //# sourceMappingURL=gameStore.d.ts.map

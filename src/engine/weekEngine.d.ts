@@ -1,5 +1,6 @@
 import type { GameTask, PlayerResources, Risk, Email, Headline, GameEvent, PhaseId, Buyer, QualificationNote } from '../types/game';
 import type { GameStore } from '../store/gameStore';
+import type { EventDirectorState } from '../types/game';
 export interface WeekResult {
     tasksCompleted: GameTask[];
     tasksProgressed: GameTask[];
@@ -37,7 +38,9 @@ export interface WeekResult {
     /** How many calendar days this advance covered (1–7) */
     daysAdvanced: number;
     /** Internal: updated buyer array for store to apply */
-    _updatedBuyers: Buyer[];
+    _updatedBuyers?: Buyer[];
+    /** Internal: updated Event Director state for store to apply */
+    nextDirectorState?: EventDirectorState;
     /** How many buyers submitted binding offers this advance (Phase 6 deadline trigger) */
     bindingOfferDelta: number;
     directorSignal: GameplayDirectorSignal;

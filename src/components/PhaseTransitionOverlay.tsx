@@ -38,18 +38,21 @@ export default function PhaseTransitionOverlay({ fromPhase, toPhase, onComplete 
   const [stage, setStage] = useState<'fade-in' | 'hold' | 'fade-out'>('fade-in');
 
   useEffect(() => {
-    const t1 = setTimeout(() => setStage('hold'), 600);
-    const t2 = setTimeout(() => setStage('fade-out'), 3000);
-    const t3 = setTimeout(onComplete, 3600);
+    const t1 = setTimeout(() => setStage('hold'), 200);
+    const t2 = setTimeout(() => setStage('fade-out'), 1200);
+    const t3 = setTimeout(onComplete, 1600);
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, [onComplete]);
 
   return (
-    <div className={`fixed inset-0 z-[60] flex items-center justify-center bg-bg-primary transition-opacity duration-600 ${
-      stage === 'fade-in' ? 'opacity-0' : stage === 'hold' ? 'opacity-100' : 'opacity-0'
-    }`}>
+    <div
+      onClick={onComplete}
+      className={`fixed inset-0 z-[60] cursor-pointer select-none flex items-center justify-center bg-bg-primary transition-opacity duration-300 ${
+        stage === 'fade-in' ? 'opacity-0' : stage === 'hold' ? 'opacity-100' : 'opacity-0'
+      }`}
+    >
       {/* Glow effect */}
-      <div className="absolute inset-0 overflow-hidden">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-accent-primary/10 blur-[120px]" />
       </div>
 
@@ -82,8 +85,11 @@ export default function PhaseTransitionOverlay({ fromPhase, toPhase, onComplete 
           </p>
         )}
 
-        {/* Divider */}
-        <div className="w-24 h-px bg-accent-primary/40 mx-auto" />
+        {/* Divider & Skip hint */}
+        <div className="pt-2">
+          <div className="w-24 h-px bg-accent-primary/40 mx-auto mb-3" />
+          <p className="text-[10px] font-mono text-text-muted uppercase tracking-widest animate-pulse">Click anywhere to skip</p>
+        </div>
       </div>
     </div>
   );

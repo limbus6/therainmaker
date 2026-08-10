@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { PHASE_NAMES } from '../types/game';
+import type { GameTask } from '../types/game';
+import type { ActionCommitment } from '../types/dealBeat';
 import { BUDGET_LOW_THRESHOLD } from '../config/phaseBudgets';
 import { Link, useNavigate } from 'react-router-dom';
 import Panel from '../components/ui/Panel';
@@ -16,9 +18,14 @@ import FeeNegotiationModal from '../components/FeeNegotiationModal';
 import SPANegotiationModal from '../components/SPANegotiationModal';
 import PhaseZeroDashboard from '../components/PhaseZeroDashboard';
 import PhaseDeadlineModal from '../components/PhaseDeadlineModal';
+import TurnTape from '../components/TurnTape';
+import DeskDecisionCard from '../components/DeskDecisionCard';
 import { getActiveRisks, getDashboardDeliverables, getMomentumLabel, applyPhaseWorkstreams } from '../utils/gameplayState';
 import { checkPhaseGate } from '../engine/weekEngine';
-import { ArrowRight, Mail, AlertTriangle, ChevronRight, Wallet, Users, Presentation, FileText, Handshake, Trophy, ScrollText, Clock } from 'lucide-react';
+import { getMissionsForPhase } from '../content/missions';
+import { getMissionProgress, getActiveMission } from '../utils/missionProgress';
+import { pulseGlow, staggerReveal } from '../utils/motion';
+import { ArrowRight, Mail, AlertTriangle, ChevronRight, Wallet, Users, Presentation, FileText, Handshake, Trophy, ScrollText, Clock, Target } from 'lucide-react';
 
 function kpiColor(value: number, thresholds: [number, number] = [30, 60]) {
   if (value >= thresholds[1]) return 'success' as const;
@@ -27,6 +34,72 @@ function kpiColor(value: number, thresholds: [number, number] = [30, 60]) {
 }
 
 type ModalId = 'budget' | 'board' | 'staffing' | 'pitch' | 'fee' | 'spa' | null;
+
+function MissionActionCard({ task, commitment, onCommit }: {
+  task: GameTask;
+  commitment?: ActionCommitment;
+  onCommit: (taskId: string) => void;
+}) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [justCommitted, setJustCommitted] = useState(false);
+  const isInProgress = task.status === 'in_progress' || !!commitment;
+
+  const handleCommit = () => {
+    onCommit(task.id);
+    setJustCommitted(true);
+    pulseGlow(cardRef.current);
+  };
+
+  return (
+    <div
+      ref={cardRef}
+      className="relative rounded-[var(--radius-md)] border border-border-subtle bg-surface-default p-3 flex flex-col justify-between hover:border-border-accent/40 transition-all"
+    >
+      {justCommitted && (
+        <span className="kpi-delta-chip absolute -top-2 right-2 px-1.5 py-0.5 rounded-full border border-state-warning/40 bg-state-warning/15 text-state-warning text-[10px] font-mono pointer-events-none">
+          {task.cost > 0 ? `−€${task.cost}k · ` : ''}team engaged
+        </span>
+      )}
+      <div>
+        <div className="flex items-center justify-between gap-2 mb-1.5">
+          <span className="text-[10px] font-mono uppercase tracking-wider text-text-muted">{task.category}</span>
+          <StatusChip
+            label={task.complexity}
+            variant={task.complexity === 'high' ? 'danger' : task.complexity === 'medium' ? 'warning' : 'info'}
+          />
+        </div>
+        <h4 className="text-[13px] font-semibold text-text-primary mb-1">{task.name}</h4>
+        <p className="text-[11px] text-text-muted line-clamp-2 mb-3 leading-snug">{task.description}</p>
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between text-[11px] text-text-muted font-mono mb-2">
+          <span>Cost: {task.cost > 0 ? `€${task.cost}k` : 'Team Time'}</span>
+          <span>Work: {task.work}d</span>
+        </div>
+
+        {isInProgress ? (
+          <div className="space-y-1">
+            <div className="flex justify-between text-[10px] font-mono text-text-muted">
+              <span>Progress</span>
+              <span>{Math.round(task.progress ?? commitment?.progress ?? 0)}%</span>
+            </div>
+            <ProgressBar value={task.progress ?? commitment?.progress ?? 0} color="accent" size="sm" />
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={handleCommit}
+            className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-[var(--radius-sm)] border border-border-accent bg-border-accent/10 text-text-accent text-[12px] font-semibold hover:bg-border-accent/20 transition-colors"
+          >
+            <Target size={13} />
+            <span>Commit to Action</span>
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function DashboardScreen() {
   const gameState = useGameStore();
@@ -78,6 +151,39 @@ export default function DashboardScreen() {
   const pendingBudgetRequest = budgetRequests.find((r) => r.status === 'pending' && r.phase === phase);
   const isBudgetLow = resources.budget < BUDGET_LOW_THRESHOLD;
 
+  // Mission progression for the Deal Desk
+  const phaseMissions = getMissionsForPhase(phase);
+  const missionEntries = getMissionProgress(phaseMissions, tasks, phase);
+  const activeMissionEntry = getActiveMission(missionEntries, gameState.activeMissionId);
+  const allMissionsComplete = missionEntries.length > 0 && missionEntries.every((e) => e.complete);
+
+  // Attributable KPI deltas from the last advance
+  const lastResourceDeltas = useGameStore((s) => s.lastResourceDeltas);
+  const deltaFor = (key: string) => lastResourceDeltas.find((d) => d.resource === key);
+
+  // Toast when the active mission rolls over to the next one
+  const prevMissionRef = useRef<{ id: string; title: string; phase: number } | null>(null);
+  useEffect(() => {
+    const prev = prevMissionRef.current;
+    if (activeMissionEntry) {
+      if (prev && prev.phase === phase && prev.id !== activeMissionEntry.mission.id) {
+        const prevEntry = missionEntries.find((e) => e.mission.id === prev.id);
+        if (prevEntry?.complete) {
+          gameState.addToast(`Mission complete: ${prev.title}`, 'success');
+        }
+      }
+      prevMissionRef.current = { id: activeMissionEntry.mission.id, title: activeMissionEntry.mission.title, phase };
+    }
+  }, [activeMissionEntry?.mission.id, phase]);
+
+  // Staggered panel build-up when a new phase's dashboard appears
+  const contentRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!contentRef.current) return;
+    const panels = Array.from(contentRef.current.querySelectorAll(':scope > div > *')) as HTMLElement[];
+    staggerReveal(panels, 0.05, 0.3);
+  }, [phase]);
+
   const pitchPresented = feeNegotiation?.pitchPresented ?? false;
   const feeAgreed = feeNegotiation?.status === 'agreed' || !!agreedFeeTerms;
   const boardApproved = boardSubmission?.status === 'approved';
@@ -125,15 +231,111 @@ export default function DashboardScreen() {
         </div>
       </div>
 
+      <TurnTape />
+
+      <DeskDecisionCard />
+
       {activeThreats.length > 0 && <CompetitorMitigationPanel />}
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-        <KpiTile label={getMomentumLabel(phase)} value={resources.dealMomentum} color={kpiColor(resources.dealMomentum)} trend="stable" />
-        <KpiTile label="Client Trust" value={resources.clientTrust} color={kpiColor(resources.clientTrust)} onClick={() => navigate('/client')} />
-        <KpiTile label="Team Capacity" value={`${resources.teamCapacity}%`} color={kpiColor(resources.teamCapacity)} onClick={() => navigate('/team')} />
-        <KpiTile label="Budget" value={`€${resources.budget}k`} color={isBudgetLow ? 'danger' : resources.budget < 30 ? 'warning' : 'default'} onClick={() => setModal('budget')} />
-        <KpiTile label="Risk Level" value={resources.riskLevel} color={resources.riskLevel > 50 ? 'danger' : resources.riskLevel > 25 ? 'warning' : 'success'} onClick={() => navigate('/risks')} />
+        <KpiTile label={getMomentumLabel(phase)} value={resources.dealMomentum} color={kpiColor(resources.dealMomentum)} trend="stable"
+          delta={deltaFor('dealMomentum')?.delta} deltaReason={deltaFor('dealMomentum')?.reason} deltaKey={day} />
+        <KpiTile label="Client Trust" value={resources.clientTrust} color={kpiColor(resources.clientTrust)} onClick={() => navigate('/client')}
+          delta={deltaFor('clientTrust')?.delta} deltaReason={deltaFor('clientTrust')?.reason} deltaKey={day} />
+        <KpiTile label="Team Capacity" value={resources.teamCapacity} suffix="%" color={kpiColor(resources.teamCapacity)} onClick={() => navigate('/team')}
+          delta={deltaFor('teamCapacity')?.delta} deltaReason={deltaFor('teamCapacity')?.reason} deltaKey={day} />
+        <KpiTile label="Budget" value={resources.budget} prefix="€" suffix="k" color={isBudgetLow ? 'danger' : resources.budget < 30 ? 'warning' : 'default'} onClick={() => setModal('budget')}
+          delta={deltaFor('budget')?.delta} deltaReason={deltaFor('budget')?.reason} deltaKey={day} />
+        <KpiTile label="Risk Level" value={resources.riskLevel} color={resources.riskLevel > 50 ? 'danger' : resources.riskLevel > 25 ? 'warning' : 'success'} onClick={() => navigate('/risks')}
+          delta={deltaFor('riskLevel')?.delta} deltaReason={deltaFor('riskLevel')?.reason} deltaKey={day} invertDelta />
       </div>
+
+      {/* Deal Desk — Strategic Mission & Priority Actions */}
+      {(() => {
+        if (!activeMissionEntry) return null;
+        const { mission } = activeMissionEntry;
+        const commitments = gameState.commitments || [];
+
+        const missionTasks = mission.primaryActionIds
+          .map((id) => tasks.find((t) => t.id === id && t.phase === phase))
+          .filter((t): t is GameTask => !!t && t.status !== 'completed' && t.status !== 'locked');
+        // Fallback keeps committed (in-progress) work visible so the player
+        // watches progress land where they made the decision.
+        const fallbackTasks = tasks
+          .filter((t) => t.phase === phase && (t.status === 'in_progress' || t.status === 'available' || t.status === 'recommended'))
+          .sort((a, b) => (a.status === 'in_progress' ? -1 : 0) - (b.status === 'in_progress' ? -1 : 0));
+        const deskTasks = (missionTasks.length > 0 ? missionTasks : fallbackTasks).slice(0, 3);
+
+        return (
+          <Panel
+            title={`Deal Desk — Mission ${activeMissionEntry.index + 1}/${missionEntries.length}: ${mission.title}`}
+            headerRight={
+              <div className="flex items-center gap-2">
+                {/* Mission stepper */}
+                <div className="flex items-center gap-1">
+                  {missionEntries.map((entry) => (
+                    <span
+                      key={entry.mission.id}
+                      title={`${entry.mission.title}${entry.complete ? ' — complete' : ''}`}
+                      className={`w-2 h-2 rounded-full ${
+                        entry.complete
+                          ? 'bg-state-success'
+                          : entry.mission.id === mission.id
+                            ? 'bg-accent-primary'
+                            : 'bg-border-subtle'
+                      }`}
+                    />
+                  ))}
+                </div>
+                <span className="text-[11px] font-mono text-text-accent italic hidden sm:inline">
+                  {mission.strategicChoice}
+                </span>
+              </div>
+            }
+          >
+            <p className="text-[12px] text-text-secondary mb-3 leading-relaxed">{mission.description}</p>
+
+            {activeMissionEntry.totalRequired > 0 && (
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex-1">
+                  <ProgressBar
+                    value={Math.round((activeMissionEntry.completedRequired / activeMissionEntry.totalRequired) * 100)}
+                    color={activeMissionEntry.complete ? 'success' : 'accent'}
+                    size="sm"
+                  />
+                </div>
+                <span className="text-[10px] font-mono text-text-muted shrink-0">
+                  {activeMissionEntry.completedRequired}/{activeMissionEntry.totalRequired} key actions
+                </span>
+              </div>
+            )}
+
+            {allMissionsComplete ? (
+              <div className="flex items-center gap-3 p-3 rounded-[var(--radius-md)] bg-state-success/10 border border-state-success/25">
+                <Trophy size={16} className="text-state-success shrink-0" />
+                <p className="text-[12px] text-text-primary">
+                  All phase missions complete — clear the phase gate below to advance.
+                </p>
+              </div>
+            ) : deskTasks.length === 0 ? (
+              <p className="text-[12px] text-text-muted italic">
+                Mission actions are underway — advance time to see them land.
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {deskTasks.map((task) => (
+                  <MissionActionCard
+                    key={task.id}
+                    task={task}
+                    commitment={commitments.find((c) => c.linkedTaskId === task.id)}
+                    onCommit={gameState.commitToAction}
+                  />
+                ))}
+              </div>
+            )}
+          </Panel>
+        );
+      })()}
 
       <div className="rounded-[var(--radius-lg)] border border-border-subtle bg-bg-secondary p-4">
         <div className="flex items-center gap-2 mb-3">
@@ -221,7 +423,7 @@ export default function DashboardScreen() {
       {phase === 0 ? (
         <PhaseZeroDashboard />
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div ref={contentRef} className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2 space-y-4">
             <Panel title="Priority Actions" subtitle="Tasks requiring your attention" variant="accent">
               {activeTasks.length === 0 ? (

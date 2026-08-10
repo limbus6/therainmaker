@@ -1,10 +1,14 @@
+import { useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import StatusChip from './ui/StatusChip';
 import ProgressBar from './ui/ProgressBar';
-import { CheckCircle2, Clock, AlertTriangle, TrendingUp, TrendingDown, ArrowRight, X, Users, Zap, Sparkles, XCircle, Activity } from 'lucide-react';
+import { CheckCircle2, Clock, AlertTriangle, TrendingUp, TrendingDown, ArrowRight, X, Users, Zap, Sparkles, XCircle, Activity, ChevronDown, ChevronUp } from 'lucide-react';
+
+import DealTape from './DealTape';
 
 export default function WeekSummaryOverlay() {
   const result = useGameStore((s) => s.lastWeekResult);
+  const show = useGameStore((s) => s.showWeekReport);
   const day = useGameStore((s) => s.day);
   const week = useGameStore((s) => s.week);
   const resources = useGameStore((s) => s.resources);
@@ -15,7 +19,9 @@ export default function WeekSummaryOverlay() {
   const completeGame = useGameStore((s) => s.completeGame);
   const phase = useGameStore((s) => s.phase);
 
-  if (!result) return null;
+  const [showDetails, setShowDetails] = useState(false);
+
+  if (!result || !show) return null;
 
   const hasCompleted = result.tasksCompleted.length > 0;
   const hasProgressed = result.tasksProgressed.length > 0;
@@ -55,8 +61,9 @@ export default function WeekSummaryOverlay() {
         </div>
 
         {/* Narrative */}
-        <div className="px-5 py-4 border-b border-border-subtle">
+        <div className="px-5 py-4 border-b border-border-subtle space-y-3">
           <p className="text-[13px] text-text-secondary leading-relaxed">{result.narrativeSummary}</p>
+          <DealTape result={result} fromDay={Math.max(1, day - result.daysAdvanced)} toDay={day} />
         </div>
 
         <div className="px-5 py-4 border-b border-border-subtle">
@@ -75,6 +82,22 @@ export default function WeekSummaryOverlay() {
           </div>
         </div>
 
+        {/* Toggle Details Button */}
+        <div className="px-5 py-2 border-b border-border-subtle bg-surface-subtle/50 flex items-center justify-between">
+          <span className="text-[11px] font-mono text-text-muted">
+            {showDetails ? 'Showing full breakdown' : 'Compact summary view'}
+          </span>
+          <button
+            onClick={() => setShowDetails(!showDetails)}
+            className="inline-flex items-center gap-1.5 text-[12px] font-medium text-text-accent hover:underline"
+          >
+            <span>{showDetails ? 'Hide Details' : 'Show Detailed Breakdown'}</span>
+            {showDetails ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </button>
+        </div>
+
+        {showDetails && (
+          <>
         {/* Tasks Resolved */}
         {(hasCompleted || hasProgressed) && (
           <div className="px-5 py-4 border-b border-border-subtle space-y-3">
@@ -203,6 +226,8 @@ export default function WeekSummaryOverlay() {
             </span>
           </div>
         </div>
+        </>
+        )}
 
         {/* Phase Gate Status */}
         {phaseGate && (

@@ -1,8 +1,7 @@
-import { useGameStore, INVESTIGATION_CAPACITY_COST } from '../store/gameStore';
+import { useGameStore } from '../store/gameStore';
 import type { Lead } from '../types/game';
-import Panel from './ui/Panel';
 import StatusChip from './ui/StatusChip';
-import { Building2, LineChart, Users, Globe, Handshake, ChevronRight } from 'lucide-react';
+import { Building2, LineChart, Users, Globe, Handshake, ChevronRight, CheckCircle2, Clock } from 'lucide-react';
 
 export default function PhaseZeroDashboard() {
   const leads = useGameStore((s) => s.leads);
@@ -18,8 +17,10 @@ export default function PhaseZeroDashboard() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-display font-semibold text-text-primary">Qualify the Priority Lead</h2>
-        <p className="text-[12px] text-text-muted">Solara is not a client yet. Build the evidence needed before asking the board to approve a pitch.</p>
+        <div>
+          <h2 className="text-lg font-display font-semibold text-text-primary">Qualify Mandate Targets</h2>
+          <p className="text-[12px] text-text-muted">Evaluate the 3 potential mandates. Build evidence and select which target to recommend to the Investment Committee.</p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -32,7 +33,7 @@ export default function PhaseZeroDashboard() {
               className={`rounded-[var(--radius-lg)] border p-4 transition-all cursor-pointer ${
                 isActive 
                   ? 'border-accent-primary bg-surface-default shadow-[var(--shadow-glow-soft)]' 
-                  : 'border-border-subtle bg-bg-secondary hover:border-border-strong hover:bg-surface-default'
+                  : 'border-border-subtle bg-bg-secondary hover:border-border-default hover:bg-surface-default'
               }`}
             >
               <div className="flex items-start justify-between mb-3">
@@ -59,10 +60,10 @@ export default function PhaseZeroDashboard() {
 
               <div className="mt-4 pt-4 border-t border-border-subtle flex items-center justify-between">
                 <div className="flex items-center gap-1.5 text-[12px] font-medium text-text-primary">
-                  <Handshake size={14} className={lead.meetingDone ? "text-green-400" : "text-text-muted"} />
+                  <Handshake size={14} className={lead.meetingDone ? "text-state-success" : "text-text-muted"} />
                   {lead.meetingDone ? 'Meeting Complete' : 'Intro Pending'}
                 </div>
-                <ChevronRight size={14} className={isActive ? "text-accent-primary" : "text-border-strong"} />
+                <ChevronRight size={14} className={isActive ? "text-text-accent" : "text-text-muted"} />
               </div>
             </div>
           );
@@ -70,7 +71,7 @@ export default function PhaseZeroDashboard() {
       </div>
 
       {activeLeadId && (
-        <LeadActionPanel lead={leads.find(l => l.id === activeLeadId)!} />
+        <LeadActionPanel lead={leads.find(l => l.id === activeLeadId) || leads[0]} />
       )}
     </div>
   );
@@ -92,85 +93,66 @@ function DimensionRow({ label, icon, status }: { label: string, icon: React.Reac
 }
 
 function LeadActionPanel({ lead }: { lead: Lead }) {
-  const { investigateDimension, scheduleMeeting } = useGameStore();
+  const { investigateDimension, scheduleMeeting, submitBoardRecommendation, boardSubmission } = useGameStore();
 
   const handleInvestigate = (dim: keyof Lead['investigation']) => {
     investigateDimension(lead.id, dim);
   };
 
-  const handleMeet = () => {
-    scheduleMeeting(lead.id);
-  };
+  const isSubmitted = boardSubmission?.leadId === lead.id;
 
   return (
-    <Panel title={`Lead Actions: ${lead.companyName}`} variant="accent" className="mt-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Investigation Actions */}
-        <div className="bg-bg-secondary border border-border-subtle rounded-[var(--radius-md)] p-4">
-          <h4 className="text-[13px] font-semibold text-text-primary mb-3">Conduct Research</h4>
-          <p className="text-[11px] text-text-muted mb-4">Assign internal team time to uncover hidden attributes. No direct budget cost; uses {INVESTIGATION_CAPACITY_COST}% team capacity.</p>
-          <div className="space-y-2">
-            {(['sector', 'company', 'shareholder', 'market'] as const).map((dim) => {
-              const isDone = lead.investigation[dim] === 'completed';
-              const isInProgress = lead.investigation[dim] === 'in_progress';
-              return (
-                <button
-                  key={dim}
-                  onClick={() => handleInvestigate(dim)}
-                  disabled={isDone || isInProgress}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded border text-[12px] font-medium transition-colors ${
-                    isDone
-                      ? 'border-green-500/30 bg-green-500/5 text-green-400 cursor-not-allowed'
-                      : isInProgress
-                        ? 'border-yellow-500/30 bg-yellow-500/5 text-yellow-400 cursor-not-allowed'
-                        : 'border-accent-primary/40 text-text-accent hover:bg-accent-primary/10'
-                  }`}
-                >
-                  <span className="capitalize">{dim} Deep-Dive</span>
-                  <span>{isDone ? 'Done' : isInProgress ? '...' : `${INVESTIGATION_CAPACITY_COST}% cap.`}</span>
-                </button>
-              );
-            })}
-          </div>
+    <div className="rounded-[var(--radius-lg)] border border-border-accent bg-bg-panel p-5 space-y-4">
+      <div className="flex items-center justify-between border-b border-border-subtle pb-3">
+        <div>
+          <span className="text-[10px] font-mono uppercase tracking-wider text-text-muted">Active Target Selected</span>
+          <h3 className="text-base font-semibold text-text-primary">{lead.companyName} ({lead.founderName})</h3>
         </div>
+        <button
+          onClick={() => submitBoardRecommendation('proceed', `Strong fit: ${lead.companyName}`, lead.id)}
+          disabled={isSubmitted || boardSubmission?.status === 'approved'}
+          className="flex items-center gap-1.5 px-4 py-2 bg-accent-primary hover:bg-accent-hover disabled:opacity-50 text-white text-[12px] font-semibold rounded-[var(--radius-md)] transition-colors shadow-[var(--shadow-glow-soft)]"
+        >
+          {isSubmitted ? <CheckCircle2 size={14} /> : <Clock size={14} />}
+          <span>{isSubmitted ? 'Submitted to Board' : `Recommend ${lead.companyName} to Board`}</span>
+        </button>
+      </div>
 
-        {/* Meeting & Output */}
-        <div className="space-y-4">
-          <div className="bg-bg-secondary border border-border-subtle rounded-[var(--radius-md)] p-4">
-            <h4 className="text-[13px] font-semibold text-text-primary mb-3">Founder Engagement</h4>
-            <p className="text-[11px] text-text-muted mb-4">Request introductory meeting to gauge motivation.</p>
-            <button
-              onClick={handleMeet}
-              disabled={lead.meetingDone}
-              className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded border text-[12px] font-medium transition-colors ${
-                lead.meetingDone
-                  ? 'border-green-500/30 bg-green-500/5 text-green-400 cursor-not-allowed'
-                  : 'border-accent-primary/40 text-text-accent hover:bg-accent-primary/10'
-              }`}
-            >
-              <Handshake size={14} />
-              {lead.meetingDone ? 'Meeting Completed' : 'Schedule Intro'}
-            </button>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-[12px]">
+        <div>
+          <h4 className="font-semibold text-text-primary mb-1">Investment Case Summary</h4>
+          <p className="text-text-secondary leading-relaxed">{lead.investmentCaseSummary}</p>
+        </div>
+        <div>
+          <h4 className="font-semibold text-text-primary mb-1">Motivations & Risk Profile</h4>
+          <p className="text-text-secondary leading-relaxed">{lead.hiddenMotivations}</p>
+          <div className="flex items-center gap-3 mt-2 text-[11px] font-mono text-text-muted">
+            <span>Growth Potential: <strong className="text-text-accent">{lead.hiddenGrowth}</strong></span>
+            <span>Risk Profile: <strong className="text-text-primary">{lead.hiddenRisk}</strong></span>
           </div>
-
-          {(lead.investigation.company === 'completed' || lead.meetingDone) && (
-            <div className="bg-surface-default border border-border-subtle rounded-[var(--radius-md)] p-4">
-              <h4 className="text-[12px] font-semibold text-text-primary mb-2">Discovered Insights</h4>
-              <ul className="space-y-2 text-[11px] text-text-secondary leading-relaxed">
-                {lead.investigation.company === 'completed' && (
-                  <li><strong>Growth Profile:</strong> {lead.hiddenGrowth} potential</li>
-                )}
-                {lead.investigation.market === 'completed' && (
-                  <li><strong>Risk Profile:</strong> {lead.hiddenRisk} severity risks identified</li>
-                )}
-                {lead.meetingDone && (
-                  <li><strong>Vendor Motivation:</strong> "{lead.hiddenMotivations}"</li>
-                )}
-              </ul>
-            </div>
-          )}
         </div>
       </div>
-    </Panel>
+
+      <div className="pt-3 border-t border-border-subtle flex flex-wrap items-center gap-2">
+        <span className="text-[11px] font-mono text-text-muted mr-2">Investigate Dimensions:</span>
+        {(['sector', 'company', 'shareholder', 'market'] as const).map((dim) => (
+          <button
+            key={dim}
+            onClick={() => handleInvestigate(dim)}
+            disabled={lead.investigation[dim] === 'completed'}
+            className="px-3 py-1.5 rounded-[var(--radius-sm)] border border-border-subtle bg-surface-default hover:bg-surface-hover disabled:opacity-40 text-[11px] font-mono capitalize text-text-primary transition-colors"
+          >
+            + {dim} ({lead.investigation[dim]})
+          </button>
+        ))}
+        <button
+          onClick={() => scheduleMeeting(lead.id)}
+          disabled={lead.meetingDone}
+          className="ml-auto px-3 py-1.5 rounded-[var(--radius-sm)] border border-border-accent bg-border-accent/10 text-text-accent hover:bg-border-accent/20 disabled:opacity-40 text-[11px] font-semibold transition-colors"
+        >
+          {lead.meetingDone ? 'Meeting Done' : 'Schedule Intro Meeting'}
+        </button>
+      </div>
+    </div>
   );
 }

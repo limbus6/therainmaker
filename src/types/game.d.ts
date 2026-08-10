@@ -11,6 +11,14 @@ export interface PlayerResources {
     riskLevel: number;
     reputation: number;
 }
+export interface ResourceDelta {
+    resource: keyof PlayerResources;
+    before: number;
+    after: number;
+    delta: number;
+    reason: string;
+    sourceEntity?: string;
+}
 export type EmailCategory = 'client' | 'internal' | 'partner' | 'buyer' | 'advisor' | 'market' | 'system';
 export type EmailState = 'unread' | 'read' | 'requires_response' | 'urgent' | 'resolved';
 export type EmailPriority = 'low' | 'normal' | 'high' | 'urgent';
@@ -39,6 +47,15 @@ export interface Email {
     linkedEntityType?: 'buyer' | 'task' | 'deliverable' | 'risk';
     flagged?: boolean;
     escalated?: boolean;
+}
+/** A single attributable resource change produced by one advance. */
+export interface ResourceDelta {
+    resource: keyof PlayerResources;
+    before: number;
+    after: number;
+    delta: number;
+    reason: string;
+    sourceEntity?: string;
 }
 export type BuyerType = 'strategic' | 'pe' | 'family_office' | 'consortium' | 'other';
 export type BuyerInterest = 'cold' | 'lukewarm' | 'warm' | 'hot' | 'on_fire';
@@ -80,6 +97,8 @@ export interface GameTask {
     owner?: string;
     targetId?: string;
     progress?: number;
+    missionId?: string;
+    isBackgroundTask?: boolean;
 }
 export type WorkstreamId = 'preparation' | 'financials' | 'marketing_materials' | 'buyer_outreach' | 'management' | 'due_diligence' | 'negotiation' | 'closing';
 export interface Workstream {
@@ -120,6 +139,18 @@ export interface Risk {
     expiresAfterPhase?: PhaseId;
 }
 export type EventType = 'active' | 'passive' | 'cascade';
+export type TensionCategory = 'danger' | 'pressure' | 'recovery' | 'agency';
+export interface EventDirectorState {
+    tensionScore: number;
+    recoveryCounter: number;
+    activeThreatsCount: number;
+    lastEventDays: Record<string, number>;
+    activeChains: Record<string, {
+        chainId: string;
+        currentStep: number;
+        startedDay: number;
+    }>;
+}
 export interface GameEvent {
     id: string;
     week: number;
@@ -128,6 +159,9 @@ export interface GameEvent {
     title: string;
     description: string;
     resolved: boolean;
+    tensionCategory?: TensionCategory;
+    chainId?: string;
+    chainStep?: number;
 }
 export interface Headline {
     id: string;
@@ -189,6 +223,7 @@ export interface Lead {
     investmentCaseSummary: string;
     investigation: InvestigationStatus;
     meetingDone: boolean;
+    meetingScheduled?: boolean;
     hiddenMotivations: string;
     hiddenGrowth: 'high' | 'moderate' | 'low';
     hiddenRisk: 'high' | 'moderate' | 'low';

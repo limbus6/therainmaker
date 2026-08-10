@@ -58,9 +58,34 @@
   /* Shadows & Glows */
   --shadow-panel: 0 8px 24px rgba(0,0,0,0.35);
   --shadow-elevated: 0 12px 36px rgba(0,0,0,0.42);
-  --shadow-glow-soft: 0 0 12px rgba(240,79,165,0.18);
-  --shadow-glow-strong: 0 0 18px rgba(240,79,165,0.28);
+  --shadow-glow-soft: 0 0 16px rgba(240,79,165,0.22);
+  --shadow-glow-strong: 0 0 28px rgba(240,79,165,0.45);
 }
+
+/* Motion & Animation Tokens */
+@layer utilities {
+  @keyframes deltaFlash {
+    0% { opacity: 0; transform: translateY(-4px); }
+    30% { opacity: 1; transform: translateY(0); }
+    80% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+
+  .animate-deltaFlash {
+    animation: deltaFlash 2.5s ease-out forwards;
+  }
+}
+
+/* Reduced Motion Override */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 
 /* ============================================
    Base Styles
@@ -143,5 +168,35 @@ body {
   }
   .animate-fadeOut {
     animation: fadeOut 0.3s ease-out;
+  }
+}
+
+/* KPI delta chips — float in, hold, fade out */
+@keyframes kpi-delta-float {
+  0% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  75% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+.kpi-delta-chip {
+  animation: kpi-delta-float 2.4s ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kpi-delta-chip {
+    animation: none;
   }
 }
