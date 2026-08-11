@@ -50,14 +50,17 @@ This roadmap turns The M&A Rainmaker from a strong one-shot 60-90 minute simulat
 **Delivery status — 2026-08-11**
 
 - Delivered: the 80 authored event templates were extracted from `weekEngine.ts` into `src/content/events/index.ts` without changing their order, and a catalogue test locks count, uniqueness, and order anchors.
-- Delivered: new runs persist `contentVersion = solara-events-v1`, `scoringModelVersion = causal-v2`, a neutral mandate-difficulty profile, and a deduplicated causal process log. Save schema v8 migrates existing runs to `legacy-v1` so an upgrade does not rewrite an in-progress result.
+- Delivered: new runs persist `contentVersion = solara-events-v2`, `scoringModelVersion = causal-v2`, a neutral mandate-difficulty profile, and a deduplicated causal process log. Save schema v8 migrates existing runs to `legacy-v1` so an upgrade does not rewrite an in-progress result. The v2 content boundary records the intentional event-selection change caused by derived deal state.
 - Delivered: causal records now cover relevant task delivery, email response timing, risk mitigation choices, the board recommendation, fee and SPA rounds, preferred-bidder confirmation, and dataroom disclosure choices.
 - Delivered: Results Board now shows the five process disciplines and a source-specific Player Debrief; post-negotiation reservation ranges are revealed only after agreement or failure.
 - Verified: build and automated coverage include event-catalogue integrity, causal weighting/deduplication, difficulty caps, migration behaviour, and the separation of process quality from deal outcome.
-- Still open before M0 exit: derive `dealMomentum`, complete source/build shadowing hygiene, and broaden replay tooling from the persisted decision log plus development diagnostics into a full exportable trace.
+- Delivered: `dealMomentum` is a non-persisted materialised view of phase position, current work, buyer conviction, client confidence, milestones, and active risk. Its Dashboard tile exposes the component breakdown and its tape deltas identify live deal state as the source.
+- Delivered: save schema v10 strips legacy stored momentum and adds a bounded replay trace with exact action inputs, RNG seed/draw/state for advances and risk plans, causal sources, process records, event IDs, and JSON export from Settings.
+- Delivered: Vite resolves TypeScript first, TypeScript emits nothing into `src`, and `npm run check:source` now blocks generated JavaScript, declaration, or map artifacts from entering the source tree. The production build runs the check automatically.
+- Verified: automated coverage now includes derived momentum, exportable replay trace, effect-label honesty, source hygiene, migration, deterministic `solara-events-v2` sequences, and the prior M0 scoring/integrity suite.
 - Deliberately deferred: person-level team traits, growth, and allocation are not scheduled here. Revisit only after the M0.5 friction audit demonstrates a version that adds judgment without restoring staffing administration.
 
-**Structural item (may split into its own session):** derive `dealMomentum` instead of storing it. Compute from task currency, active buyer count/interest, trust, and unresolved threats. Eliminates the "why did momentum drop?" class of confusion and removes the last god-stat.
+**Structural item — delivered:** `dealMomentum` is derived rather than stored, using task currency, buyer conviction, trust, milestones, and unresolved risk. This removes the last independently authored god-stat.
 
 **Exit criteria:** every delta chip in the tape has a concrete cause; no fractional values anywhere in the UI; option labels match applied effects; the Advance CTA explains its own pace; TypeScript is the unambiguous runtime source; save migrations and deterministic replay are covered by tests.
 
@@ -83,6 +86,15 @@ This roadmap turns The M&A Rainmaker from a strong one-shot 60-90 minute simulat
 **Primary files:** `src/components/TurnTape.tsx`, `src/screens/DashboardScreen.tsx`, task/inbox/dataroom screens, `src/store/gameStore.ts`, phase content.
 
 **Effort:** 1-2 sessions. **Depends on:** M0 (the audit needs trustworthy state and causal logging).
+
+**Delivery status — 2026-08-11**
+
+- Delivered: the Dashboard names the next meaningful action and offers one-click Start & Advance for available priorities. Raw Advance points back to a pending priority instead of permitting repeated administrative time skips while work is waiting.
+- Delivered: high/urgent email choices can be resolved directly on TurnTape; exact applied effects are shared across TurnTape, Desk Decision, and Inbox.
+- Delivered: low-priority informational mail has a one-click clear action. Low-complexity, non-recommended internal/document work has a one-click queue action on Dashboard and Tasks.
+- Safeguard: relationship, strategic, market-outreach, external-advisor, risk, buyer, dataroom, fee, and SPA choices remain individual; batching queues work but never completes it or advances time.
+- Measured: ordinary priority and urgent-email paths fall from three clicks to one. The full phase classification, click counts, safeguards, and human timing protocol live in `docs/m0.5-friction-audit.md`.
+- Engineering exit complete. Remaining validation is the scheduled full-mandate human timing pass; its result should tune thresholds, not reopen administrative UI by default.
 
 ---
 

@@ -3,9 +3,11 @@ import { useGameStore } from '../store/gameStore';
 import Panel from '../components/ui/Panel';
 import StatusChip from '../components/ui/StatusChip';
 import ProgressBar from '../components/ui/ProgressBar';
-import { Play, CheckCircle2, Lock, ChevronDown, ChevronRight } from 'lucide-react';
+import { Play, CheckCircle2, Lock, ChevronDown, ChevronRight, ListChecks } from 'lucide-react';
 import type { TaskStatus, TaskCategory, GameTask } from '../types/game';
 import { applyPhaseWorkstreams } from '../utils/gameplayState';
+import { getRoutineTasks } from '../utils/friction';
+import { formatTaskEffectSummary } from '../utils/effectLabels';
 
 const statusVariant: Record<TaskStatus, 'default' | 'accent' | 'muted' | 'info' | 'success' | 'warning'> = {
   available: 'default',
@@ -28,7 +30,7 @@ const categoryLabels: Record<TaskCategory, string> = {
 type ViewFilter = 'all' | 'available' | 'in_progress' | 'completed';
 
 export default function TasksScreen() {
-  const { tasks, workstreams, startTask, commitAndAdvance, phase, leads, resources } = useGameStore();
+  const { tasks, workstreams, startTask, commitAndAdvance, queueRoutineTasks, phase, leads, resources } = useGameStore();
   const [filter, setFilter] = useState<ViewFilter>('all');
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
 
@@ -44,6 +46,7 @@ export default function TasksScreen() {
   });
 
   const activeWorkstreams = applyPhaseWorkstreams(workstreams, phase).filter((w) => w.active);
+  const routineTasks = getRoutineTasks(tasks, phase);
 
   const filters: { key: ViewFilter; label: string }[] = [
     { key: 'all', label: 'All' },
@@ -117,7 +120,7 @@ export default function TasksScreen() {
                 <div className="pt-3 space-y-3">
                   <p className="text-[12px] text-text-secondary leading-relaxed">{task.description}</p>
                   <div className="flex items-center gap-4 text-[11px]">
-                    <span className="text-text-muted">Effect: <span className="text-text-secondary">{task.effectSummary}</span></span>
+                    <span className="text-text-muted">Effect: <span className="text-text-secondary">{formatTaskEffectSummary(task.effectSummary)}</span></span>
                     {task.status === 'locked' && task.dependencies && task.dependencies.length > 0 && (() => {
                       const unmetNames = task.dependencies
                         .map(depId => tasks.find(t => t.id === depId && t.phase === task.phase)
@@ -241,6 +244,16 @@ export default function TasksScreen() {
           ))}
         </div>
         <span className="text-[11px] text-text-muted font-mono">{filteredTasks.length} tasks</span>
+        {routineTasks.length > 0 && (
+          <button
+            type="button"
+            onClick={queueRoutineTasks}
+            title="Queues only low-complexity internal and document-production work; strategic and relationship choices stay individual"
+            className="ml-auto inline-flex items-center gap-1.5 rounded-[var(--radius-md)] border border-border-accent bg-border-accent/10 px-3 py-1.5 text-[12px] font-medium text-text-accent hover:bg-border-accent/20"
+          >
+            <ListChecks size={13} /> Queue {routineTasks.length} routine
+          </button>
+        )}
       </div>
 
       {/* Task List */}

@@ -16,6 +16,7 @@ import { describe, it, expect } from 'vitest';
 import { useGameStore } from '../../store/gameStore';
 import type { PhaseId } from '../../types/game';
 import baseline from './__fixtures__/eventSequences.baseline.json';
+import { writeFileSync } from 'node:fs';
 
 const SEEDS = [11, 23, 47];
 const ADVANCES_PER_PHASE = 4;
@@ -49,9 +50,15 @@ describe('seeded event-sequence regression', () => {
   it('reproduces the pre-extraction baseline for fixed seeds', async () => {
     const capture = await captureSequences();
 
-    // To intentionally regenerate the baseline after a content change:
-    // const { writeFileSync } = await import('node:fs');
-    // writeFileSync('src/engine/__tests__/__fixtures__/eventSequences.baseline.json', JSON.stringify(capture, null, 2));
+    // Intentional state/content changes must bump CONTENT_VERSION and opt in
+    // explicitly when refreshing this deterministic fixture.
+    if (process.env.UPDATE_EVENT_SEQUENCE_FIXTURE === '1') {
+      writeFileSync(
+        'src/engine/__tests__/__fixtures__/eventSequences.baseline.json',
+        `${JSON.stringify(capture, null, 2)}\n`,
+      );
+      return;
+    }
 
     expect(capture).toEqual(baseline);
   }, 180000);

@@ -11,6 +11,7 @@ import { CheckCircle2, Mail, Users, AlertTriangle, Zap, FileText, FastForward, C
 import { useGameStore } from '../store/gameStore';
 import { animateCounter, staggerReveal, prefersReducedMotion } from '../utils/motion';
 import type { WeekResult } from '../engine/weekEngine';
+import { formatResponseEffects } from '../utils/responseEffects';
 
 const RESOURCE_LABELS: Record<string, string> = {
   budget: 'Budget',
@@ -73,6 +74,9 @@ export default function TurnTape() {
   const upcomingBeat = useGameStore((s) => s.eventDirectorState.upcomingBeats[0]);
   const completeTurnPlayback = useGameStore((s) => s.completeTurnPlayback);
   const openWeekReport = useGameStore((s) => s.openWeekReport);
+  const emails = useGameStore((s) => s.emails);
+  const respondToEmail = useGameStore((s) => s.respondToEmail);
+  const addToast = useGameStore((s) => s.addToast);
 
   const dayRef = useRef<HTMLSpanElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -82,6 +86,16 @@ export default function TurnTape() {
   const items = result ? buildTapeItems(result) : [];
   const visibleItems = items.slice(0, MAX_VISIBLE_ITEMS);
   const hiddenCount = items.length - visibleItems.length;
+  const directDecision = playback?.status === 'done'
+    ? result?.newEmails
+        .map((newEmail) => emails.find((email) => email.id === newEmail.id))
+        .find((email) =>
+          email
+          && email.state !== 'resolved'
+          && (email.priority === 'urgent' || email.priority === 'high')
+          && !!email.responseOptions?.length
+        )
+    : undefined;
 
   // Play the turn sequence in place, then release input.
   useEffect(() => {
@@ -108,7 +122,7 @@ export default function TurnTape() {
       clearTimeout(timer);
       tweens.forEach((tw) => tw?.kill());
     };
-  }, [playback?.status, playback?.toDay]);
+  }, [playback, completeTurnPlayback, visibleItems.length, deltas.length]);
 
   // Snap everything to its final state once playback ends (including skips).
   useEffect(() => {
@@ -192,6 +206,38 @@ export default function TurnTape() {
               +{hiddenCount} more in the Situation Report
             </button>
           )}
+        </div>
+      )}
+
+      {directDecision?.responseOptions && (
+        <div className="mt-3 rounded-[var(--radius-md)] border border-state-warning/30 bg-state-warning/5 p-3">
+          <div className="mb-2 flex items-start gap-2">
+            <Mail size={14} className="mt-0.5 shrink-0 text-state-warning" />
+            <div>
+              <p className="text-[10px] font-mono uppercase tracking-widest text-state-warning">Respond from the tape</p>
+              <p className="mt-0.5 text-[12px] font-medium text-text-primary">{directDecision.subject}</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {directDecision.responseOptions.map((option) => {
+              const exactEffects = formatResponseEffects(option);
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => {
+                    respondToEmail(directDecision.id, option.id);
+                    addToast(`Response sent: ${option.label}`, 'success');
+                  }}
+                  title={exactEffects ?? undefined}
+                  className="rounded-[var(--radius-sm)] border border-border-accent bg-border-accent/10 px-2.5 py-1.5 text-left text-[11px] font-medium text-text-accent transition-colors hover:bg-border-accent/20"
+                >
+                  <span>{option.label}</span>
+                  {exactEffects && <span className="ml-1.5 font-mono text-[9px] text-text-muted">{exactEffects}</span>}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 

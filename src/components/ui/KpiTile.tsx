@@ -18,6 +18,8 @@ interface KpiTileProps {
   deltaKey?: string | number;
   /** When true, positive deltas are bad (e.g. risk level). */
   invertDelta?: boolean;
+  /** Plain-language explanation for values that are derived from several inputs. */
+  explanation?: string;
 }
 
 const colorMap = {
@@ -42,7 +44,7 @@ const trendColor = {
 
 export default function KpiTile({
   label, value, prefix = '', suffix = '', trend, color = 'default', onClick,
-  delta, deltaReason, deltaKey, invertDelta = false,
+  delta, deltaReason, deltaKey, invertDelta = false, explanation,
 }: KpiTileProps) {
   const [flash, setFlash] = useState(false);
   const [chipVisible, setChipVisible] = useState(false);
@@ -83,6 +85,7 @@ export default function KpiTile({
     <div
       className={`relative bg-bg-panel/60 border border-border-subtle rounded-[var(--radius-md)] p-3 min-w-[120px] ${onClick ? 'cursor-pointer hover:border-accent-primary/40 transition-colors' : ''}`}
       onClick={onClick}
+      title={explanation}
     >
       {chipVisible && delta !== undefined && delta !== 0 && (
         <span
@@ -96,7 +99,10 @@ export default function KpiTile({
           {delta > 0 ? `+${delta}` : delta}
         </span>
       )}
-      <div className="text-[10px] font-mono uppercase tracking-widest text-text-muted mb-1">{label}</div>
+      <div className="flex items-center justify-between gap-2 text-[10px] font-mono uppercase tracking-widest text-text-muted mb-1">
+        <span>{label}</span>
+        {explanation && <span className="normal-case tracking-normal text-[9px] text-text-accent">Derived</span>}
+      </div>
       <div className="flex items-baseline gap-2">
         <span ref={valueRef} className={`text-xl font-semibold font-mono ${colorMap[color]} ${flash ? 'animate-pulse' : ''}`}>{renderedValue}</span>
         {trend && (

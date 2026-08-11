@@ -259,6 +259,30 @@ export interface MandateDifficultyProfile {
   overall: number;
 }
 
+export type ReplayActionType =
+  | 'task_start'
+  | 'advance'
+  | 'email_response'
+  | 'risk_mitigation'
+  | 'board_submission'
+  | 'phase_advance'
+  | 'fee_round'
+  | 'buyer_selection'
+  | 'dataroom_access'
+  | 'spa_round';
+
+/** Serializable action input plus deterministic outcome metadata for QA replay. */
+export interface ReplayTraceEntry {
+  sequence: number;
+  day: number;
+  phase: PhaseId;
+  action: ReplayActionType;
+  input: Record<string, unknown>;
+  rng?: { seed: number; draws: number; state: number };
+  resourceDeltas?: ResourceDelta[];
+  sources?: string[];
+}
+
 // --- Headlines ---
 
 export interface Headline {

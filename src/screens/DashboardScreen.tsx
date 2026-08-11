@@ -24,8 +24,11 @@ import { getActiveRisks, getDashboardDeliverables, getMomentumLabel, applyPhaseW
 import { checkPhaseGate, getAdvancePacePreview } from '../engine/weekEngine';
 import { getMissionsForPhase } from '../content/missions';
 import { getMissionProgress, getActiveMission } from '../utils/missionProgress';
+import { explainDealMomentum } from '../engine/dealMomentum';
+import { getRoutineTasks } from '../utils/friction';
+import { formatTaskEffectSummary } from '../utils/effectLabels';
 import { pulseGlow, staggerReveal } from '../utils/motion';
-import { ArrowRight, Mail, AlertTriangle, ChevronRight, Wallet, Users, Presentation, FileText, Handshake, Trophy, ScrollText, Clock, Target } from 'lucide-react';
+import { ArrowRight, Mail, AlertTriangle, ChevronRight, Wallet, Users, Presentation, FileText, Handshake, Trophy, ScrollText, Clock, Target, ListChecks } from 'lucide-react';
 
 function kpiColor(value: number, thresholds: [number, number] = [30, 60]) {
   if (value >= thresholds[1]) return 'success' as const;
@@ -118,7 +121,7 @@ export default function DashboardScreen() {
     phase, day, week, resources, emails, tasks, workstreams, buyers, risks, deliverables, headlines,
     advanceWeek, isWeekInProgress, weekHistory,
     budgetRequests, boardSubmission, feeNegotiation, agreedFeeTerms, competitorThreats, advancePhase, completeGame,
-    weekPace, setWeekPace, tempCapacityAllocations, commitAndAdvance,
+    weekPace, setWeekPace, tempCapacityAllocations, commitAndAdvance, queueRoutineTasks, addToast,
   } = gameState;
 
   const phaseBudget = useGameStore((s) => s.phaseBudget);
@@ -147,6 +150,12 @@ export default function DashboardScreen() {
   const activeTasks = tasks.filter((t) =>
     t.phase === phase && (t.status === 'available' || t.status === 'recommended')
   );
+  const routineTasks = getRoutineTasks(tasks, phase);
+  const inProgressTasks = tasks.filter((task) => task.phase === phase && task.status === 'in_progress');
+  const urgentDecisionEmail = dashboardEmails.find((email) =>
+    (email.priority === 'urgent' || email.priority === 'high')
+    && !!email.responseOptions?.length
+  );
   const activeWorkstreams = applyPhaseWorkstreams(workstreams, phase).filter((w) => w.active);
   const activeRisks = getActiveRisks(risks, phase, bindingOffersReceived);
   const dashboardDeliverables = getDashboardDeliverables(deliverables, phase);
@@ -159,6 +168,7 @@ export default function DashboardScreen() {
   const missionEntries = getMissionProgress(phaseMissions, tasks, phase);
   const activeMissionEntry = getActiveMission(missionEntries, gameState.activeMissionId);
   const allMissionsComplete = missionEntries.length > 0 && missionEntries.every((e) => e.complete);
+  const completedMissionIds = missionEntries.filter((entry) => entry.complete).map((entry) => entry.mission.id).join('|');
 
   // Attributable KPI deltas from the last advance
   const lastResourceDeltas = useGameStore((s) => s.lastResourceDeltas);
@@ -168,16 +178,15 @@ export default function DashboardScreen() {
   const prevMissionRef = useRef<{ id: string; title: string; phase: number } | null>(null);
   useEffect(() => {
     const prev = prevMissionRef.current;
-    if (activeMissionEntry) {
-      if (prev && prev.phase === phase && prev.id !== activeMissionEntry.mission.id) {
-        const prevEntry = missionEntries.find((e) => e.mission.id === prev.id);
-        if (prevEntry?.complete) {
-          gameState.addToast(`Mission complete: ${prev.title}`, 'success');
-        }
+    const activeId = activeMissionEntry?.mission.id;
+    const activeTitle = activeMissionEntry?.mission.title;
+    if (activeId && activeTitle) {
+      if (prev && prev.phase === phase && prev.id !== activeId && completedMissionIds.split('|').includes(prev.id)) {
+        addToast(`Mission complete: ${prev.title}`, 'success');
       }
-      prevMissionRef.current = { id: activeMissionEntry.mission.id, title: activeMissionEntry.mission.title, phase };
+      prevMissionRef.current = { id: activeId, title: activeTitle, phase };
     }
-  }, [activeMissionEntry?.mission.id, phase]);
+  }, [activeMissionEntry?.mission.id, activeMissionEntry?.mission.title, addToast, completedMissionIds, phase]);
 
   // Staggered panel build-up when a new phase's dashboard appears
   const contentRef = useRef<HTMLDivElement>(null);
@@ -197,6 +206,9 @@ export default function DashboardScreen() {
     phase === 0 ? (boardApproved && engineGateMet) :
     phase === 1 ? (pitchPresented && feeAgreed && engineGateMet) :
     engineGateMet;
+
+  const nextPriority = activeTasks[0];
+  const nextGateRequirement = phaseGate.requirements.find((requirement) => !requirement.optional && !requirement.met);
 
   return (
     <div className="space-y-6 max-w-[1200px]">
@@ -229,8 +241,16 @@ export default function DashboardScreen() {
             <Users size={13} /> Staffing
           </button>
           <div className="flex flex-col items-end gap-1">
-            <button onClick={advanceWeek} disabled={isWeekInProgress} className="flex items-center gap-2 px-4 py-2 bg-accent-primary hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-white text-[13px] font-semibold rounded-[var(--radius-md)] transition-colors duration-150 shadow-[var(--shadow-glow-soft)]">
-              Advance <span className="text-[11px] font-mono opacity-70">~{daysPreview}d</span> <ArrowRight size={14} />
+            <button
+              onClick={() => advancePreview.requiresChoice
+                ? document.getElementById('priority-actions')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                : advanceWeek()}
+              disabled={isWeekInProgress}
+              className="flex items-center gap-2 px-4 py-2 bg-accent-primary hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-white text-[13px] font-semibold rounded-[var(--radius-md)] transition-colors duration-150 shadow-[var(--shadow-glow-soft)]"
+            >
+              {advancePreview.requiresChoice ? 'Choose Priority' : 'Advance'}
+              {!advancePreview.requiresChoice && <span className="text-[11px] font-mono opacity-70">~{daysPreview}d</span>}
+              <ArrowRight size={14} />
             </button>
             <span className="max-w-64 text-right text-[10px] leading-tight text-text-muted">{advancePreview.reason}</span>
           </div>
@@ -238,6 +258,54 @@ export default function DashboardScreen() {
       </div>
 
       <TurnTape />
+
+      <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-border-accent/30 bg-accent-soft/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-[9px] font-mono uppercase tracking-widest text-text-accent">Next meaningful action</p>
+          <p className="mt-1 text-[13px] font-semibold text-text-primary">
+            {urgentDecisionEmail
+              ? `Respond to ${urgentDecisionEmail.sender}`
+              : nextPriority
+                ? nextPriority.name
+                : inProgressTasks.length > 0
+                  ? 'Let committed work land'
+                  : canAdvancePhase
+                    ? (phase === 10 ? 'Review the mandate result' : `Move to ${PHASE_NAMES[(phase + 1) as keyof typeof PHASE_NAMES]}`)
+                    : nextGateRequirement?.label ?? 'Review the live deal state'}
+          </p>
+          <p className="mt-0.5 text-[11px] text-text-muted">
+            {urgentDecisionEmail
+              ? 'This response carries a trade-off; choose it directly in the decision card below.'
+              : nextPriority
+                ? `${formatTaskEffectSummary(nextPriority.effectSummary)} — start it here without opening Tasks.`
+                : inProgressTasks.length > 0
+                  ? advancePreview.reason
+                  : canAdvancePhase
+                    ? 'The required gate is clear; no extra administration is needed.'
+                    : 'This is the first unmet requirement blocking the phase gate.'}
+          </p>
+        </div>
+        {!urgentDecisionEmail && nextPriority && (
+          <button
+            type="button"
+            onClick={() => commitAndAdvance(nextPriority.id)}
+            disabled={resources.budget < nextPriority.cost || isWeekInProgress}
+            className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-[var(--radius-md)] bg-accent-primary px-4 py-2 text-[12px] font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Target size={13} /> Start &amp; Advance
+          </button>
+        )}
+        {!urgentDecisionEmail && !nextPriority && inProgressTasks.length > 0 && (
+          <button type="button" onClick={advanceWeek} disabled={isWeekInProgress} className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-[var(--radius-md)] bg-accent-primary px-4 py-2 text-[12px] font-semibold text-white hover:bg-accent-hover disabled:opacity-50">
+            Advance ~{daysPreview}d <ArrowRight size={13} />
+          </button>
+        )}
+        {!urgentDecisionEmail && !nextPriority && inProgressTasks.length === 0 && canAdvancePhase && (
+          <button type="button" onClick={() => phase === 10 ? completeGame() : advancePhase()} className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-[var(--radius-md)] bg-green-600 px-4 py-2 text-[12px] font-semibold text-white hover:bg-green-500">
+            {phase === 10 ? 'View Results' : 'Advance Phase'} <ArrowRight size={13} />
+          </button>
+        )}
+      </div>
 
       {phase >= 5 && phase <= 7 && (
         <div className="grid gap-3 rounded-[var(--radius-lg)] border border-border-accent/25 bg-accent-soft/20 p-4 md:grid-cols-3">
@@ -262,7 +330,8 @@ export default function DashboardScreen() {
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         <KpiTile label={getMomentumLabel(phase)} value={resources.dealMomentum} color={kpiColor(resources.dealMomentum)} trend="stable"
-          delta={deltaFor('dealMomentum')?.delta} deltaReason={deltaFor('dealMomentum')?.reason} deltaKey={day} />
+          delta={deltaFor('dealMomentum')?.delta} deltaReason={deltaFor('dealMomentum')?.reason} deltaKey={day}
+          explanation={explainDealMomentum(gameState)} />
         <KpiTile label="Client Trust" value={resources.clientTrust} color={kpiColor(resources.clientTrust)} onClick={() => navigate('/client')}
           delta={deltaFor('clientTrust')?.delta} deltaReason={deltaFor('clientTrust')?.reason} deltaKey={day} />
         <KpiTile label="Team Capacity" value={resources.teamCapacity} suffix="%" color={kpiColor(resources.teamCapacity)} onClick={() => navigate('/team')}
@@ -449,31 +518,43 @@ export default function DashboardScreen() {
       ) : (
         <div ref={contentRef} className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2 space-y-4">
-            <Panel title="Priority Actions" subtitle="Tasks requiring your attention" variant="accent">
+            <div id="priority-actions">
+            <Panel
+              title="Priority Actions"
+              subtitle="Decide and act without leaving the dashboard"
+              variant="accent"
+              headerRight={routineTasks.length > 0 ? (
+                <button type="button" onClick={queueRoutineTasks} className="inline-flex items-center gap-1.5 text-[11px] text-text-accent hover:underline">
+                  <ListChecks size={12} /> Queue {routineTasks.length} routine
+                </button>
+              ) : null}
+            >
               {activeTasks.length === 0 ? (
                 <p className="text-[12px] text-text-muted">No pending actions this week.</p>
               ) : (
                 <div className="space-y-2">
                   {activeTasks.slice(0, 4).map((task) => (
-                    <Link key={task.id} to="/tasks" className="flex items-center justify-between p-2.5 rounded-[var(--radius-md)] bg-surface-default hover:bg-surface-hover transition-colors group">
+                    <div key={task.id} className="flex flex-col gap-2 p-2.5 rounded-[var(--radius-md)] bg-surface-default sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex items-center gap-3">
                         <StatusChip label={task.status === 'recommended' ? 'Recommended' : 'Available'} variant={task.status === 'recommended' ? 'accent' : 'default'} />
                         <div>
                           <div className="text-[13px] text-text-primary font-medium">{task.name}</div>
-                          <div className="text-[11px] text-text-muted">{task.effectSummary}</div>
+                          <div className="text-[11px] text-text-muted">{formatTaskEffectSummary(task.effectSummary)}</div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3 text-[11px] font-mono text-text-muted">
+                      <div className="flex items-center justify-end gap-2 text-[11px] font-mono text-text-muted">
                         <span>€{task.cost}k</span>
                         <span>{task.work}h</span>
-                        <ChevronRight size={14} className="text-text-muted/40 group-hover:text-text-accent transition-colors" />
+                        <button type="button" onClick={() => gameState.commitToAction(task.id)} disabled={resources.budget < task.cost} className="rounded-[var(--radius-sm)] border border-border-accent bg-border-accent/10 px-2 py-1 font-sans font-semibold text-text-accent hover:bg-border-accent/20 disabled:opacity-40">Queue</button>
+                        <button type="button" onClick={() => commitAndAdvance(task.id)} disabled={resources.budget < task.cost || isWeekInProgress} className="rounded-[var(--radius-sm)] bg-accent-primary px-2.5 py-1 font-sans font-semibold text-white hover:bg-accent-hover disabled:opacity-40">Start &amp; Advance</button>
                       </div>
-                    </Link>
+                    </div>
                   ))}
                 </div>
               )}
               <Link to="/tasks" className="flex items-center gap-1 mt-3 text-[11px] text-text-accent hover:underline">View all tasks <ArrowRight size={12} /></Link>
             </Panel>
+            </div>
 
             <Panel title="Active Workstreams" headerRight={<Link to="/tasks" className="text-[11px] text-text-accent hover:underline">View tasks</Link>}>
               <div className="space-y-3">

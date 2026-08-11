@@ -44,6 +44,7 @@ import type {
   MandateDifficultyProfile,
   ProcessRecord,
   ProcessScoringModel,
+  ReplayTraceEntry,
 } from '../types/game';
 import type { ActionCommitment } from '../types/dealBeat';
 import { createInitialEventDirectorState } from '../engine/eventDirector';
@@ -64,6 +65,9 @@ import {
   appendProcessRecords,
   reactionRating,
 } from '../engine/processScoring';
+import { deriveDealMomentum, explainDealMomentumChange } from '../engine/dealMomentum';
+import { appendReplayTrace } from '../engine/replayTrace';
+import { getRoutineEmails, getRoutineTasks } from '../utils/friction';
 
 import { loadPhaseContent, type PhaseContent } from '../content/loadPhaseContent';
 
@@ -607,6 +611,7 @@ export interface GameStore {
   scoringModelVersion: ProcessScoringModel;
   mandateDifficulty: MandateDifficultyProfile;
   processLog: ProcessRecord[];
+  replayTrace: ReplayTraceEntry[];
 
   // Turn playback (non-blocking live turn) — transient, not persisted
   turnPlayback: { status: 'playing' | 'done'; fromDay: number; toDay: number } | null;
@@ -624,10 +629,12 @@ export interface GameStore {
   debugJumpToCheckpoint: (checkpointId: string) => Promise<void>;
   updateResources: (partial: Partial<PlayerResources>) => void;
   markEmailRead: (emailId: string) => void;
+  acknowledgeRoutineEmails: () => void;
   flagEmail: (emailId: string) => void;
   escalateEmail: (emailId: string) => void;
   respondToEmail: (emailId: string, responseId: string) => void;
   startTask: (taskId: string) => void;
+  queueRoutineTasks: () => void;
   completeTask: (taskId: string) => void;
   mitigateRisk: (riskId: string) => void;
   executeRiskMitigationPlan: (riskId: string, planId: string) => void;
@@ -770,7 +777,7 @@ function normalizeResources(resources: PlayerResources): PlayerResources {
 
 const DEFAULT_PREFERRED_BUYER = 'Kestrel Capital';
 const DEFAULT_FALLBACK_BUYER = 'Vektor Industries';
-const SAVE_SCHEMA_VERSION = 9;
+const SAVE_SCHEMA_VERSION = 10;
 
 function hashIdentifier(value: string): number {
   let hash = 2166136261;
@@ -782,7 +789,8 @@ function hashIdentifier(value: string): number {
 }
 
 function createActionRng(state: Pick<GameStore, 'rngSeed' | 'day' | 'week' | 'phase'>, action: string) {
-  return createRng(deriveSeed(state.rngSeed, state.day, state.week, state.phase, hashIdentifier(action)));
+  const seed = deriveSeed(state.rngSeed, state.day, state.week, state.phase, hashIdentifier(action));
+  return { rng: createRng(seed), seed };
 }
 
 function logCausalChange(action: string, details: Record<string, unknown>): void {
@@ -1219,7 +1227,28 @@ function evaluateSPARound(
   };
 }
 
-export const useGameStore = create<GameStore>()(persist((set, get) => ({
+export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
+  // All action-driven state changes rematerialise momentum from the resulting
+  // deal state. Explicit `dealMomentum` deltas in legacy content are ignored.
+  const set = (partial: Partial<GameStore> | ((state: GameStore) => Partial<GameStore>)) => {
+    rawSet((state) => {
+      const patch = typeof partial === 'function' ? partial(state) : partial;
+      const candidate = {
+        ...state,
+        ...patch,
+        resources: { ...state.resources, ...(patch.resources ?? {}) },
+      } as GameStore;
+      return {
+        ...patch,
+        resources: {
+          ...candidate.resources,
+          dealMomentum: deriveDealMomentum(candidate),
+        },
+      };
+    });
+  };
+
+  return ({
   // State
   phase: 0 as PhaseId,
   day: 1,
@@ -1283,6 +1312,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
   scoringModelVersion: 'causal-v2' as const,
   mandateDifficulty: DEFAULT_MANDATE_DIFFICULTY,
   processLog: [],
+  replayTrace: [],
   turnPlayback: null,
   lastResourceDeltas: [],
   showWeekReport: false,
@@ -1488,6 +1518,16 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
         ? state.boardRejectionCount + 1
         : state.boardRejectionCount;
 
+    newResources.dealMomentum = deriveDealMomentum({
+      ...state,
+      tasks: unlockedTasks,
+      resources: newResources,
+      risks: newRisks,
+      buyers: updatedBuyers,
+      competitorThreats: newCompetitorThreats,
+      boardSubmission: resolvedBoardSub,
+    });
+
     // Check phase gate (with resolved board submission so gate reflects this week's board decision)
     const nextState = {
       ...state,
@@ -1547,7 +1587,24 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     );
 
     // Attributable resource deltas for the turn tape and KPI chips
-    const resourceDeltas = buildResourceDeltas(state.resources, normalizedResources, result);
+    const resourceDeltas = buildResourceDeltas(state.resources, normalizedResources, result).map((delta) =>
+      delta.resource === 'dealMomentum'
+        ? { ...delta, reason: explainDealMomentumChange(state, nextState), sourceEntity: 'Live deal state' }
+        : delta
+    );
+    const replayTrace = appendReplayTrace(state.replayTrace, {
+      day: state.day,
+      phase: state.phase,
+      action: 'advance',
+      input: { days: daysToAdvance, pace: state.weekPace },
+      rng: result.rngTrace,
+      resourceDeltas,
+      sources: [
+        ...result.tasksCompleted.map((task) => `task:${task.id}`),
+        ...result.newEvents.map((event) => `event:${event.id}`),
+        ...result.newEmails.map((email) => `email:${email.id}`),
+      ],
+    });
 
     logCausalChange('advance', {
       phase: state.phase,
@@ -1610,6 +1667,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       showWeekReport: false,
       pendingReportAutoOpen: autoOpenReport && !collapse.collapsed && !isGameComplete,
       processLog,
+      replayTrace,
       phaseGate: gate,
       pitchDocumentReady,
       bindingOffersReceived: updatedBindingOffersReceived,
@@ -1750,6 +1808,12 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       finalOffers: newFinalOffers,
       offerReveal: nextOfferReveal,
       preferredBidderId: nextPhase === 7 ? null : state.preferredBidderId,
+      replayTrace: appendReplayTrace(state.replayTrace, {
+        day: state.day,
+        phase: state.phase,
+        action: 'phase_advance',
+        input: { fromPhase: state.phase, toPhase: nextPhase },
+      }),
     });
   },
 
@@ -2098,6 +2162,17 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     ),
   })),
 
+  acknowledgeRoutineEmails: () => {
+    const routineIds = new Set(getRoutineEmails(get().emails, get().phase).map((email) => email.id));
+    if (routineIds.size === 0) return;
+    set((state) => ({
+      emails: state.emails.map((email) =>
+        routineIds.has(email.id) ? { ...email, state: 'read' as const } : email
+      ),
+    }));
+    get().addToast(`${routineIds.size} routine update${routineIds.size === 1 ? '' : 's'} cleared`, 'info');
+  },
+
   flagEmail: (emailId) => set((state) => ({
     emails: state.emails.map((e) =>
       e.id === emailId ? { ...e, flagged: !e.flagged } : e
@@ -2176,6 +2251,11 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       newResources = { ...state.resources };
       for (const [key, delta] of Object.entries(response.resourceEffects)) {
         const k = key as keyof PlayerResources;
+        if (k === 'dealMomentum') {
+          const translatedRiskDelta = -Math.round(delta / 2);
+          newResources.riskLevel = Math.max(0, Math.min(100, newResources.riskLevel + translatedRiskDelta));
+          continue;
+        }
         const current = newResources[k];
         if (typeof current === 'number' && typeof delta === 'number') {
           const maxVal = k === 'budget' ? newResources.budgetMax : k === 'teamCapacity' ? newResources.teamCapacityMax : 100;
@@ -2234,6 +2314,15 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       resources: normalizedResources,
       emails: nextEmails,
       processLog,
+      replayTrace: email && response
+        ? appendReplayTrace(state.replayTrace, {
+            day: state.day,
+            phase: state.phase,
+            action: 'email_response',
+            input: { emailId, responseId },
+            sources: [`email:${emailId}`],
+          })
+        : state.replayTrace,
       eventDirectorState: {
         ...nextDirectorState,
         upcomingBeats: buildUpcomingBeats(stateAfterResponse),
@@ -2264,8 +2353,29 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       leads: syncLeadsFromTasks(state.leads, unlockedUpdated),
       deliverables: syncDeliverables(state.deliverables, unlockedUpdated),
       team: syncTeamLoad(state.team, unlockedUpdated, state.phase),
+      replayTrace: appendReplayTrace(state.replayTrace, {
+        day: state.day,
+        phase: state.phase,
+        action: 'task_start',
+        input: { taskId },
+        sources: [`task:${taskId}`],
+      }),
     };
   }),
+
+  queueRoutineTasks: () => {
+    const state = get();
+    let remainingBudget = state.resources.budget;
+    const routineTasks = getRoutineTasks(state.tasks, state.phase).filter((task) => {
+      if (task.cost > remainingBudget) return false;
+      remainingBudget -= task.cost;
+      return true;
+    });
+    routineTasks.forEach((task) => get().startTask(task.id));
+    if (routineTasks.length > 0) {
+      get().addToast(`${routineTasks.length} routine task${routineTasks.length === 1 ? '' : 's'} queued`, 'info');
+    }
+  },
 
   completeTask: (taskId) => set((state) => {
     const completedTask = state.tasks.find((task) => task.id === taskId && task.phase === state.phase && task.status === 'in_progress');
@@ -2329,6 +2439,13 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
         headline: `Mitigated: ${risk.name}`,
         explanation: `Addressed a ${risk.severity}-severity risk before it could further constrain the process.`,
       }),
+      replayTrace: appendReplayTrace(state.replayTrace, {
+        day: state.day,
+        phase: state.phase,
+        action: 'risk_mitigation',
+        input: { riskId, planId: 'direct' },
+        sources: [`risk:${riskId}`],
+      }),
     };
   }),
 
@@ -2341,7 +2458,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
 
     if (state.resources.budget < plan.budgetCost) return {};
     if (state.resources.teamCapacity < plan.capacityCost) return {};
-    const rng = createActionRng(state, `mitigation:${riskId}:${planId}`);
+    const { rng, seed: mitigationSeed } = createActionRng(state, `mitigation:${riskId}:${planId}`);
     const processLog = appendProcessRecord(state.processLog, {
       day: state.day,
       phase: state.phase,
@@ -2368,6 +2485,14 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       return {
         resources: baseResources,
         processLog,
+        replayTrace: appendReplayTrace(state.replayTrace, {
+          day: state.day,
+          phase: state.phase,
+          action: 'risk_mitigation',
+          input: { riskId, planId, outcome: 'catastrophic_failure' },
+          rng: { seed: mitigationSeed, draws: rng.getDrawCount(), state: rng.getState() },
+          sources: [`risk:${riskId}`],
+        }),
         gameComplete: true,
         collapseReason: 'client_walked' as const,
         collapseHeadline: plan.catastrophicHeadline ?? 'Client Walked',
@@ -2408,6 +2533,14 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     return {
       resources: normalizeResources(mergedResources),
       processLog,
+      replayTrace: appendReplayTrace(state.replayTrace, {
+        day: state.day,
+        phase: state.phase,
+        action: 'risk_mitigation',
+        input: { riskId, planId, outcome: success ? 'success' : 'failure' },
+        rng: { seed: mitigationSeed, draws: rng.getDrawCount(), state: rng.getState() },
+        sources: [`risk:${riskId}`],
+      }),
       risks: state.risks.map((r) =>
         r.id === riskId
           ? {
@@ -2605,6 +2738,12 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
           ? 'Recommendation was backed by full investigation, a founder meeting, and documented evidence.'
           : `Recommendation went to the IC with gaps: ${assessment.gaps.join('; ')}.`,
       }),
+      replayTrace: appendReplayTrace(state.replayTrace, {
+        day: state.day,
+        phase: state.phase,
+        action: 'board_submission',
+        input: { recommendation, rationale, leadId },
+      }),
     };
   }),
 
@@ -2758,6 +2897,12 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       headline: `Fee negotiation — round ${currentRound}`,
       explanation: `The proposal produced ${redCount} red reaction${redCount === 1 ? '' : 's'} across retainer, success fee and ratchet.`,
     });
+    const replayTrace = appendReplayTrace(state.replayTrace, {
+      day: state.day,
+      phase: state.phase,
+      action: 'fee_round',
+      input: { round: currentRound, terms: effectiveTerms, outcome },
+    });
 
     // Apply progressive locking (only on counter — not on accepted/rejected)
     const lockUpdates = outcome === 'counter'
@@ -2792,6 +2937,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
         },
         agreedFeeTerms: agreedTerms,
         processLog,
+        replayTrace,
       };
     }
 
@@ -2805,6 +2951,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
         },
         resources: normalizeResources({ ...state.resources, clientTrust: Math.max(0, state.resources.clientTrust - 10) }),
         processLog,
+        replayTrace,
       };
     }
 
@@ -2815,6 +2962,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
         rounds: [...state.feeNegotiation.rounds, newRound],
       },
       processLog,
+      replayTrace,
     };
   }),
 
@@ -2880,8 +3028,16 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
             dedupeKey: 'buyer_decision:preferred',
             headline: `Preferred bidder: ${selectedBuyer?.name ?? buyerId}`,
             explanation: 'Selection quality reflects the execution credibility and conditionality visible when the choice was confirmed.',
-          })
+        })
         : state.processLog,
+      replayTrace: confirmed
+        ? appendReplayTrace(state.replayTrace, {
+            day: state.day,
+            phase: state.phase,
+            action: 'buyer_selection',
+            input: { buyerId, confirmed },
+          })
+        : state.replayTrace,
     };
   }),
 
@@ -2957,6 +3113,12 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       headline: `SPA negotiation — round ${round}`,
       explanation: `The proposal produced ${reds} red and ${yellows} yellow reactions across the four negotiated components.`,
     });
+    const replayTrace = appendReplayTrace(state.replayTrace, {
+      day: state.day,
+      phase: state.phase,
+      action: 'spa_round',
+      input: { round, terms: effectiveTerms, outcome },
+    });
     const newPatience = Math.max(0, neg.buyerState.patienceRemaining - (result.reactionCap === 'red' || result.reactionScope === 'red' ? 30 : 15));
 
     // Apply progressive locking on counter
@@ -2976,7 +3138,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     } : undefined;
 
     const resourceEffect = result.outcome === 'accepted'
-      ? { dealMomentum: Math.min(100, state.resources.dealMomentum + 10), clientTrust: Math.min(100, state.resources.clientTrust + 5), riskLevel: Math.max(0, state.resources.riskLevel - 5) }
+      ? { clientTrust: Math.min(100, state.resources.clientTrust + 5), riskLevel: Math.max(0, state.resources.riskLevel - 5) }
       : result.outcome === 'rejected'
         ? { clientTrust: Math.max(0, state.resources.clientTrust - 10), riskLevel: Math.min(100, state.resources.riskLevel + 8) }
         : {};
@@ -2992,6 +3154,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       agreedSPATerms: agreedTerms ?? state.agreedSPATerms,
       resources: normalizeResources({ ...state.resources, ...resourceEffect }),
       processLog,
+      replayTrace,
     };
   }),
 
@@ -3011,7 +3174,6 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       agreedSPATerms: agreedTerms,
       resources: normalizeResources({
         ...state.resources,
-        dealMomentum: Math.min(100, state.resources.dealMomentum + 8),
         clientTrust: Math.min(100, state.resources.clientTrust + 5),
       }),
     };
@@ -3028,22 +3190,18 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
 
     // Resource effects based on sensitivity and direction
     const sensitivityWeight = cat.sensitivity === 'critical' ? 1.0 : cat.sensitivity === 'high' ? 0.7 : cat.sensitivity === 'medium' ? 0.4 : 0.2;
-    let momentumDelta = 0;
     let riskDelta = 0;
     let trustDelta = 0;
 
     if (opening) {
-      momentumDelta = Math.round(8 * sensitivityWeight);   // buyers more engaged
       riskDelta = Math.round(10 * sensitivityWeight);       // more exposure
       trustDelta = Math.round(5 * sensitivityWeight);       // client trusts the process
     } else if (restricting) {
-      momentumDelta = Math.round(-5 * sensitivityWeight);   // buyers frustrated
       riskDelta = Math.round(-6 * sensitivityWeight);       // less exposure
     }
 
     const newResources = {
       ...state.resources,
-      dealMomentum: Math.max(0, Math.min(100, state.resources.dealMomentum + momentumDelta)),
       riskLevel: Math.max(0, Math.min(100, state.resources.riskLevel + riskDelta)),
       clientTrust: Math.max(0, Math.min(100, state.resources.clientTrust + trustDelta)),
     };
@@ -3067,6 +3225,12 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
         sourceId: categoryId,
         headline: `Dataroom access: ${cat.name}`,
         explanation: `${level} access was selected for a ${cat.sensitivity}-sensitivity category, balancing buyer momentum against disclosure exposure.`,
+      }),
+      replayTrace: appendReplayTrace(state.replayTrace, {
+        day: state.day,
+        phase: state.phase,
+        action: 'dataroom_access',
+        input: { categoryId, from: prev, to: level },
       }),
     };
   }),
@@ -3096,14 +3260,14 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
         ...state.resources,
         budget: state.resources.budget - cfg.budgetCost,
         clientTrust: Math.min(100, state.resources.clientTrust + (effects.clientTrust ?? 0)),
-        dealMomentum: Math.min(100, state.resources.dealMomentum + (effects.dealMomentum ?? 0)),
         reputation: Math.min(100, state.resources.reputation + (effects.reputation ?? 0)),
       }),
     };
   }),
 
   setWeekPace: (pace) => set({ weekPace: pace }),
-}), {
+  });
+}, {
   name: 'ma-rainmaker-save',
   version: SAVE_SCHEMA_VERSION,
   migrate: (persistedState: unknown, fromVersion: number) => {
@@ -3213,22 +3377,35 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       // guessing from emails.
       s.boardRejectionCount = 0;
     }
+    if (fromVersion < 10) {
+      s.replayTrace = [];
+    }
     if (fromVersion < SAVE_SCHEMA_VERSION && s.resources && typeof s.resources === 'object') {
       // M0 makes all visible resource values integer-valued at the engine
       // boundary. Migrate existing fractional saves once, rather than showing
       // a mixed-format run after upgrade.
       s.resources = normalizeResources(s.resources as PlayerResources);
     }
+    if (fromVersion < 10 && s.resources && typeof s.resources === 'object') {
+      // Momentum is materialised from the merged run state and is no longer
+      // part of the persisted resource payload.
+      const migratedResources = { ...(s.resources as Record<string, unknown>) };
+      delete migratedResources.dealMomentum;
+      s.resources = migratedResources;
+    }
     return s;
   },
   merge: (persistedState: unknown, currentState: GameStore) => {
+    const persisted = (persistedState ?? {}) as Partial<GameStore> & { resources?: Partial<PlayerResources> };
     const merged = {
       ...currentState,
-      ...(persistedState as Partial<GameStore>),
-    };
+      ...persisted,
+      resources: { ...currentState.resources, ...(persisted.resources ?? {}) },
+    } as GameStore;
     if (merged.day !== undefined) {
       merged.week = Math.ceil(merged.day / 7);
     }
+    merged.resources.dealMomentum = deriveDealMomentum(merged);
     return merged;
   },
   partialize: (state) => {
@@ -3238,8 +3415,10 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       turnPlayback, lastResourceDeltas, showWeekReport, pendingReportAutoOpen,
       ...persisted
     } = state;
+    const { dealMomentum: _derivedMomentum, ...persistedResources } = persisted.resources;
     void lastWeekResult; void phaseGate; void isWeekInProgress; void toasts; void week;
     void turnPlayback; void lastResourceDeltas; void showWeekReport; void pendingReportAutoOpen;
-    return persisted;
+    void _derivedMomentum;
+    return { ...persisted, resources: persistedResources as PlayerResources };
   },
 }));

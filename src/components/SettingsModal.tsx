@@ -1,8 +1,9 @@
 import { useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, LogOut, RotateCcw, Settings, Save } from 'lucide-react';
+import { ArrowLeft, Download, LogOut, RotateCcw, Settings, Save } from 'lucide-react';
 import { useGameStore } from '../store/gameStore';
 import { PHASE_NAMES } from '../types/game';
+import { buildReplayExport } from '../engine/replayTrace';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -18,6 +19,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const playerName = useGameStore((s) => s.playerName);
   const savedAt = useGameStore((s) => s.savedAt);
   const saveGame = useGameStore((s) => s.saveGame);
+  const replayCount = useGameStore((s) => s.replayTrace.length);
 
   const lastSaved = savedAt
     ? new Date(savedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -49,6 +51,18 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const handleExitToMenu = () => {
     navigate('/');
     onClose();
+  };
+
+  const handleExportReplay = () => {
+    const replay = buildReplayExport(useGameStore.getState());
+    const blob = new Blob([JSON.stringify(replay, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    const player = playerName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'run';
+    anchor.href = url;
+    anchor.download = `rainmaker-replay-${player}-day-${replay.run.day}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -107,6 +121,15 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           <LogOut size={14} className="text-text-muted" />
           Exit to Main Menu
           <span className="ml-auto text-[11px] text-text-muted">(saves)</span>
+        </button>
+
+        <button
+          onClick={handleExportReplay}
+          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg border border-border-subtle bg-surface-default hover:bg-surface-hover transition-colors text-[13px] font-medium text-text-primary"
+        >
+          <Download size={14} className="text-text-muted" />
+          Export Replay Trace
+          <span className="ml-auto text-[11px] text-text-muted font-mono">{replayCount} actions</span>
         </button>
 
         <button

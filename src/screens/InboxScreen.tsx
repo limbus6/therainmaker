@@ -13,8 +13,11 @@ import {
   CheckCircle2,
   ArrowUpDown,
   ArrowUpRight,
+  CheckCheck,
 } from 'lucide-react';
 import type { Email, EmailCategory } from '../types/game';
+import { formatResponseEffects } from '../utils/responseEffects';
+import { getRoutineEmails } from '../utils/friction';
 
 const CATEGORY_COLORS: Record<EmailCategory, string> = {
   client: 'text-state-info',
@@ -42,7 +45,7 @@ type FilterTab = 'all' | 'unread' | 'flagged' | 'important' | 'requires_response
 type SortKey = 'newest' | 'oldest' | 'sender' | 'priority' | 'category';
 
 export default function InboxScreen() {
-  const { emails, markEmailRead, respondToEmail, flagEmail, escalateEmail } = useGameStore();
+  const { emails, markEmailRead, acknowledgeRoutineEmails, respondToEmail, flagEmail, escalateEmail, phase } = useGameStore();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -93,6 +96,7 @@ export default function InboxScreen() {
   }
 
   const flaggedCount = emails.filter((e) => e.flagged).length;
+  const routineEmails = getRoutineEmails(emails, phase);
 
   const tabs: { key: FilterTab; label: string }[] = [
     { key: 'all', label: 'All' },
@@ -144,6 +148,17 @@ export default function InboxScreen() {
         </div>
 
         {/* Sort */}
+        {routineEmails.length > 0 && (
+          <button
+            type="button"
+            onClick={acknowledgeRoutineEmails}
+            title="Marks low-priority informational updates as read; messages with a response choice are never included"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-[var(--radius-md)] border border-border-accent bg-border-accent/10 px-3 py-1.5 text-[12px] font-medium text-text-accent transition-colors hover:bg-border-accent/20"
+          >
+            <CheckCheck size={13} /> Clear {routineEmails.length} routine
+          </button>
+        )}
+
         <div className="flex items-center gap-1.5 shrink-0">
           <ArrowUpDown size={13} className="text-text-muted" />
           <select
@@ -268,8 +283,8 @@ export default function InboxScreen() {
                           <Reply size={14} className="text-text-muted group-hover:text-text-accent" />
                           <span className="text-[12px] text-text-primary">{opt.label}</span>
                         </div>
-                        {opt.effects && (
-                          <span className="text-[10px] font-mono text-text-muted">{opt.effects}</span>
+                        {formatResponseEffects(opt) && (
+                          <span className="text-[10px] font-mono text-text-muted">{formatResponseEffects(opt)}</span>
                         )}
                       </button>
                     ))}

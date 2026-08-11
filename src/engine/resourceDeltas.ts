@@ -39,6 +39,13 @@ function attributeReason(
     };
   }
 
+  if (resource === 'dealMomentum') {
+    return {
+      reason: 'Derived from phase progress, current work, buyer conviction, client trust, and active risk',
+      sourceEntity: 'Live deal state',
+    };
+  }
+
   // 2. Budget approvals are the dominant cause of budget increases
   if (resource === 'budget' && delta > 0) {
     const approved = result.resolvedBudgetRequests.find((r) => r.approved);
@@ -77,9 +84,6 @@ function attributeReason(
   }
   if (resource === 'riskLevel') {
     return { reason: delta < 0 ? 'Completed work reduced execution risk' : 'No completed milestone increased execution risk' };
-  }
-  if (resource === 'dealMomentum') {
-    return { reason: delta < 0 ? 'No completed milestone this turn' : 'Execution pace improved process momentum' };
   }
   if (resource === 'clientTrust') {
     return { reason: delta < 0 ? 'Client confidence weakened during execution' : 'Client confidence improved through execution' };
