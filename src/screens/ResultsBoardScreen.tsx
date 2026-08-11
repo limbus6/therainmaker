@@ -1,8 +1,10 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../store/gameStore';
 import { buildResultsBoard } from '../engine/resultsEngine';
 import { getArchetype } from '../content/archetypes';
+import { useCareerStore } from '../store/careerStore';
+import { getMandate } from '../content/mandates';
 import type { ResultsBoard } from '../engine/resultsEngine';
 import ProgressBar from '../components/ui/ProgressBar';
 import { Trophy, TrendingUp, Users, Shield, Briefcase, Star, ChevronRight, RotateCcw } from 'lucide-react';
@@ -84,6 +86,33 @@ export default function ResultsBoardScreen() {
   const state = useGameStore();
   const navigate = useNavigate();
   const results = useMemo(() => buildResultsBoard(state), [state]);
+  const recordMandate = useCareerStore((s) => s.recordMandate);
+
+  // Mint the tombstone once per run; the store dedupes by runKey so a
+  // revisited results screen never double-records.
+  useEffect(() => {
+    if (!state.gameComplete) return;
+    const mandate = getMandate(state.mandateId);
+    const preferredBuyer = state.buyers.find((b) => b.id === state.preferredBidderId);
+    const collapsed = results.dealOutcome === 'deal_failed';
+    recordMandate({
+      runKey: `${state.mandateId}-${state.rngSeed}`,
+      mandateId: state.mandateId,
+      mandateLabel: mandate?.label ?? state.mandateId,
+      companyName: state.client.companyName,
+      buyerName: collapsed ? null : preferredBuyer?.name ?? null,
+      closingValue: collapsed ? 0 : results.financial.closingValue,
+      impliedMultiple: collapsed ? null : results.financial.closingValue > 0 ? Math.round((results.financial.closingValue / 12) * 10) / 10 : null,
+      totalAdvisoryFee: results.financial.totalAdvisoryFee,
+      grade: results.scores.overallGrade,
+      processScore: results.scores.processScore,
+      outcome: collapsed ? 'collapsed' : 'closed',
+      archetype: state.advisorArchetype,
+      daysTaken: state.totalDays,
+      completedAt: new Date().toISOString(),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.gameComplete]);
 
   // Redirect back if game isn't complete
   if (!state.gameComplete) {
@@ -339,14 +368,11 @@ export default function ResultsBoardScreen() {
       {/* Play Again */}
       <div className="flex justify-center pt-4 pb-8">
         <button
-          onClick={() => {
-            localStorage.removeItem('ma-rainmaker-save');
-            window.location.replace('/');
-          }}
+          onClick={() => { window.location.hash = '#/mandates'; }}
           className="flex items-center gap-2 px-6 py-3 text-[12px] font-mono uppercase tracking-wider text-text-accent border border-accent-primary/30 rounded-[var(--radius-md)] hover:bg-accent-soft hover:shadow-[var(--shadow-glow-soft)] transition-all duration-200"
         >
           <RotateCcw size={14} />
-          Play Again
+          Choose Next Mandate
         </button>
       </div>
     </div>

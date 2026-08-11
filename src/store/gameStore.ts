@@ -56,6 +56,7 @@ import type { WeekResult, PhaseGateResult } from '../engine/weekEngine';
 import { getGoldenMandateOfferDriver } from '../engine/goldenMandate';
 import { getPeopleOfferDriver } from '../engine/peopleBeats';
 import { getArchetype, type ArchetypeId } from '../content/archetypes';
+import { consumePendingMandate } from '../content/mandates';
 import { PHASE_BASE_BUDGETS, STAFF_PROFILES, CONTRACTOR_PROFILES, MITIGATION_ACTIONS } from '../config/phaseBudgets';
 import { getRiskMitigationPlans } from '../config/riskMitigation';
 import { REVIEW_CHECKPOINTS_BY_ID } from '../config/reviewCheckpoints';
@@ -83,6 +84,10 @@ export const INVESTIGATION_CAPACITY_COST = 4; // % team capacity per investigati
 // Initial Phase 0: Deal Origination Seed Data
 // ============================================
 
+// M5a: a mandate chosen on the market travels through a reload and is
+// consumed exactly once when the fresh run initialises.
+const pendingMandate = typeof window !== 'undefined' ? consumePendingMandate() : null;
+
 const initialResources: PlayerResources = {
   budget: PHASE_BASE_BUDGETS[0],
   budgetMax: PHASE_BASE_BUDGETS[0],
@@ -92,7 +97,7 @@ const initialResources: PlayerResources = {
   clientTrust: 40,
   dealMomentum: 25,
   riskLevel: 10,
-  reputation: 40,
+  reputation: Math.min(60, 40 + (pendingMandate?.careerReputationBonus ?? 0)),
 };
 
 const initialClient: Client = {
@@ -615,6 +620,8 @@ export interface GameStore {
   contentVersion: string;
   scoringModelVersion: ProcessScoringModel;
   mandateDifficulty: MandateDifficultyProfile;
+  /** Which market engagement this run is (M5a). */
+  mandateId: string;
   processLog: ProcessRecord[];
   replayTrace: ReplayTraceEntry[];
 
@@ -794,7 +801,7 @@ function normalizeResources(resources: PlayerResources): PlayerResources {
 
 const DEFAULT_PREFERRED_BUYER = 'Kestrel Capital';
 const DEFAULT_FALLBACK_BUYER = 'Vektor Industries';
-const SAVE_SCHEMA_VERSION = 11;
+const SAVE_SCHEMA_VERSION = 12;
 
 function hashIdentifier(value: string): number {
   let hash = 2166136261;
@@ -1325,13 +1332,14 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
   bindingOffersReceived: 0,
   unaddressedQACount: 0,
   weekPace: 'standard' as const,
-  rngSeed: Date.now(),
+  rngSeed: pendingMandate?.seed ?? Date.now(),
   eventDirectorState: createInitialEventDirectorState(),
   activeMissionId: undefined,
   commitments: [],
   contentVersion: CONTENT_VERSION,
   scoringModelVersion: 'causal-v2' as const,
-  mandateDifficulty: DEFAULT_MANDATE_DIFFICULTY,
+  mandateDifficulty: pendingMandate?.difficulty ?? DEFAULT_MANDATE_DIFFICULTY,
+  mandateId: pendingMandate?.id ?? 'solara-flagship',
   processLog: [],
   replayTrace: [],
   turnPlayback: null,
@@ -3444,6 +3452,9 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
       s.scoringModelVersion = 'legacy-v1';
       s.mandateDifficulty = { ...DEFAULT_MANDATE_DIFFICULTY };
       s.processLog = [];
+    }
+    if (fromVersion < 12) {
+      s.mandateId = 'solara-flagship';
     }
     if (fromVersion < 11) {
       // Archetypes are a run-start identity; mid-run saves stay 'balanced'.
