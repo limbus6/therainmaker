@@ -9,6 +9,8 @@ The historical review below remains useful design context, but its implementatio
 - Save schema v8 adds an explicit content version, a causal-v2 scoring model for new games, mandate difficulty, and a persisted, deduplicated process log. Migrated saves retain legacy-v1 scoring.
 - Results Board evaluates Judgment, Execution Discipline, Stakeholder Management, Risk Stewardship, and Negotiation Craft independently of deal outcome, then builds a source-specific Player Debrief.
 - Team traits/growth and person-level task allocation remain deliberately deferred pending the M0.5 friction audit.
+- Save schema v9 (playtest-driven): `boardRejectionCount` powers an IC pity ladder (+20%/rejection; a third evidence-backed proceed submission is approved outright) and phases 0-1 carry a momentum floor of 10 — pre-mandate runs can cool but not collapse by decay. The Board modal telegraphs qualitative case strength (strong/mixed/thin + named gaps, never probabilities) via `src/engine/boardCase.ts`, prefills resubmissions, and the meeting button reflects its scheduled state (action now idempotent).
+- Process score coverage (also playtest-driven): board judgment is rated on verified evidence via `assessBoardCase` (no string-length proxies), presenting the pitch without the deck is a recorded judgment miss, low-complexity tasks record at weight 1, and categories blend toward neutral until they hold `FULL_CONFIDENCE_WEIGHT` (6) of evidence — one decision can no longer swing a discipline ±50.
 - Current verification target: build, lint, full tests, and desktop/mobile browser QA before publication.
 
 ## Purpose

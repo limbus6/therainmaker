@@ -1,10 +1,28 @@
 import { useState } from 'react';
 import { useGameStore } from '../store/gameStore';
+import { assessBoardCase } from '../engine/boardCase';
 import { X, CheckCircle, XCircle, Clock, FileText, TrendingUp } from 'lucide-react';
 
 interface Props {
   onClose: () => void;
 }
+
+const PROCEED_POINT_IDS = [
+  { id: 'ahead', text: 'We need to move now to stay ahead of the competing advisor.' },
+  { id: 'great_deal', text: 'This is a great deal and we cannot afford to lose it.' },
+  { id: 'workable_risk', text: 'It is a good opportunity with risks we can manage.' },
+  { id: 'fee', text: 'The mandate can generate an attractive fee for the firm.' },
+  { id: 'founder_fit', text: 'The founder fit and sector position justify moving quickly.' },
+  { id: 'trust', text: 'Founder engagement is strong enough to justify a full pitch.' },
+];
+
+const DECLINE_POINT_IDS = [
+  { id: 'valuation', text: 'The valuation gap is too wide for a credible mandate.' },
+  { id: 'depth', text: 'The management bench is too thin for a stable process.' },
+  { id: 'momentum', text: 'Momentum and trust are still too weak to justify escalation.' },
+  { id: 'regulatory', text: 'Execution risk is too high relative to likely fee.' },
+  { id: 'competitor', text: 'The competing advisor is too far ahead for a clean win.' },
+];
 
 export default function BoardSubmissionModal({ onClose }: Props) {
   const resources = useGameStore((s) => s.resources);
@@ -16,28 +34,23 @@ export default function BoardSubmissionModal({ onClose }: Props) {
   const phase = useGameStore((s) => s.phase);
   const activeThreats = competitorThreats.filter((t) => !t.resolved);
 
-  const [recommendation, setRecommendation] = useState<'proceed' | 'decline'>('proceed');
-  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(() => useGameStore.getState().leads[0]?.id ?? null);
-  const [selectedPoints, setSelectedPoints] = useState<string[]>([]);
+  // Resubmissions start from the previous submission — the player refines a
+  // rejected case rather than rebuilding it from scratch.
+  const [recommendation, setRecommendation] = useState<'proceed' | 'decline'>(
+    () => useGameStore.getState().boardSubmission?.recommendation ?? 'proceed'
+  );
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(() => {
+    const s = useGameStore.getState();
+    return s.boardSubmission?.leadId ?? s.leads[0]?.id ?? null;
+  });
+  const [selectedPoints, setSelectedPoints] = useState<string[]>(() => {
+    const prev = useGameStore.getState().boardSubmission;
+    if (!prev?.rationale) return [];
+    const pool = prev.recommendation === 'proceed' ? PROCEED_POINT_IDS : DECLINE_POINT_IDS;
+    return pool.filter((p) => prev.rationale.includes(p.text)).map((p) => p.id);
+  });
 
-  const PROCEED_POINTS = [
-    { id: 'ahead', text: 'We need to move now to stay ahead of the competing advisor.' },
-    { id: 'great_deal', text: 'This is a great deal and we cannot afford to lose it.' },
-    { id: 'workable_risk', text: 'It is a good opportunity with risks we can manage.' },
-    { id: 'fee', text: 'The mandate can generate an attractive fee for the firm.' },
-    { id: 'founder_fit', text: 'The founder fit and sector position justify moving quickly.' },
-    { id: 'trust', text: 'Founder engagement is strong enough to justify a full pitch.' },
-  ];
-
-  const DECLINE_POINTS = [
-    { id: 'valuation', text: 'The valuation gap is too wide for a credible mandate.' },
-    { id: 'depth', text: 'The management bench is too thin for a stable process.' },
-    { id: 'momentum', text: 'Momentum and trust are still too weak to justify escalation.' },
-    { id: 'regulatory', text: 'Execution risk is too high relative to likely fee.' },
-    { id: 'competitor', text: 'The competing advisor is too far ahead for a clean win.' },
-  ];
-
-  const activePoints = recommendation === 'proceed' ? PROCEED_POINTS : DECLINE_POINTS;
+  const activePoints = recommendation === 'proceed' ? PROCEED_POINT_IDS : DECLINE_POINT_IDS;
   const rationale = selectedPoints
     .map((id) => activePoints.find((p) => p.id === id)?.text ?? '')
     .filter(Boolean)
@@ -108,6 +121,33 @@ export default function BoardSubmissionModal({ onClose }: Props) {
               </div>
             </div>
           )}
+
+          {/* IC case strength — qualitative telegraph, never a probability */}
+          {(() => {
+            const lead = leads.find((l) => l.id === selectedLeadId);
+            const caseAssessment = assessBoardCase({ lead, qualificationNotes, recommendation });
+            const tone = caseAssessment.strength === 'strong'
+              ? 'border-green-500/30 bg-green-500/5 text-green-400'
+              : caseAssessment.strength === 'mixed'
+                ? 'border-yellow-500/30 bg-yellow-500/5 text-yellow-400'
+                : 'border-red-500/30 bg-red-500/5 text-red-400';
+            return (
+              <div className={`p-3 rounded-[var(--radius-md)] border ${tone}`}>
+                <div className="flex items-center gap-2">
+                  <TrendingUp size={13} className="shrink-0" />
+                  <span className="text-[12px] font-semibold capitalize">{caseAssessment.strength} case</span>
+                  <span className="text-[11px] text-text-muted">— how the IC will read this file as it stands</span>
+                </div>
+                {caseAssessment.gaps.length > 0 && (
+                  <ul className="mt-1.5 space-y-0.5">
+                    {caseAssessment.gaps.map((gap) => (
+                      <li key={gap} className="text-[11px] text-text-secondary">· {gap}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Qualification signals */}
           <div>

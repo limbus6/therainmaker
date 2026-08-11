@@ -147,10 +147,10 @@ function LeadActionPanel({ lead }: { lead: Lead }) {
         ))}
         <button
           onClick={() => scheduleMeeting(lead.id)}
-          disabled={lead.meetingDone}
+          disabled={lead.meetingDone || lead.meetingScheduled}
           className="ml-auto px-3 py-1.5 rounded-[var(--radius-sm)] border border-border-accent bg-border-accent/10 text-text-accent hover:bg-border-accent/20 disabled:opacity-40 text-[11px] font-semibold transition-colors"
         >
-          {lead.meetingDone ? 'Meeting Done' : 'Schedule Intro Meeting'}
+          {lead.meetingDone ? 'Meeting Done' : lead.meetingScheduled ? 'Meeting Scheduled…' : 'Schedule Intro Meeting'}
         </button>
       </div>
     </div>

@@ -48,6 +48,7 @@ import type {
 import type { ActionCommitment } from '../types/dealBeat';
 import { createInitialEventDirectorState } from '../engine/eventDirector';
 import { buildResourceDeltas } from '../engine/resourceDeltas';
+import { assessBoardCase } from '../engine/boardCase';
 import { createRng, deriveSeed } from '../engine/rng';
 import { resolveWeek, checkPhaseGate, unlockTasks, checkDealCollapse, calcDaysToAdvance, buildUpcomingBeats } from '../engine/weekEngine';
 import type { WeekResult, PhaseGateResult } from '../engine/weekEngine';
@@ -580,6 +581,8 @@ export interface GameStore {
   budgetRequests: BudgetRequest[];
   qualificationNotes: QualificationNote[];
   boardSubmission: BoardSubmission | null;
+  /** IC rejections this run — drives the resubmission pity ladder. */
+  boardRejectionCount: number;
   tempCapacityAllocations: TempCapacityAllocation[];
   feeNegotiation: FeeNegotiation | null;
   agreedFeeTerms: FeeTerms | null;
@@ -767,7 +770,7 @@ function normalizeResources(resources: PlayerResources): PlayerResources {
 
 const DEFAULT_PREFERRED_BUYER = 'Kestrel Capital';
 const DEFAULT_FALLBACK_BUYER = 'Vektor Industries';
-const SAVE_SCHEMA_VERSION = 8;
+const SAVE_SCHEMA_VERSION = 9;
 
 function hashIdentifier(value: string): number {
   let hash = 2166136261;
@@ -1253,6 +1256,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
   budgetRequests: [],
   qualificationNotes: [],
   boardSubmission: null,
+  boardRejectionCount: 0,
   tempCapacityAllocations: [],
   feeNegotiation: null,
   agreedFeeTerms: null,
@@ -1479,6 +1483,10 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
           boardNotes: result.resolvedBoardSubmission.notes,
         }
       : state.boardSubmission;
+    const nextBoardRejectionCount =
+      result.resolvedBoardSubmission && !result.resolvedBoardSubmission.approved
+        ? state.boardRejectionCount + 1
+        : state.boardRejectionCount;
 
     // Check phase gate (with resolved board submission so gate reflects this week's board decision)
     const nextState = {
@@ -1522,13 +1530,13 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     const processLog = appendProcessRecords(
       state.processLog,
       result.tasksCompleted
-        .filter((task) => !task.isBackgroundTask && task.complexity !== 'low')
+        .filter((task) => !task.isBackgroundTask)
         .map((task) => ({
           day: newDay,
           phase: state.phase,
           category: 'execution' as const,
           rating: task.deadline === undefined || newWeekNum <= task.deadline ? 1 : 0.4,
-          weight: task.complexity === 'high' ? 3 as const : 2 as const,
+          weight: task.complexity === 'high' ? 3 as const : task.complexity === 'medium' ? 2 as const : 1 as const,
           sourceType: 'task' as const,
           sourceId: task.id,
           headline: `Delivered: ${task.name}`,
@@ -1579,6 +1587,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       qualificationNotes: newQualNotes,
       tempCapacityAllocations: updatedTempAllocations,
       boardSubmission: resolvedBoardSub,
+      boardRejectionCount: nextBoardRejectionCount,
       budgetRequests: state.budgetRequests.map((req) => {
         const resolved = result.resolvedBudgetRequests.find((r) => r.id === req.id);
         if (resolved) {
@@ -2037,6 +2046,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       lastResourceDeltas: [],
       showWeekReport: false,
       pendingReportAutoOpen: false,
+      boardRejectionCount: 0,
       phaseGate: checkPhaseGate({
         ...state,
         phase: checkpoint.phase,
@@ -2534,6 +2544,8 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
   scheduleMeeting: (leadId) => set((state) => {
     const leadIndex = state.leads.findIndex((l) => l.id === leadId);
     if (leadIndex === -1) return {};
+    // Idempotent: repeat clicks cannot double-schedule or duplicate toasts.
+    if (state.leads[leadIndex].meetingScheduled || state.leads[leadIndex].meetingDone) return {};
 
     const updatedLeads = [...state.leads];
     updatedLeads[leadIndex] = {
@@ -2562,13 +2574,15 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
   })),
 
   submitBoardRecommendation: (recommendation, rationale, leadId) => set((state) => {
-    const evidenceCount = state.qualificationNotes.length;
-    const rationaleLength = rationale.trim().length;
-    const rating = evidenceCount >= 2 && rationaleLength >= 40
-      ? 1
-      : evidenceCount >= 1 && rationaleLength >= 20
-        ? 0.75
-        : 0.35;
+    // Judgment is rated on what the player verified before deciding —
+    // investigation coverage, founder meeting, evidence quality — via the
+    // same assessment the modal telegraphs. No string-length proxies.
+    const lead = state.leads.find((l) => l.id === leadId);
+    const assessment = assessBoardCase({
+      lead,
+      qualificationNotes: state.qualificationNotes,
+      recommendation,
+    });
     return {
       boardSubmission: {
         recommendation,
@@ -2581,15 +2595,15 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
         day: state.day,
         phase: state.phase,
         category: 'judgment',
-        rating,
+        rating: assessment.rating,
         weight: 3,
         sourceType: 'board',
         sourceId: leadId ?? 'unassigned',
         dedupeKey: 'board:mandate-recommendation',
         headline: `Board recommendation: ${recommendation}`,
-        explanation: evidenceCount >= 2 && rationaleLength >= 40
-          ? 'Recommendation was supported by qualification evidence and a developed rationale.'
-          : 'Recommendation was submitted with limited documented evidence or rationale.',
+        explanation: assessment.gaps.length === 0
+          ? 'Recommendation was backed by full investigation, a founder meeting, and documented evidence.'
+          : `Recommendation went to the IC with gaps: ${assessment.gaps.join('; ')}.`,
       }),
     };
   }),
@@ -2641,6 +2655,22 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
 
   // ─── Fee Negotiation ─────────────────────────────────────────────────────
   presentPitch: () => set((state) => {
+    // Walking into the founder pitch without the deck is a judgment call the
+    // process score must see — the trust hit alone is outcome, not process.
+    const processLog = appendProcessRecord(state.processLog, {
+      day: state.day,
+      phase: state.phase,
+      category: 'judgment',
+      rating: state.pitchDocumentReady ? 1 : 0.4,
+      weight: 2,
+      sourceType: 'pitch',
+      sourceId: 'mandate-pitch',
+      dedupeKey: 'pitch:mandate-pitch',
+      headline: state.pitchDocumentReady ? 'Pitch presented, fully prepared' : 'Pitch presented without the deck',
+      explanation: state.pitchDocumentReady
+        ? 'The pitch went in with the prepared deck behind it.'
+        : 'The pitch was presented before the pitch deck was ready — an avoidable credibility risk.',
+    });
     if (!state.feeNegotiation) {
       // Initialise negotiation shell for current phase
       const clientProfile = deriveClientProfile(state.resources.clientTrust, state.qualificationNotes);
@@ -2652,9 +2682,9 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
         clientState,
         rounds: [],
       };
-      return { feeNegotiation: negotiation };
+      return { feeNegotiation: negotiation, processLog };
     }
-    return { feeNegotiation: { ...state.feeNegotiation, pitchPresented: true, status: 'pitch_pending' } };
+    return { feeNegotiation: { ...state.feeNegotiation, pitchPresented: true, status: 'pitch_pending' }, processLog };
   }),
 
   startFeeNegotiation: () => set((state) => {
@@ -3176,6 +3206,12 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       s.scoringModelVersion = 'legacy-v1';
       s.mandateDifficulty = { ...DEFAULT_MANDATE_DIFFICULTY };
       s.processLog = [];
+    }
+    if (fromVersion < 9) {
+      // Pity ladder for IC resubmissions. A run mid-rejection loses at most
+      // one historical rejection's worth of pity — acceptable versus
+      // guessing from emails.
+      s.boardRejectionCount = 0;
     }
     if (fromVersion < SAVE_SCHEMA_VERSION && s.resources && typeof s.resources === 'object') {
       // M0 makes all visible resource values integer-valued at the engine

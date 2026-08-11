@@ -100,20 +100,24 @@ describe('Results Engine', () => {
     expect(resultCash.scores.financialScore).toBeGreaterThan(resultEarnout.scores.financialScore);
   });
 
+  // Two weight-3 records per category — enough evidence for full confidence,
+  // so the acceptance extremes (100 and 0) stay reachable.
   const processRecords = (rating: number): ProcessRecord[] => (
-    (['judgment', 'execution', 'stakeholder', 'risk', 'negotiation'] as ProcessCategory[]).map((category, index) => ({
-      id: `process-${category}`,
-      dedupeKey: `test:${category}`,
-      day: index + 1,
-      phase: index as 0 | 1 | 2 | 3 | 4,
-      category,
-      rating,
-      weight: 3,
-      sourceType: category === 'execution' ? 'task' : 'email',
-      sourceId: category,
-      headline: `${category} moment`,
-      explanation: `A recorded ${category} decision.`,
-    }))
+    (['judgment', 'execution', 'stakeholder', 'risk', 'negotiation'] as ProcessCategory[]).flatMap((category, index) =>
+      [0, 1].map((n) => ({
+        id: `process-${category}-${n}`,
+        dedupeKey: `test:${category}:${n}`,
+        day: index + 1 + n,
+        phase: index as 0 | 1 | 2 | 3 | 4,
+        category,
+        rating,
+        weight: 3 as const,
+        sourceType: (category === 'execution' ? 'task' : 'email') as ProcessRecord['sourceType'],
+        sourceId: `${category}-${n}`,
+        headline: `${category} moment ${n}`,
+        explanation: `A recorded ${category} decision.`,
+      }))
+    )
   );
 
   it('can award strong process quality even when the deal fails', () => {
@@ -151,6 +155,6 @@ describe('Results Engine', () => {
 
     expect(result.debrief).toHaveLength(5);
     expect(result.debrief.every((finding) => finding.sourceRecordId)).toBe(true);
-    expect(result.debrief.some((finding) => finding.headline === 'judgment moment')).toBe(true);
+    expect(result.debrief.some((finding) => finding.headline.startsWith('judgment moment'))).toBe(true);
   });
 });

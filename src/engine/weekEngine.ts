@@ -875,7 +875,21 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
     }
     approvalChance = Math.min(0.95, approvalChance); // cap at 95%
 
-    const approved = rng.nextBool(approvalChance);
+    // Pity ladder: repeated rejections cannot invalidate honest preparation.
+    // Each prior rejection adds +20%; after two rejections a 'proceed'
+    // submission backed by real evidence (3+ notes) is approved outright —
+    // the dice may delay the mandate, never kill it.
+    const priorRejections = state.boardRejectionCount ?? 0;
+    approvalChance = Math.min(0.98, approvalChance + priorRejections * 0.20);
+    if (
+      priorRejections >= 2 &&
+      state.boardSubmission.recommendation === 'proceed' &&
+      qualNotes.length >= 3
+    ) {
+      approvalChance = 1;
+    }
+
+    const approved = approvalChance >= 1 ? true : rng.nextBool(approvalChance);
 
     const notes = approved
       ? "The Investment Committee has reviewed the Solara Systems opportunity. The qualification signals and sector dynamics support the case for mandate. We approve — proceed to formal pitch and fee negotiation."
@@ -930,6 +944,13 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
     // Suppress idle momentum decay — preserve current level
     const current = (resourceChanges.dealMomentum as number | undefined) ?? state.resources.dealMomentum;
     resourceChanges.dealMomentum = Math.max(current, state.resources.dealMomentum);
+  }
+
+  // Pre-mandate momentum floor: in phases 0-1 "momentum" is pipeline heat,
+  // not a live process — setbacks and idle weeks can cool it but never kill
+  // the run outright. Momentum-driven collapse only exists from phase 2 on.
+  if (state.phase <= 1 && resourceChanges.dealMomentum !== undefined) {
+    resourceChanges.dealMomentum = Math.max(10, resourceChanges.dealMomentum);
   }
 
   // ─── Phase 6: Binding Offer Deadline Evaluation ──────────────────────────────

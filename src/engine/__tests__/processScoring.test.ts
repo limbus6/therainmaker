@@ -39,9 +39,25 @@ describe('causal process scoring', () => {
     });
     const score = calculateCausalProcessScore(highJudgment, DEFAULT_MANDATE_DIFFICULTY);
 
-    expect(score.categories.judgment).toBe(100);
+    // A single weight-3 record carries half confidence: 50 + (100-50) * 3/6.
+    expect(score.categories.judgment).toBe(75);
     expect(score.categories.execution).toBe(50);
-    expect(score.score).toBe(65);
+    expect(score.score).toBe(58);
+  });
+
+  it('reaches full confidence once a category has enough recorded evidence', () => {
+    let log = appendProcessRecord([], {
+      day: 4, phase: 1, category: 'judgment', rating: 1, weight: 3,
+      sourceType: 'board', sourceId: 'solara',
+      headline: 'Board recommendation', explanation: 'Evidence-backed.',
+    });
+    log = appendProcessRecord(log, {
+      day: 9, phase: 1, category: 'judgment', rating: 1, weight: 3,
+      sourceType: 'pitch', sourceId: 'mandate-pitch',
+      headline: 'Prepared pitch', explanation: 'Deck ready before presenting.',
+    });
+    const score = calculateCausalProcessScore(log, DEFAULT_MANDATE_DIFFICULTY);
+    expect(score.categories.judgment).toBe(100);
   });
 
   it('caps the mandate difficulty adjustment at five points', () => {

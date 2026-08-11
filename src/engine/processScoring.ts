@@ -73,6 +73,13 @@ export interface CausalProcessScore {
   score: number;
 }
 
+/**
+ * Recorded evidence weight at which a category speaks with full confidence.
+ * Below this, the category blends toward neutral (50) so one early decision
+ * cannot swing a discipline by ±50 points on its own.
+ */
+export const FULL_CONFIDENCE_WEIGHT = 6;
+
 export function calculateCausalProcessScore(
   log: ProcessRecord[],
   difficulty: MandateDifficultyProfile,
@@ -81,9 +88,13 @@ export function calculateCausalProcessScore(
     (scores, category) => {
       const records = log.filter((record) => record.category === category);
       const totalWeight = records.reduce((sum, record) => sum + record.weight, 0);
-      scores[category] = totalWeight === 0
-        ? 50
-        : Math.round(100 * records.reduce((sum, record) => sum + record.rating * record.weight, 0) / totalWeight);
+      if (totalWeight === 0) {
+        scores[category] = 50;
+      } else {
+        const observed = 100 * records.reduce((sum, record) => sum + record.rating * record.weight, 0) / totalWeight;
+        const confidence = Math.min(1, totalWeight / FULL_CONFIDENCE_WEIGHT);
+        scores[category] = Math.round(50 + (observed - 50) * confidence);
+      }
       return scores;
     },
     {} as Record<ProcessCategory, number>,

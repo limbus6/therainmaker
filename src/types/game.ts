@@ -233,7 +233,7 @@ export interface GameEvent {
 
 export type ProcessCategory = 'judgment' | 'execution' | 'stakeholder' | 'risk' | 'negotiation';
 export type ProcessScoringModel = 'legacy-v1' | 'causal-v2';
-export type ProcessSourceType = 'task' | 'email' | 'risk' | 'board' | 'fee_round' | 'spa_round' | 'dataroom' | 'buyer_decision';
+export type ProcessSourceType = 'task' | 'email' | 'risk' | 'board' | 'pitch' | 'fee_round' | 'spa_round' | 'dataroom' | 'buyer_decision';
 
 /** A persisted, outcome-independent observation of how the player ran the process. */
 export interface ProcessRecord {

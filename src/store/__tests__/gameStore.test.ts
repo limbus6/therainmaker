@@ -135,6 +135,7 @@ describe('Game Store', () => {
     expect(migrated.contentVersion).toBe('solara-events-v1');
     expect(migrated.scoringModelVersion).toBe('legacy-v1');
     expect(migrated.processLog).toEqual([]);
+    expect(migrated.boardRejectionCount).toBe(0);
     expect((migrated.resources as { budget: number }).budget).toBe(20);
   });
 });
