@@ -132,10 +132,12 @@ describe('Game Store', () => {
       },
     }, 7) as Record<string, unknown>;
 
-    expect(migrated.contentVersion).toBe('solara-events-v1');
+    expect(migrated.contentVersion).toBe('solara-events-v2');
     expect(migrated.scoringModelVersion).toBe('legacy-v1');
     expect(migrated.processLog).toEqual([]);
     expect(migrated.boardRejectionCount).toBe(0);
+    expect(migrated.replayTrace).toEqual([]);
     expect((migrated.resources as { budget: number }).budget).toBe(20);
+    expect(migrated.resources).not.toHaveProperty('dealMomentum');
   });
 });

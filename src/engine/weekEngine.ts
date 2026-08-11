@@ -212,6 +212,14 @@ function checkHiddenWorkload(
 // Critical outcome roll — tasks can occasionally deliver exceptional or poor results
 type CriticalOutcome = { taskId: string; taskName: string; type: 'success' | 'failure'; description: string; bonus: Partial<PlayerResources> };
 
+function translateDerivedMomentumEffect(effects: Partial<PlayerResources>): Partial<PlayerResources> {
+  const { dealMomentum, ...causalEffects } = effects;
+  if (typeof dealMomentum === 'number' && dealMomentum !== 0) {
+    causalEffects.riskLevel = (causalEffects.riskLevel ?? 0) - Math.round(dealMomentum / 2);
+  }
+  return causalEffects;
+}
+
 function rollCriticalOutcomes(
   completedTasks: GameTask[],
   rng: SeededRng,
@@ -270,10 +278,22 @@ function rollCriticalOutcomes(
     if (roll < successChance) {
       const pool = successPool[task.category] ?? successPool['internal'];
       const pick = pool[rng.nextInt(0, pool.length - 1)];
-      outcomes.push({ taskId: task.id, taskName: task.name, type: 'success', ...pick });
+      outcomes.push({
+        taskId: task.id,
+        taskName: task.name,
+        type: 'success',
+        ...pick,
+        bonus: translateDerivedMomentumEffect(pick.bonus),
+      });
     } else if (roll < successChance + failChance) {
       const pick = failurePool[rng.nextInt(0, failurePool.length - 1)];
-      outcomes.push({ taskId: task.id, taskName: task.name, type: 'failure', ...pick });
+      outcomes.push({
+        taskId: task.id,
+        taskName: task.name,
+        type: 'failure',
+        ...pick,
+        bonus: translateDerivedMomentumEffect(pick.bonus),
+      });
     }
   }
 
@@ -315,34 +335,20 @@ function calculateStateChanges(
   completedTasks: GameTask[],
   resources: PlayerResources,
 ): Partial<PlayerResources> {
-  let momentumDelta = 0;
   let trustDelta = 0;
 
   for (const task of completedTasks) {
     // Parse effect summary for rough deltas
     if (task.category === 'relationship') {
       trustDelta += 5;
-      momentumDelta += 2;
-    } else if (task.category === 'market') {
-      momentumDelta += 5;
     } else if (task.category === 'deliverable') {
-      momentumDelta += 4;
       trustDelta += 2;
-    } else if (task.category === 'internal') {
-      momentumDelta += 3;
     } else if (task.category === 'strategic') {
-      momentumDelta += 6;
       trustDelta += 3;
     }
   }
 
-  // Natural decay if no progress
-  if (completedTasks.length === 0) {
-    momentumDelta -= 2;
-  }
-
   return {
-    dealMomentum: Math.max(0, Math.min(100, resources.dealMomentum + momentumDelta)),
     clientTrust: Math.max(0, Math.min(100, resources.clientTrust + trustDelta)),
   };
 }
@@ -743,6 +749,11 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
     ...stateChanges,
   };
 
+  // Risk is a causal input to derived momentum and must be established before
+  // critical outcomes add their own named mitigation or pressure.
+  const riskDelta = hiddenWorkload ? 5 : (tasksCompleted.length > 0 ? -2 : 1);
+  resourceChanges.riskLevel = Math.max(0, Math.min(100, state.resources.riskLevel + riskDelta));
+
   // 5b. Apply critical outcome bonuses/penalties
   for (const crit of criticalOutcomes) {
     for (const [key, delta] of Object.entries(crit.bonus)) {
@@ -754,10 +765,6 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
       }
     }
   }
-
-  // 6. Risk level adjustment
-  const riskDelta = hiddenWorkload ? 5 : (tasksCompleted.length > 0 ? -2 : 1);
-  resourceChanges.riskLevel = Math.max(0, Math.min(100, state.resources.riskLevel + riskDelta));
 
   // 7. Buyer progression
   const buyerResult = progressBuyers(state.buyers, tasksCompleted, state.phase, state.resources.dealMomentum, rng);
@@ -918,7 +925,10 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
   }
   for (const [key, value] of Object.entries(eventResult.resourceEffects)) {
     const k = key as keyof PlayerResources;
-    if (k === 'budget') {
+    if (k === 'dealMomentum') {
+      const currentRisk = resourceChanges.riskLevel ?? state.resources.riskLevel;
+      resourceChanges.riskLevel = Math.max(0, Math.min(100, currentRisk - Math.round((value as number) / 2)));
+    } else if (k === 'budget') {
       // Budget effects are additive (can be negative cost)
       resourceChanges.budget = (resourceChanges.budget ?? state.resources.budget) + (value as number);
       resourceChanges.budget = Math.max(0, resourceChanges.budget);
@@ -936,23 +946,6 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
     const currentMorale = (resourceChanges.morale as number | undefined) ?? state.resources.morale;
     resourceChanges.morale = Math.max(0, Math.min(100, currentMorale + paceMoraleDelta));
   }
-  // Pace: momentum interaction
-  if (weekPace === 'sprint') {
-    const currentMomentum = (resourceChanges.dealMomentum as number | undefined) ?? state.resources.dealMomentum;
-    resourceChanges.dealMomentum = Math.max(0, Math.min(100, currentMomentum + 2));
-  } else if (weekPace === 'deliberate' && tasksCompleted.length === 0) {
-    // Suppress idle momentum decay — preserve current level
-    const current = (resourceChanges.dealMomentum as number | undefined) ?? state.resources.dealMomentum;
-    resourceChanges.dealMomentum = Math.max(current, state.resources.dealMomentum);
-  }
-
-  // Pre-mandate momentum floor: in phases 0-1 "momentum" is pipeline heat,
-  // not a live process — setbacks and idle weeks can cool it but never kill
-  // the run outright. Momentum-driven collapse only exists from phase 2 on.
-  if (state.phase <= 1 && resourceChanges.dealMomentum !== undefined) {
-    resourceChanges.dealMomentum = Math.max(10, resourceChanges.dealMomentum);
-  }
-
   // ─── Phase 6: Binding Offer Deadline Evaluation ──────────────────────────────
   // When the process letter deadline passes, evaluate each active buyer's likelihood
   // of submitting a binding offer. Three dropout risk factors:
@@ -1185,6 +1178,7 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
 export interface AdvancePacePreview {
   days: number;
   reason: string;
+  requiresChoice?: boolean;
 }
 
 /**
@@ -1299,6 +1293,17 @@ export function getAdvancePacePreview(state: GameStore): AdvancePacePreview {
 
   if (state.competitorThreats.some((t) => !t.resolved)) {
     return { days: 2, reason: 'A competitor threat needs a near-term response.' };
+  }
+
+  const availablePriorities = state.tasks.filter((task) =>
+    task.phase === state.phase && (task.status === 'available' || task.status === 'recommended')
+  );
+  if (state.phase > 0 && availablePriorities.length > 0) {
+    return {
+      days: 7,
+      reason: 'Choose a priority first — Start & Advance keeps the decision and consequence together.',
+      requiresChoice: true,
+    };
   }
 
   return { days: 7, reason: 'No immediate deadline — advancing one week.' };

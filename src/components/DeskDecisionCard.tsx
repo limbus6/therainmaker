@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertOctagon, ChevronDown, ChevronUp, Check } from 'lucide-react';
 import { useGameStore } from '../store/gameStore';
+import { formatResponseEffects } from '../utils/responseEffects';
 
 export default function DeskDecisionCard() {
   const emails = useGameStore((s) => s.emails);
@@ -18,19 +19,25 @@ export default function DeskDecisionCard() {
   const addToast = useGameStore((s) => s.addToast);
   const [expanded, setExpanded] = useState(false);
 
-  const urgentEmails = emails.filter(
-    (e) => e.phase === phase && e.state === 'unread' && e.priority === 'urgent'
-  );
-  const email = urgentEmails[0];
+  const decisionEmails = emails
+    .filter((email) =>
+      email.phase === phase
+      && email.state === 'unread'
+      && (email.priority === 'urgent' || email.priority === 'high')
+      && !!email.responseOptions?.length
+    )
+    .sort((a, b) => (a.priority === 'urgent' ? -1 : 0) - (b.priority === 'urgent' ? -1 : 0));
+  const email = decisionEmails[0];
   if (!email) return null;
 
   const hasOptions = (email.responseOptions?.length ?? 0) > 0;
-  const moreCount = urgentEmails.length - 1;
+  const moreCount = decisionEmails.length - 1;
 
   const handleRespond = (optionId: string) => {
     const option = email.responseOptions?.find((o) => o.id === optionId);
     respondToEmail(email.id, optionId);
-    addToast(`Responded to ${email.sender}${option?.effects ? ` — ${option.effects}` : ''}`, 'success');
+    const effects = option ? formatResponseEffects(option) : null;
+    addToast(`Responded to ${email.sender}${effects ? ` — ${effects}` : ''}`, 'success');
   };
 
   const handleAcknowledge = () => {
@@ -50,7 +57,7 @@ export default function DeskDecisionCard() {
             <span className="text-[11px] font-mono text-text-muted">{email.sender}{email.senderRole ? ` · ${email.senderRole}` : ''}</span>
             {moreCount > 0 && (
               <Link to="/inbox" className="ml-auto text-[11px] text-text-accent hover:underline shrink-0">
-                +{moreCount} more urgent in Inbox
+                +{moreCount} more decisions in Inbox
               </Link>
             )}
           </div>
@@ -74,8 +81,8 @@ export default function DeskDecisionCard() {
                   className="flex flex-col items-start gap-0.5 px-3 py-2 rounded-[var(--radius-md)] border border-border-accent bg-border-accent/10 hover:bg-border-accent/20 transition-colors text-left max-w-full"
                 >
                   <span className="text-[12px] font-medium text-text-accent">{option.label}</span>
-                  {option.effects && (
-                    <span className="text-[10px] font-mono text-text-muted">{option.effects}</span>
+                  {formatResponseEffects(option) && (
+                    <span className="text-[10px] font-mono text-text-muted">{formatResponseEffects(option)}</span>
                   )}
                 </button>
               ))

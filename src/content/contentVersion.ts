@@ -1,2 +1,2 @@
-/** Increment when authored game content changes in a way that should be visible in saves. */
-export const CONTENT_VERSION = 'solara-events-v1';
+/** Increment when authored content or state-driven event selection changes. */
+export const CONTENT_VERSION = 'solara-events-v2';

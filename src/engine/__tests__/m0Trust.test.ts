@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { getAdvancePacePreview, resolveWeek } from '../weekEngine';
 import { useGameStore } from '../../store/gameStore';
 import type { Email, GameTask, PlayerResources } from '../../types/game';
+import { deriveDealMomentum } from '../dealMomentum';
 
 function makeResources(overrides: Partial<PlayerResources> = {}): PlayerResources {
   return {
@@ -75,7 +76,8 @@ describe('M0 — trustworthy advancement', () => {
     const resources = useGameStore.getState().resources;
 
     expect(resources.clientTrust).toBe(42);
-    expect(resources.dealMomentum).toBe(48);
+    expect(resources.riskLevel).toBe(21);
+    expect(resources.dealMomentum).toBe(deriveDealMomentum(useGameStore.getState()));
     expect(Object.values(resources).every(Number.isInteger)).toBe(true);
   });
 
