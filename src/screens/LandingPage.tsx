@@ -38,7 +38,9 @@ export default function LandingPage() {
   const handleNewGame = () => {
     if (hasSavedGame && !window.confirm('Start a new game? Your current save will be lost.')) return;
     localStorage.removeItem('ma-rainmaker-save');
-    window.location.replace('/');
+    // Respect the Vite base path — replacing to '/' strands the player on a
+    // 404 when the app is served from /therainmaker/ on GitHub Pages.
+    window.location.replace(import.meta.env.BASE_URL);
   };
 
   const handleEnterClick = () => setShowNameForm(true);
