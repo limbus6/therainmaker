@@ -3,13 +3,17 @@
 // ============================================
 
 import { useEffect, useRef, useState } from 'react';
-import { FastForward, MailOpen, Sparkles } from 'lucide-react';
+import { FastForward, MailOpen, Sparkles, Radio } from 'lucide-react';
 import type { Buyer, FinalOffer } from '../types/game';
-import { animateCounter, prefersReducedMotion } from '../utils/motion';
+import type { FounderMood } from '../engine/founderPulse';
+import { getRicardoReaction, getMarketChatter, getComparisonLine } from '../engine/offerReactions';
+import { animateCounter, staggerReveal, prefersReducedMotion } from '../utils/motion';
 
 interface OfferRevealOverlayProps {
   offers: FinalOffer[];
   buyers: Buyer[];
+  founderMood: FounderMood;
+  storyFlags: Record<string, string>;
   onComplete: (status: 'completed' | 'skipped', revealedBuyerIds: string[]) => void;
 }
 
@@ -25,19 +29,31 @@ const CONDITIONALITY_LABELS: Record<FinalOffer['conditionality'], string> = {
   heavy_conditions: 'Heavy conditions',
 };
 
-export default function OfferRevealOverlay({ offers, buyers, onComplete }: OfferRevealOverlayProps) {
+export default function OfferRevealOverlay({ offers, buyers, founderMood, storyFlags, onComplete }: OfferRevealOverlayProps) {
   const [offerIndex, setOfferIndex] = useState(0);
   const [stage, setStage] = useState(0);
   const valueRef = useRef<HTMLSpanElement>(null);
+  const termsRef = useRef<HTMLDivElement>(null);
+  const reactionRef = useRef<HTMLDivElement>(null);
   const offer = offers[offerIndex];
   const buyer = buyers.find((candidate) => candidate.id === offer?.buyerId);
   const isLast = offerIndex === offers.length - 1;
+  const comparison = offer ? getComparisonLine(offer, offers.slice(0, offerIndex)) : null;
 
   useEffect(() => {
     if (stage !== 1 || !offer) return;
     const tween = animateCounter(valueRef.current, 0, offer.totalEV, 0.75, '€', 'M');
     return () => { tween?.kill(); };
   }, [offer, stage]);
+
+  useEffect(() => {
+    if (stage === 2 && termsRef.current) {
+      staggerReveal(Array.from(termsRef.current.children) as HTMLElement[], 0.12, 0.3);
+    }
+    if (stage === 3 && reactionRef.current) {
+      staggerReveal(Array.from(reactionRef.current.children) as HTMLElement[], 0.15, 0.35);
+    }
+  }, [stage]);
 
   if (!offer || !buyer) return null;
 
@@ -100,11 +116,14 @@ export default function OfferRevealOverlay({ offers, buyers, onComplete }: Offer
               <p className="text-[11px] font-mono uppercase tracking-widest text-text-muted">{buyer.name}</p>
               <span ref={valueRef} className="mt-3 block text-5xl font-mono font-semibold text-text-primary">€{offer.totalEV}M</span>
               <p className="mt-2 text-[12px] text-text-muted">Total enterprise value · {offer.impliedMultiple}x EBITDA</p>
+              {comparison && (
+                <p className={`mt-2 text-[12px] font-medium ${comparison.startsWith('New leader') ? 'text-state-success' : 'text-text-secondary'}`}>{comparison}</p>
+              )}
             </div>
           )}
 
           {stage >= 2 && (
-            <div className="mt-6 grid grid-cols-3 gap-3 border-y border-border-subtle py-4 text-left">
+            <div ref={termsRef} className="mt-6 grid grid-cols-3 gap-3 border-y border-border-subtle py-4 text-left">
               <div>
                 <p className="text-[10px] font-mono uppercase tracking-wider text-text-muted">Cash at close</p>
                 <p className="mt-1 text-[15px] font-mono font-semibold text-state-success">€{offer.cashEV}M</p>
@@ -121,12 +140,15 @@ export default function OfferRevealOverlay({ offers, buyers, onComplete }: Offer
           )}
 
           {stage >= 3 && (
-            <div className="mt-5 rounded-[var(--radius-md)] border border-border-accent/25 bg-accent-soft/30 p-3 text-left">
-              <div className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-wider text-text-accent"><Sparkles size={13} /> Why these terms</div>
-              <ul className="mt-2 space-y-1.5 text-[12px] leading-relaxed text-text-secondary">
-                {(offer.drivers ?? []).map((driver) => <li key={driver}>• {driver}</li>)}
-              </ul>
-              <p className="mt-3 border-t border-border-subtle pt-3 text-[12px] italic text-text-muted">Ricardo: “{offer.totalEV >= 140 ? 'That is a serious number. Show me how real it is.' : 'The number matters, but I need to understand the certainty.'}”</p>
+            <div ref={reactionRef} className="mt-5 space-y-3 text-left">
+              <div className="rounded-[var(--radius-md)] border border-border-accent/25 bg-accent-soft/30 p-3">
+                <div className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-wider text-text-accent"><Sparkles size={13} /> Why these terms</div>
+                <ul className="mt-2 space-y-1.5 text-[12px] leading-relaxed text-text-secondary">
+                  {(offer.drivers ?? []).map((driver) => <li key={driver}>• {driver}</li>)}
+                </ul>
+              </div>
+              <p className="text-[13px] italic leading-relaxed text-text-primary">Ricardo: “{getRicardoReaction(offer, founderMood, storyFlags)}”</p>
+              <p className="flex items-start gap-1.5 text-[11px] leading-relaxed text-text-muted"><Radio size={12} className="mt-0.5 shrink-0" /> {getMarketChatter(offer, buyer)}</p>
             </div>
           )}
         </div>

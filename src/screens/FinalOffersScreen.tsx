@@ -5,6 +5,7 @@ import StatusChip from '../components/ui/StatusChip';
 import { Trophy, CheckCircle2, AlertTriangle, Star, TrendingUp, Lock } from 'lucide-react';
 import type { FinalOffer } from '../types/game';
 import OfferRevealOverlay from '../components/OfferRevealOverlay';
+import { deriveFounderMood } from '../engine/founderPulse';
 
 const STRUCTURE_LABELS: Record<FinalOffer['structure'], string> = {
   full_cash: 'Full Cash',
@@ -39,6 +40,13 @@ export default function FinalOffersScreen() {
   const selectPreferredBidder = useGameStore((s) => s.selectPreferredBidder);
   const offerReveal = useGameStore((s) => s.offerReveal);
   const completeOfferReveal = useGameStore((s) => s.completeOfferReveal);
+  const founderMood = useGameStore((s) => deriveFounderMood({
+    clientTrust: s.resources.clientTrust,
+    dealMomentum: s.resources.dealMomentum,
+    riskLevel: s.resources.riskLevel,
+    daysUntilDeadline: s.phaseDeadline !== null ? s.phaseDeadline - s.day : null,
+  }));
+  const storyFlags = useGameStore((s) => s.eventDirectorState.storyFlags);
 
   const [confirmModalBuyerId, setConfirmModalBuyerId] = useState<string | null>(null);
 
@@ -260,6 +268,8 @@ export default function FinalOffersScreen() {
         <OfferRevealOverlay
           offers={finalOffers}
           buyers={buyers}
+          founderMood={founderMood}
+          storyFlags={storyFlags}
           onComplete={completeOfferReveal}
         />
       )}
