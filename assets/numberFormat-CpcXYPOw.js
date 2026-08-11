@@ -1,0 +1,1 @@
+function e(e){return Math.round((e+2**-52)*100)/100}function t(t,n=2){return Number.isFinite(t)?e(t).toLocaleString(void 0,{minimumFractionDigits:0,maximumFractionDigits:n}):`0`}export{t};
