@@ -54,6 +54,7 @@ import { createRng, deriveSeed } from '../engine/rng';
 import { resolveWeek, checkPhaseGate, unlockTasks, checkDealCollapse, calcDaysToAdvance, buildUpcomingBeats } from '../engine/weekEngine';
 import type { WeekResult, PhaseGateResult } from '../engine/weekEngine';
 import { getGoldenMandateOfferDriver } from '../engine/goldenMandate';
+import { getPeopleOfferDriver } from '../engine/peopleBeats';
 import { PHASE_BASE_BUDGETS, STAFF_PROFILES, CONTRACTOR_PROFILES, MITIGATION_ACTIONS } from '../config/phaseBudgets';
 import { getRiskMitigationPlans } from '../config/riskMitigation';
 import { REVIEW_CHECKPOINTS_BY_ID } from '../config/reviewCheckpoints';
@@ -909,6 +910,7 @@ function generateFinalOffers(
     // Momentum adds up to ±10%
     const momentumMod = (momentum - 50) / 500; // ±10% at extremes
     const goldenDriver = getGoldenMandateOfferDriver(buyer.id, storyFlags);
+    const peopleDriver = getPeopleOfferDriver(buyer.id, storyFlags);
     const goldenModifier = buyer.id === 'buyer-01'
       ? storyFlags['golden-ricardo-stance'] === 'hold-process'
         ? 1.04
@@ -962,6 +964,7 @@ function generateFinalOffers(
         ? 'Low diligence friction supports cleaner conditionality.'
         : `Diligence friction drives ${conditionality.replace('_', ' ')}.`,
       ...(goldenDriver ? [goldenDriver] : []),
+      ...(peopleDriver ? [peopleDriver] : []),
     ];
 
     offers.push({
@@ -2272,6 +2275,22 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
     }
 
     const normalizedResources = normalizeResources(newResources);
+
+    // M2 people beats: relationship consequences land on the named buyer
+    // through the same attributes that already drive DD and the endgame.
+    let nextBuyers = state.buyers;
+    if (response?.buyerEffects) {
+      const fx = response.buyerEffects;
+      nextBuyers = state.buyers.map((buyer) => buyer.id === fx.buyerId
+        ? {
+            ...buyer,
+            chemistryWithSeller: Math.max(0, Math.min(100, buyer.chemistryWithSeller + (fx.chemistryDelta ?? 0))),
+            executionCredibility: Math.max(0, Math.min(100, buyer.executionCredibility + (fx.executionCredibilityDelta ?? 0))),
+            ddFriction: fx.ddFriction ?? buyer.ddFriction,
+          }
+        : buyer);
+    }
+
     const nextEmails = state.emails.map((e) =>
       e.id === emailId ? { ...e, state: 'resolved' as const } : e
     );
@@ -2286,12 +2305,14 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
       ...state,
       resources: normalizedResources,
       emails: nextEmails,
+      buyers: nextBuyers,
       eventDirectorState: nextDirectorState,
     } as GameStore;
     logCausalChange('email_response', {
       emailId,
       responseId,
       effects: response?.resourceEffects ?? {},
+      buyerEffects: response?.buyerEffects,
       storyDecision: response?.storyDecision,
     });
 
@@ -2320,6 +2341,7 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
     return {
       resources: normalizedResources,
       emails: nextEmails,
+      buyers: nextBuyers,
       processLog,
       replayTrace: email && response
         ? appendReplayTrace(state.replayTrace, {

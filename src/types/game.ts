@@ -56,6 +56,13 @@ export interface EmailResponseOption {
   resourceEffects?: Partial<Record<keyof PlayerResources, number>>;
   /** A remembered narrative choice whose later payoff must be explainable. */
   storyDecision?: { key: string; value: string };
+  /** Relationship consequences applied to a specific buyer (M2 people beats). */
+  buyerEffects?: {
+    buyerId: string;
+    chemistryDelta?: number;
+    executionCredibilityDelta?: number;
+    ddFriction?: 'low' | 'medium' | 'high';
+  };
 }
 
 export interface Email {

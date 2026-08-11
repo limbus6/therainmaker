@@ -13,6 +13,6 @@ describe('authored event catalogue', () => {
   });
 
   it('has an explicit content version for deterministic saves', () => {
-    expect(CONTENT_VERSION).toBe('solara-events-v2');
+    expect(CONTENT_VERSION).toBe('solara-events-v3');
   });
 });

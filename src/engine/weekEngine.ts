@@ -18,6 +18,7 @@ import { createRng, deriveSeed, type SeededRng } from './rng';
 import { selectEvents, createInitialEventDirectorState, type EventDirectorConfig } from './eventDirector';
 import type { EventDirectorState } from '../types/game';
 import { getGoldenMandateUpcomingBeat, resolveGoldenMandateBeat } from './goldenMandate';
+import { getPeopleUpcomingBeat, resolvePeopleBeat, PEOPLE_BEATS_CHAIN } from './peopleBeats';
 import { EVENT_POOL } from '../content/events';
 
 // ============================================
@@ -799,6 +800,26 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
     }
   }
 
+  // M2 people beats follow the same authored-lane rule as the golden arc:
+  // scheduled, telegraphed, never subject to the weighted random pool.
+  const peopleBeat = resolvePeopleBeat(state, newDay);
+  if (peopleBeat) {
+    eventResult.events.unshift(peopleBeat.event);
+    eventResult.emails.unshift(peopleBeat.email);
+    const currentDirector = eventResult.nextDirectorState ?? state.eventDirectorState ?? createInitialEventDirectorState();
+    eventResult.nextDirectorState = {
+      ...currentDirector,
+      activeChains: {
+        ...currentDirector.activeChains,
+        [PEOPLE_BEATS_CHAIN]: {
+          chainId: PEOPLE_BEATS_CHAIN,
+          currentStep: (currentDirector.activeChains[PEOPLE_BEATS_CHAIN]?.currentStep ?? 0) + 1,
+          startedDay: currentDirector.activeChains[PEOPLE_BEATS_CHAIN]?.startedDay ?? newDay,
+        },
+      },
+    };
+  }
+
   // 9b. Resolve pending budget requests (Board decision)
   const resolvedRequests: { id: string; approved: boolean; amount: number; justification: string }[] = [];
   for (const req of state.budgetRequests) {
@@ -1205,6 +1226,7 @@ export function buildUpcomingBeats(state: GameStore): UpcomingBeat[] {
   }
 
   add(getGoldenMandateUpcomingBeat(state));
+  add(getPeopleUpcomingBeat(state));
 
   const inProgress = state.tasks.filter((task) => task.status === 'in_progress' && task.phase === state.phase);
   const nextTask = inProgress.sort((a, b) => a.work - b.work)[0];
