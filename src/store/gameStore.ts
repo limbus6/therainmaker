@@ -41,6 +41,9 @@ import type {
   EventDirectorState,
   ResourceDelta,
   OfferRevealState,
+  MandateDifficultyProfile,
+  ProcessRecord,
+  ProcessScoringModel,
 } from '../types/game';
 import type { ActionCommitment } from '../types/dealBeat';
 import { createInitialEventDirectorState } from '../engine/eventDirector';
@@ -53,6 +56,13 @@ import { PHASE_BASE_BUDGETS, STAFF_PROFILES, CONTRACTOR_PROFILES, MITIGATION_ACT
 import { getRiskMitigationPlans } from '../config/riskMitigation';
 import { REVIEW_CHECKPOINTS_BY_ID } from '../config/reviewCheckpoints';
 import { retireObsoleteRisks, updatePhaseWorkstreamProgress } from '../utils/gameplayState';
+import { CONTENT_VERSION } from '../content/contentVersion';
+import {
+  DEFAULT_MANDATE_DIFFICULTY,
+  appendProcessRecord,
+  appendProcessRecords,
+  reactionRating,
+} from '../engine/processScoring';
 
 import { loadPhaseContent, type PhaseContent } from '../content/loadPhaseContent';
 
@@ -590,6 +600,10 @@ export interface GameStore {
   eventDirectorState: EventDirectorState;
   activeMissionId?: string;
   commitments: ActionCommitment[];
+  contentVersion: string;
+  scoringModelVersion: ProcessScoringModel;
+  mandateDifficulty: MandateDifficultyProfile;
+  processLog: ProcessRecord[];
 
   // Turn playback (non-blocking live turn) — transient, not persisted
   turnPlayback: { status: 'playing' | 'done'; fromDay: number; toDay: number } | null;
@@ -753,7 +767,7 @@ function normalizeResources(resources: PlayerResources): PlayerResources {
 
 const DEFAULT_PREFERRED_BUYER = 'Kestrel Capital';
 const DEFAULT_FALLBACK_BUYER = 'Vektor Industries';
-const SAVE_SCHEMA_VERSION = 7;
+const SAVE_SCHEMA_VERSION = 8;
 
 function hashIdentifier(value: string): number {
   let hash = 2166136261;
@@ -1261,6 +1275,10 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
   eventDirectorState: createInitialEventDirectorState(),
   activeMissionId: undefined,
   commitments: [],
+  contentVersion: CONTENT_VERSION,
+  scoringModelVersion: 'causal-v2' as const,
+  mandateDifficulty: DEFAULT_MANDATE_DIFFICULTY,
+  processLog: [],
   turnPlayback: null,
   lastResourceDeltas: [],
   showWeekReport: false,
@@ -1501,6 +1519,24 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     }
 
     const normalizedResources = normalizeResources(newResources);
+    const processLog = appendProcessRecords(
+      state.processLog,
+      result.tasksCompleted
+        .filter((task) => !task.isBackgroundTask && task.complexity !== 'low')
+        .map((task) => ({
+          day: newDay,
+          phase: state.phase,
+          category: 'execution' as const,
+          rating: task.deadline === undefined || newWeekNum <= task.deadline ? 1 : 0.4,
+          weight: task.complexity === 'high' ? 3 as const : 2 as const,
+          sourceType: 'task' as const,
+          sourceId: task.id,
+          headline: `Delivered: ${task.name}`,
+          explanation: task.deadline === undefined || newWeekNum <= task.deadline
+            ? 'Completed with the committed work still relevant to the live process.'
+            : 'Completed after its decision window, limiting its usefulness to the process.',
+        })),
+    );
 
     // Attributable resource deltas for the turn tape and KPI chips
     const resourceDeltas = buildResourceDeltas(state.resources, normalizedResources, result);
@@ -1564,6 +1600,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       turnPlayback: { status: 'playing' as const, fromDay: state.day, toDay: newDay },
       showWeekReport: false,
       pendingReportAutoOpen: autoOpenReport && !collapse.collapsed && !isGameComplete,
+      processLog,
       phaseGate: gate,
       pitchDocumentReady,
       bindingOffersReceived: updatedBindingOffersReceived,
@@ -2161,9 +2198,32 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       storyDecision: response?.storyDecision,
     });
 
+    const responseAge = email?.day === undefined ? 0 : Math.max(0, state.day - email.day);
+    const responseRating = email?.priority === 'urgent'
+      ? (responseAge <= 1 ? 1 : responseAge <= 3 ? 0.6 : 0.2)
+      : email?.priority === 'high'
+        ? (responseAge <= 2 ? 1 : responseAge <= 5 ? 0.6 : 0.3)
+        : 1;
+    const processLog = email && response
+      ? appendProcessRecord(state.processLog, {
+          day: state.day,
+          phase: state.phase,
+          category: ['client', 'buyer', 'partner'].includes(email.category) ? 'stakeholder' : 'judgment',
+          rating: responseRating,
+          weight: email.priority === 'urgent' ? 3 : email.priority === 'high' ? 2 : 1,
+          sourceType: 'email',
+          sourceId: email.id,
+          headline: `Responded: ${email.subject}`,
+          explanation: responseAge === 0
+            ? 'Handled in the same decision window in which it surfaced.'
+            : `Handled ${responseAge} day${responseAge === 1 ? '' : 's'} after it surfaced.`,
+        })
+      : state.processLog;
+
     return {
       resources: normalizedResources,
       emails: nextEmails,
+      processLog,
       eventDirectorState: {
         ...nextDirectorState,
         upcomingBeats: buildUpcomingBeats(stateAfterResponse),
@@ -2198,6 +2258,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
   }),
 
   completeTask: (taskId) => set((state) => {
+    const completedTask = state.tasks.find((task) => task.id === taskId && task.phase === state.phase && task.status === 'in_progress');
     const updated = state.tasks.map((t) =>
       t.id === taskId && t.phase === state.phase && t.status === 'in_progress' ? { ...t, status: 'completed' as const, progress: 100 } : t
     );
@@ -2211,6 +2272,21 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       deliverables: syncDeliverables(state.deliverables, unlockedUpdated),
       team: syncTeamLoad(state.team, unlockedUpdated, state.phase),
       pitchDocumentReady: state.pitchDocumentReady || taskId === 'task-15',
+      processLog: completedTask && !completedTask.isBackgroundTask && completedTask.complexity !== 'low'
+        ? appendProcessRecord(state.processLog, {
+            day: state.day,
+            phase: state.phase,
+            category: 'execution',
+            rating: completedTask.deadline === undefined || state.week <= completedTask.deadline ? 1 : 0.4,
+            weight: completedTask.complexity === 'high' ? 3 : 2,
+            sourceType: 'task',
+            sourceId: completedTask.id,
+            headline: `Delivered: ${completedTask.name}`,
+            explanation: completedTask.deadline === undefined || state.week <= completedTask.deadline
+              ? 'Completed while the work was still relevant to the live process.'
+              : 'Completed after its decision window, limiting its usefulness to the process.',
+          })
+        : state.processLog,
     };
   }),
 
@@ -2231,6 +2307,18 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
         budget: Math.max(0, state.resources.budget - cost),
         riskLevel: Math.max(0, state.resources.riskLevel - 5),
       }),
+      processLog: appendProcessRecord(state.processLog, {
+        day: state.day,
+        phase: state.phase,
+        category: 'risk',
+        rating: risk.severity === 'critical' || risk.severity === 'high' ? 1 : risk.severity === 'medium' ? 0.75 : 0.4,
+        weight: risk.severity === 'critical' ? 3 : risk.severity === 'high' ? 2 : 1,
+        sourceType: 'risk',
+        sourceId: risk.id,
+        dedupeKey: `risk:${risk.id}`,
+        headline: `Mitigated: ${risk.name}`,
+        explanation: `Addressed a ${risk.severity}-severity risk before it could further constrain the process.`,
+      }),
     };
   }),
 
@@ -2244,6 +2332,18 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     if (state.resources.budget < plan.budgetCost) return {};
     if (state.resources.teamCapacity < plan.capacityCost) return {};
     const rng = createActionRng(state, `mitigation:${riskId}:${planId}`);
+    const processLog = appendProcessRecord(state.processLog, {
+      day: state.day,
+      phase: state.phase,
+      category: 'risk',
+      rating: risk.severity === 'critical' || risk.severity === 'high' ? 1 : risk.severity === 'medium' ? 0.75 : 0.4,
+      weight: risk.severity === 'critical' ? 3 : risk.severity === 'high' ? 2 : 1,
+      sourceType: 'risk',
+      sourceId: `${risk.id}:${plan.id}`,
+      dedupeKey: `risk:${risk.id}`,
+      headline: `Acted on: ${risk.name}`,
+      explanation: `Committed the ${plan.title} plan against a ${risk.severity}-severity exposure; the score evaluates the decision, not the random outcome.`,
+    });
 
     let baseResources: PlayerResources = {
       ...state.resources,
@@ -2257,6 +2357,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       baseResources = normalizeResources({ ...baseResources, clientTrust: 0, dealMomentum: 0, riskLevel: 100 });
       return {
         resources: baseResources,
+        processLog,
         gameComplete: true,
         collapseReason: 'client_walked' as const,
         collapseHeadline: plan.catastrophicHeadline ?? 'Client Walked',
@@ -2296,6 +2397,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
 
     return {
       resources: normalizeResources(mergedResources),
+      processLog,
       risks: state.risks.map((r) =>
         r.id === riskId
           ? {
@@ -2459,15 +2561,38 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     ],
   })),
 
-  submitBoardRecommendation: (recommendation, rationale, leadId) => set((state) => ({
-    boardSubmission: {
-      recommendation,
-      rationale,
-      leadId,
-      submittedWeek: state.week,
-      status: 'pending' as const,
-    },
-  })),
+  submitBoardRecommendation: (recommendation, rationale, leadId) => set((state) => {
+    const evidenceCount = state.qualificationNotes.length;
+    const rationaleLength = rationale.trim().length;
+    const rating = evidenceCount >= 2 && rationaleLength >= 40
+      ? 1
+      : evidenceCount >= 1 && rationaleLength >= 20
+        ? 0.75
+        : 0.35;
+    return {
+      boardSubmission: {
+        recommendation,
+        rationale,
+        leadId,
+        submittedWeek: state.week,
+        status: 'pending' as const,
+      },
+      processLog: appendProcessRecord(state.processLog, {
+        day: state.day,
+        phase: state.phase,
+        category: 'judgment',
+        rating,
+        weight: 3,
+        sourceType: 'board',
+        sourceId: leadId ?? 'unassigned',
+        dedupeKey: 'board:mandate-recommendation',
+        headline: `Board recommendation: ${recommendation}`,
+        explanation: evidenceCount >= 2 && rationaleLength >= 40
+          ? 'Recommendation was supported by qualification evidence and a developed rationale.'
+          : 'Recommendation was submitted with limited documented evidence or rationale.',
+      }),
+    };
+  }),
 
   // ─── Staffing ────────────────────────────────────────────────────────────
   hireStaffer: (profile) => set((state) => {
@@ -2592,6 +2717,17 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       clientNote,
       outcome,
     };
+    const processLog = appendProcessRecord(state.processLog, {
+      day: state.day,
+      phase: state.phase,
+      category: 'negotiation',
+      rating: reactionRating([reactionRetainer, reactionSuccessFee, reactionRatchet]),
+      weight: 2,
+      sourceType: 'fee_round',
+      sourceId: `round-${currentRound}`,
+      headline: `Fee negotiation — round ${currentRound}`,
+      explanation: `The proposal produced ${redCount} red reaction${redCount === 1 ? '' : 's'} across retainer, success fee and ratchet.`,
+    });
 
     // Apply progressive locking (only on counter — not on accepted/rejected)
     const lockUpdates = outcome === 'counter'
@@ -2625,6 +2761,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
           agreedTerms,
         },
         agreedFeeTerms: agreedTerms,
+        processLog,
       };
     }
 
@@ -2637,6 +2774,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
           rounds: [...state.feeNegotiation.rounds, newRound],
         },
         resources: normalizeResources({ ...state.resources, clientTrust: Math.max(0, state.resources.clientTrust - 10) }),
+        processLog,
       };
     }
 
@@ -2646,6 +2784,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
         clientState: updatedClientState,
         rounds: [...state.feeNegotiation.rounds, newRound],
       },
+      processLog,
     };
   }),
 
@@ -2678,6 +2817,16 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
   selectPreferredBidder: (buyerId, confirmed = false) => set((state) => {
     if (state.preferredBidderConfirmed) return {};
     if (state.preferredBidderId && !confirmed) return {};
+    const selectedBuyer = state.buyers.find((buyer) => buyer.id === buyerId);
+    const selectedOffer = state.finalOffers.find((offer) => offer.buyerId === buyerId);
+    const conditionalityRating = selectedOffer?.conditionality === 'clean'
+      ? 1
+      : selectedOffer?.conditionality === 'light_conditions'
+        ? 0.7
+        : 0.35;
+    const choiceRating = selectedBuyer
+      ? (selectedBuyer.executionCredibility / 100 + conditionalityRating) / 2
+      : 0.5;
 
     return {
       preferredBidderId: buyerId,
@@ -2689,6 +2838,20 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
             ? { ...b, status: 'bidding' as const }
             : b
       ),
+      processLog: confirmed
+        ? appendProcessRecord(state.processLog, {
+            day: state.day,
+            phase: state.phase,
+            category: 'judgment',
+            rating: choiceRating,
+            weight: 3,
+            sourceType: 'buyer_decision',
+            sourceId: buyerId,
+            dedupeKey: 'buyer_decision:preferred',
+            headline: `Preferred bidder: ${selectedBuyer?.name ?? buyerId}`,
+            explanation: 'Selection quality reflects the execution credibility and conditionality visible when the choice was confirmed.',
+          })
+        : state.processLog,
     };
   }),
 
@@ -2753,6 +2916,17 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
     const result = { ...rawResult, reactionScope, reactionCap, reactionEscrow, reactionIndemnity, outcome };
 
     const newRound: SPARound = { round, ...effectiveTerms, ...result };
+    const processLog = appendProcessRecord(state.processLog, {
+      day: state.day,
+      phase: state.phase,
+      category: 'negotiation',
+      rating: reactionRating([reactionScope, reactionCap, reactionEscrow, reactionIndemnity]),
+      weight: 3,
+      sourceType: 'spa_round',
+      sourceId: `round-${round}`,
+      headline: `SPA negotiation — round ${round}`,
+      explanation: `The proposal produced ${reds} red and ${yellows} yellow reactions across the four negotiated components.`,
+    });
     const newPatience = Math.max(0, neg.buyerState.patienceRemaining - (result.reactionCap === 'red' || result.reactionScope === 'red' ? 30 : 15));
 
     // Apply progressive locking on counter
@@ -2787,6 +2961,7 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       },
       agreedSPATerms: agreedTerms ?? state.agreedSPATerms,
       resources: normalizeResources({ ...state.resources, ...resourceEffect }),
+      processLog,
     };
   }),
 
@@ -2842,12 +3017,27 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
       riskLevel: Math.max(0, Math.min(100, state.resources.riskLevel + riskDelta)),
       clientTrust: Math.max(0, Math.min(100, state.resources.clientTrust + trustDelta)),
     };
+    const sensitiveCategory = cat.sensitivity === 'critical' || cat.sensitivity === 'high';
+    const accessRating = sensitiveCategory
+      ? (level === 'partial' ? 1 : level === 'full' ? 0.7 : 0.4)
+      : (level === 'full' ? 1 : level === 'partial' ? 0.75 : 0.4);
 
     return {
       dataroomCategories: state.dataroomCategories.map((c) =>
         c.id === categoryId ? { ...c, accessLevel: level } : c
       ),
       resources: normalizeResources(newResources),
+      processLog: appendProcessRecord(state.processLog, {
+        day: state.day,
+        phase: state.phase,
+        category: 'risk',
+        rating: accessRating,
+        weight: sensitiveCategory ? 2 : 1,
+        sourceType: 'dataroom',
+        sourceId: categoryId,
+        headline: `Dataroom access: ${cat.name}`,
+        explanation: `${level} access was selected for a ${cat.sensitivity}-sensitivity category, balancing buyer momentum against disclosure exposure.`,
+      }),
     };
   }),
 
@@ -2978,6 +3168,14 @@ export const useGameStore = create<GameStore>()(persist((set, get) => ({
         const existingOffers = Array.isArray(s.finalOffers) ? s.finalOffers as FinalOffer[] : [];
         s.offerReveal = { status: 'completed', revealedBuyerIds: existingOffers.map((offer) => offer.buyerId) };
       }
+    }
+    if (fromVersion < 8) {
+      // Keep historical runs comparable: they retain the previous end-state
+      // score, while new games collect causal process evidence from day one.
+      s.contentVersion = CONTENT_VERSION;
+      s.scoringModelVersion = 'legacy-v1';
+      s.mandateDifficulty = { ...DEFAULT_MANDATE_DIFFICULTY };
+      s.processLog = [];
     }
     if (fromVersion < SAVE_SCHEMA_VERSION && s.resources && typeof s.resources === 'object') {
       // M0 makes all visible resource values integer-valued at the engine

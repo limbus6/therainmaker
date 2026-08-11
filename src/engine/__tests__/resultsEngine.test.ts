@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildResultsBoard } from '../resultsEngine';
 import { GameStore } from '../../store/gameStore';
+import type { ProcessCategory, ProcessRecord } from '../../types/game';
 
 describe('Results Engine', () => {
   const getMockState = (): GameStore => ({
@@ -97,5 +98,59 @@ describe('Results Engine', () => {
     const resultEarnout = buildResultsBoard(stateEarnout);
     
     expect(resultCash.scores.financialScore).toBeGreaterThan(resultEarnout.scores.financialScore);
+  });
+
+  const processRecords = (rating: number): ProcessRecord[] => (
+    (['judgment', 'execution', 'stakeholder', 'risk', 'negotiation'] as ProcessCategory[]).map((category, index) => ({
+      id: `process-${category}`,
+      dedupeKey: `test:${category}`,
+      day: index + 1,
+      phase: index as 0 | 1 | 2 | 3 | 4,
+      category,
+      rating,
+      weight: 3,
+      sourceType: category === 'execution' ? 'task' : 'email',
+      sourceId: category,
+      headline: `${category} moment`,
+      explanation: `A recorded ${category} decision.`,
+    }))
+  );
+
+  it('can award strong process quality even when the deal fails', () => {
+    const state = getMockState();
+    state.phase = 8;
+    state.scoringModelVersion = 'causal-v2';
+    state.mandateDifficulty = { processBreadth: 50, timePressure: 50, diligenceBurden: 50, stakeholderVolatility: 50, buyerFragility: 50, overall: 50 };
+    state.processLog = processRecords(1);
+
+    const result = buildResultsBoard(state);
+
+    expect(result.dealOutcome).toBe('deal_failed');
+    expect(result.scores.processScore).toBe(100);
+  });
+
+  it('does not award strong process quality merely because the deal closed', () => {
+    const state = getMockState();
+    state.scoringModelVersion = 'causal-v2';
+    state.mandateDifficulty = { processBreadth: 50, timePressure: 50, diligenceBurden: 50, stakeholderVolatility: 50, buyerFragility: 50, overall: 50 };
+    state.processLog = processRecords(0);
+
+    const result = buildResultsBoard(state);
+
+    expect(result.dealOutcome).not.toBe('deal_failed');
+    expect(result.scores.processScore).toBe(0);
+  });
+
+  it('builds the player debrief from recorded moments', () => {
+    const state = getMockState();
+    state.scoringModelVersion = 'causal-v2';
+    state.mandateDifficulty = { processBreadth: 50, timePressure: 50, diligenceBurden: 50, stakeholderVolatility: 50, buyerFragility: 50, overall: 50 };
+    state.processLog = processRecords(1);
+
+    const result = buildResultsBoard(state);
+
+    expect(result.debrief).toHaveLength(5);
+    expect(result.debrief.every((finding) => finding.sourceRecordId)).toBe(true);
+    expect(result.debrief.some((finding) => finding.headline === 'judgment moment')).toBe(true);
   });
 });

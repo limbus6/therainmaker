@@ -1,5 +1,10 @@
 import type { GameStore } from '../store/gameStore';
+import type { ProcessCategory, ProcessScoringModel } from '../types/game';
 import { PHASE_BASE_BUDGETS } from '../config/phaseBudgets';
+import {
+  PROCESS_CATEGORY_LABELS,
+  calculateCausalProcessScore,
+} from './processScoring';
 
 const TOTAL_GAME_BUDGET = Object.values(PHASE_BASE_BUDGETS).reduce((a, b) => a + b, 0); // ~265 k€
 
@@ -33,11 +38,13 @@ export interface ResultsBoard {
     label: 'Burnt Out' | 'Strained' | 'Solid' | 'Strong';
   };
   process: {
-    processQuality: number;
-    buyerManagement: number;
-    riskControl: number;
-    negotiationQuality: number;
-    closingQuality: number;
+    judgment: number;
+    execution: number;
+    stakeholder: number;
+    risk: number;
+    negotiation: number;
+    model: ProcessScoringModel;
+    difficultyAdjustment: number;
   };
   career: {
     reputationGain: number;
@@ -53,7 +60,14 @@ export interface ResultsBoard {
     overallDealScore: number;
     overallGrade: 'Weak Outcome' | 'Acceptable Outcome' | 'Strong Outcome' | 'Excellent Outcome' | 'Elite Rainmaker Outcome';
   };
-  keyDrivers: string[];
+  debrief: DebriefFinding[];
+}
+
+export interface DebriefFinding {
+  headline: string;
+  explanation: string;
+  tone: 'positive' | 'warning' | 'neutral';
+  sourceRecordId?: string;
 }
 
 // --- Financial Score ---
@@ -180,6 +194,22 @@ function calculateTeamScore(state: GameStore): ResultsBoard['team'] & { score: n
 
 // --- Process Score ---
 function calculateProcessScore(state: GameStore): ResultsBoard['process'] & { score: number } {
+  if (state.scoringModelVersion === 'causal-v2') {
+    const causal = calculateCausalProcessScore(state.processLog ?? [], state.mandateDifficulty);
+    return {
+      judgment: causal.categories.judgment,
+      execution: causal.categories.execution,
+      stakeholder: causal.categories.stakeholder,
+      risk: causal.categories.risk,
+      negotiation: causal.categories.negotiation,
+      model: 'causal-v2',
+      difficultyAdjustment: causal.difficultyAdjustment,
+      score: causal.score,
+    };
+  }
+
+  // Historical saves retain the v1 end-state formula so an upgrade does not
+  // silently rewrite the meaning of a run that was already in progress.
   const totalTasks = state.tasks.length;
   const completedTasks = state.tasks.filter((t) => t.status === 'completed').length;
   const completionRate = totalTasks > 0 ? completedTasks / totalTasks : 0;
@@ -204,7 +234,16 @@ function calculateProcessScore(state: GameStore): ResultsBoard['process'] & { sc
     processQuality * 0.25 + buyerManagement * 0.2 + riskControl * 0.2 + negotiationQuality * 0.2 + closingQuality * 0.15
   );
 
-  return { processQuality, buyerManagement, riskControl, negotiationQuality, closingQuality, score };
+  return {
+    judgment: Math.round((processQuality + negotiationQuality) / 2),
+    execution: processQuality,
+    stakeholder: buyerManagement,
+    risk: riskControl,
+    negotiation: negotiationQuality,
+    model: 'legacy-v1',
+    difficultyAdjustment: 0,
+    score,
+  };
 }
 
 // --- Career Impact Score ---
@@ -223,8 +262,8 @@ function calculateCareerScore(state: GameStore, financialScore: number, processS
   };
 }
 
-// --- Key Drivers ---
-function generateKeyDrivers(state: GameStore): string[] {
+// --- Legacy context (used only for migrated saves without a causal log) ---
+function generateLegacyDrivers(state: GameStore): string[] {
   const drivers: string[] = [];
 
   // Financial drivers — evaluate against total game budget (TOTAL_GAME_BUDGET k€)
@@ -280,6 +319,68 @@ function generateKeyDrivers(state: GameStore): string[] {
   return drivers.slice(0, 5);
 }
 
+function buildReservationReveals(state: GameStore): DebriefFinding[] {
+  const reveals: DebriefFinding[] = [];
+  const fee = state.feeNegotiation;
+  if (fee && (fee.status === 'agreed' || fee.status === 'failed')) {
+    reveals.push({
+      headline: 'What the client would have signed',
+      explanation: `The workable success-fee corridor was ${fee.clientState.reservationSuccessFeeMin.toFixed(2)}%–${fee.clientState.reservationSuccessFeeMax.toFixed(2)}%. This is revealed only after the negotiation ends.`,
+      tone: 'neutral',
+    });
+  }
+
+  const spa = state.spaNegotiation;
+  if (spa && (spa.status === 'agreed' || spa.status === 'failed')) {
+    reveals.push({
+      headline: 'Where the buyer could have settled',
+      explanation: `The buyer's minimum positions were a ${spa.buyerState.reservationWarrantyCap}% warranty cap and ${spa.buyerState.reservationEscrowPercent}% escrow. This is revealed only after the negotiation ends.`,
+      tone: 'neutral',
+    });
+  }
+  return reveals;
+}
+
+function generateDebrief(state: GameStore): DebriefFinding[] {
+  const reservationReveals = buildReservationReveals(state);
+  const availableMomentSlots = Math.max(3, 5 - reservationReveals.length);
+
+  if (state.scoringModelVersion === 'causal-v2' && (state.processLog?.length ?? 0) > 0) {
+    const ranked = [...state.processLog].sort((a, b) => {
+      const impactA = a.weight * (0.5 + Math.abs(a.rating - 0.5));
+      const impactB = b.weight * (0.5 + Math.abs(b.rating - 0.5));
+      return impactB - impactA || b.day - a.day || a.id.localeCompare(b.id);
+    });
+
+    // Start with different disciplines so one busy mechanic cannot monopolise
+    // the debrief, then use the remaining highest-impact moments.
+    const selected = ranked.reduce<typeof ranked>((moments, record) => {
+      if (moments.length >= availableMomentSlots) return moments;
+      if (!moments.some((moment) => moment.category === record.category)) moments.push(record);
+      return moments;
+    }, []);
+    for (const record of ranked) {
+      if (selected.length >= availableMomentSlots) break;
+      if (!selected.some((moment) => moment.id === record.id)) selected.push(record);
+    }
+
+    const moments: DebriefFinding[] = selected.map((record) => ({
+      headline: record.headline,
+      explanation: `${record.explanation} ${PROCESS_CATEGORY_LABELS[record.category as ProcessCategory]}: ${Math.round(record.rating * 100)}/100.`,
+      tone: record.rating >= 0.7 ? 'positive' : record.rating <= 0.45 ? 'warning' : 'neutral',
+      sourceRecordId: record.id,
+    }));
+    return [...moments, ...reservationReveals].slice(0, 5);
+  }
+
+  const legacy: DebriefFinding[] = generateLegacyDrivers(state).map((explanation) => ({
+    headline: state.scoringModelVersion === 'legacy-v1' ? 'Legacy run context' : 'Run context',
+    explanation,
+    tone: 'neutral',
+  }));
+  return [...legacy.slice(0, Math.max(0, 5 - reservationReveals.length)), ...reservationReveals].slice(0, 5);
+}
+
 // ============================================
 // Main Results Board Calculation
 // ============================================
@@ -323,7 +424,7 @@ export function buildResultsBoard(state: GameStore): ResultsBoard {
     overallGrade,
   };
 
-  const keyDrivers = generateKeyDrivers(state);
+  const debrief = generateDebrief(state);
 
   return {
     dealOutcome,
@@ -351,11 +452,13 @@ export function buildResultsBoard(state: GameStore): ResultsBoard {
       label: team.label,
     },
     process: {
-      processQuality: process.processQuality,
-      buyerManagement: process.buyerManagement,
-      riskControl: process.riskControl,
-      negotiationQuality: process.negotiationQuality,
-      closingQuality: process.closingQuality,
+      judgment: process.judgment,
+      execution: process.execution,
+      stakeholder: process.stakeholder,
+      risk: process.risk,
+      negotiation: process.negotiation,
+      model: process.model,
+      difficultyAdjustment: process.difficultyAdjustment,
     },
     career: {
       reputationGain: career.reputationGain,
@@ -363,6 +466,6 @@ export function buildResultsBoard(state: GameStore): ResultsBoard {
       sectorCredibilityGain: career.sectorCredibilityGain,
     },
     scores,
-    keyDrivers,
+    debrief,
   };
 }

@@ -23,6 +23,8 @@ describe('Game Store', () => {
         } as unknown as Lead
       ],
       tasks: [],
+      processLog: [],
+      scoringModelVersion: 'causal-v2',
       phaseEntryDay: {},
       day: 1
     });
@@ -34,6 +36,12 @@ describe('Game Store', () => {
     let state = useGameStore.getState();
     expect(state.preferredBidderId).toBe('buyer-01');
     expect(state.preferredBidderConfirmed).toBe(true);
+    expect(state.processLog).toHaveLength(1);
+    expect(state.processLog[0]).toMatchObject({
+      category: 'judgment',
+      sourceType: 'buyer_decision',
+      sourceId: 'buyer-01',
+    });
 
     // Subsequent calls should be no-ops
     useGameStore.getState().selectPreferredBidder('buyer-02', false);
@@ -44,6 +52,7 @@ describe('Game Store', () => {
     useGameStore.getState().selectPreferredBidder('buyer-02', true);
     state = useGameStore.getState();
     expect(state.preferredBidderId).toBe('buyer-01');
+    expect(state.processLog).toHaveLength(1);
   });
 
   it('selectPreferredBidder without confirmed is rejected when already set', () => {
@@ -103,5 +112,29 @@ describe('Game Store', () => {
     const state = useGameStore.getState();
     expect(state.phase).toBe(1);
     expect(state.phaseEntryDay[1]).toBe(10);
+  });
+
+  it('migrates pre-v8 saves without pretending they contain causal evidence', async () => {
+    const migrate = useGameStore.persist.getOptions().migrate;
+    expect(migrate).toBeTypeOf('function');
+
+    const migrated = await migrate!({
+      resources: {
+        budget: 20.4,
+        budgetMax: 40,
+        teamCapacity: 80,
+        teamCapacityMax: 100,
+        morale: 70,
+        clientTrust: 60,
+        dealMomentum: 50,
+        riskLevel: 20,
+        reputation: 55,
+      },
+    }, 7) as Record<string, unknown>;
+
+    expect(migrated.contentVersion).toBe('solara-events-v1');
+    expect(migrated.scoringModelVersion).toBe('legacy-v1');
+    expect(migrated.processLog).toEqual([]);
+    expect((migrated.resources as { budget: number }).budget).toBe(20);
   });
 });

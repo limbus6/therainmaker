@@ -241,11 +241,17 @@ export default function ResultsBoardScreen() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card title="Process Quality" icon={<Shield size={14} />}>
           <div className="space-y-2.5">
-            <MetricRow label="Process Quality" value={results.process.processQuality} />
-            <MetricRow label="Buyer Management" value={results.process.buyerManagement} />
-            <MetricRow label="Risk Control" value={results.process.riskControl} />
-            <MetricRow label="Negotiation Quality" value={results.process.negotiationQuality} />
-            <MetricRow label="Closing Quality" value={results.process.closingQuality} />
+            <MetricRow label="Judgment" value={results.process.judgment} />
+            <MetricRow label="Execution Discipline" value={results.process.execution} />
+            <MetricRow label="Stakeholder Management" value={results.process.stakeholder} />
+            <MetricRow label="Risk Stewardship" value={results.process.risk} />
+            <MetricRow label="Negotiation Craft" value={results.process.negotiation} />
+            <p className="pt-1 text-[9px] font-mono uppercase tracking-wider text-text-muted">
+              {results.process.model === 'causal-v2' ? 'Causal model v2' : 'Legacy model v1'}
+              {results.process.difficultyAdjustment !== 0
+                ? ` · Difficulty ${results.process.difficultyAdjustment > 0 ? '+' : ''}${results.process.difficultyAdjustment}`
+                : ''}
+            </p>
           </div>
         </Card>
 
@@ -273,12 +279,18 @@ export default function ResultsBoardScreen() {
           </div>
         </Card>
 
-        <Card title="Key Drivers" icon={<Trophy size={14} />}>
+        <Card title="Player Debrief" icon={<Trophy size={14} />}>
           <div className="space-y-2.5">
-            {results.keyDrivers.map((driver, i) => (
+            {results.debrief.map((finding, i) => (
               <div key={i} className="flex items-start gap-2">
-                <ChevronRight size={12} className="text-text-accent shrink-0 mt-0.5" />
-                <p className="text-[11px] text-text-secondary leading-relaxed">{driver}</p>
+                <ChevronRight size={12} className={`shrink-0 mt-0.5 ${
+                  finding.tone === 'positive' ? 'text-state-success' :
+                  finding.tone === 'warning' ? 'text-state-warning' : 'text-text-accent'
+                }`} />
+                <div>
+                  <p className="text-[11px] font-semibold text-text-primary leading-snug">{finding.headline}</p>
+                  <p className="mt-0.5 text-[10px] text-text-secondary leading-relaxed">{finding.explanation}</p>
+                </div>
               </div>
             ))}
           </div>

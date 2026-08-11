@@ -1,5 +1,16 @@
 # Gameplay Redesign Handoff
 
+## Current Snapshot (2026-08-11)
+
+The historical review below remains useful design context, but its implementation-status claims are superseded by this snapshot and `roadmap.md`.
+
+- Fluidity v2 and the M0 trust work are on `main`; the current working tree adds the next M0 package.
+- The 80 authored events now live in `src/content/events/index.ts`; `weekEngine.ts` imports the catalogue instead of owning it inline.
+- Save schema v8 adds an explicit content version, a causal-v2 scoring model for new games, mandate difficulty, and a persisted, deduplicated process log. Migrated saves retain legacy-v1 scoring.
+- Results Board evaluates Judgment, Execution Discipline, Stakeholder Management, Risk Stewardship, and Negotiation Craft independently of deal outcome, then builds a source-specific Player Debrief.
+- Team traits/growth and person-level task allocation remain deliberately deferred pending the M0.5 friction audit.
+- Current verification target: build, lint, full tests, and desktop/mobile browser QA before publication.
+
 ## Purpose
 
 This document hands the next coding session the gameplay redesign work for The M&A Rainmaker. The previous session reviewed the source code and the live GitHub Pages build, then produced a gameplay plan. No gameplay redesign code was implemented in that session.
@@ -39,7 +50,9 @@ The goal is to make the game feel more fluid, animated, dynamic, organic, and re
 ## Existing Architecture
 
 - `src/store/gameStore.ts`: Zustand state, actions, phase transitions, debug jumps, tasks, leads, buyers, SPA, staffing, budget, persistence.
-- `src/engine/weekEngine.ts`: time advancement, task progress, resource consumption, buyers, events, emails, phase gates, collapse detection.
+- `src/engine/weekEngine.ts`: time advancement, task progress, resource consumption, buyers, event resolution, emails, phase gates, collapse detection.
+- `src/content/events/index.ts`: the authored, ordered event-template catalogue.
+- `src/engine/processScoring.ts`: deterministic process-log append/deduplication, category weights, and mandate-difficulty adjustment.
 - `src/engine/resultsEngine.ts`: endgame scoring and results board.
 - `src/types/game.ts`: core state types, phases 0-10, tasks, risks, events, buyers, offers, negotiations.
 - `src/utils/gameplayState.ts`: risk lifecycle, phase workstreams, dashboard deliverables, momentum labels, valuation labels.

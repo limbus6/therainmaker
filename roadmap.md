@@ -44,6 +44,18 @@ This roadmap turns The M&A Rainmaker from a strong one-shot 60-90 minute simulat
 - **Source/build hygiene:** make Vite resolve TypeScript source unambiguously. Remove generated `.js/.d.ts/.map` files from `src` if the build permits; otherwise generate them outside `src` and add a CI check that prevents stale compiled artifacts from shadowing `.tsx/.ts`.
 - **State integrity:** introduce an explicit save schema version and migrations before adding career state. A valid old save must either migrate safely or fail with a clear recovery path.
 - **Determinism:** a run seed plus content version must reproduce the same event sequence. Add a development-only causal log that records each state change, its source, and RNG draw so balance failures can be replayed.
+- **Outcome-independent process score:** persist the consequential decisions that define how the mandate was run, grouped into Judgment (30%), Execution Discipline (25%), Stakeholder Management (20%), Risk Stewardship (15%), and Negotiation Craft (10%). Score the process visible at the time of the decision, not whether later RNG happened to reward it. Unobserved categories stay neutral rather than counting as failure; mandate difficulty may adjust the result by at most ±5 points.
+- **Scoped player debrief:** replace generic end-state “Key Drivers” with 3-5 high-impact moments selected from that causal log. Reveal hidden fee/SPA reservation positions only after the relevant negotiation has ended. A failed deal can therefore show strong process, and a closed deal can show weak process.
+
+**Delivery status — 2026-08-11**
+
+- Delivered: the 80 authored event templates were extracted from `weekEngine.ts` into `src/content/events/index.ts` without changing their order, and a catalogue test locks count, uniqueness, and order anchors.
+- Delivered: new runs persist `contentVersion = solara-events-v1`, `scoringModelVersion = causal-v2`, a neutral mandate-difficulty profile, and a deduplicated causal process log. Save schema v8 migrates existing runs to `legacy-v1` so an upgrade does not rewrite an in-progress result.
+- Delivered: causal records now cover relevant task delivery, email response timing, risk mitigation choices, the board recommendation, fee and SPA rounds, preferred-bidder confirmation, and dataroom disclosure choices.
+- Delivered: Results Board now shows the five process disciplines and a source-specific Player Debrief; post-negotiation reservation ranges are revealed only after agreement or failure.
+- Verified: build and automated coverage include event-catalogue integrity, causal weighting/deduplication, difficulty caps, migration behaviour, and the separation of process quality from deal outcome.
+- Still open before M0 exit: derive `dealMomentum`, complete source/build shadowing hygiene, and broaden replay tooling from the persisted decision log plus development diagnostics into a full exportable trace.
+- Deliberately deferred: person-level team traits, growth, and allocation are not scheduled here. Revisit only after the M0.5 friction audit demonstrates a version that adds judgment without restoring staffing administration.
 
 **Structural item (may split into its own session):** derive `dealMomentum` instead of storing it. Compute from task currency, active buyer count/interest, trust, and unresolved threats. Eliminates the "why did momentum drop?" class of confusion and removes the last god-stat.
 

@@ -229,6 +229,36 @@ export interface GameEvent {
   chainStep?: number;
 }
 
+// --- Causal process scoring ---
+
+export type ProcessCategory = 'judgment' | 'execution' | 'stakeholder' | 'risk' | 'negotiation';
+export type ProcessScoringModel = 'legacy-v1' | 'causal-v2';
+export type ProcessSourceType = 'task' | 'email' | 'risk' | 'board' | 'fee_round' | 'spa_round' | 'dataroom' | 'buyer_decision';
+
+/** A persisted, outcome-independent observation of how the player ran the process. */
+export interface ProcessRecord {
+  id: string;
+  dedupeKey: string;
+  day: number;
+  phase: PhaseId;
+  category: ProcessCategory;
+  rating: number; // 0-1; evaluates the decision/process available at the time
+  weight: 1 | 2 | 3;
+  sourceType: ProcessSourceType;
+  sourceId: string;
+  headline: string;
+  explanation: string;
+}
+
+export interface MandateDifficultyProfile {
+  processBreadth: number;
+  timePressure: number;
+  diligenceBurden: number;
+  stakeholderVolatility: number;
+  buyerFragility: number;
+  overall: number;
+}
+
 // --- Headlines ---
 
 export interface Headline {
