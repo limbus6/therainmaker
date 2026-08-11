@@ -512,7 +512,7 @@ export default function FeeNegotiationModal({ onClose }: Props) {
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-1.5 text-[11px] font-semibold text-text-muted uppercase tracking-widest">
                         <BarChart2 size={11} />
-                        Ratchet / Premio
+                        Ratchet / Upside Premium
                         {isRatchetLocked && (
                           <span className="flex items-center gap-1 text-green-400 normal-case text-[10px] font-normal">
                             <Lock size={10} /> Agreed

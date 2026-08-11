@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../store/gameStore';
+import { ADVISOR_ARCHETYPES } from '../content/archetypes';
 
 
 export default function LandingPage() {
@@ -43,12 +44,21 @@ export default function LandingPage() {
     window.location.replace(import.meta.env.BASE_URL);
   };
 
+  const [showArchetypes, setShowArchetypes] = useState(false);
+  const selectArchetype = useGameStore((s) => s.selectArchetype);
+
   const handleEnterClick = () => setShowNameForm(true);
 
   const handleSaveName = () => {
     const trimmed = nameInput.trim();
     if (!trimmed) { setError('Please enter your name to continue.'); return; }
     setPlayerName(trimmed);
+    setShowNameForm(false);
+    setShowArchetypes(true);
+  };
+
+  const handlePickArchetype = (id: (typeof ADVISOR_ARCHETYPES)[number]['id']) => {
+    selectArchetype(id);
     navigate('/game');
   };
 
@@ -71,8 +81,29 @@ export default function LandingPage() {
           <img src="./logo-game.png" alt="M&A Rainmaker Logo" className="w-full h-full object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.5)]" />
         </div>
 
-        {/* Name entry form */}
-        {showNameForm ? (
+        {/* Archetype selection */}
+        {showArchetypes ? (
+          <div className="w-full max-w-3xl space-y-3 relative mt-4 md:-mt-48 z-20">
+            <p className="text-[11px] font-mono uppercase tracking-widest text-text-muted font-bold">Choose your practice</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {ADVISOR_ARCHETYPES.map((archetype) => (
+                <button
+                  key={archetype.id}
+                  onClick={() => handlePickArchetype(archetype.id)}
+                  className="rounded-2xl border-2 border-border-subtle bg-bg-secondary/95 p-4 text-left backdrop-blur-md shadow-xl transition-all hover:border-accent-primary hover:-translate-y-0.5 active:scale-95"
+                >
+                  <p className="text-[14px] font-bold text-text-primary">{archetype.name}</p>
+                  <p className="mt-1 text-[11px] italic text-text-secondary leading-snug">{archetype.tagline}</p>
+                  <ul className="mt-3 space-y-1 border-t border-border-subtle/50 pt-2">
+                    {archetype.effects.map((effect) => (
+                      <li key={effect} className="text-[10px] leading-snug text-text-muted">• {effect}</li>
+                    ))}
+                  </ul>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : showNameForm ? (
           <div className="w-full max-w-sm space-y-4 relative mt-4 md:-mt-48 z-20 bg-bg-secondary/95 p-6 rounded-2xl border-2 border-border-subtle backdrop-blur-md shadow-2xl">
             <div className="space-y-2">
               <label className="block text-[11px] font-mono uppercase tracking-widest text-text-muted text-left font-bold border-b border-border-subtle/30 pb-1 mb-2">

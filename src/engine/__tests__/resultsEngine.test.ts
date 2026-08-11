@@ -57,6 +57,49 @@ describe('Results Engine', () => {
     agreedFeeTerms: { successFeePercent: 2 }
   } as unknown as GameStore);
 
+  it('pays the ratchet and retainer through the agreed structure', () => {
+    const state = getMockState();
+    state.week = 40;
+    state.phaseEntryDay = { 0: 1, 2: 40, 3: 60, 4: 80, 5: 100, 6: 120, 7: 140, 8: 160, 9: 180, 10: 200 };
+    state.agreedFeeTerms = {
+      retainerType: 'monthly',
+      retainerAmount: 5,
+      successFeePercent: 2,
+      ratchetEnabled: true,
+      ratchetThresholdEV: 120,
+      ratchetBonusPercent: 2,
+      totalFeeProjection: 0,
+      agreedWeek: 4,
+    };
+
+    const result = buildResultsBoard(state);
+    const closing = result.financial.closingValue;
+    expect(closing).toBeGreaterThan(120);
+    expect(result.financial.ratchetBonus).toBe(Math.round((closing - 120) * 0.02 * 1000));
+    expect(result.financial.retainerIncome).toBe(5 * 9); // 36 weeks retained -> 9 months
+    expect(result.financial.totalAdvisoryFee).toBe(
+      result.financial.successFee + result.financial.ratchetBonus + result.financial.retainerIncome,
+    );
+  });
+
+  it('pays no ratchet when the close misses the threshold', () => {
+    const state = getMockState();
+    state.agreedFeeTerms = {
+      retainerType: 'none',
+      retainerAmount: 0,
+      successFeePercent: 2,
+      ratchetEnabled: true,
+      ratchetThresholdEV: 500,
+      ratchetBonusPercent: 3,
+      totalFeeProjection: 0,
+      agreedWeek: 4,
+    };
+    const result = buildResultsBoard(state);
+    expect(result.financial.ratchetBonus).toBe(0);
+    expect(result.financial.totalAdvisoryFee).toBe(result.financial.successFee);
+  });
+
+
   it('closingValue uses selected offer\'s totalEV (not hardcoded 120M)', () => {
     const state = getMockState();
     const result = buildResultsBoard(state);

@@ -55,6 +55,7 @@ import { resolveWeek, checkPhaseGate, unlockTasks, checkDealCollapse, calcDaysTo
 import type { WeekResult, PhaseGateResult } from '../engine/weekEngine';
 import { getGoldenMandateOfferDriver } from '../engine/goldenMandate';
 import { getPeopleOfferDriver } from '../engine/peopleBeats';
+import { getArchetype, type ArchetypeId } from '../content/archetypes';
 import { PHASE_BASE_BUDGETS, STAFF_PROFILES, CONTRACTOR_PROFILES, MITIGATION_ACTIONS } from '../config/phaseBudgets';
 import { getRiskMitigationPlans } from '../config/riskMitigation';
 import { REVIEW_CHECKPOINTS_BY_ID } from '../config/reviewCheckpoints';
@@ -315,7 +316,8 @@ function deriveClientProfile(
 
 function buildClientNegotiationState(
   profile: ClientNegotiationProfile,
-  expectedEV: number
+  expectedEV: number,
+  patienceBonus = 0,
 ): ClientNegotiationState {
   const configs: Record<ClientNegotiationProfile, Omit<ClientNegotiationState, 'patienceRemaining' | 'lockedComponents' | 'revealedHints' | 'lockedRetainerType' | 'lockedRetainerAmount' | 'lockedSuccessFeePercent'>> = {
     serious_reasonable: {
@@ -359,7 +361,7 @@ function buildClientNegotiationState(
   const isRetainerAverse = profile === 'unsure_reluctant' || profile === 'unsure_optimistic';
   return {
     ...configs[profile],
-    patienceRemaining: 100,
+    patienceRemaining: 100 + patienceBonus,
     lockedComponents: isRetainerAverse ? ['retainer'] : [],
     revealedHints: isRetainerAverse
       ? [profile === 'unsure_reluctant'
@@ -588,6 +590,8 @@ export interface GameStore {
   boardSubmission: BoardSubmission | null;
   /** IC rejections this run — drives the resubmission pity ladder. */
   boardRejectionCount: number;
+  /** Run identity chosen at start; null on legacy saves (no modifiers). */
+  advisorArchetype: ArchetypeId | null;
   tempCapacityAllocations: TempCapacityAllocation[];
   feeNegotiation: FeeNegotiation | null;
   agreedFeeTerms: FeeTerms | null;
@@ -640,6 +644,7 @@ export interface GameStore {
   mitigateRisk: (riskId: string) => void;
   executeRiskMitigationPlan: (riskId: string, planId: string) => void;
   setPlayerName: (name: string) => void;
+  selectArchetype: (id: ArchetypeId) => void;
   markOnboardingSeen: () => void;
   saveGame: () => void;
   completeGame: () => void;
@@ -680,6 +685,17 @@ export interface GameStore {
   submitSPARound: (terms: Pick<SPARound, 'playerWarrantyScope' | 'playerWarrantyCap' | 'playerEscrowPercent' | 'playerSpecificIndemnity'>) => void;
   acceptSPATerms: () => void;
   setWeekPace: (pace: 'sprint' | 'standard' | 'deliberate') => void;
+}
+
+// ============================================
+// Helper: archetype modifiers on authored tasks
+// ============================================
+function applyArchetypeToTasks(tasks: GameTask[], archetypeId: ArchetypeId | null): GameTask[] {
+  const archetype = getArchetype(archetypeId);
+  if (!archetype || archetype.deliverableWorkFactor === 1) return tasks;
+  return tasks.map((task) => task.category === 'deliverable'
+    ? { ...task, work: Math.max(1, Math.round(task.work * archetype.deliverableWorkFactor)) }
+    : task);
 }
 
 // ============================================
@@ -778,7 +794,7 @@ function normalizeResources(resources: PlayerResources): PlayerResources {
 
 const DEFAULT_PREFERRED_BUYER = 'Kestrel Capital';
 const DEFAULT_FALLBACK_BUYER = 'Vektor Industries';
-const SAVE_SCHEMA_VERSION = 10;
+const SAVE_SCHEMA_VERSION = 11;
 
 function hashIdentifier(value: string): number {
   let hash = 2166136261;
@@ -995,6 +1011,7 @@ function generateSPABuyerState(
   buyer: import('../types/game').Buyer,
   rngSeed: number,
   day: number,
+  patienceBonus = 0,
 ): SPABuyerState {
   const profile =
     buyer.type === 'pe' ? 'aggressive_buyer' :
@@ -1017,7 +1034,7 @@ function generateSPABuyerState(
     priorityCap: base.pc,
     priorityEscrow: base.pe,
     priorityIndemnity: base.pi,
-    patienceRemaining: 100,
+    patienceRemaining: 100 + patienceBonus,
     lockedComponents: [],
     revealedHints: [],
   };
@@ -1289,6 +1306,7 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
   qualificationNotes: [],
   boardSubmission: null,
   boardRejectionCount: 0,
+  advisorArchetype: null,
   tempCapacityAllocations: [],
   feeNegotiation: null,
   agreedFeeTerms: null,
@@ -1731,7 +1749,7 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
         ? personalizePhaseContent(clientPersonalizedContent, preferredBuyerName)
         : clientPersonalizedContent;
 
-      newTasks = [...state.tasks, ...phaseContent.tasks];
+      newTasks = [...state.tasks, ...applyArchetypeToTasks(phaseContent.tasks, state.advisorArchetype)];
 
       // Mark obsolete Phase 0 emails as read when advancing to Phase 1+
       const cleanedExistingEmails = state.emails.map((e) =>
@@ -1743,7 +1761,14 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
       newRisks = [...state.risks, ...phaseContent.risks];
       newHeadlines = [...state.headlines, ...phaseContent.headlines];
       if (phaseContent.buyers) {
-        newBuyers = [...state.buyers, ...phaseContent.buyers];
+        const chemistryBonus = getArchetype(state.advisorArchetype)?.startBuyerChemistry ?? 0;
+        const incoming = chemistryBonus === 0
+          ? phaseContent.buyers
+          : phaseContent.buyers.map((buyer) => ({
+              ...buyer,
+              chemistryWithSeller: Math.min(100, buyer.chemistryWithSeller + chemistryBonus),
+            }));
+        newBuyers = [...state.buyers, ...incoming];
       }
     }
     const phaseSpent = Math.max(0, state.resources.budgetMax - state.resources.budget);
@@ -2596,6 +2621,26 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
   }),
 
   setPlayerName: (name: string) => set({ playerName: name }),
+
+  selectArchetype: (id: ArchetypeId) => set((state) => {
+    if (state.advisorArchetype) return {}; // one identity per run
+    const archetype = getArchetype(id);
+    if (!archetype) return {};
+    logCausalChange('archetype_selected', { id });
+    return {
+      advisorArchetype: id,
+      resources: normalizeResources({
+        ...state.resources,
+        clientTrust: state.resources.clientTrust + archetype.startClientTrust,
+        reputation: state.resources.reputation + archetype.startReputation,
+      }),
+      tasks: applyArchetypeToTasks(state.tasks, id),
+      toasts: [
+        ...state.toasts,
+        { id: `toast-archetype-${id}`, message: `${archetype.name}: ${archetype.tagline}`, type: 'info' as const },
+      ],
+    };
+  }),
   markOnboardingSeen: () => set({ hasSeenOnboarding: true }),
   saveGame: () => set({ savedAt: new Date().toISOString() }),
   completeGame: () => set({ gameComplete: true }),
@@ -2842,7 +2887,7 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
     if (!state.feeNegotiation) {
       // Initialise negotiation shell for current phase
       const clientProfile = deriveClientProfile(state.resources.clientTrust, state.qualificationNotes);
-      const clientState = buildClientNegotiationState(clientProfile, state.client.valuationExpectationEV ?? 100);
+      const clientState = buildClientNegotiationState(clientProfile, state.client.valuationExpectationEV ?? 100, getArchetype(state.advisorArchetype)?.negotiationPatienceBonus ?? 0);
       const negotiation: FeeNegotiation = {
         phase: state.phase,
         pitchPresented: true,
@@ -3080,7 +3125,7 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
       ? state.buyers.find((b) => b.id === state.preferredBidderId)
       : null;
     if (!preferredBuyer) return {};
-    const buyerState = generateSPABuyerState(preferredBuyer, state.rngSeed, state.day);
+    const buyerState = generateSPABuyerState(preferredBuyer, state.rngSeed, state.day, getArchetype(state.advisorArchetype)?.negotiationPatienceBonus ?? 0);
     return {
       spaNegotiation: {
         phase: state.phase,
@@ -3399,6 +3444,10 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
       s.scoringModelVersion = 'legacy-v1';
       s.mandateDifficulty = { ...DEFAULT_MANDATE_DIFFICULTY };
       s.processLog = [];
+    }
+    if (fromVersion < 11) {
+      // Archetypes are a run-start identity; mid-run saves stay 'balanced'.
+      s.advisorArchetype = null;
     }
     if (fromVersion < 9) {
       // Pity ladder for IC resubmissions. A run mid-rejection loses at most

@@ -17,7 +17,10 @@ export interface ResultsBoard {
   financial: {
     closingValue: number;       // €M
     feePercent: number;
-    successFee: number;         // €k
+    successFee: number;         // €k — base success fee
+    ratchetBonus: number;       // €k — ratchet payout when closing clears the threshold
+    retainerIncome: number;     // €k — retainer collected across the mandate
+    totalAdvisoryFee: number;   // €k — retainer + success fee + ratchet
     internalCost: number;       // €k — budget spent
     netProjectProfit: number;   // €k
     projectMargin: number;      // 0-1
@@ -121,12 +124,28 @@ function calculateFinancialScore(state: GameStore): ResultsBoard['financial'] & 
     : 0.015;
   const successFee = dealClosed ? Math.round(closingValue * feePercent * 1000) : 0; // €k
 
+  // The agreed structure is the strategy: a ratchet only pays when the close
+  // clears its threshold, and retainers pay whether or not the deal lands.
+  const terms = state.agreedFeeTerms;
+  const ratchetBonus = dealClosed && terms?.ratchetEnabled && terms.ratchetThresholdEV !== undefined
+    && closingValue >= terms.ratchetThresholdEV
+    ? Math.round((closingValue - terms.ratchetThresholdEV) * ((terms.ratchetBonusPercent ?? 0) / 100) * 1000)
+    : 0;
+  const monthsRetained = terms ? Math.max(0, Math.floor((state.week - terms.agreedWeek) / 4)) : 0;
+  const phasesRetained = Object.keys(state.phaseEntryDay ?? {}).filter((p) => Number(p) >= 2).length;
+  const retainerIncome = !terms ? 0
+    : terms.retainerType === 'monthly' ? terms.retainerAmount * monthsRetained
+    : terms.retainerType === 'per_phase' ? terms.retainerAmount * phasesRetained
+    : terms.retainerType === 'upfront' ? terms.retainerAmount
+    : 0;
+  const totalAdvisoryFee = successFee + ratchetBonus + retainerIncome;
+
   // Cumulative spend: sum all previous phases + current phase spend
   const currentPhaseSpent = Math.max(0, state.resources.budgetMax - state.resources.budget);
   const totalSpent = (state.totalBudgetSpent ?? 0) + currentPhaseSpent;
   const internalCost = Math.round(totalSpent * 2.4); // Convert budget units to €k cost
-  const netProjectProfit = successFee - internalCost;
-  const projectMargin = successFee > 0 ? netProjectProfit / successFee : 0;
+  const netProjectProfit = totalAdvisoryFee - internalCost;
+  const projectMargin = totalAdvisoryFee > 0 ? netProjectProfit / totalAdvisoryFee : 0;
   // Budget efficiency: what fraction of total game budget was NOT spent
   const budgetEfficiency = Math.max(0, 1 - totalSpent / TOTAL_GAME_BUDGET);
   const budgetVariance = Math.round(TOTAL_GAME_BUDGET - totalSpent); // k€ unspent
@@ -146,6 +165,9 @@ function calculateFinancialScore(state: GameStore): ResultsBoard['financial'] & 
     closingValue,
     feePercent,
     successFee,
+    ratchetBonus,
+    retainerIncome,
+    totalAdvisoryFee,
     internalCost,
     netProjectProfit: Math.round(netProjectProfit),
     projectMargin: Math.round(projectMargin * 100) / 100,
@@ -432,6 +454,9 @@ export function buildResultsBoard(state: GameStore): ResultsBoard {
       closingValue: financial.closingValue,
       feePercent: financial.feePercent,
       successFee: financial.successFee,
+      ratchetBonus: financial.ratchetBonus,
+      retainerIncome: financial.retainerIncome,
+      totalAdvisoryFee: financial.totalAdvisoryFee,
       internalCost: financial.internalCost,
       netProjectProfit: financial.netProjectProfit,
       projectMargin: financial.projectMargin,

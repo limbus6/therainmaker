@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../store/gameStore';
 import { buildResultsBoard } from '../engine/resultsEngine';
+import { getArchetype } from '../content/archetypes';
 import type { ResultsBoard } from '../engine/resultsEngine';
 import ProgressBar from '../components/ui/ProgressBar';
 import { Trophy, TrendingUp, Users, Shield, Briefcase, Star, ChevronRight, RotateCcw } from 'lucide-react';
@@ -182,6 +183,22 @@ export default function ResultsBoardScreen() {
               <span className="text-text-secondary">Success Fee ({(results.financial.feePercent * 100).toFixed(1)}%)</span>
               <span className="font-mono text-text-primary">€{results.financial.successFee}k</span>
             </div>
+            {results.financial.ratchetBonus > 0 && (
+              <div className="flex justify-between text-[12px]">
+                <span className="text-text-secondary">Ratchet Bonus</span>
+                <span className="font-mono text-state-success">+€{results.financial.ratchetBonus}k</span>
+              </div>
+            )}
+            {results.financial.retainerIncome > 0 && (
+              <div className="flex justify-between text-[12px]">
+                <span className="text-text-secondary">Retainer Collected</span>
+                <span className="font-mono text-text-primary">€{results.financial.retainerIncome}k</span>
+              </div>
+            )}
+            <div className="flex justify-between text-[12px]">
+              <span className="text-text-secondary font-medium">Total Advisory Fee</span>
+              <span className="font-mono font-semibold text-text-accent">€{results.financial.totalAdvisoryFee}k</span>
+            </div>
             <div className="flex justify-between text-[12px]">
               <span className="text-text-secondary">Project Cost</span>
               <span className="font-mono text-text-primary">€{results.financial.internalCost}k</span>
@@ -299,6 +316,19 @@ export default function ResultsBoardScreen() {
 
       {/* Deal Summary */}
       <div className="bg-bg-panel/60 border border-border-subtle rounded-[var(--radius-lg)] p-6 text-center">
+        {(() => {
+          const archetype = getArchetype(state.advisorArchetype);
+          const terms = state.agreedFeeTerms;
+          const feeLabel = terms
+            ? `${terms.successFeePercent}% success fee${terms.ratchetEnabled ? ' + ratchet' : ''}${terms.retainerType !== 'none' ? ` + ${terms.retainerType.replace('_', ' ')} retainer` : ''}`
+            : null;
+          if (!archetype && !feeLabel) return null;
+          return (
+            <p className="mb-1 text-[12px] font-medium text-text-accent">
+              {[archetype?.name, feeLabel].filter(Boolean).join(' · ')}
+            </p>
+          );
+        })()}
         <p className="text-[12px] text-text-muted">
           Completed in {state.totalDays} days (Week {state.week}) across {state.phase + 1} phases
           {' '}— {state.tasks.filter((t) => t.status === 'completed').length} tasks completed
