@@ -1966,6 +1966,9 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
     const checkpoint = REVIEW_CHECKPOINTS_BY_ID[checkpointId];
     if (!checkpoint) return;
 
+    // The chained phase jump wipes story flags; capture them first so a QA
+    // jump keeps narrative continuity (offer drivers, chain payoffs).
+    const preservedStoryFlags = { ...get().eventDirectorState.storyFlags };
     await get().debugJumpToPhase(checkpoint.phase);
 
     const state = get();
@@ -2030,7 +2033,7 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
 
     const checkpointWeek = Math.max(1, Math.ceil(checkpoint.day / 7));
     const agreedFeeTerms = checkpoint.feeAgreed ? { ...DEBUG_FEE_TERMS, agreedWeek: checkpointWeek } : state.agreedFeeTerms;
-    const finalOffers = checkpoint.phase >= 7 ? generateFinalOffers(buyers, resources.dealMomentum, checkpointWeek, state.rngSeed, state.eventDirectorState.storyFlags) : [];
+    const finalOffers = checkpoint.phase >= 7 ? generateFinalOffers(buyers, resources.dealMomentum, checkpointWeek, state.rngSeed, preservedStoryFlags) : [];
     const feeNegotiation = checkpoint.feeAgreed ? {
       phase: 1 as PhaseId,
       pitchPresented: true,
@@ -2111,6 +2114,10 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
       showWeekReport: false,
       pendingReportAutoOpen: false,
       boardRejectionCount: 0,
+      eventDirectorState: {
+        ...state.eventDirectorState,
+        storyFlags: preservedStoryFlags,
+      },
       phaseGate: checkPhaseGate({
         ...state,
         phase: checkpoint.phase,
