@@ -1,0 +1,1 @@
+function e(e){return e.replace(/([+-])\d+\s+(?:deal\s+)?momentum/gi,(e,t)=>t===`+`?`advances live process`:`may slow live process`)}export{e as t};
