@@ -2,7 +2,7 @@
 
 ## Current Snapshot (2026-08-12)
 
-The historical review and phased plan below remain useful design context, but every implementation-status claim in them is superseded by this snapshot and `roadmap.md`. **The engineering scope of M0 through M6, including challenge seeds, active builds, staggered offers, and all four apex ceremonies, is complete on `main` and live** at `https://limbus6.github.io/therainmaker/`. The run save schema is **v15**, the comparison season is **`solara-events-v4`**, and the release has 147/147 tests. Behavioral criteria that require real players use `docs/roadmap-validation.md` and are never inferred from automation.
+The historical review and phased plan below remain useful design context, but every implementation-status claim in them is superseded by this snapshot and `roadmap.md`. **The engineering scope of M0 through M6, including challenge seeds, active builds, staggered offers, and all four apex ceremonies, is complete on `main` and live** at `https://limbus6.github.io/therainmaker/`. The run save schema is **v16**, the comparison season is **`target-campaigns-v1`**, and HEAD (`e2821b9`) has 162/162 tests. (Numbers below were accurate when first written but the schema/test count have moved since; treat `git log` and a fresh `npm test` as the source of truth over any number in this file.) Behavioral criteria that require real players use `docs/roadmap-validation.md` and are never inferred from automation.
 
 **Read this before touching anything:**
 - Compiled `.js`/`.d.ts`/`.map` artifacts are **gone from `src/`** (`noEmit: true` in tsconfig; Vite resolves `.ts`/`.tsx` directly). The old "run `tsc -b` before browser QA" gotcha from earlier in this document no longer applies — ignore any instruction below that references it.
@@ -318,3 +318,90 @@ A → B → D → C → E. Phase A alone changes the feel of the game more than 
 - Do not reintroduce Portuguese copy into the live game UI. This handoff document itself stays English.
 - `FeeNegotiationModal.tsx` and `SPANegotiationModal.tsx` are protected systems — the strongest negotiation UX in the project. Don't refactor or "improve" them incidentally; only touch them for an explicitly scoped, approved task.
 - Before considering any change shipped: `npm run test` (100% green), `npm run build`, `npm run lint`, browser QA, then push to `main` and confirm the CI run succeeded and the live bundle hash matches.
+
+## 2026-08-12 — Dashboard simplification (local, uncommitted)
+
+### Request and design intent
+
+The latest request was to reduce Dashboard noise and make the screen simpler and more intuitive. The implementation now treats the Dashboard as a decision surface rather than a second copy of every specialist screen: one primary action, one compact view of the phase, and short links to deeper work.
+
+### Current implementation
+
+There are three modified source files on top of `main`; none of these changes has been committed, pushed, or deployed yet:
+
+- `src/screens/DashboardScreen.tsx`
+  - Removed the duplicated KPI row already represented in the global header.
+  - Removed the repeated full lists/panels for Priority Actions, Active Workstreams, Inbox, Buyer Pipeline, Deliverables, Active Risks, Market Headlines, Recent Activity, competitor mitigation, and the full Beacon panel.
+  - Introduced a compact page header with phase, deadline, pace, Staffing, and Advance controls.
+  - Introduced a single **Focus now** card. An urgent email decision replaces this card using the existing `DeskDecisionCard`, so the page does not present competing primary actions.
+  - Added compact **Phase plan** and **Phase gate** blocks with progress bars and collapsible gate requirements.
+  - Added four **At a glance** links for Work, Inbox, Targets/Buyers, and Risks instead of embedding their full content on the Dashboard.
+  - Kept all existing modals, deadlines, phase advancement, Turn Tape, urgent decisions, and gameplay routes.
+  - Direct gate decisions now outrank optional work in the focus logic: Phase 4 shortlist, Phase 7 preferred bidder, and Phase 8 SPA negotiation appear before ordinary tasks.
+  - The focus CTA adapts to the actual blocker; insufficient budget offers **Request budget**.
+  - At zero days the header now says **Deadline reached**, and completed mission work says **All mission work complete**.
+  - Competitor pressure remains available on the Client screen; the Dashboard only shows a compact linked alert when an active threat exists.
+  - Beacon is represented by a quiet, one-line link to Career rather than a full panel.
+- `src/components/ArchetypeAbilityPanel.tsx`
+  - Replaced the large panel and effect-chip group with a compact one-line archetype edge: ability name, up to three effects, availability, and action button.
+  - Full detail remains accessible through the title tooltip; the underlying ability behavior is unchanged.
+- `src/components/PhaseZeroDashboard.tsx`
+  - Replaced the large target cards and four separate investigation rows with three compact target cards.
+  - Each card now surfaces description, evidence count, and meeting state with less repetition.
+  - The selected-target area retains campaign promise, founder/value/evidence information, research actions, meeting CTA, and IC recommendation.
+  - No Phase 0 gameplay mechanic was intentionally removed.
+
+The net local diff is currently 367 insertions and 778 deletions across those three files.
+
+### Validation already completed
+
+After the main rewrite, before the final focus-priority/text patch:
+
+- `npm run lint` passed.
+- `npm test` passed: 39 test files, 162/162 tests.
+- `npm run build` passed.
+- The lazy Dashboard bundle reduced from roughly 26.8 kB gzip to 23.4 kB gzip in that build.
+
+Manual browser QA at `http://127.0.0.1:4175/therainmaker/` verified the Phase 4 layout at 1280 px:
+
+- No horizontal overflow (`clientWidth` and `scrollWidth` both 1280).
+- The primary CTA stayed inside the viewport.
+- The compact header, Focus now card, Phase plan/gate, At a glance links, archetype edge, and Beacon line rendered together with a much clearer hierarchy.
+- QA initially exposed a priority problem: an optional buyer task appeared before shortlist selection. The focus ordering was then corrected, and the reloaded page showed **Choose the provisional shortlist (1/2)** as the primary action.
+
+### Work interrupted / still required
+
+The last small patch changed focus ordering and header/mission copy after the successful automated checks. Therefore, do not treat the branch as verified until all checks are rerun:
+
+1. Run `npm run lint`.
+2. Run `npm test` and confirm all 162 tests remain green (or account explicitly for any intentional test-count change).
+3. Run `npm run build`.
+4. Complete browser QA for:
+   - Phase 0 Kickoff: compact targets, investigation actions, meeting flow, and IC recommendation.
+   - Phase 4: shortlist incomplete, confirming the direct shortlist CTA outranks optional tasks.
+   - Phase 7: no preferred bidder, confirming the compare/select-offers action is primary.
+   - Phase 8: no agreed SPA, confirming SPA negotiation is primary.
+   - Narrow/mobile and 1280 px layouts, including console errors and horizontal overflow.
+5. Consider adding a focused Dashboard test that asserts one primary focus region, absence of the removed duplicate headings, and the Phase 4 shortlist priority.
+6. Only after the above passes: commit with a scoped message such as `Simplify dashboard hierarchy`, push `main`, monitor **Deploy to GitHub Pages**, and verify the live bundle/hash and live interactions.
+
+### Git and deployment state
+
+- Branch: `main`, aligned with `origin/main` before these three local edits.
+- Published baseline: commit `e2821b9` (`Fix gameplay review issues`).
+- Dashboard redesign: **not committed, not pushed, and not on GitHub Pages**.
+- The interrupted local QA server on port 4175 has been stopped; restart it before continuing browser QA.
+
+Do not publish merely because the earlier checks passed: the final focus-priority patch still needs the full automated and browser verification described above.
+
+### Verification closed out (2026-08-12, independent pass)
+
+Re-ran the full checklist above against the current working tree exactly as it stood (no code changes made during this pass):
+
+- `npx tsc -b --noEmit`: clean. `npm test`: 39 files / **162/162 green**. `npm run build`: clean. `npm run lint`: clean.
+- Browser QA, desktop (1280px): Phase 0 with an urgent decision pending (DeskDecisionCard replaces the Focus card correctly, resolves in place) and without (PhaseZeroDashboard renders three compact target cards with evidence counts, meeting states, IC recommendation flow intact); Phase 4 with `task-60` completed and only 1 buyer shortlisted — Focus correctly shows **"Choose the provisional shortlist (1/2)"** ahead of ordinary tasks, exactly the scenario this note flagged as unverified; Phase 7 with no preferred bidder — Focus shows **"Choose the preferred bidder"** / "Compare offers"; Phase 8 with a preferred bidder but no agreed SPA — Focus shows **"Negotiate the SPA"**, and the CTA opens the real SPA negotiation modal.
+- Mobile (375px): no horizontal overflow after these state changes.
+- Zero console errors across the entire session.
+- KPIs removed from the Dashboard's own grid remain visible at all times via `Topbar.tsx` (`KpiPill` for Momentum/Trust/Risk) — their removal here is deduplication, not a loss of information.
+
+**Verdict: this diff is safe to commit, push, and deploy as-is.** Nothing further needs to change before shipping it.

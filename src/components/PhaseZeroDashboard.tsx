@@ -1,165 +1,116 @@
+import { CheckCircle2, ChevronRight, Clock, Handshake, Target } from 'lucide-react';
 import { useGameStore } from '../store/gameStore';
 import type { Lead } from '../types/game';
-import StatusChip from './ui/StatusChip';
-import { Building2, LineChart, Users, Globe, Handshake, ChevronRight, CheckCircle2, Clock } from 'lucide-react';
 import { getTargetNarrativeForLead } from '../content/targetNarratives';
 
+const DIMENSIONS = ['sector', 'company', 'shareholder', 'market'] as const;
+
 export default function PhaseZeroDashboard() {
-  const leads = useGameStore((s) => s.leads);
-  const activeLeadId = useGameStore((s) => s.activeLeadId);
-  const selectActiveLead = useGameStore((s) => s.selectActiveLead);
+  const leads = useGameStore((state) => state.leads);
+  const activeLeadId = useGameStore((state) => state.activeLeadId);
+  const selectActiveLead = useGameStore((state) => state.selectActiveLead);
 
-  if (!leads || leads.length === 0) return null;
-
-  const setActiveLead = (id: string) => {
-    selectActiveLead(id);
-  };
+  if (!leads.length) return null;
+  const activeLead = leads.find((lead) => lead.id === activeLeadId) ?? leads[0];
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h2 className="text-lg font-display font-semibold text-text-primary">Qualify Mandate Targets</h2>
-          <p className="text-[12px] text-text-muted">Evaluate the 3 potential mandates. Build evidence and select which target to recommend to the Investment Committee.</p>
-        </div>
+    <section className="space-y-3">
+      <div>
+        <h2 className="text-[14px] font-semibold text-text-primary">Choose the mandate</h2>
+        <p className="mt-0.5 text-[10px] text-text-muted">Compare the evidence, investigate one target and take a recommendation to IC.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid gap-2 md:grid-cols-3">
         {leads.map((lead) => {
-          const isActive = activeLeadId === lead.id;
+          const isActive = activeLead.id === lead.id;
+          const evidenceCount = DIMENSIONS.filter((dimension) => lead.investigation[dimension] === 'completed').length;
           return (
-            <div
+            <button
+              type="button"
               key={lead.id}
-              onClick={() => setActiveLead(lead.id)}
-              className={`rounded-[var(--radius-lg)] border p-4 transition-all cursor-pointer ${
-                isActive 
-                  ? 'border-accent-primary bg-surface-default shadow-[var(--shadow-glow-soft)]' 
-                  : 'border-border-subtle bg-bg-secondary hover:border-border-default hover:bg-surface-default'
-              }`}
+              onClick={() => selectActiveLead(lead.id)}
+              className={`rounded-[var(--radius-md)] border p-3 text-left transition-colors ${isActive ? 'border-border-accent bg-accent-soft/20' : 'border-border-subtle bg-surface-default hover:border-border-default'}`}
             >
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <h3 className="text-[15px] font-semibold text-text-primary">{lead.companyName}</h3>
-                  <div className="text-[11px] text-text-muted mt-1">{lead.sector}</div>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="truncate text-[12px] font-semibold text-text-primary">{lead.companyName}</p>
+                  <p className="mt-0.5 truncate text-[9px] text-text-muted">{lead.sector}</p>
                 </div>
-                <StatusChip label={lead.origin} variant="default" />
+                {isActive ? <CheckCircle2 size={13} className="shrink-0 text-text-accent" /> : <ChevronRight size={13} className="shrink-0 text-text-muted" />}
               </div>
-
-              <div className="text-[12px] text-text-secondary leading-relaxed mb-4 line-clamp-3">
-                {lead.description}
+              <p className="mt-2 line-clamp-2 text-[10px] leading-relaxed text-text-secondary">{lead.description}</p>
+              <div className="mt-3 flex items-center justify-between border-t border-border-subtle pt-2 text-[9px] text-text-muted">
+                <span>{evidenceCount}/4 evidence</span>
+                <span className={lead.meetingDone ? 'text-state-success' : ''}>{lead.meetingDone ? 'Founder met' : lead.meetingScheduled ? 'Meeting queued' : 'Intro pending'}</span>
               </div>
-
-              <div className="space-y-2">
-                <div className="text-[11px] font-semibold text-text-muted uppercase tracking-widest mb-1">Investigation</div>
-                <div className="space-y-1.5">
-                   <DimensionRow label="Sector" icon={<Globe size={13} />} status={lead.investigation.sector} />
-                   <DimensionRow label="Company" icon={<Building2 size={13} />} status={lead.investigation.company} />
-                   <DimensionRow label="Shareholder" icon={<Users size={13} />} status={lead.investigation.shareholder} />
-                   <DimensionRow label="Market Read" icon={<LineChart size={13} />} status={lead.investigation.market} />
-                </div>
-              </div>
-
-              <div className="mt-4 pt-4 border-t border-border-subtle flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-[12px] font-medium text-text-primary">
-                  <Handshake size={14} className={lead.meetingDone ? "text-state-success" : "text-text-muted"} />
-                  {lead.meetingDone ? 'Meeting Complete' : 'Intro Pending'}
-                </div>
-                <ChevronRight size={14} className={isActive ? "text-text-accent" : "text-text-muted"} />
-              </div>
-            </div>
+            </button>
           );
         })}
       </div>
 
-      {activeLeadId && (
-        <LeadActionPanel lead={leads.find(l => l.id === activeLeadId) || leads[0]} />
-      )}
-    </div>
-  );
-}
-
-function DimensionRow({ label, icon, status }: { label: string, icon: React.ReactNode, status: 'none' | 'in_progress' | 'completed' }) {
-  return (
-    <div className="flex items-center justify-between text-[12px]">
-      <div className="flex items-center gap-2 text-text-secondary">
-        <span className="text-text-muted">{icon}</span>
-        {label}
-      </div>
-      <StatusChip 
-        label={status === 'completed' ? 'Done' : status === 'in_progress' ? 'Active' : 'Missing'} 
-        variant={status === 'completed' ? 'success' : status === 'in_progress' ? 'accent' : 'default'} 
-      />
-    </div>
+      <LeadActionPanel lead={activeLead} />
+    </section>
   );
 }
 
 function LeadActionPanel({ lead }: { lead: Lead }) {
   const { investigateDimension, scheduleMeeting, submitBoardRecommendation, boardSubmission } = useGameStore();
   const campaign = getTargetNarrativeForLead(lead.id);
-
-  const handleInvestigate = (dim: keyof Lead['investigation']) => {
-    investigateDimension(lead.id, dim);
-  };
-
   const isSubmitted = boardSubmission?.leadId === lead.id;
+  const evidenceCount = DIMENSIONS.filter((dimension) => lead.investigation[dimension] === 'completed').length;
 
   return (
-    <div className="rounded-[var(--radius-lg)] border border-border-accent bg-bg-panel p-5 space-y-4">
-      <div className="flex items-center justify-between border-b border-border-subtle pb-3">
-        <div>
-          <span className="text-[10px] font-mono uppercase tracking-wider text-text-muted">Active Target Selected</span>
-          <h3 className="text-base font-semibold text-text-primary">{lead.companyName} ({lead.founderName})</h3>
+    <div className="rounded-[var(--radius-lg)] border border-border-accent/40 bg-bg-secondary p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-[9px] font-mono uppercase tracking-widest text-text-accent">Selected target</p>
+          <h3 className="mt-1 text-[15px] font-semibold text-text-primary">{lead.companyName}</h3>
+          <p className="mt-1 max-w-2xl text-[10px] leading-relaxed text-text-secondary">{campaign.campaignPromise}</p>
+          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[9px] font-mono text-text-muted">
+            <span>Founder: <strong className="text-text-secondary">{lead.founderName}</strong></span>
+            <span>Value anchor: <strong className="text-text-accent">€{campaign.baseEV}M</strong></span>
+            <span>Evidence: <strong className="text-text-secondary">{evidenceCount}/4</strong></span>
+          </div>
         </div>
         <button
+          type="button"
           onClick={() => submitBoardRecommendation('proceed', `Strong fit: ${lead.companyName}`, lead.id)}
           disabled={isSubmitted || boardSubmission?.status === 'approved'}
-          className="flex items-center gap-1.5 px-4 py-2 bg-accent-primary hover:bg-accent-hover disabled:opacity-50 text-white text-[12px] font-semibold rounded-[var(--radius-md)] transition-colors shadow-[var(--shadow-glow-soft)]"
+          className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-[var(--radius-md)] bg-accent-primary px-3.5 py-2 text-[11px] font-semibold text-white hover:bg-accent-hover disabled:opacity-50"
         >
-          {isSubmitted ? <CheckCircle2 size={14} /> : <Clock size={14} />}
-          <span>{isSubmitted ? 'Submitted to Board' : `Recommend ${lead.companyName} to Board`}</span>
+          {isSubmitted ? <CheckCircle2 size={13} /> : <Target size={13} />}
+          {isSubmitted ? 'Submitted to IC' : 'Recommend to IC'}
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-[12px]">
+      <div className="mt-4 grid gap-3 border-t border-border-subtle pt-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
         <div>
-          <h4 className="font-semibold text-text-primary mb-1">Investment Case Summary</h4>
-          <p className="text-text-secondary leading-relaxed">{lead.investmentCaseSummary}</p>
-        </div>
-        <div>
-          <h4 className="font-semibold text-text-primary mb-1">Motivations & Risk Profile</h4>
-          <p className="text-text-secondary leading-relaxed">{lead.hiddenMotivations}</p>
-          <div className="flex items-center gap-3 mt-2 text-[11px] font-mono text-text-muted">
-            <span>Growth Potential: <strong className="text-text-accent">{lead.hiddenGrowth}</strong></span>
-            <span>Risk Profile: <strong className="text-text-primary">{lead.hiddenRisk}</strong></span>
+          <p className="text-[9px] font-mono uppercase tracking-wider text-text-muted">Build evidence</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {DIMENSIONS.map((dimension) => {
+              const status = lead.investigation[dimension];
+              return (
+                <button
+                  type="button"
+                  key={dimension}
+                  onClick={() => investigateDimension(lead.id, dimension)}
+                  disabled={status === 'completed'}
+                  className={`rounded-[var(--radius-sm)] border px-2.5 py-1.5 text-[10px] capitalize transition-colors ${status === 'completed' ? 'border-state-success/25 bg-state-success/5 text-state-success' : 'border-border-subtle bg-surface-default text-text-secondary hover:border-border-accent hover:text-text-accent'}`}
+                >
+                  {status === 'completed' ? '✓ ' : '+ '}{dimension}
+                </button>
+              );
+            })}
           </div>
         </div>
-        <div>
-          <h4 className="font-semibold text-text-primary mb-1">Campaign Shape</h4>
-          <p className="text-text-secondary leading-relaxed">{campaign.campaignPromise}</p>
-          <div className="mt-2 text-[11px] font-mono text-text-muted">
-            Value anchor: <strong className="text-text-accent">€{campaign.baseEV}M · {campaign.client.valuationExpectation}</strong>
-          </div>
-        </div>
-      </div>
-
-      <div className="pt-3 border-t border-border-subtle flex flex-wrap items-center gap-2">
-        <span className="text-[11px] font-mono text-text-muted mr-2">Investigate Dimensions:</span>
-        {(['sector', 'company', 'shareholder', 'market'] as const).map((dim) => (
-          <button
-            key={dim}
-            onClick={() => handleInvestigate(dim)}
-            disabled={lead.investigation[dim] === 'completed'}
-            className="px-3 py-1.5 rounded-[var(--radius-sm)] border border-border-subtle bg-surface-default hover:bg-surface-hover disabled:opacity-40 text-[11px] font-mono capitalize text-text-primary transition-colors"
-          >
-            + {dim} ({lead.investigation[dim]})
-          </button>
-        ))}
         <button
+          type="button"
           onClick={() => scheduleMeeting(lead.id)}
           disabled={lead.meetingDone || lead.meetingScheduled}
-          className="ml-auto px-3 py-1.5 rounded-[var(--radius-sm)] border border-border-accent bg-border-accent/10 text-text-accent hover:bg-border-accent/20 disabled:opacity-40 text-[11px] font-semibold transition-colors"
+          className="inline-flex items-center justify-center gap-1.5 rounded-[var(--radius-sm)] border border-border-accent bg-border-accent/10 px-3 py-1.5 text-[10px] font-semibold text-text-accent hover:bg-border-accent/20 disabled:opacity-50"
         >
-          {lead.meetingDone ? 'Meeting Done' : lead.meetingScheduled ? 'Meeting Scheduled…' : 'Schedule Intro Meeting'}
+          {lead.meetingDone ? <CheckCircle2 size={12} /> : lead.meetingScheduled ? <Clock size={12} /> : <Handshake size={12} />}
+          {lead.meetingDone ? 'Founder met' : lead.meetingScheduled ? 'Meeting queued' : 'Schedule founder meeting'}
         </button>
       </div>
     </div>

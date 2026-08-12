@@ -1,16 +1,30 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import {
+  AlertTriangle,
+  ArrowRight,
+  BriefcaseBusiness,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  FileText,
+  Handshake,
+  ListChecks,
+  Mail,
+  Presentation,
+  ScrollText,
+  Swords,
+  Target,
+  Trophy,
+  Users,
+  Wallet,
+} from 'lucide-react';
 import { useGameStore } from '../store/gameStore';
 import { useCareerStore } from '../store/careerStore';
 import { PHASE_NAMES } from '../types/game';
-import type { GameTask } from '../types/game';
-import type { ActionCommitment } from '../types/dealBeat';
 import { BUDGET_LOW_THRESHOLD } from '../config/phaseBudgets';
-import { Link, useNavigate } from 'react-router-dom';
-import Panel from '../components/ui/Panel';
-import KpiTile from '../components/ui/KpiTile';
 import StatusChip from '../components/ui/StatusChip';
 import ProgressBar from '../components/ui/ProgressBar';
-import CompetitorMitigationPanel from '../components/CompetitorMitigationPanel';
 import BudgetRequestModal from '../components/BudgetRequestModal';
 import BoardSubmissionModal from '../components/BoardSubmissionModal';
 import StaffingModal from '../components/StaffingModal';
@@ -22,114 +36,46 @@ import PhaseDeadlineModal from '../components/PhaseDeadlineModal';
 import TurnTape from '../components/TurnTape';
 import DeskDecisionCard from '../components/DeskDecisionCard';
 import ArchetypeAbilityPanel from '../components/ArchetypeAbilityPanel';
-import { getActiveRisks, getDashboardDeliverables, getMomentumLabel, applyPhaseWorkstreams } from '../utils/gameplayState';
+import { getActiveRisks } from '../utils/gameplayState';
 import { checkPhaseGate, getAdvancePacePreview } from '../engine/weekEngine';
 import { getMissionsForPhase } from '../content/missions';
 import { getTargetNarrative, personalizeTargetNarrativeValue } from '../content/targetNarratives';
 import { getMandatePhaseSequence, isShortMandate } from '../content/mandates';
 import { getMissionProgress, getActiveMission } from '../utils/missionProgress';
-import { explainDealMomentum } from '../engine/dealMomentum';
 import { buildBeaconSummary } from '../engine/beaconCareer';
-import { getRoutineTasks } from '../utils/friction';
 import { formatTaskEffectSummary } from '../utils/effectLabels';
-import { pulseGlow, staggerReveal } from '../utils/motion';
-import { ArrowRight, Mail, AlertTriangle, ChevronRight, Wallet, Users, Presentation, FileText, Handshake, Trophy, ScrollText, Clock, Target, ListChecks, Swords } from 'lucide-react';
-
-function kpiColor(value: number, thresholds: [number, number] = [30, 60]) {
-  if (value >= thresholds[1]) return 'success' as const;
-  if (value >= thresholds[0]) return 'warning' as const;
-  return 'danger' as const;
-}
 
 type ModalId = 'budget' | 'board' | 'staffing' | 'pitch' | 'fee' | 'spa' | null;
-
-function MissionActionCard({ task, commitment, onCommit, onCommitAndAdvance }: {
-  task: GameTask;
-  commitment?: ActionCommitment;
-  onCommit: (taskId: string) => void;
-  onCommitAndAdvance: (taskId: string) => void;
-}) {
-  const cardRef = useRef<HTMLDivElement>(null);
-  const [justCommitted, setJustCommitted] = useState(false);
-  const isInProgress = task.status === 'in_progress' || !!commitment;
-
-  const handleCommit = () => {
-    onCommit(task.id);
-    setJustCommitted(true);
-    pulseGlow(cardRef.current);
-  };
-
-  return (
-    <div
-      ref={cardRef}
-      className="relative rounded-[var(--radius-md)] border border-border-subtle bg-surface-default p-3 flex flex-col justify-between hover:border-border-accent/40 transition-all"
-    >
-      {justCommitted && (
-        <span className="kpi-delta-chip absolute -top-2 right-2 px-1.5 py-0.5 rounded-full border border-state-warning/40 bg-state-warning/15 text-state-warning text-[10px] font-mono pointer-events-none">
-          {task.cost > 0 ? `−€${task.cost}k · ` : ''}team engaged
-        </span>
-      )}
-      <div>
-        <div className="flex items-center justify-between gap-2 mb-1.5">
-          <span className="text-[10px] font-mono uppercase tracking-wider text-text-muted">{task.category}</span>
-          <StatusChip
-            label={task.complexity}
-            variant={task.complexity === 'high' ? 'danger' : task.complexity === 'medium' ? 'warning' : 'info'}
-          />
-        </div>
-        <h4 className="text-[13px] font-semibold text-text-primary mb-1">{task.name}</h4>
-        <p className="text-[11px] text-text-muted line-clamp-2 mb-3 leading-snug">{task.description}</p>
-      </div>
-
-      <div>
-        <div className="flex items-center justify-between text-[11px] text-text-muted font-mono mb-2">
-          <span>Cost: {task.cost > 0 ? `€${task.cost}k` : 'Team Time'}</span>
-          <span>Work: {task.work}d</span>
-        </div>
-
-        {isInProgress ? (
-          <div className="space-y-1">
-            <div className="flex justify-between text-[10px] font-mono text-text-muted">
-              <span>Progress</span>
-              <span>{Math.round(task.progress ?? commitment?.progress ?? 0)}%</span>
-            </div>
-            <ProgressBar value={task.progress ?? commitment?.progress ?? 0} color="accent" size="sm" />
-          </div>
-        ) : (
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => onCommitAndAdvance(task.id)}
-              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-[var(--radius-sm)] bg-accent-primary text-white text-[12px] font-semibold hover:bg-accent-hover transition-colors"
-            >
-              <Target size={13} />
-              <span>Commit &amp; Advance</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleCommit}
-              title="Queue this action without advancing time"
-              className="px-2.5 py-1.5 rounded-[var(--radius-sm)] border border-border-accent bg-border-accent/10 text-text-accent text-[11px] font-semibold hover:bg-border-accent/20 transition-colors"
-            >
-              Queue
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
 
 export default function DashboardScreen() {
   const gameState = useGameStore();
   const {
-    phase, day, week, resources, emails, tasks, workstreams, buyers, risks, deliverables, headlines,
-    advanceWeek, isWeekInProgress, weekHistory,
-    budgetRequests, boardSubmission, feeNegotiation, agreedFeeTerms, competitorThreats, advancePhase, completeGame,
-    weekPace, setWeekPace, tempCapacityAllocations, commitAndAdvance, queueRoutineTasks, addToast,
+    phase,
+    day,
+    resources,
+    emails,
+    tasks,
+    buyers,
+    risks,
+    leads,
+    advanceWeek,
+    isWeekInProgress,
+    budgetRequests,
+    boardSubmission,
+    feeNegotiation,
+    agreedFeeTerms,
+    competitorThreats,
+    advancePhase,
+    completeGame,
+    weekPace,
+    setWeekPace,
+    commitAndAdvance,
   } = gameState;
 
-  const phaseBudget = useGameStore((s) => s.phaseBudget);
+  const [modal, setModal] = useState<ModalId>(null);
+  const [showGateDetails, setShowGateDetails] = useState(false);
+
+  const phaseBudget = useGameStore((state) => state.phaseBudget);
   const phaseGate = checkPhaseGate(gameState);
   const mandatePhases = getMandatePhaseSequence(gameState.mandateId);
   const mandateStage = Math.max(0, mandatePhases.indexOf(phase));
@@ -137,595 +83,302 @@ export default function DashboardScreen() {
   const shortMandate = isShortMandate(gameState.mandateId);
   const beaconTombstones = useCareerStore((state) => state.beaconTombstones);
   const rivalry = buildBeaconSummary(beaconTombstones);
-  const latestBeaconEncounter = beaconTombstones.at(-1);
-  const nextScheduledBeat = gameState.eventDirectorState.upcomingBeats[0];
 
   const advancePreview = getAdvancePacePreview(gameState);
   const daysPreview = advancePreview.days;
-  const preferredBidderId = useGameStore((s) => s.preferredBidderId);
-  const spaNegotiation = useGameStore((s) => s.spaNegotiation);
-  const agreedSPATerms = useGameStore((s) => s.agreedSPATerms);
-  const phaseDeadline = useGameStore((s) => s.phaseDeadline);
-  const bindingOffersReceived = useGameStore((s) => s.bindingOffersReceived);
+  const preferredBidderId = useGameStore((state) => state.preferredBidderId);
+  const agreedSPATerms = useGameStore((state) => state.agreedSPATerms);
+  const phaseDeadline = useGameStore((state) => state.phaseDeadline);
+  const bindingOffersReceived = useGameStore((state) => state.bindingOffersReceived);
 
   const needsDeadline = (phase === 3 || phase === 4 || phase === 6) && phaseDeadline === null;
   const daysUntilDeadline = phaseDeadline !== null ? Math.max(0, phaseDeadline - day) : null;
-
-
-  const [modal, setModal] = useState<ModalId>(null);
-  const navigate = useNavigate();
-
   const priorityRank = { urgent: 0, high: 1, normal: 2, low: 3 };
   const dashboardEmails = emails
     .filter((email) => email.phase === phase && email.state === 'unread')
     .sort((a, b) => priorityRank[a.priority] - priorityRank[b.priority]);
-  const activeTasks = tasks.filter((t) =>
-    t.phase === phase && (t.status === 'available' || t.status === 'recommended')
+  const urgentDecisionEmail = dashboardEmails.find((email) =>
+    (email.priority === 'urgent' || email.priority === 'high') && !!email.responseOptions?.length
   );
+  const activeTasks = tasks.filter((task) =>
+    task.phase === phase && (task.status === 'available' || task.status === 'recommended')
+  );
+  const inProgressTasks = tasks.filter((task) => task.phase === phase && task.status === 'in_progress');
+  const activeRisks = getActiveRisks(risks, phase, bindingOffersReceived);
+  const activeThreats = competitorThreats.filter((threat) => !threat.resolved);
+  const pendingBudgetRequest = budgetRequests.find((request) => request.status === 'pending' && request.phase === phase);
+  const isBudgetLow = resources.budget < BUDGET_LOW_THRESHOLD;
+  const liveBuyers = buyers.filter((buyer) => !['dropped', 'excluded'].includes(buyer.status));
+  const activeLead = leads.find((lead) => lead.id === gameState.activeLeadId) ?? leads[0];
+
   const shortlistCount = buyers.filter((buyer) => buyer.status === 'shortlisted').length;
   const shortlistAnalysisReady = tasks.some((task) => task.phase === 4 && task.id === 'task-60' && task.status === 'completed');
   const needsShortlistDecision = phase === 4 && shortlistAnalysisReady && shortlistCount < 2;
-  const routineTasks = getRoutineTasks(tasks, phase);
-  const inProgressTasks = tasks.filter((task) => task.phase === phase && task.status === 'in_progress');
-  const urgentDecisionEmail = dashboardEmails.find((email) =>
-    (email.priority === 'urgent' || email.priority === 'high')
-    && !!email.responseOptions?.length
-  );
-  const activeWorkstreams = applyPhaseWorkstreams(workstreams, phase).filter((w) => w.active);
-  const activeRisks = getActiveRisks(risks, phase, bindingOffersReceived);
-  const dashboardDeliverables = getDashboardDeliverables(deliverables, phase);
-  const activeThreats = competitorThreats.filter((t) => !t.resolved);
-  const pendingBudgetRequest = budgetRequests.find((r) => r.status === 'pending' && r.phase === phase);
-  const isBudgetLow = resources.budget < BUDGET_LOW_THRESHOLD;
 
-  // Mission progression for the Deal Desk
   const phaseMissions = personalizeTargetNarrativeValue(
     getMissionsForPhase(phase),
     getTargetNarrative(gameState.targetNarrativeId),
   );
   const missionEntries = getMissionProgress(phaseMissions, tasks, phase);
   const activeMissionEntry = getActiveMission(missionEntries, gameState.activeMissionId);
-  const allMissionsComplete = missionEntries.length > 0 && missionEntries.every((e) => e.complete);
-  const completedMissionIds = missionEntries.filter((entry) => entry.complete).map((entry) => entry.mission.id).join('|');
-
-  // Attributable KPI deltas from the last advance
-  const lastResourceDeltas = useGameStore((s) => s.lastResourceDeltas);
-  const deltaFor = (key: string) => lastResourceDeltas.find((d) => d.resource === key);
-
-  // Toast when the active mission rolls over to the next one
-  const prevMissionRef = useRef<{ id: string; title: string; phase: number } | null>(null);
-  useEffect(() => {
-    const prev = prevMissionRef.current;
-    const activeId = activeMissionEntry?.mission.id;
-    const activeTitle = activeMissionEntry?.mission.title;
-    if (activeId && activeTitle) {
-      if (prev && prev.phase === phase && prev.id !== activeId && completedMissionIds.split('|').includes(prev.id)) {
-        addToast(`Mission complete: ${prev.title}`, 'success');
-      }
-      prevMissionRef.current = { id: activeId, title: activeTitle, phase };
-    }
-  }, [activeMissionEntry?.mission.id, activeMissionEntry?.mission.title, addToast, completedMissionIds, phase]);
-
-  // Staggered panel build-up when a new phase's dashboard appears
-  const contentRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!contentRef.current) return;
-    const panels = Array.from(contentRef.current.querySelectorAll(':scope > div > *')) as HTMLElement[];
-    staggerReveal(panels, 0.05, 0.3);
-  }, [phase]);
+  const completedMissionCount = missionEntries.filter((entry) => entry.complete).length;
+  const allMissionsComplete = missionEntries.length > 0 && completedMissionCount === missionEntries.length;
+  const missionProgress = activeMissionEntry && activeMissionEntry.totalRequired > 0
+    ? Math.round((activeMissionEntry.completedRequired / activeMissionEntry.totalRequired) * 100)
+    : missionEntries.length > 0 && completedMissionCount === missionEntries.length
+      ? 100
+      : 0;
 
   const pitchPresented = feeNegotiation?.pitchPresented ?? false;
   const feeAgreed = feeNegotiation?.status === 'agreed' || !!agreedFeeTerms;
   const boardApproved = boardSubmission?.status === 'approved';
   const engineGateMet = phaseGate.canTransition;
-  const blockingStepsRemaining = phaseGate.requirements.filter((req) => !req.optional && !req.met).length;
+  const requiredGateItems = phaseGate.requirements.filter((requirement) => !requirement.optional);
+  const metGateItems = requiredGateItems.filter((requirement) => requirement.met).length;
+  const blockingStepsRemaining = requiredGateItems.length - metGateItems;
+  const gateProgress = requiredGateItems.length > 0
+    ? Math.round((metGateItems / requiredGateItems.length) * 100)
+    : 100;
 
   const canAdvancePhase =
-    phase === 0 ? (boardApproved && engineGateMet) :
-    phase === 1 ? (pitchPresented && feeAgreed && engineGateMet) :
+    phase === 0 ? boardApproved && engineGateMet :
+    phase === 1 ? pitchPresented && feeAgreed && engineGateMet :
     engineGateMet;
-
   const nextPriority = activeTasks[0];
-  const nextGateRequirement = phaseGate.requirements.find((requirement) => !requirement.optional && !requirement.met);
+  const nextGateRequirement = requiredGateItems.find((requirement) => !requirement.met);
+  const needsBidderDecision = phase === 7 && !preferredBidderId;
+  const needsSpaDecision = phase === 8 && !agreedSPATerms;
+
+  const focusTitle = needsShortlistDecision
+    ? `Choose the provisional shortlist (${shortlistCount}/2)`
+    : needsBidderDecision
+      ? 'Choose the preferred bidder'
+      : needsSpaDecision
+        ? 'Negotiate the SPA'
+        : nextPriority
+          ? nextPriority.name
+          : inProgressTasks.length > 0
+      ? 'Let committed work land'
+      : canAdvancePhase
+          ? phase === 10 ? 'Review the mandate result' : `Move to ${PHASE_NAMES[nextMandatePhase]}`
+          : nextGateRequirement?.label ?? 'Review the live deal state';
+
+  const focusDescription = needsShortlistDecision
+    ? 'Select the engaged buyers that advance. This is a direct decision, not another timed task.'
+    : needsBidderDecision
+      ? 'Compare the binding offers and grant exclusivity to the bidder you recommend.'
+      : needsSpaDecision
+        ? 'Open the bilateral negotiation with the bidder you selected.'
+        : nextPriority
+          ? `${formatTaskEffectSummary(nextPriority.effectSummary)}. This is the clearest next move.`
+          : inProgressTasks.length > 0
+      ? advancePreview.reason
+      : canAdvancePhase
+          ? 'All required gates are clear.'
+          : 'This is the first requirement still blocking phase progression.';
+
+  const renderFocusAction = () => {
+    if (needsShortlistDecision) {
+      return <Link to="/buyers" className="inline-flex items-center gap-2 rounded-[var(--radius-md)] bg-accent-primary px-4 py-2.5 text-[12px] font-semibold text-white hover:bg-accent-hover"><Users size={14} /> Choose shortlist</Link>;
+    }
+    if (needsBidderDecision) {
+      return <Link to="/final-offers" className="inline-flex items-center gap-2 rounded-[var(--radius-md)] bg-accent-primary px-4 py-2.5 text-[12px] font-semibold text-white"><Trophy size={14} /> Compare offers</Link>;
+    }
+    if (needsSpaDecision) {
+      return <button type="button" onClick={() => setModal('spa')} className="inline-flex items-center gap-2 rounded-[var(--radius-md)] bg-accent-primary px-4 py-2.5 text-[12px] font-semibold text-white"><ScrollText size={14} /> Negotiate SPA</button>;
+    }
+    if (nextPriority) {
+      if (resources.budget < nextPriority.cost) {
+        return (
+          <button type="button" onClick={() => setModal('budget')} className="inline-flex items-center gap-2 rounded-[var(--radius-md)] border border-state-danger/35 bg-state-danger/10 px-4 py-2.5 text-[12px] font-semibold text-state-danger">
+            <Wallet size={14} /> Request budget
+          </button>
+        );
+      }
+      return (
+        <button type="button" onClick={() => commitAndAdvance(nextPriority.id)} disabled={isWeekInProgress} className="inline-flex items-center gap-2 rounded-[var(--radius-md)] bg-accent-primary px-4 py-2.5 text-[12px] font-semibold text-white hover:bg-accent-hover disabled:opacity-50">
+          <Target size={14} /> Start &amp; advance
+        </button>
+      );
+    }
+    if (inProgressTasks.length > 0) {
+      return (
+        <button type="button" onClick={advanceWeek} disabled={isWeekInProgress} className="inline-flex items-center gap-2 rounded-[var(--radius-md)] bg-accent-primary px-4 py-2.5 text-[12px] font-semibold text-white hover:bg-accent-hover disabled:opacity-50">
+          Advance ~{daysPreview}d <ArrowRight size={14} />
+        </button>
+      );
+    }
+    if (canAdvancePhase) {
+      return (
+        <button type="button" onClick={() => phase === 10 ? completeGame() : advancePhase()} className="inline-flex items-center gap-2 rounded-[var(--radius-md)] bg-state-success px-4 py-2.5 text-[12px] font-semibold text-white hover:brightness-110">
+          {phase === 10 ? 'View results' : `Advance to ${PHASE_NAMES[nextMandatePhase]}`} <ArrowRight size={14} />
+        </button>
+      );
+    }
+    if (phase === 0 && !boardApproved) {
+      return <button type="button" onClick={() => setModal('board')} className="inline-flex items-center gap-2 rounded-[var(--radius-md)] bg-accent-primary px-4 py-2.5 text-[12px] font-semibold text-white"><FileText size={14} /> Submit to board</button>;
+    }
+    if (phase === 1 && !pitchPresented) {
+      return <button type="button" onClick={() => setModal('pitch')} className="inline-flex items-center gap-2 rounded-[var(--radius-md)] bg-accent-primary px-4 py-2.5 text-[12px] font-semibold text-white"><Presentation size={14} /> Present pitch</button>;
+    }
+    if (phase === 1 && !feeAgreed) {
+      return <button type="button" onClick={() => setModal('fee')} className="inline-flex items-center gap-2 rounded-[var(--radius-md)] bg-accent-primary px-4 py-2.5 text-[12px] font-semibold text-white"><Handshake size={14} /> Negotiate fees</button>;
+    }
+    return <Link to="/tasks" className="inline-flex items-center gap-2 rounded-[var(--radius-md)] border border-border-accent bg-border-accent/10 px-4 py-2.5 text-[12px] font-semibold text-text-accent"><ListChecks size={14} /> Open tasks</Link>;
+  };
 
   return (
-    <div className="space-y-6 max-w-[1200px]">
-      <div className="flex items-baseline justify-between">
+    <div className="max-w-[1120px] space-y-4">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-display font-semibold text-text-primary">Dashboard</h1>
-          <p className="text-[12px] text-text-muted mt-1">
-            {shortMandate ? `Stage ${mandateStage + 1}/${mandatePhases.length}` : `Phase ${phase}`}: {PHASE_NAMES[phase]} — Day {day} <span className="opacity-50">(Week {week})</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-display font-semibold text-text-primary">Dashboard</h1>
+            <StatusChip label={shortMandate ? `Stage ${mandateStage + 1}/${mandatePhases.length} · ${PHASE_NAMES[phase]}` : `P${phase} · ${PHASE_NAMES[phase]}`} variant="muted" />
             {daysUntilDeadline !== null && (
-              <span className={`ml-2 inline-flex items-center gap-1 text-[11px] font-mono px-2 py-0.5 rounded-full border ${
-                daysUntilDeadline <= 7 ? 'border-red-500/40 text-red-400 bg-red-500/10' : 'border-yellow-500/40 text-yellow-400 bg-yellow-500/10'
-              }`}>
-                <Clock size={10} /> {daysUntilDeadline}d to deadline
+              <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-mono ${daysUntilDeadline <= 7 ? 'border-state-danger/35 bg-state-danger/10 text-state-danger' : 'border-state-warning/35 bg-state-warning/10 text-state-warning'}`}>
+                <Clock size={10} /> {daysUntilDeadline === 0 ? 'Deadline reached' : `${daysUntilDeadline}d left`}
               </span>
             )}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-0.5 bg-surface-default rounded-[var(--radius-md)] p-0.5">
-            {(['deliberate', 'standard', 'sprint'] as const).map((p) => (
-              <button key={p} onClick={() => setWeekPace(p)}
-                className={`px-2 py-1 text-[11px] rounded-[var(--radius-sm)] capitalize transition-all ${
-                  weekPace === p ? 'bg-accent-soft text-text-accent font-medium' : 'text-text-muted hover:text-text-secondary'
-                }`}>
-                {p}
-              </button>
-            ))}
           </div>
-          <button onClick={() => setModal('staffing')} className="flex items-center gap-1.5 px-3 py-2 border border-border-subtle rounded-[var(--radius-md)] text-[12px] text-text-secondary hover:bg-surface-hover hover:text-text-primary transition-colors">
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="flex items-center gap-2 rounded-[var(--radius-md)] border border-border-subtle bg-surface-default px-2.5 py-2 text-[11px] text-text-muted">
+            Pace
+            <select value={weekPace} onChange={(event) => setWeekPace(event.target.value as typeof weekPace)} aria-label="Execution pace" className="bg-transparent text-[11px] font-medium capitalize text-text-primary outline-none">
+              <option value="deliberate">Deliberate</option>
+              <option value="standard">Standard</option>
+              <option value="sprint">Sprint</option>
+            </select>
+          </label>
+          <button type="button" onClick={() => setModal('staffing')} className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] border border-border-subtle px-3 py-2 text-[11px] text-text-secondary hover:bg-surface-hover">
             <Users size={13} /> Staffing
           </button>
-          <div className="flex flex-col items-end gap-1">
-            <button
-              onClick={() => advancePreview.requiresChoice
-                ? document.getElementById('priority-actions')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                : advanceWeek()}
-              disabled={isWeekInProgress}
-              className="flex items-center gap-2 px-4 py-2 bg-accent-primary hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-white text-[13px] font-semibold rounded-[var(--radius-md)] transition-colors duration-150 shadow-[var(--shadow-glow-soft)]"
-            >
-              {advancePreview.requiresChoice ? 'Choose Priority' : 'Advance'}
-              {!advancePreview.requiresChoice && <span className="text-[11px] font-mono opacity-70">~{daysPreview}d</span>}
-              <ArrowRight size={14} />
-            </button>
-            <span className="max-w-64 text-right text-[10px] leading-tight text-text-muted">{advancePreview.reason}</span>
-          </div>
+          <button
+            type="button"
+            onClick={() => advancePreview.requiresChoice ? document.getElementById('dashboard-focus')?.scrollIntoView({ behavior: 'smooth', block: 'center' }) : advanceWeek()}
+            disabled={isWeekInProgress}
+            title={advancePreview.reason}
+            className="inline-flex items-center gap-2 rounded-[var(--radius-md)] border border-border-accent bg-border-accent/10 px-3.5 py-2 text-[12px] font-semibold text-text-accent hover:bg-border-accent/20 disabled:opacity-50"
+          >
+            {advancePreview.requiresChoice ? 'Choose action' : `Advance ~${daysPreview}d`} <ArrowRight size={13} />
+          </button>
         </div>
-      </div>
+      </header>
 
       <TurnTape />
 
-      <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-border-accent/30 bg-accent-soft/20 p-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <p className="text-[9px] font-mono uppercase tracking-widest text-text-accent">Next meaningful action</p>
-          <p className="mt-1 text-[13px] font-semibold text-text-primary">
-            {urgentDecisionEmail
-              ? `Respond to ${urgentDecisionEmail.sender}`
-              : nextPriority
-                ? nextPriority.name
-                : inProgressTasks.length > 0
-                  ? 'Let committed work land'
-                  : needsShortlistDecision
-                    ? `Choose the provisional shortlist (${shortlistCount}/2)`
-                  : canAdvancePhase
-                    ? (phase === 10 ? 'Review the mandate result' : `Move to ${PHASE_NAMES[nextMandatePhase]}`)
-                    : nextGateRequirement?.label ?? 'Review the live deal state'}
-          </p>
-          <p className="mt-0.5 text-[11px] text-text-muted">
-            {urgentDecisionEmail
-              ? 'This response carries a trade-off; choose it directly in the decision card below.'
-              : nextPriority
-                ? `${formatTaskEffectSummary(nextPriority.effectSummary)} — start it here without opening Tasks.`
-                : inProgressTasks.length > 0
-                  ? advancePreview.reason
-                  : needsShortlistDecision
-                    ? 'Select the engaged buyers that advance directly in the Buyers view; no additional timed task is required.'
-                  : canAdvancePhase
-                    ? 'The required gate is clear; no extra administration is needed.'
-                    : 'This is the first unmet requirement blocking the phase gate.'}
-          </p>
-        </div>
-        {!urgentDecisionEmail && nextPriority && (
-          <button
-            type="button"
-            onClick={() => commitAndAdvance(nextPriority.id)}
-            disabled={resources.budget < nextPriority.cost || isWeekInProgress}
-            className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-[var(--radius-md)] bg-accent-primary px-4 py-2 text-[12px] font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <Target size={13} /> Start &amp; Advance
-          </button>
+      <section id="dashboard-focus">
+        {urgentDecisionEmail ? (
+          <DeskDecisionCard />
+        ) : (
+          <div className="rounded-[var(--radius-lg)] border border-border-accent/40 bg-gradient-to-br from-accent-soft/35 to-bg-secondary p-5 shadow-[var(--shadow-glow-soft)]">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="text-[9px] font-mono uppercase tracking-[0.18em] text-text-accent">Focus now</p>
+                <h2 className="mt-1 text-[18px] font-semibold text-text-primary">{focusTitle}</h2>
+                <p className="mt-1 max-w-2xl text-[11px] leading-relaxed text-text-secondary">{focusDescription}</p>
+              </div>
+              {renderFocusAction()}
+            </div>
+          </div>
         )}
-        {!urgentDecisionEmail && !nextPriority && inProgressTasks.length > 0 && (
-          <button type="button" onClick={advanceWeek} disabled={isWeekInProgress} className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-[var(--radius-md)] bg-accent-primary px-4 py-2 text-[12px] font-semibold text-white hover:bg-accent-hover disabled:opacity-50">
-            Advance ~{daysPreview}d <ArrowRight size={13} />
-          </button>
-        )}
-        {!urgentDecisionEmail && !nextPriority && inProgressTasks.length === 0 && needsShortlistDecision && (
-          <Link to="/buyers" className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-[var(--radius-md)] bg-accent-primary px-4 py-2 text-[12px] font-semibold text-white hover:bg-accent-hover">
-            <Users size={13} /> Choose Shortlist
-          </Link>
-        )}
-        {!urgentDecisionEmail && !nextPriority && inProgressTasks.length === 0 && canAdvancePhase && (
-          <button type="button" onClick={() => phase === 10 ? completeGame() : advancePhase()} className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-[var(--radius-md)] bg-green-600 px-4 py-2 text-[12px] font-semibold text-white hover:bg-green-500">
-            {phase === 10 ? 'View Results' : `Advance to ${PHASE_NAMES[nextMandatePhase]}`} <ArrowRight size={13} />
-          </button>
-        )}
-      </div>
+      </section>
 
-      {phase >= 5 && phase <= 7 && (
-        <div className="grid gap-3 rounded-[var(--radius-lg)] border border-border-accent/25 bg-accent-soft/20 p-4 md:grid-cols-3">
+      <section className="rounded-[var(--radius-lg)] border border-border-subtle bg-bg-secondary p-4">
+        <div className="grid gap-5 md:grid-cols-2">
           <div>
-            <p className="text-[10px] font-mono uppercase tracking-widest text-text-muted">Previously</p>
-            <p className="mt-1 text-[12px] leading-relaxed text-text-secondary">{weekHistory[weekHistory.length - 1]?.summary ?? `The NBO round is beginning; buyer conviction and ${gameState.client.name}’s confidence are both live.`}</p>
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-[10px] font-mono uppercase tracking-widest text-text-muted">Phase plan</p>
+              <span className="text-[10px] font-mono text-text-muted">{completedMissionCount}/{missionEntries.length} missions</span>
+            </div>
+            <p className="mt-1.5 truncate text-[13px] font-medium text-text-primary">{allMissionsComplete ? 'All mission work complete' : activeMissionEntry?.mission.title ?? 'No mission work pending'}</p>
+            <div className="mt-2"><ProgressBar value={missionProgress} color={missionProgress === 100 ? 'success' : 'accent'} size="sm" /></div>
           </div>
-          <div>
-            <p className="text-[10px] font-mono uppercase tracking-widest text-text-muted">What matters now</p>
-            <p className="mt-1 text-[12px] leading-relaxed text-text-secondary">{phaseGate.requirements.find((requirement) => !requirement.met)?.label ?? 'The phase gate is clear — protect the quality of the decision.'}</p>
-          </div>
-          <div>
-            <p className="text-[10px] font-mono uppercase tracking-widest text-text-muted">What happens next</p>
-            <p className="mt-1 text-[12px] leading-relaxed text-text-secondary">{nextScheduledBeat?.label ?? (phase === 7 ? 'Binding offers are ready to be opened and compared.' : 'Complete the priority work to move the buyer process forward.')}</p>
+
+          <div className="border-t border-border-subtle pt-4 md:border-l md:border-t-0 md:pl-5 md:pt-0">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-[10px] font-mono uppercase tracking-widest text-text-muted">Phase gate</p>
+              <StatusChip label={canAdvancePhase ? 'Ready' : `${blockingStepsRemaining} left`} variant={canAdvancePhase ? 'success' : 'warning'} />
+            </div>
+            <p className="mt-1.5 truncate text-[13px] font-medium text-text-primary">{canAdvancePhase ? 'Ready to advance' : nextGateRequirement?.label ?? 'Review requirements'}</p>
+            <div className="mt-2"><ProgressBar value={gateProgress} color={canAdvancePhase ? 'success' : 'accent'} size="sm" /></div>
           </div>
         </div>
-      )}
+
+        <button type="button" onClick={() => setShowGateDetails((visible) => !visible)} className="mt-3 inline-flex items-center gap-1 text-[10px] font-medium text-text-muted hover:text-text-accent">
+          {showGateDetails ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+          {showGateDetails ? 'Hide requirements' : 'Show requirements'}
+        </button>
+
+        {showGateDetails && (
+          <div className="mt-3 flex flex-wrap gap-2 border-t border-border-subtle pt-3">
+            {phaseGate.requirements.map((requirement, index) => (
+              <span key={`${requirement.label}-${index}`} className={`rounded-full border px-2.5 py-1 text-[10px] ${requirement.met ? 'border-state-success/30 bg-state-success/10 text-state-success' : requirement.optional ? 'border-border-subtle text-text-muted' : 'border-state-warning/30 bg-state-warning/10 text-state-warning'}`}>
+                {requirement.met ? '✓' : requirement.optional ? 'Optional' : '○'} {requirement.label}
+              </span>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section>
+        <h2 className="mb-2 text-[10px] font-mono uppercase tracking-widest text-text-muted">At a glance</h2>
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+          <Link to="/tasks" className="group rounded-[var(--radius-md)] border border-border-subtle bg-surface-default p-3 hover:border-border-accent/50">
+            <div className="flex items-center gap-2 text-text-muted"><ListChecks size={13} /><span className="text-[9px] font-mono uppercase tracking-wider">Work</span></div>
+            <p className="mt-2 text-[15px] font-semibold text-text-primary group-hover:text-text-accent">{activeTasks.length} ready</p>
+            <p className="mt-0.5 truncate text-[10px] text-text-muted">{inProgressTasks.length > 0 ? `${inProgressTasks.length} in progress` : 'Open task list'}</p>
+          </Link>
+
+          <Link to="/inbox" className="group rounded-[var(--radius-md)] border border-border-subtle bg-surface-default p-3 hover:border-border-accent/50">
+            <div className="flex items-center gap-2 text-text-muted"><Mail size={13} /><span className="text-[9px] font-mono uppercase tracking-wider">Inbox</span></div>
+            <p className="mt-2 text-[15px] font-semibold text-text-primary group-hover:text-text-accent">{dashboardEmails.length} unread</p>
+            <p className="mt-0.5 truncate text-[10px] text-text-muted">{dashboardEmails[0]?.subject ?? 'Inbox clear'}</p>
+          </Link>
+
+          <Link to={phase === 0 ? '/game' : '/buyers'} className="group rounded-[var(--radius-md)] border border-border-subtle bg-surface-default p-3 hover:border-border-accent/50">
+            <div className="flex items-center gap-2 text-text-muted"><BriefcaseBusiness size={13} /><span className="text-[9px] font-mono uppercase tracking-wider">{phase === 0 ? 'Targets' : 'Buyers'}</span></div>
+            <p className="mt-2 text-[15px] font-semibold text-text-primary group-hover:text-text-accent">{phase === 0 ? `${leads.length} options` : `${liveBuyers.length} live`}</p>
+            <p className="mt-0.5 truncate text-[10px] text-text-muted">{phase === 0 ? activeLead?.companyName ?? 'Choose a target' : liveBuyers[0]?.name ?? 'No buyer activity'}</p>
+          </Link>
+
+          <Link to="/risks" className="group rounded-[var(--radius-md)] border border-border-subtle bg-surface-default p-3 hover:border-border-accent/50">
+            <div className="flex items-center gap-2 text-text-muted"><AlertTriangle size={13} /><span className="text-[9px] font-mono uppercase tracking-wider">Risks</span></div>
+            <p className={`mt-2 text-[15px] font-semibold group-hover:text-text-accent ${activeRisks.some((risk) => risk.severity === 'critical' || risk.severity === 'high') ? 'text-state-warning' : 'text-text-primary'}`}>{activeRisks.length} active</p>
+            <p className="mt-0.5 truncate text-[10px] text-text-muted">{activeRisks[0]?.name ?? 'No live issues'}</p>
+          </Link>
+        </div>
+      </section>
 
       <ArchetypeAbilityPanel />
 
-      <DeskDecisionCard />
-
-      {activeThreats.length > 0 && <CompetitorMitigationPanel />}
-
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-        <KpiTile label={getMomentumLabel(phase)} value={resources.dealMomentum} color={kpiColor(resources.dealMomentum)} trend="stable"
-          delta={deltaFor('dealMomentum')?.delta} deltaReason={deltaFor('dealMomentum')?.reason} deltaKey={day}
-          explanation={explainDealMomentum(gameState)} />
-        <KpiTile label="Client Trust" value={resources.clientTrust} color={kpiColor(resources.clientTrust)} onClick={() => navigate('/client')}
-          delta={deltaFor('clientTrust')?.delta} deltaReason={deltaFor('clientTrust')?.reason} deltaKey={day} />
-        <KpiTile label="Team Capacity" value={resources.teamCapacity} suffix="%" color={kpiColor(resources.teamCapacity)} onClick={() => navigate('/team')}
-          delta={deltaFor('teamCapacity')?.delta} deltaReason={deltaFor('teamCapacity')?.reason} deltaKey={day} />
-        <KpiTile label="Budget" value={resources.budget} prefix="€" suffix="k" color={isBudgetLow ? 'danger' : resources.budget < 30 ? 'warning' : 'default'} onClick={() => setModal('budget')}
-          delta={deltaFor('budget')?.delta} deltaReason={deltaFor('budget')?.reason} deltaKey={day} />
-        <KpiTile label="Risk Level" value={resources.riskLevel} color={resources.riskLevel > 50 ? 'danger' : resources.riskLevel > 25 ? 'warning' : 'success'} onClick={() => navigate('/risks')}
-          delta={deltaFor('riskLevel')?.delta} deltaReason={deltaFor('riskLevel')?.reason} deltaKey={day} invertDelta />
-      </div>
-
-      {/* Deal Desk — Strategic Mission & Priority Actions */}
-      {(() => {
-        if (!activeMissionEntry) return null;
-        const { mission } = activeMissionEntry;
-        const commitments = gameState.commitments || [];
-
-        const missionTasks = mission.primaryActionIds
-          .map((id) => tasks.find((t) => t.id === id && t.phase === phase))
-          .filter((t): t is GameTask => !!t && t.status !== 'completed' && t.status !== 'locked');
-        // Fallback keeps committed (in-progress) work visible so the player
-        // watches progress land where they made the decision.
-        const fallbackTasks = tasks
-          .filter((t) => t.phase === phase && (t.status === 'in_progress' || t.status === 'available' || t.status === 'recommended'))
-          .sort((a, b) => (a.status === 'in_progress' ? -1 : 0) - (b.status === 'in_progress' ? -1 : 0));
-        const deskTasks = (missionTasks.length > 0 ? missionTasks : fallbackTasks).slice(0, 3);
-
-        return (
-          <Panel
-            title={`Deal Desk — Mission ${activeMissionEntry.index + 1}/${missionEntries.length}: ${mission.title}`}
-            headerRight={
-              <div className="flex items-center gap-2">
-                {/* Mission stepper */}
-                <div className="flex items-center gap-1">
-                  {missionEntries.map((entry) => (
-                    <span
-                      key={entry.mission.id}
-                      title={`${entry.mission.title}${entry.complete ? ' — complete' : ''}`}
-                      className={`w-2 h-2 rounded-full ${
-                        entry.complete
-                          ? 'bg-state-success'
-                          : entry.mission.id === mission.id
-                            ? 'bg-accent-primary'
-                            : 'bg-border-subtle'
-                      }`}
-                    />
-                  ))}
-                </div>
-                <span className="text-[11px] font-mono text-text-accent italic hidden sm:inline">
-                  {mission.strategicChoice}
-                </span>
-              </div>
-            }
-          >
-            <p className="text-[12px] text-text-secondary mb-3 leading-relaxed">{mission.description}</p>
-
-            {activeMissionEntry.totalRequired > 0 && (
-              <div className="flex items-center gap-3 mb-4">
-                <div className="flex-1">
-                  <ProgressBar
-                    value={Math.round((activeMissionEntry.completedRequired / activeMissionEntry.totalRequired) * 100)}
-                    color={activeMissionEntry.complete ? 'success' : 'accent'}
-                    size="sm"
-                  />
-                </div>
-                <span className="text-[10px] font-mono text-text-muted shrink-0">
-                  {activeMissionEntry.completedRequired}/{activeMissionEntry.totalRequired} key actions
-                </span>
-              </div>
-            )}
-
-            {allMissionsComplete ? (
-              <div className="flex items-center gap-3 p-3 rounded-[var(--radius-md)] bg-state-success/10 border border-state-success/25">
-                <Trophy size={16} className="text-state-success shrink-0" />
-                <p className="text-[12px] text-text-primary">
-                  All phase missions complete — clear the phase gate below to advance.
-                </p>
-              </div>
-            ) : deskTasks.length === 0 ? (
-              <p className="text-[12px] text-text-muted italic">
-                Mission actions are underway — advance time to see them land.
-              </p>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {deskTasks.map((task) => (
-                  <MissionActionCard
-                    key={task.id}
-                    task={task}
-                    commitment={commitments.find((c) => c.linkedTaskId === task.id)}
-                    onCommit={gameState.commitToAction}
-                    onCommitAndAdvance={commitAndAdvance}
-                  />
-                ))}
-              </div>
-            )}
-          </Panel>
-        );
-      })()}
-
-      <div className="rounded-[var(--radius-lg)] border border-border-subtle bg-bg-secondary p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-[11px] font-semibold text-text-muted uppercase tracking-widest">Phase Gate</span>
-          {canAdvancePhase && <StatusChip label="Ready to advance" variant="success" />}
-          {!canAdvancePhase && phase > 1 && (
-            <StatusChip label={`${blockingStepsRemaining} blocking step${blockingStepsRemaining === 1 ? '' : 's'} left`} variant="warning" />
-          )}
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          {phase === 0 ? (
-            <>
-              <button onClick={() => setModal('board')} className={`flex items-center gap-1.5 px-3 py-2 rounded-[var(--radius-md)] border text-[12px] font-medium transition-colors ${boardApproved ? 'border-green-500/30 bg-green-500/5 text-green-400' : 'border-accent-primary/40 bg-accent-soft text-text-accent hover:bg-accent-soft/80'}`}>
-                <FileText size={13} /> {boardApproved ? '✓ Board Approved' : 'Submit Board Recommendation'}
-              </button>
-            </>
-          ) : phase === 1 ? (
-            <>
-              <button onClick={() => setModal('pitch')} className={`flex items-center gap-1.5 px-3 py-2 rounded-[var(--radius-md)] border text-[12px] font-medium transition-colors ${pitchPresented ? 'border-green-500/30 bg-green-500/5 text-green-400' : 'border-accent-primary/40 bg-accent-soft text-text-accent hover:bg-accent-soft/80'}`}>
-                <Presentation size={13} /> {pitchPresented ? '✓ Pitch Presented' : 'Present Pitch'}
-              </button>
-              <ChevronRight size={14} className="text-text-muted/40" />
-              <button onClick={() => pitchPresented && setModal('fee')} disabled={!pitchPresented} className={`flex items-center gap-1.5 px-3 py-2 rounded-[var(--radius-md)] border text-[12px] font-medium transition-colors ${feeAgreed ? 'border-green-500/30 bg-green-500/5 text-green-400' : pitchPresented ? 'border-accent-primary/40 bg-accent-soft text-text-accent hover:bg-accent-soft/80' : 'border-border-subtle/40 text-text-muted/40 cursor-not-allowed'}`}>
-                <Handshake size={13} /> {feeAgreed ? `✓ Fee Agreed (${agreedFeeTerms?.successFeePercent}%)` : feeNegotiation?.status === 'in_progress' ? `Negotiating` : 'Negotiate Fees'}
-              </button>
-            </>
-          ) : (
-            <>
-              <div className="flex flex-wrap items-center gap-2">
-                {phaseGate.requirements.map((req, i) => (
-                    <span key={i} className={`text-[11px] px-2 py-1 rounded border ${
-                      req.met
-                        ? 'border-green-500/30 bg-green-500/5 text-green-400'
-                        : req.optional
-                          ? 'border-blue-500/20 bg-blue-500/5 text-blue-300'
-                          : 'border-border-subtle text-text-muted'
-                    }`}>
-                      {req.met ? '✓' : req.optional ? '◇' : '○'} {req.label}
-                    </span>
-                  ))}
-                  {phase === 7 && (
-                    <Link to="/final-offers" className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-md)] border text-[12px] font-medium transition-colors ml-2 ${preferredBidderId ? 'border-green-500/30 bg-green-500/5 text-green-400' : 'border-accent-primary/40 bg-accent-soft text-text-accent hover:bg-accent-primary/20'}`}>
-                      <Trophy size={12} /> {preferredBidderId ? '✓ Preferred Bidder Set' : 'Compare & Select Bidder'}
-                    </Link>
-                  )}
-                  {phase === 4 && (
-                    <Link to="/buyers" className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-md)] border text-[12px] font-medium transition-colors ml-2 ${shortlistCount >= 2 ? 'border-green-500/30 bg-green-500/5 text-green-400' : 'border-accent-primary/40 bg-accent-soft text-text-accent hover:bg-accent-primary/20'}`}>
-                      <Users size={12} /> {shortlistCount >= 2 ? `✓ Shortlist Set (${shortlistCount})` : `Choose Shortlist (${shortlistCount}/2)`}
-                    </Link>
-                  )}
-                  {phase === 8 && (
-                    <button onClick={() => setModal('spa')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-md)] border text-[12px] font-medium transition-colors ml-2 ${agreedSPATerms ? 'border-green-500/30 bg-green-500/5 text-green-400' : spaNegotiation?.status === 'in_progress' ? 'border-state-warning/40 bg-state-warning/5 text-state-warning' : 'border-accent-primary/40 bg-accent-soft text-text-accent hover:bg-accent-primary/20'}`}>
-                      <ScrollText size={12} /> {agreedSPATerms ? '✓ SPA Agreed' : 'Negotiate SPA'}
-                    </button>
-                  )}
-              </div>
-            </>
-          )}
-
-          {canAdvancePhase && (
-            <>
-              <ChevronRight size={14} className="text-text-muted/40" />
-              <button onClick={() => phase === 10 ? completeGame() : advancePhase()} className="flex items-center gap-1.5 px-4 py-2 bg-green-600 hover:bg-green-500 text-white text-[12px] font-semibold rounded-[var(--radius-md)] transition-colors">
-                {phase === 10 ? 'View Results' : `Advance to ${PHASE_NAMES[nextMandatePhase]}`} <ArrowRight size={13} />
-              </button>
-            </>
-          )}
-
-          <div className="ml-auto flex items-center gap-2">
-            {isBudgetLow && !pendingBudgetRequest && (
-              <button onClick={() => setModal('budget')} className="flex items-center gap-1.5 px-3 py-2 rounded-[var(--radius-md)] border border-red-500/40 text-red-400 text-[11px] font-medium hover:bg-red-500/10 transition-colors">
-                <Wallet size={11} /> Low Budget — Request More
-              </button>
-            )}
-            {pendingBudgetRequest && <span className="text-[11px] text-yellow-400 flex items-center gap-1"><Wallet size={11} /> Budget request pending</span>}
-            {phaseBudget && <span className="text-[10px] text-text-muted">Phase budget: €{phaseBudget.phaseBase}k + €{phaseBudget.carryover}k carryover</span>}
-            {(() => {
-              const contractorDrain = tempCapacityAllocations.reduce((sum, a) => sum + a.weeklyRate, 0);
-              if (contractorDrain === 0) return null;
-              const paceCostMultiplier = weekPace === 'sprint' ? 1.25 : weekPace === 'deliberate' ? 0.8 : 1;
-              const projected = Math.round(contractorDrain * daysPreview / 7 * paceCostMultiplier * 10) / 10;
-              return (
-                <span className="text-[10px] text-text-muted font-mono">~€{projected}k contractors this advance</span>
-              );
-            })()}
+      {activeThreats.length > 0 && (
+        <Link to="/client" className="flex items-center gap-3 rounded-[var(--radius-md)] border border-state-danger/30 bg-state-danger/5 p-3 hover:bg-state-danger/10">
+          <AlertTriangle size={15} className="shrink-0 text-state-danger" />
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-semibold text-state-danger">Competing advisor active</p>
+            <p className="truncate text-[10px] text-text-muted">Resolve the threat in the Client view.</p>
           </div>
-        </div>
-      </div>
+          <ArrowRight size={13} className="text-state-danger" />
+        </Link>
+      )}
+
+      {phase === 0 && <PhaseZeroDashboard />}
 
       {!shortMandate && (
-        <Panel
-          title="Rival Desk — Beacon Partners"
-          subtitle="Your persistent career rival is watching the flagship process"
-          variant="accent"
-          headerRight={<Link to="/career" className="text-[11px] text-text-accent hover:underline">Career record</Link>}
-        >
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
-              <Swords size={18} className="shrink-0 text-text-accent" />
-              <div>
-                <p className="text-[12px] font-semibold text-text-primary">Clearwater {rivalry.clearwaterWins}—{rivalry.beaconWins} Beacon</p>
-                <p className="text-[10px] text-text-secondary">
-                  {latestBeaconEncounter ? `Last encounter: ${latestBeaconEncounter.grade}.` : 'No prior encounter. This flagship will set the first direct result.'}
-                </p>
-              </div>
-            </div>
-            <p className="max-w-md text-[9px] leading-relaxed text-text-muted sm:text-right">
-              Career history creates narrative pressure only. Beacon applies no hidden difficulty or rubber-banding modifier to this run.
-            </p>
-          </div>
-        </Panel>
+        <Link to="/career" className="flex items-center justify-between gap-3 rounded-[var(--radius-md)] border border-border-subtle px-3 py-2 text-[10px] text-text-muted hover:border-border-accent/40 hover:text-text-secondary">
+          <span className="inline-flex items-center gap-2"><Swords size={12} /> Beacon rivalry · Clearwater {rivalry.clearwaterWins}—{rivalry.beaconWins} Beacon</span>
+          <span>Career record →</span>
+        </Link>
       )}
 
-      {phase === 0 ? (
-        <PhaseZeroDashboard />
-      ) : (
-        <div ref={contentRef} className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-2 space-y-4">
-            <div id="priority-actions">
-            <Panel
-              title="Priority Actions"
-              subtitle="Decide and act without leaving the dashboard"
-              variant="accent"
-              headerRight={routineTasks.length > 0 ? (
-                <button type="button" onClick={queueRoutineTasks} className="inline-flex items-center gap-1.5 text-[11px] text-text-accent hover:underline">
-                  <ListChecks size={12} /> Queue {routineTasks.length} routine
-                </button>
-              ) : null}
-            >
-              {activeTasks.length === 0 ? (
-                <p className="text-[12px] text-text-muted">No pending actions this week.</p>
-              ) : (
-                <div className="space-y-2">
-                  {activeTasks.slice(0, 4).map((task) => (
-                    <div key={task.id} className="flex flex-col gap-2 p-2.5 rounded-[var(--radius-md)] bg-surface-default sm:flex-row sm:items-center sm:justify-between">
-                      <div className="flex items-center gap-3">
-                        <StatusChip label={task.status === 'recommended' ? 'Recommended' : 'Available'} variant={task.status === 'recommended' ? 'accent' : 'default'} />
-                        <div>
-                          <div className="text-[13px] text-text-primary font-medium">{task.name}</div>
-                          <div className="text-[11px] text-text-muted">{formatTaskEffectSummary(task.effectSummary)}</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-end gap-2 text-[11px] font-mono text-text-muted">
-                        <span>€{task.cost}k</span>
-                        <span>{task.work}h</span>
-                        <button type="button" onClick={() => gameState.commitToAction(task.id)} disabled={resources.budget < task.cost} className="rounded-[var(--radius-sm)] border border-border-accent bg-border-accent/10 px-2 py-1 font-sans font-semibold text-text-accent hover:bg-border-accent/20 disabled:opacity-40">Queue</button>
-                        <button type="button" onClick={() => commitAndAdvance(task.id)} disabled={resources.budget < task.cost || isWeekInProgress} className="rounded-[var(--radius-sm)] bg-accent-primary px-2.5 py-1 font-sans font-semibold text-white hover:bg-accent-hover disabled:opacity-40">Start &amp; Advance</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <Link to="/tasks" className="flex items-center gap-1 mt-3 text-[11px] text-text-accent hover:underline">View all tasks <ArrowRight size={12} /></Link>
-            </Panel>
-            </div>
-
-            <Panel title="Active Workstreams" headerRight={<Link to="/tasks" className="text-[11px] text-text-accent hover:underline">View tasks</Link>}>
-              <div className="space-y-3">
-                {activeWorkstreams.map((ws) => (
-                  <Link key={ws.id} to="/tasks" className="flex items-center gap-4 group hover:opacity-80 transition-opacity">
-                    <span className="text-[12px] text-text-secondary w-36 shrink-0 group-hover:text-text-accent transition-colors">{ws.name}</span>
-                    <div className="flex-1"><ProgressBar value={ws.progress} color="accent" /></div>
-                    <span className="text-[10px] font-mono text-text-muted w-10 text-right">{ws.progress}%</span>
-                  </Link>
-                ))}
-              </div>
-            </Panel>
-
-            <Panel title="Inbox" subtitle={`${dashboardEmails.length} unread this phase`} headerRight={<Link to="/inbox" className="text-[11px] text-text-accent hover:underline">Open</Link>}>
-              {dashboardEmails.length === 0 ? (
-                <p className="text-[12px] text-text-muted">Your inbox is clear.</p>
-              ) : (
-                <div className="space-y-1.5">
-                  {dashboardEmails.slice(0, 3).map((email) => (
-                    <Link key={email.id} to="/inbox" className="flex items-center gap-3 p-2 rounded-[var(--radius-md)] hover:bg-surface-hover transition-colors group">
-                      <Mail size={14} className="text-text-muted shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[12px] font-medium text-text-primary truncate">{email.sender}</span>
-                          {email.priority === 'high' && <StatusChip label="Important" variant="warning" />}
-                          {email.priority === 'urgent' && <StatusChip label="Urgent" variant="danger" />}
-                        </div>
-                        <div className="text-[11px] text-text-muted truncate">{email.subject}</div>
-                      </div>
-                      <span className="text-[10px] font-mono text-text-muted shrink-0">{email.timestamp}</span>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </Panel>
-          </div>
-
-          <div className="space-y-4">
-            <Panel title="Buyer Pipeline" headerRight={buyers.length > 0 ? <Link to="/buyers" className="text-[11px] text-text-accent hover:underline">View all</Link> : null}>
-              {buyers.length === 0 ? (
-                <div className="text-center py-6">
-                  <p className="text-[12px] text-text-muted">No buyers identified yet.</p>
-                  <p className="text-[11px] text-text-muted/60 mt-1">Complete sector scan to begin buyer mapping.</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {buyers.slice(0, 5).map((buyer) => (
-                    <Link key={buyer.id} to="/buyers" className="flex items-center justify-between p-2 rounded-[var(--radius-md)] bg-surface-default hover:bg-surface-hover transition-colors group">
-                      <span className="text-[12px] text-text-primary group-hover:text-text-accent transition-colors">{buyer.name}</span>
-                      <StatusChip label={buyer.interest} variant={buyer.interest === 'hot' ? 'danger' : buyer.interest === 'warm' ? 'warning' : 'default'} />
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </Panel>
-
-            <Panel title="Deliverables" headerRight={<Link to="/deliverables" className="text-[11px] text-text-accent hover:underline">View all</Link>}>
-              <div className="space-y-2.5">
-                {dashboardDeliverables.map((del) => (
-                  <Link key={del.id} to="/deliverables" className="block space-y-1 group">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[12px] text-text-secondary group-hover:text-text-accent transition-colors">{del.name}</span>
-                      <StatusChip label={del.status.replace('_', ' ')} variant={del.status === 'approved' ? 'success' : del.status === 'not_started' ? 'muted' : 'info'} />
-                    </div>
-                    <ProgressBar value={del.completion} color={del.completion === 100 ? 'success' : 'accent'} size="sm" />
-                  </Link>
-                ))}
-              </div>
-            </Panel>
-
-            <Panel title="Active Risks" variant={activeRisks.some((r) => r.severity === 'high' || r.severity === 'critical') ? 'critical' : 'default'} headerRight={activeRisks.length > 0 ? <Link to="/risks" className="text-[11px] text-text-accent hover:underline">View all</Link> : null}>
-              {activeRisks.length === 0 ? (
-                <p className="text-[12px] text-text-muted">No active risks.</p>
-              ) : (
-                <div className="space-y-2">
-                  {activeRisks.slice(0, 4).map((risk) => (
-                    <Link key={risk.id} to="/risks" className="flex items-start gap-2 p-2 rounded-[var(--radius-md)] bg-surface-default hover:bg-surface-hover transition-colors group">
-                      <AlertTriangle size={14} className={`shrink-0 mt-0.5 ${risk.severity === 'critical' ? 'text-state-danger' : risk.severity === 'high' ? 'text-state-warning' : 'text-text-muted'}`} />
-                      <div>
-                        <div className="text-[12px] text-text-primary group-hover:text-text-accent transition-colors">{risk.name}</div>
-                        <div className="text-[10px] text-text-muted">{risk.description}</div>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </Panel>
-
-            <Panel title="Market Headlines" headerRight={<Link to="/market" className="text-[11px] text-text-accent hover:underline">Full view</Link>}>
-              <div className="space-y-2">
-                {headlines.slice(0, 4).map((hl) => (
-                  <Link key={hl.id} to="/market" className="flex items-start gap-2 py-1.5 group">
-                    <span className="w-1.5 h-1.5 rounded-full bg-accent-primary/60 mt-1.5 shrink-0 group-hover:bg-accent-primary transition-colors" />
-                    <p className="text-[11px] text-text-secondary leading-relaxed group-hover:text-text-primary transition-colors">{hl.text}</p>
-                  </Link>
-                ))}
-              </div>
-            </Panel>
-          </div>
+      {(isBudgetLow || pendingBudgetRequest) && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-md)] border border-state-warning/25 bg-state-warning/5 px-3 py-2 text-[10px] text-state-warning">
+          <span>{pendingBudgetRequest ? 'Budget request pending' : `Low budget · €${resources.budget}k remains`}</span>
+          {!pendingBudgetRequest && <button type="button" onClick={() => setModal('budget')} className="font-semibold underline">Request more</button>}
+          {phaseBudget && <span className="text-text-muted">Phase base €{phaseBudget.phaseBase}k · €{phaseBudget.carryover}k carried</span>}
         </div>
-      )}
-
-      {weekHistory.length > 0 && (
-        <Panel title="Recent Activity" subtitle="Day-by-day log">
-          <div className="space-y-2">
-            {weekHistory.slice(-5).reverse().map((entry) => (
-              <div key={entry.day} className="flex items-start gap-3 p-2 rounded-[var(--radius-md)] bg-surface-default">
-                <div className="text-[10px] font-mono text-text-muted shrink-0 w-14 pt-0.5">Day {entry.day}</div>
-                <p className="text-[12px] text-text-secondary leading-relaxed">{entry.summary}</p>
-              </div>
-            ))}
-          </div>
-        </Panel>
       )}
 
       {modal === 'budget' && <BudgetRequestModal onClose={() => setModal(null)} />}
