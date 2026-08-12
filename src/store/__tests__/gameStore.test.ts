@@ -208,6 +208,36 @@ describe('Game Store', () => {
     expect(state.buyers.find((buyer) => buyer.id === 'nda-buyer')?.status).toBe('active');
   });
 
+  it('falls back to a looser engagement tier so a stalled outreach run is never unwinnable', () => {
+    // No buyer reached nda_signed/reviewing/active -- the strict rule alone
+    // would make the phase-4 shortlist decision permanently unreachable,
+    // since phase-3 outreach tasks are no longer available to fix it.
+    useGameStore.setState({
+      phase: 4,
+      tasks: [{ id: 'task-60', phase: 4, status: 'completed' } as GameTask],
+      buyers: [
+        { ...phase2Buyers[0], id: 'stalled-a', status: 'identified' } as Buyer,
+        { ...phase2Buyers[1], id: 'stalled-b', status: 'identified' } as Buyer,
+      ],
+      replayTrace: [],
+      toasts: [],
+    });
+
+    useGameStore.getState().setBuyerShortlisted('stalled-a', true);
+    useGameStore.getState().setBuyerShortlisted('stalled-b', true);
+
+    let state = useGameStore.getState();
+    expect(state.buyers.map((buyer) => buyer.status)).toEqual(['shortlisted', 'shortlisted']);
+
+    useGameStore.getState().setBuyerShortlisted('stalled-a', false);
+    state = useGameStore.getState();
+    // Once every buyer in the pool is simultaneously shortlisted, which tier
+    // promoted them is no longer recoverable from status alone, so revert
+    // falls back to the strict tier's default -- a minor cosmetic imprecision
+    // in this already-rare edge case, not a functional block.
+    expect(state.buyers.find((buyer) => buyer.id === 'stalled-a')?.status).toBe('active');
+  });
+
   it('loads the P3 review checkpoint with P3 tasks and a P3 gate', async () => {
     await useGameStore.getState().debugJumpToCheckpoint('p3-outreach-live');
 

@@ -67,6 +67,7 @@ import { PHASE_BASE_BUDGETS, STAFF_PROFILES, CONTRACTOR_PROFILES, MITIGATION_ACT
 import { getRiskMitigationPlans } from '../config/riskMitigation';
 import { REVIEW_CHECKPOINTS_BY_ID } from '../config/reviewCheckpoints';
 import { retireObsoleteRisks, updatePhaseWorkstreamProgress } from '../utils/gameplayState';
+import { getShortlistEligibleStatuses, getShortlistRevertStatus } from '../utils/shortlistEligibility';
 import { CONTENT_VERSION } from '../content/contentVersion';
 import {
   DEFAULT_MANDATE_DIFFICULTY,
@@ -3290,14 +3291,18 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
 
     const buyer = state.buyers.find((candidate) => candidate.id === buyerId);
     if (!buyer) return {};
-    const eligibleStatuses: BuyerStatus[] = ['nda_signed', 'reviewing', 'active', 'shortlisted'];
+    // Same tiered fallback the Buyers screen uses to decide which buttons are
+    // enabled, computed from the identical buyers array -- if this diverges
+    // from the screen's own computation, a button can read as enabled while
+    // this silently no-ops.
+    const eligibleStatuses: BuyerStatus[] = [...getShortlistEligibleStatuses(state.buyers), 'shortlisted'];
     if (!eligibleStatuses.includes(buyer.status)) return {};
 
     const shortlistCount = state.buyers.filter((candidate) => candidate.status === 'shortlisted').length;
     if (shortlisted && (buyer.status === 'shortlisted' || shortlistCount >= 5)) return {};
     if (!shortlisted && buyer.status !== 'shortlisted') return {};
 
-    const nextStatus: BuyerStatus = shortlisted ? 'shortlisted' : 'active';
+    const nextStatus: BuyerStatus = shortlisted ? 'shortlisted' : getShortlistRevertStatus(state.buyers);
     return {
       buyers: state.buyers.map((candidate) => (
         candidate.id === buyerId ? { ...candidate, status: nextStatus } : candidate

@@ -4,6 +4,7 @@ import StatusChip from '../components/ui/StatusChip';
 import { Briefcase, CheckCircle2, UserMinus, UserPlus, Users } from 'lucide-react';
 import type { BuyerInterest, BuyerStatus } from '../types/game';
 import { getBuyerOfferLabel } from '../utils/gameplayState';
+import { getShortlistEligibleStatuses, isShortlistFallbackActive } from '../utils/shortlistEligibility';
 
 const interestVariant: Record<BuyerInterest, 'muted' | 'default' | 'info' | 'warning' | 'danger'> = {
   cold: 'muted',
@@ -36,6 +37,8 @@ export default function BuyersScreen() {
   const shortlistAnalysisReady = tasks.some((task) => (
     task.phase === 4 && task.id === 'task-60' && task.status === 'completed'
   ));
+  const eligibleStatuses = getShortlistEligibleStatuses(buyers);
+  const eligibilityFallbackActive = phase === 4 && isShortlistFallbackActive(buyers);
 
   return (
     <div className="space-y-6 max-w-[1200px]">
@@ -101,6 +104,12 @@ export default function BuyersScreen() {
                   {shortlistCount >= 2 ? 'Gate ready' : `${2 - shortlistCount} still needed`}
                 </span>
               </div>
+              {eligibilityFallbackActive && (
+                <p className="mt-3 border-t border-border-subtle pt-3 text-[11px] leading-relaxed text-state-warning">
+                  No buyer reached full NDA engagement during outreach, so the usual bar is relaxed for this run: buyers
+                  {eligibleStatuses[0] === 'contacted' ? ' who were at least contacted' : ' as identified so far'} can be shortlisted here so the process is never stuck.
+                </p>
+              )}
             </Panel>
           )}
 
@@ -118,7 +127,7 @@ export default function BuyersScreen() {
               <tbody>
                 {buyers.map((buyer) => {
                   const isShortlisted = buyer.status === 'shortlisted';
-                  const canEnterShortlist = ['nda_signed', 'reviewing', 'active'].includes(buyer.status);
+                  const canEnterShortlist = eligibleStatuses.includes(buyer.status);
                   const shortlistFull = shortlistCount >= 5 && !isShortlisted;
                   const decisionDisabled = !shortlistAnalysisReady || (!isShortlisted && (!canEnterShortlist || shortlistFull));
 
@@ -137,7 +146,11 @@ export default function BuyersScreen() {
                         : shortlistFull
                           ? 'Shortlist is limited to five buyers'
                           : !isShortlisted && !canEnterShortlist
-                            ? 'Needs an NDA before it can be shortlisted'
+                            ? eligibleStatuses[0] === 'nda_signed'
+                              ? 'Needs an NDA before it can be shortlisted'
+                              : eligibleStatuses[0] === 'contacted'
+                                ? 'Not contacted during outreach'
+                                : 'No engagement recorded during outreach'
                             : undefined;
                       return (
                         <td className="py-2.5 px-2">
