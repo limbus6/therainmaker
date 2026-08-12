@@ -3,4 +3,4 @@
  * mandate/build configuration, or state-driven selection changes could make
  * Daily or RM1 challenge results mechanically incomparable.
  */
-export const CONTENT_VERSION = 'solara-events-v4';
+export const CONTENT_VERSION = 'target-campaigns-v1';

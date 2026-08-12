@@ -47,6 +47,8 @@ export interface CareerState {
     playerOutcome: 'closed' | 'collapsed';
     seed: number;
     completedAt: string;
+    companyName?: string;
+    mandateLabel?: string;
   }) => void;
 }
 

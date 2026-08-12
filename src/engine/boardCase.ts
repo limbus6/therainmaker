@@ -24,6 +24,9 @@ export function assessBoardCase(args: {
   recommendation: 'proceed' | 'decline';
 }): BoardCaseAssessment {
   const { lead, qualificationNotes, recommendation } = args;
+  const relevantNotes = lead
+    ? qualificationNotes.filter((note) => !note.targetId || note.targetId === lead.id)
+    : qualificationNotes;
   const gaps: string[] = [];
 
   const dims = lead
@@ -32,8 +35,8 @@ export function assessBoardCase(args: {
       ).length
     : 0;
   const meetingDone = lead?.meetingDone ?? false;
-  const positives = qualificationNotes.filter((n) => n.sentiment === 'positive').length;
-  const negatives = qualificationNotes.filter((n) => n.sentiment === 'negative').length;
+  const positives = relevantNotes.filter((n) => n.sentiment === 'positive').length;
+  const negatives = relevantNotes.filter((n) => n.sentiment === 'negative').length;
 
   if (!lead) gaps.push('No target attached to the recommendation');
   if (lead && dims < 4) {
@@ -42,7 +45,7 @@ export function assessBoardCase(args: {
     gaps.push(`Investigation incomplete: ${missing.join(', ')}`);
   }
   if (lead && !meetingDone) gaps.push('No founder meeting on file');
-  if (qualificationNotes.length < 2) gaps.push('Qualification file is thin');
+  if (relevantNotes.length < 2) gaps.push('Qualification file is thin');
 
   // Evidence-based rating: what did the player actually verify before deciding?
   let rating = 0.3 + dims * 0.1 + (meetingDone ? 0.15 : 0) + Math.min(0.15, positives * 0.05);

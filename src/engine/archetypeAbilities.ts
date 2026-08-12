@@ -90,7 +90,7 @@ export function resolveArchetypeAbility(context: ArchetypeAbilityContext): Arche
       buyers: context.buyers,
       risks: context.risks,
       storyFlag: { key: 'archetype-founder-call', value: 'used' },
-      summary: 'Founder Call used: Ricardo received the direct senior read he needed.',
+      summary: 'Founder Call used: the client received the direct senior read they needed.',
       process: {
         category: 'stakeholder',
         rating: 0.85,

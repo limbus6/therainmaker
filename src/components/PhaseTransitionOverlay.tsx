@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { PHASE_NAMES } from '../types/game';
 import type { PhaseId } from '../types/game';
+import { useGameStore } from '../store/gameStore';
+import { getTargetNarrative, personalizeTargetNarrativeValue } from '../content/targetNarratives';
 
 const PHASE_ENTRY_NARRATIVES: Partial<Record<PhaseId, string>> = {
   2: "The mandate is signed. Now build the story buyers will pay a premium for.",
@@ -36,6 +38,10 @@ interface Props {
 
 export default function PhaseTransitionOverlay({ fromPhase, toPhase, onComplete }: Props) {
   const [stage, setStage] = useState<'fade-in' | 'hold' | 'fade-out'>('fade-in');
+  const targetNarrativeId = useGameStore((state) => state.targetNarrativeId);
+  const entryNarrative = PHASE_ENTRY_NARRATIVES[toPhase]
+    ? personalizeTargetNarrativeValue(PHASE_ENTRY_NARRATIVES[toPhase]!, getTargetNarrative(targetNarrativeId))
+    : undefined;
 
   useEffect(() => {
     const t1 = setTimeout(() => setStage('hold'), 200);
@@ -79,9 +85,9 @@ export default function PhaseTransitionOverlay({ fromPhase, toPhase, onComplete 
         </p>
 
         {/* Entry narrative */}
-        {PHASE_ENTRY_NARRATIVES[toPhase] && (
+        {entryNarrative && (
           <p className="text-[12px] text-text-accent/80 max-w-md mx-auto italic leading-relaxed">
-            {PHASE_ENTRY_NARRATIVES[toPhase]}
+            {entryNarrative}
           </p>
         )}
 

@@ -110,7 +110,7 @@ export default function PitchPresentationModal({ onClose }: Props) {
             <>
               <p className="text-[12px] text-text-muted leading-relaxed">
                 Presenting the pitch to {client.name} is a prerequisite to fee negotiation. 
-                Once presented, Ricardo will have an initial reaction and you can begin discussing mandate terms.
+                Once presented, {client.name} will have an initial reaction and you can begin discussing mandate terms.
               </p>
               <button
                 onClick={handlePresent}

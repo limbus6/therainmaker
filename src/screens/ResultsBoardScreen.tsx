@@ -13,6 +13,7 @@ import ProgressBar from '../components/ui/ProgressBar';
 import DailyShareCard from '../components/DailyShareCard';
 import ChallengeShareCard from '../components/ChallengeShareCard';
 import { Trophy, TrendingUp, Users, Shield, Briefcase, Star, ChevronRight, RotateCcw, LibraryBig } from 'lucide-react';
+import { getTargetNarrative } from '../content/targetNarratives';
 
 const OUTCOME_LABELS: Record<ResultsBoard['dealOutcome'], string> = {
   deal_failed: 'Deal Failed',
@@ -89,6 +90,7 @@ function Card({ title, icon, children }: { title: string; icon: React.ReactNode;
 
 export default function ResultsBoardScreen() {
   const state = useGameStore();
+  const targetProfile = getTargetNarrative(state.targetNarrativeId);
   const navigate = useNavigate();
   const results = useMemo(() => buildResultsBoard(state), [state]);
   const recordMandate = useCareerStore((s) => s.recordMandate);
@@ -123,6 +125,7 @@ export default function ResultsBoardScreen() {
   useEffect(() => {
     if (!state.gameComplete) return;
     const mandate = getMandate(state.mandateId);
+    const mandateLabel = (mandate?.label ?? state.mandateId).replace('Solara Systems', state.client.companyName);
     const preferredBuyer = state.buyers.find((b) => b.id === state.preferredBidderId);
     const collapsed = results.dealOutcome === 'deal_failed';
     const runKey = `${state.mandateId}-${state.rngSeed}`;
@@ -134,12 +137,12 @@ export default function ResultsBoardScreen() {
         seasonId: state.dailySeason,
         seed: state.rngSeed,
         mandateId: state.mandateId,
-        mandateLabel: mandate?.label ?? state.mandateId,
+        mandateLabel,
         outcome: collapsed ? 'collapsed' : 'closed',
         score: results.scores.overallDealScore,
         grade: results.scores.overallGrade,
         closingValue: collapsed ? 0 : results.financial.closingValue,
-        impliedMultiple: collapsed ? null : results.financial.closingValue > 0 ? Math.round((results.financial.closingValue / 12) * 10) / 10 : null,
+        impliedMultiple: collapsed ? null : results.financial.closingValue > 0 ? Math.round((results.financial.closingValue / targetProfile.earningsBase) * 10) / 10 : null,
         archetype: getArchetype(state.advisorArchetype)?.name ?? 'Daily rotation',
         processScore: results.scores.processScore,
         daysTaken: state.totalDays,
@@ -158,12 +161,12 @@ export default function ResultsBoardScreen() {
         seasonId: state.challengeSeason,
         seed: state.rngSeed,
         mandateId: state.mandateId,
-        mandateLabel: mandate?.label ?? state.mandateId,
+        mandateLabel,
         outcome: collapsed ? 'collapsed' : 'closed',
         score: results.scores.overallDealScore,
         grade: results.scores.overallGrade,
         closingValue: collapsed ? 0 : results.financial.closingValue,
-        impliedMultiple: collapsed ? null : results.financial.closingValue > 0 ? Math.round((results.financial.closingValue / 12) * 10) / 10 : null,
+        impliedMultiple: collapsed ? null : results.financial.closingValue > 0 ? Math.round((results.financial.closingValue / targetProfile.earningsBase) * 10) / 10 : null,
         archetype: getArchetype(state.advisorArchetype)?.name ?? 'Fixed challenge build',
         startingReputationBonus: state.startingReputationBonus,
         processScore: results.scores.processScore,
@@ -176,11 +179,11 @@ export default function ResultsBoardScreen() {
     recordMandate({
       runKey,
       mandateId: state.mandateId,
-      mandateLabel: mandate?.label ?? state.mandateId,
+      mandateLabel,
       companyName: state.client.companyName,
       buyerName: collapsed ? null : preferredBuyer?.name ?? null,
       closingValue: collapsed ? 0 : results.financial.closingValue,
-      impliedMultiple: collapsed ? null : results.financial.closingValue > 0 ? Math.round((results.financial.closingValue / 12) * 10) / 10 : null,
+      impliedMultiple: collapsed ? null : results.financial.closingValue > 0 ? Math.round((results.financial.closingValue / targetProfile.earningsBase) * 10) / 10 : null,
       totalAdvisoryFee: results.financial.totalAdvisoryFee,
       grade: results.scores.overallGrade,
       processScore: results.scores.processScore,
@@ -195,6 +198,8 @@ export default function ResultsBoardScreen() {
       playerOutcome: collapsed ? 'collapsed' : 'closed',
       seed: state.rngSeed,
       completedAt,
+      companyName: state.client.companyName,
+      mandateLabel,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.gameComplete]);
@@ -227,7 +232,7 @@ export default function ResultsBoardScreen() {
           {state.collapseReason ? 'Transaction Failed' : 'Transaction Complete'}
         </div>
         <h1 className="text-4xl font-display font-semibold text-text-primary">The M&A Rainmaker</h1>
-        <p className="text-[13px] text-text-secondary">Solara Systems — {state.client.sector}</p>
+        <p className="text-[13px] text-text-secondary">{state.client.companyName} — {state.client.sector}</p>
         {state.runMode === 'daily' && state.dailyKey && (
           <p className="text-[10px] font-mono uppercase tracking-wider text-text-accent">Daily · {state.dailyKey.slice(-10)} UTC · {state.dailySeason}</p>
         )}

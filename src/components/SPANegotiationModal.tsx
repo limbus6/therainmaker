@@ -30,6 +30,7 @@ const reactionLabel: Record<ComponentReaction, string> = { green: 'Acceptable', 
 // ─── Component ──────────────────────────────────────────────────────────────
 
 export default function SPANegotiationModal({ onClose }: Props) {
+  const client = useGameStore((state) => state.client);
   const spaNegotiation = useGameStore((s) => s.spaNegotiation);
   const agreedSPATerms = useGameStore((s) => s.agreedSPATerms);
   const preferredBidderId = useGameStore((s) => s.preferredBidderId);
@@ -385,7 +386,7 @@ export default function SPANegotiationModal({ onClose }: Props) {
                         </label>
                       )}
                     </div>
-                    <p className="text-[11px] text-text-muted">Buyer requests a specific indemnity for the identified tax exposure. Accepting reduces deal risk but increases post-close liability for Ricardo.</p>
+                    <p className="text-[11px] text-text-muted">Buyer requests a specific indemnity for the identified tax exposure. Accepting reduces deal risk but increases post-close liability for {client.name}.</p>
                   </div>
 
                   {/* Summary */}

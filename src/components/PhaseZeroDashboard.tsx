@@ -2,16 +2,17 @@ import { useGameStore } from '../store/gameStore';
 import type { Lead } from '../types/game';
 import StatusChip from './ui/StatusChip';
 import { Building2, LineChart, Users, Globe, Handshake, ChevronRight, CheckCircle2, Clock } from 'lucide-react';
+import { getTargetNarrativeForLead } from '../content/targetNarratives';
 
 export default function PhaseZeroDashboard() {
   const leads = useGameStore((s) => s.leads);
   const activeLeadId = useGameStore((s) => s.activeLeadId);
-  const setStore = useGameStore.setState;
+  const selectActiveLead = useGameStore((s) => s.selectActiveLead);
 
   if (!leads || leads.length === 0) return null;
 
   const setActiveLead = (id: string) => {
-    setStore({ activeLeadId: id });
+    selectActiveLead(id);
   };
 
   return (
@@ -94,6 +95,7 @@ function DimensionRow({ label, icon, status }: { label: string, icon: React.Reac
 
 function LeadActionPanel({ lead }: { lead: Lead }) {
   const { investigateDimension, scheduleMeeting, submitBoardRecommendation, boardSubmission } = useGameStore();
+  const campaign = getTargetNarrativeForLead(lead.id);
 
   const handleInvestigate = (dim: keyof Lead['investigation']) => {
     investigateDimension(lead.id, dim);
@@ -118,7 +120,7 @@ function LeadActionPanel({ lead }: { lead: Lead }) {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-[12px]">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-[12px]">
         <div>
           <h4 className="font-semibold text-text-primary mb-1">Investment Case Summary</h4>
           <p className="text-text-secondary leading-relaxed">{lead.investmentCaseSummary}</p>
@@ -129,6 +131,13 @@ function LeadActionPanel({ lead }: { lead: Lead }) {
           <div className="flex items-center gap-3 mt-2 text-[11px] font-mono text-text-muted">
             <span>Growth Potential: <strong className="text-text-accent">{lead.hiddenGrowth}</strong></span>
             <span>Risk Profile: <strong className="text-text-primary">{lead.hiddenRisk}</strong></span>
+          </div>
+        </div>
+        <div>
+          <h4 className="font-semibold text-text-primary mb-1">Campaign Shape</h4>
+          <p className="text-text-secondary leading-relaxed">{campaign.campaignPromise}</p>
+          <div className="mt-2 text-[11px] font-mono text-text-muted">
+            Value anchor: <strong className="text-text-accent">€{campaign.baseEV}M · {campaign.client.valuationExpectation}</strong>
           </div>
         </div>
       </div>

@@ -31,6 +31,7 @@ export default function BoardSubmissionModal({ onClose }: Props) {
   const submitBoardRecommendation = useGameStore((s) => s.submitBoardRecommendation);
   const competitorThreats = useGameStore((s) => s.competitorThreats);
   const leads = useGameStore((s) => s.leads);
+  const selectActiveLead = useGameStore((s) => s.selectActiveLead);
   const phase = useGameStore((s) => s.phase);
   const activeThreats = competitorThreats.filter((t) => !t.resolved);
 
@@ -41,7 +42,7 @@ export default function BoardSubmissionModal({ onClose }: Props) {
   );
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(() => {
     const s = useGameStore.getState();
-    return s.boardSubmission?.leadId ?? s.leads[0]?.id ?? null;
+    return s.boardSubmission?.leadId ?? s.activeLeadId ?? s.leads[0]?.id ?? null;
   });
   const [selectedPoints, setSelectedPoints] = useState<string[]>(() => {
     const prev = useGameStore.getState().boardSubmission;
@@ -51,6 +52,10 @@ export default function BoardSubmissionModal({ onClose }: Props) {
   });
 
   const activePoints = recommendation === 'proceed' ? PROCEED_POINT_IDS : DECLINE_POINT_IDS;
+  const selectedLead = leads.find((lead) => lead.id === selectedLeadId);
+  const relevantQualificationNotes = qualificationNotes.filter(
+    (note) => !note.targetId || note.targetId === selectedLeadId,
+  );
   const rationale = selectedPoints
     .map((id) => activePoints.find((p) => p.id === id)?.text ?? '')
     .filter(Boolean)
@@ -62,15 +67,15 @@ export default function BoardSubmissionModal({ onClose }: Props) {
     );
   }
 
-  const positiveNotes = qualificationNotes.filter((n) => n.sentiment === 'positive').length;
-  const negativeNotes = qualificationNotes.filter((n) => n.sentiment === 'negative').length;
-  const qualScore = qualificationNotes.length >= 2 && resources.clientTrust > 40 && resources.dealMomentum >= 10;
+  const positiveNotes = relevantQualificationNotes.filter((n) => n.sentiment === 'positive').length;
+  const negativeNotes = relevantQualificationNotes.filter((n) => n.sentiment === 'negative').length;
+  const qualScore = relevantQualificationNotes.length >= 2 && resources.clientTrust > 40 && resources.dealMomentum >= 10;
 
   const canSubmit =
     boardSubmission?.status !== 'pending' &&
     boardSubmission?.status !== 'approved' &&
     selectedPoints.length >= 1 &&
-    qualificationNotes.length >= 1 &&
+    relevantQualificationNotes.length >= 1 &&
     (phase > 0 || selectedLeadId !== null); // Force selection if in phase 0
 
   const handleSubmit = () => {
@@ -85,7 +90,11 @@ export default function BoardSubmissionModal({ onClose }: Props) {
         <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle shrink-0">
           <div>
             <h2 className="text-[15px] font-semibold text-text-primary">Board Recommendation</h2>
-            <p className="text-[12px] text-text-muted mt-0.5">Should we pursue Solara Systems and pitch Ricardo for the mandate?</p>
+            <p className="text-[12px] text-text-muted mt-0.5">
+              {selectedLead
+                ? `Should we pursue ${selectedLead.companyName} and pitch ${selectedLead.founderName} for the mandate?`
+                : 'Which qualified target should we pursue for the mandate?'}
+            </p>
           </div>
           <button
             onClick={onClose}
@@ -156,7 +165,7 @@ export default function BoardSubmissionModal({ onClose }: Props) {
               {[
                 { label: 'Client Trust', value: resources.clientTrust, threshold: 40 },
                 { label: 'Opportunity Signal', value: resources.dealMomentum, threshold: 10 },
-                { label: 'Research Notes', value: qualificationNotes.length, threshold: 2, max: 5 },
+                { label: 'Research Notes', value: relevantQualificationNotes.length, threshold: 2, max: 5 },
               ].map(({ label, value, threshold, max = 100 }) => {
                 const pct = Math.min(100, (value / max) * 100);
                 const ok = value >= threshold;
@@ -175,14 +184,14 @@ export default function BoardSubmissionModal({ onClose }: Props) {
           </div>
 
           {/* Qualification notes log */}
-          {qualificationNotes.length > 0 && (
+          {relevantQualificationNotes.length > 0 && (
             <div>
               <h3 className="text-[12px] font-semibold text-text-muted uppercase tracking-widest mb-3 flex items-center gap-1.5">
                 <FileText size={12} />
-                Qualification Notes ({qualificationNotes.length})
+                Qualification Notes ({relevantQualificationNotes.length})
               </h3>
               <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
-                {qualificationNotes.map((note) => (
+                {relevantQualificationNotes.map((note) => (
                   <div key={note.id} className="flex items-start gap-2 p-2.5 bg-bg-primary rounded-[var(--radius-md)]">
                     <span className={`w-1.5 h-1.5 rounded-full shrink-0 mt-1.5 ${
                       note.sentiment === 'positive' ? 'bg-green-400' :
@@ -203,7 +212,7 @@ export default function BoardSubmissionModal({ onClose }: Props) {
             </div>
           )}
 
-          {qualificationNotes.length === 0 && (
+          {relevantQualificationNotes.length === 0 && (
             <div className="p-4 bg-yellow-500/5 border border-yellow-500/20 rounded-[var(--radius-md)] text-[12px] text-yellow-400">
               Complete at least one research or meeting task before submitting to the board.
             </div>
@@ -229,7 +238,7 @@ export default function BoardSubmissionModal({ onClose }: Props) {
                       <button
                         key={lead.id}
                         type="button"
-                        onClick={() => setSelectedLeadId(lead.id)}
+                        onClick={() => { setSelectedLeadId(lead.id); selectActiveLead(lead.id); }}
                         className={`text-left p-3 rounded-[var(--radius-md)] border text-[13px] transition-all flex flex-col items-start ${
                           selectedLeadId === lead.id
                             ? 'bg-accent-primary/10 border-accent-primary text-text-primary'
@@ -295,7 +304,7 @@ export default function BoardSubmissionModal({ onClose }: Props) {
                 <p className="text-[11px] text-text-muted mt-1.5">{selectedPoints.length} selected</p>
               </div>
 
-              {!qualScore && qualificationNotes.length >= 1 && (
+              {!qualScore && relevantQualificationNotes.length >= 1 && (
                 <p className="text-[11px] text-yellow-400/80">
                   ⚠ Board approval is more likely if trust, momentum, and research signals are stronger.
                   Completing more Phase 0 tasks before submitting improves your odds.

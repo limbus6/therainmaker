@@ -13,13 +13,14 @@ import {
   SCHNEIDER_DD_FLAG,
 } from './peopleBeats';
 import { GOLDEN_RICARDO_DECISION } from './goldenMandate';
+import { getTargetNarrative, personalizeTargetNarrativeValue, type TargetNarrativeId } from '../content/targetNarratives';
 
 export type OfferTier = 'strong' | 'solid' | 'soft';
 
-/** Tiers are anchored on the Solara baseline EV (€120M). */
-export function getOfferTier(offer: FinalOffer): OfferTier {
-  if (offer.totalEV >= 135) return 'strong';
-  if (offer.totalEV >= 112) return 'solid';
+/** Tiers are relative to the selected target's disclosed valuation baseline. */
+export function getOfferTier(offer: FinalOffer, baseEV = 120): OfferTier {
+  if (offer.totalEV >= baseEV * 1.125) return 'strong';
+  if (offer.totalEV >= baseEV * 0.933) return 'solid';
   return 'soft';
 }
 
@@ -79,9 +80,21 @@ export function getRicardoReaction(
   return relationshipLine(offer, storyFlags, tier) ?? RICARDO_LINES[mood][tier];
 }
 
+export function getFounderReaction(
+  offer: FinalOffer,
+  mood: FounderMood,
+  storyFlags: Record<string, string>,
+  targetNarrativeId: TargetNarrativeId,
+): string {
+  const profile = getTargetNarrative(targetNarrativeId);
+  const tier = getOfferTier(offer, profile.baseEV);
+  const line = relationshipLine(offer, storyFlags, tier) ?? profile.offerReactionLines[mood][tier];
+  return personalizeTargetNarrativeValue(line, profile);
+}
+
 /** One line of market texture, derived from buyer facts — never random. */
-export function getMarketChatter(offer: FinalOffer, buyer: Buyer): string {
-  const tier = getOfferTier(offer);
+export function getMarketChatter(offer: FinalOffer, buyer: Buyer, baseEV = 120): string {
+  const tier = getOfferTier(offer, baseEV);
   if (buyer.type === 'pe') {
     return tier === 'strong'
       ? `A sponsor stretching to ${offer.impliedMultiple}x will echo through every fund letter this quarter.`

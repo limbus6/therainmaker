@@ -45,7 +45,7 @@ export const ADVISOR_ARCHETYPES: AdvisorArchetype[] = [
     name: 'The Relationship Banker',
     tagline: 'You know everyone, and everyone returns your calls.',
     effects: [
-      'Ricardo starts with more trust in you (+8).',
+      'The founder starts with more trust in you (+8).',
       'Every buyer opens warmer to the process (+5 chemistry).',
       'Active — Founder Call: once per mandate, spend 6 Capacity for +10 Trust.',
     ],
@@ -57,8 +57,8 @@ export const ADVISOR_ARCHETYPES: AdvisorArchetype[] = [
     ability: {
       id: 'founder_call',
       name: 'Founder Call',
-      command: 'Call Ricardo now',
-      description: 'Interrupt the process noise and give Ricardo a direct, candid read from the senior banker he chose.',
+      command: 'Call the founder now',
+      description: 'Interrupt the process noise and give the founder a direct, candid read from the senior banker they chose.',
       availability: 'Available before closing while Trust is below 100 and the team has 6 Capacity.',
       effects: ['Client Trust +10', 'Team Capacity −6', 'One use per mandate'],
     },
@@ -104,7 +104,7 @@ export const ADVISOR_ARCHETYPES: AdvisorArchetype[] = [
       id: 'reopen_tension',
       name: 'Reopen Competitive Tension',
       command: 'Call the buyer field',
-      description: 'Tell every credible bidder the process is still live. The pressure lifts price, but Ricardo sees exactly how hard you pushed.',
+      description: 'Tell every credible bidder the process is still live. The pressure lifts price, but the founder sees exactly how hard you pushed.',
       availability: 'Available in NBO or DD with at least two live buyers, 7 Trust, and 4 Capacity.',
       effects: ['All final offers +4%', 'Client Trust −7', 'Team Capacity −4', 'Risk Level +3', 'One use per mandate'],
     },

@@ -1,4 +1,5 @@
 import { X, ArrowRight, Mail, ListChecks, ShieldAlert, Gauge, Users } from 'lucide-react';
+import { useGameStore } from '../store/gameStore';
 
 interface GameInstructionsModalProps {
   isOpen: boolean;
@@ -29,6 +30,7 @@ const CORE_STEPS = [
 ];
 
 export default function GameInstructionsModal({ isOpen, onClose }: GameInstructionsModalProps) {
+  const client = useGameStore((state) => state.client);
   if (!isOpen) return null;
 
   return (
@@ -39,7 +41,7 @@ export default function GameInstructionsModal({ isOpen, onClose }: GameInstructi
             <p className="text-[10px] font-mono uppercase tracking-[0.24em] text-text-accent">Game instructions</p>
             <h2 className="mt-1 font-display text-[22px] font-semibold text-text-primary">How to Run the Deal</h2>
             <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-text-secondary">
-              Your goal is to close the sale of Solara Systems without losing buyers, client trust, or control of the process.
+              Your goal is to close the sale of {client.companyName} without losing buyers, client trust, or control of the process.
               The game should sit in a healthy tension band: neither an automatic checklist nor unfair chaos.
             </p>
           </div>

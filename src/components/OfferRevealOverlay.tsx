@@ -6,8 +6,10 @@ import { useEffect, useRef, useState } from 'react';
 import { FastForward, MailOpen, Sparkles, Radio } from 'lucide-react';
 import type { Buyer, FinalOffer } from '../types/game';
 import type { FounderMood } from '../engine/founderPulse';
-import { getRicardoReaction, getMarketChatter, getComparisonLine } from '../engine/offerReactions';
+import { getFounderReaction, getMarketChatter, getComparisonLine } from '../engine/offerReactions';
 import { animateCounter, staggerReveal, prefersReducedMotion } from '../utils/motion';
+import { useGameStore } from '../store/gameStore';
+import { getTargetNarrative } from '../content/targetNarratives';
 
 interface OfferRevealOverlayProps {
   offers: FinalOffer[];
@@ -30,6 +32,10 @@ const CONDITIONALITY_LABELS: Record<FinalOffer['conditionality'], string> = {
 };
 
 export default function OfferRevealOverlay({ offers, buyers, founderMood, storyFlags, onComplete }: OfferRevealOverlayProps) {
+  const client = useGameStore((state) => state.client);
+  const targetNarrativeId = useGameStore((state) => state.targetNarrativeId);
+  const targetProfile = getTargetNarrative(targetNarrativeId);
+  const founderFirstName = client.name.split(' ')[0] === 'Dra.' ? client.name.split(' ')[1] : client.name.split(' ')[0];
   const [offerIndex, setOfferIndex] = useState(0);
   const [stage, setStage] = useState(0);
   const valueRef = useRef<HTMLSpanElement>(null);
@@ -115,7 +121,7 @@ export default function OfferRevealOverlay({ offers, buyers, founderMood, storyF
             <div className="text-center">
               <p className="text-[11px] font-mono uppercase tracking-widest text-text-muted">{buyer.name}</p>
               <span ref={valueRef} className="mt-3 block text-5xl font-mono font-semibold text-text-primary">€{offer.totalEV}M</span>
-              <p className="mt-2 text-[12px] text-text-muted">Total enterprise value · {offer.impliedMultiple}x EBITDA</p>
+              <p className="mt-2 text-[12px] text-text-muted">Total enterprise value · {offer.impliedMultiple}x {targetProfile.valuationMetric}</p>
               {comparison && (
                 <p className={`mt-2 text-[12px] font-medium ${comparison.startsWith('New leader') ? 'text-state-success' : 'text-text-secondary'}`}>{comparison}</p>
               )}
@@ -147,8 +153,8 @@ export default function OfferRevealOverlay({ offers, buyers, founderMood, storyF
                   {(offer.drivers ?? []).map((driver) => <li key={driver}>• {driver}</li>)}
                 </ul>
               </div>
-              <p className="text-[13px] italic leading-relaxed text-text-primary">Ricardo: “{getRicardoReaction(offer, founderMood, storyFlags)}”</p>
-              <p className="flex items-start gap-1.5 text-[11px] leading-relaxed text-text-muted"><Radio size={12} className="mt-0.5 shrink-0" /> {getMarketChatter(offer, buyer)}</p>
+              <p className="text-[13px] italic leading-relaxed text-text-primary">{founderFirstName}: “{getFounderReaction(offer, founderMood, storyFlags, targetNarrativeId)}”</p>
+              <p className="flex items-start gap-1.5 text-[11px] leading-relaxed text-text-muted"><Radio size={12} className="mt-0.5 shrink-0" /> {getMarketChatter(offer, buyer, targetProfile.baseEV)}</p>
             </div>
           )}
         </div>

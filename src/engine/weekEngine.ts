@@ -21,6 +21,7 @@ import { getGoldenMandateUpcomingBeat, resolveGoldenMandateBeat } from './golden
 import { getPeopleUpcomingBeat, resolvePeopleBeat, PEOPLE_BEATS_CHAIN } from './peopleBeats';
 import { EVENT_POOL } from '../content/events';
 import { getNextMandatePhase } from '../content/mandates';
+import { getTargetNarrative, personalizeTargetNarrativeValue } from '../content/targetNarratives';
 
 // ============================================
 // Week Resolution Engine
@@ -646,6 +647,7 @@ function rollEvents(
 // ============================================
 
 export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekResult {
+  const targetProfile = getTargetNarrative(state.targetNarrativeId);
   const inProgressTasks = state.tasks.filter((t) => t.status === 'in_progress' && t.phase === state.phase);
   const newDay = state.day + daysToAdvance;
   const newWeek = Math.ceil(newDay / 7);
@@ -721,6 +723,7 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
         const lead = state.leads.find(l => task.id.includes(l.id));
         if (lead) {
           newQualificationNotes.push({
+            targetId: lead.id,
             source: 'team_research',
             content: `Company screening complete for ${lead.companyName}. Financial profile verified and sector fit confirmed. Deal fundamentals look credible for a structured process.`,
             sentiment: 'positive',
@@ -731,6 +734,7 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
         const lead = state.leads.find(l => task.id.includes(l.id));
         if (lead) {
           newQualificationNotes.push({
+            targetId: lead.id,
             source: 'meeting',
             content: `Shareholder assessment complete for ${lead.companyName}. Founder appears motivated and timeline is realistic. Valuation expectations are within market range.`,
             sentiment: 'neutral',
@@ -880,7 +884,9 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
     approvalChance += (state.resources.reputation / 100) * 0.10;
 
     // + qualification note quality bonus
-    const qualNotes = state.qualificationNotes ?? [];
+    const qualNotes = (state.qualificationNotes ?? []).filter(
+      (note) => !note.targetId || note.targetId === state.boardSubmission?.leadId,
+    );
     const positiveNotes = qualNotes.filter((n) => n.sentiment === 'positive').length;
     const negativeNotes = qualNotes.filter((n) => n.sentiment === 'negative').length;
     approvalChance += Math.min(0.15, positiveNotes * 0.05); // up to +15%
@@ -916,7 +922,7 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
     const approved = approvalChance >= 1 ? true : rng.nextBool(approvalChance);
 
     const notes = approved
-      ? "The Investment Committee has reviewed the Solara Systems opportunity. The qualification signals and sector dynamics support the case for mandate. We approve — proceed to formal pitch and fee negotiation."
+      ? `The Investment Committee has reviewed the ${targetProfile.client.companyName} opportunity. The qualification signals and sector dynamics support the case for mandate. We approve — proceed to formal pitch and fee negotiation.`
       : qualNotes.length < 2
         ? "The Investment Committee is not convinced at this stage. The qualification package is thin — we need stronger research signals and clearer investment rationale before committing. Strengthen the case and resubmit."
         : negativeNotes > positiveNotes
@@ -931,7 +937,7 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
       phase: 0,
       sender: 'Marcus Aldridge',
       senderRole: 'Managing Partner',
-      subject: approved ? 'Solara Mandate: APPROVED' : 'Solara Mandate: DECLINED',
+      subject: approved ? `${targetProfile.shortCompanyName} Mandate: APPROVED` : `${targetProfile.shortCompanyName} Mandate: DECLINED`,
       body: notes,
       preview: approved ? 'Mandate approved by IC...' : 'Mandate declined by IC...',
       category: 'partner',
@@ -1138,6 +1144,14 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
     });
   }
 
+  // Authored phase/event copy uses the flagship campaign as its mechanical
+  // template. Apply the selected target's campaign layer before anything is
+  // persisted or summarised, while stable IDs remain untouched.
+  const preserveLiveIdentity = { protectExistingIdentity: true };
+  eventResult.events = personalizeTargetNarrativeValue(eventResult.events, targetProfile, preserveLiveIdentity);
+  eventResult.emails = personalizeTargetNarrativeValue(eventResult.emails, targetProfile, preserveLiveIdentity);
+  eventResult.risks = personalizeTargetNarrativeValue(eventResult.risks, targetProfile, preserveLiveIdentity);
+
   // Persist only real forward pull: a scheduled V1 payoff, an urgent answer,
   // active work, or a known deadline. This is intentionally a projection of
   // state, so an old teaser cannot survive after its cause is resolved.
@@ -1213,8 +1227,11 @@ export interface AdvancePacePreview {
  */
 export function buildUpcomingBeats(state: GameStore): UpcomingBeat[] {
   const beats: UpcomingBeat[] = [];
+  const targetProfile = getTargetNarrative(state.targetNarrativeId);
   const add = (beat: UpcomingBeat | null) => {
-    if (beat && !beats.some((candidate) => candidate.id === beat.id)) beats.push(beat);
+    if (beat && !beats.some((candidate) => candidate.id === beat.id)) {
+      beats.push(personalizeTargetNarrativeValue(beat, targetProfile, { protectExistingIdentity: true }));
+    }
   };
 
   const urgentEmail = state.emails.find(
@@ -1366,7 +1383,7 @@ export function checkDealCollapse(state: GameStore): CollapseResult {
       collapsed: true,
       reason: 'client_walked',
       headline: 'Client Terminated Engagement',
-      description: 'Ricardo Mendes has lost confidence in Clearwater\'s ability to deliver. The mandate has been withdrawn.',
+      description: `${state.client.name} has lost confidence in Clearwater's ability to deliver. The mandate has been withdrawn.`,
     };
   }
 
@@ -1426,22 +1443,25 @@ export function checkPhaseGate(state: GameStore): PhaseGateResult {
 
   switch (phase) {
     case 0: { // Deal Origination → Pitch & Mandate
-      const anyLeadInvestigated = state.leads.some(l =>
-        l.investigation.sector === 'completed' ||
-        l.investigation.company === 'completed' ||
-        l.investigation.shareholder === 'completed' ||
-        l.investigation.market === 'completed'
-      );
-      const anyLeadMet = state.leads.some(l => l.meetingDone);
+      const chosenLead = state.leads.find((lead) => lead.id === state.boardSubmission?.leadId);
+      const chosenLeadInvestigated = Boolean(chosenLead && (
+        chosenLead.investigation.sector === 'completed' ||
+        chosenLead.investigation.company === 'completed' ||
+        chosenLead.investigation.shareholder === 'completed' ||
+        chosenLead.investigation.market === 'completed'
+      ));
+      const chosenLeadMet = chosenLead?.meetingDone ?? false;
       const boardApproved = state.boardSubmission?.status === 'approved';
-      const hasQualNotes = (state.qualificationNotes?.length ?? 0) >= 1;
+      const hasQualNotes = (state.qualificationNotes ?? []).some(
+        (note) => !note.targetId || note.targetId === chosenLead?.id,
+      );
 
       return {
-        canTransition: anyLeadInvestigated && anyLeadMet && hasQualNotes && boardApproved,
+        canTransition: chosenLeadInvestigated && chosenLeadMet && hasQualNotes && boardApproved,
         requirements: [
-          { label: 'Lead dimensions investigated', met: anyLeadInvestigated },
-          { label: 'Introductory meeting held', met: anyLeadMet },
-          { label: 'Qualification notes gathered', met: hasQualNotes },
+          { label: 'Selected target investigated', met: chosenLeadInvestigated },
+          { label: 'Selected founder meeting held', met: chosenLeadMet },
+          { label: 'Selected target evidence gathered', met: hasQualNotes },
           { label: 'Board submission approved', met: boardApproved },
         ],
         nextPhase,

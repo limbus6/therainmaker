@@ -9,7 +9,8 @@
 // pipelines rather than bespoke modifiers.
 
 import type { Email, GameEvent, PhaseId, PlayerResources, UpcomingBeat } from '../types/game';
-import { deriveFounderMood, FOUNDER_MOOD_NOTES, type FounderMood } from './founderPulse';
+import { deriveFounderMood, type FounderMood } from './founderPulse';
+import { deriveTargetNarrativeId, getTargetNarrative } from '../content/targetNarratives';
 
 export const PEOPLE_BEATS_CHAIN = 'people-beats';
 
@@ -60,6 +61,11 @@ function founderMood(state: PeopleBeatsState): FounderMood {
   });
 }
 
+function founderFirstName(state: PeopleBeatsState): string {
+  const parts = state.client.name.split(' ');
+  return parts[0] === 'Dra.' ? parts[1] : parts[0];
+}
+
 function founderCheckIn(
   beatId: string,
   phase: PhaseId,
@@ -77,9 +83,12 @@ function founderCheckIn(
     id: beatId,
     phase,
     offsetDays,
-    teaser: () => 'Tomorrow: Ricardo wants a word before the week moves on.',
+    teaser: (state) => `Tomorrow: ${founderFirstName(state)} wants a word before the week moves on.`,
     build: (state, day) => {
       const mood = founderMood(state);
+      const profile = getTargetNarrative(deriveTargetNarrativeId(state.client));
+      const firstName = founderFirstName(state);
+      const moodNote = profile.founderMoodNotes[mood];
       const worried = mood === 'anxious' || mood === 'restless';
       const confident = mood === 'confident';
       const subject = worried ? topic.subjectWorried : confident ? topic.subjectConfident : topic.subjectCalm;
@@ -91,8 +100,8 @@ function founderCheckIn(
           week,
           phase: state.phase,
           type: 'active',
-          title: worried ? 'Ricardo needs reassurance' : confident ? 'Ricardo sees leverage' : 'Ricardo checks in',
-          description: FOUNDER_MOOD_NOTES[mood],
+          title: worried ? `${firstName} needs reassurance` : confident ? `${firstName} sees leverage` : `${firstName} checks in`,
+          description: moodNote,
           resolved: false,
           chainId: PEOPLE_BEATS_CHAIN,
           tensionCategory: worried ? 'pressure' : 'recovery',
@@ -103,9 +112,9 @@ function founderCheckIn(
           day,
           phase: state.phase,
           sender: state.client.name,
-          senderRole: `Founder & CEO, ${state.client.companyName}`,
+          senderRole: `${profile.founderRole}, ${state.client.companyName}`,
           subject,
-          body: `${FOUNDER_MOOD_NOTES[mood]}\n\n${message}`,
+          body: `${moodNote}\n\n${message}`,
           preview: subject,
           category: 'client',
           state: 'unread',
@@ -115,13 +124,13 @@ function founderCheckIn(
             ? [
                 {
                   id: 'walk-through',
-                  label: 'Walk him through the plan step by step — take the hour.',
+                  label: 'Walk the founder through the plan step by step — take the hour.',
                   effects: 'Trust +5, Capacity -4',
                   resourceEffects: { clientTrust: 5, teamCapacity: -4 },
                 },
                 {
                   id: 'hold-course',
-                  label: 'Reassure him briefly and hold the course.',
+                  label: 'Reassure the founder briefly and hold the course.',
                   effects: 'Risk -1, Trust -2',
                   resourceEffects: { riskLevel: -1, clientTrust: -2 },
                 },

@@ -388,6 +388,8 @@ export interface Lead {
 export interface QualificationNote {
   id: string;
   week: number;
+  /** Phase 0 target this evidence belongs to; absent for market-wide evidence. */
+  targetId?: string;
   source: 'team_research' | 'meeting' | 'internal';
   content: string;
   sentiment: 'positive' | 'neutral' | 'negative';

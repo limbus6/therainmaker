@@ -47,6 +47,7 @@ export default function FinalOffersScreen() {
     daysUntilDeadline: s.phaseDeadline !== null ? s.phaseDeadline - s.day : null,
   }));
   const storyFlags = useGameStore((s) => s.eventDirectorState.storyFlags);
+  const client = useGameStore((s) => s.client);
 
   const [confirmModalBuyerId, setConfirmModalBuyerId] = useState<string | null>(null);
 
@@ -101,7 +102,7 @@ export default function FinalOffersScreen() {
         <div>
           <h1 className="text-2xl font-display font-semibold text-text-primary">Final Offers</h1>
           <p className="text-[12px] text-text-muted mt-1">
-            {finalOffers.length} binding offer{finalOffers.length !== 1 ? 's' : ''} received — compare and recommend a preferred bidder to Ricardo.
+            {finalOffers.length} binding offer{finalOffers.length !== 1 ? 's' : ''} received — compare and recommend a preferred bidder to {client.name}.
           </p>
         </div>
         {preferredBuyer && (
@@ -235,7 +236,7 @@ export default function FinalOffersScreen() {
 
       {/* Bottom tip */}
       <div className="text-[11px] text-text-muted/60 text-center pb-4">
-        Recommending a preferred bidder sets them to exclusivity. The choice is final — advise Ricardo carefully.
+        Recommending a preferred bidder sets them to exclusivity. The choice is final — advise {client.name} carefully.
       </div>
 
       {/* Confirmation Modal */}

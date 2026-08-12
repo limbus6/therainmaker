@@ -34,6 +34,8 @@ function simulateBeaconWin(
   trigger: Extract<BeaconTrigger, 'player_declined' | 'player_lost'>,
   seed: number,
   completedAt: string,
+  companyName = 'Solara Systems',
+  mandateLabel = mandate.label,
 ): BeaconTombstone {
   const rng = createRng(deriveSeed(seed, mandate.seedBase, 0xbeac0));
   const difficultyDrag = Math.max(0, mandate.difficulty.overall - 50) * 0.35;
@@ -43,8 +45,8 @@ function simulateBeaconWin(
   return {
     runKey,
     mandateId: mandate.id,
-    mandateLabel: mandate.label,
-    companyName: 'Solara Systems',
+    mandateLabel,
+    companyName,
     buyerName: BEACON_BUYERS[rng.nextInt(0, BEACON_BUYERS.length - 1)],
     closingValue,
     totalAdvisoryFee: Math.round(closingValue * 20),
@@ -81,26 +83,30 @@ export function buildBeaconRunTombstone({
   playerOutcome,
   seed,
   completedAt,
+  companyName,
+  mandateLabel,
 }: {
   playerRunKey: string;
   mandateId: string;
   playerOutcome: 'closed' | 'collapsed';
   seed: number;
   completedAt: string;
+  companyName?: string;
+  mandateLabel?: string;
 }): BeaconTombstone | null {
   const mandate = getMandate(mandateId);
   if (!mandate) return null;
   const runKey = `beacon-run-${playerRunKey}`;
 
   if (playerOutcome === 'collapsed') {
-    return simulateBeaconWin(mandate, runKey, 'player_lost', seed, completedAt);
+    return simulateBeaconWin(mandate, runKey, 'player_lost', seed, completedAt, companyName, mandateLabel);
   }
 
   return {
     runKey,
     mandateId,
-    mandateLabel: mandate.label,
-    companyName: 'Solara Systems',
+    mandateLabel: mandateLabel ?? mandate.label,
+    companyName: companyName ?? 'Solara Systems',
     buyerName: null,
     closingValue: 0,
     totalAdvisoryFee: 0,

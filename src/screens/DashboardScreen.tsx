@@ -25,6 +25,7 @@ import ArchetypeAbilityPanel from '../components/ArchetypeAbilityPanel';
 import { getActiveRisks, getDashboardDeliverables, getMomentumLabel, applyPhaseWorkstreams } from '../utils/gameplayState';
 import { checkPhaseGate, getAdvancePacePreview } from '../engine/weekEngine';
 import { getMissionsForPhase } from '../content/missions';
+import { getTargetNarrative, personalizeTargetNarrativeValue } from '../content/targetNarratives';
 import { getMandatePhaseSequence, isShortMandate } from '../content/mandates';
 import { getMissionProgress, getActiveMission } from '../utils/missionProgress';
 import { explainDealMomentum } from '../engine/dealMomentum';
@@ -175,7 +176,10 @@ export default function DashboardScreen() {
   const isBudgetLow = resources.budget < BUDGET_LOW_THRESHOLD;
 
   // Mission progression for the Deal Desk
-  const phaseMissions = getMissionsForPhase(phase);
+  const phaseMissions = personalizeTargetNarrativeValue(
+    getMissionsForPhase(phase),
+    getTargetNarrative(gameState.targetNarrativeId),
+  );
   const missionEntries = getMissionProgress(phaseMissions, tasks, phase);
   const activeMissionEntry = getActiveMission(missionEntries, gameState.activeMissionId);
   const allMissionsComplete = missionEntries.length > 0 && missionEntries.every((e) => e.complete);
@@ -322,7 +326,7 @@ export default function DashboardScreen() {
         <div className="grid gap-3 rounded-[var(--radius-lg)] border border-border-accent/25 bg-accent-soft/20 p-4 md:grid-cols-3">
           <div>
             <p className="text-[10px] font-mono uppercase tracking-widest text-text-muted">Previously</p>
-            <p className="mt-1 text-[12px] leading-relaxed text-text-secondary">{weekHistory[weekHistory.length - 1]?.summary ?? 'The NBO round is beginning; buyer conviction and Ricardo’s confidence are both live.'}</p>
+            <p className="mt-1 text-[12px] leading-relaxed text-text-secondary">{weekHistory[weekHistory.length - 1]?.summary ?? `The NBO round is beginning; buyer conviction and ${gameState.client.name}’s confidence are both live.`}</p>
           </div>
           <div>
             <p className="text-[10px] font-mono uppercase tracking-widest text-text-muted">What matters now</p>

@@ -5,6 +5,7 @@ import {
   PROCESS_CATEGORY_LABELS,
   calculateCausalProcessScore,
 } from './processScoring';
+import { getTargetNarrative } from '../content/targetNarratives';
 
 const TOTAL_GAME_BUDGET = Object.values(PHASE_BASE_BUDGETS).reduce((a, b) => a + b, 0); // ~265 k€
 
@@ -83,7 +84,8 @@ export interface DebriefFinding {
 // --- Financial Score ---
 function calculateFinancialScore(state: GameStore): ResultsBoard['financial'] & { score: number } {
   const dealClosed = state.phase === 10;
-  const baseValue = 120; // €M baseline for Solara Systems
+  const targetProfile = getTargetNarrative(state.targetNarrativeId);
+  const baseValue = state.client?.valuationExpectationEV ?? targetProfile.baseEV;
 
   let closingValue = 0;
   let score = 0;
@@ -112,7 +114,7 @@ function calculateFinancialScore(state: GameStore): ResultsBoard['financial'] & 
         selectedOffer.conditionality === 'light_conditions' ? 0.75 :
         0.5;
         
-      const benchmarkMultiple = 10;
+      const benchmarkMultiple = targetProfile.baseEV / targetProfile.earningsBase;
       const multipleScore = Math.min(1.0, selectedOffer.impliedMultiple / benchmarkMultiple);
       const executionScore = preferredBuyer.executionCredibility / 100;
       

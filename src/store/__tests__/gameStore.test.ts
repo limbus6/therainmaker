@@ -201,7 +201,7 @@ describe('Game Store', () => {
       },
     }, 7) as Record<string, unknown>;
 
-    expect(migrated.contentVersion).toBe('solara-events-v4');
+    expect(migrated.contentVersion).toBe('target-campaigns-v1');
     expect(migrated.scoringModelVersion).toBe('legacy-v1');
     expect(migrated.processLog).toEqual([]);
     expect(migrated.boardRejectionCount).toBe(0);

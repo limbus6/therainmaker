@@ -36,7 +36,7 @@ function founderCommitmentPlans(): RiskMitigationPlan[] {
       onFailure: { clientTrust: -8, dealMomentum: -4, riskLevel: 6, probabilityDelta: 10 },
       catastrophicHeadline: 'Client Walked After Commitment Ask',
       catastrophicDescription:
-        'Ricardo rejected the commitment structure and terminated the engagement immediately.',
+        'The founder rejected the commitment structure and terminated the engagement immediately.',
     },
     {
       id: 'external_reputational_dd',
@@ -79,7 +79,7 @@ function competingAdvisorPlans(): RiskMitigationPlan[] {
       id: 'client_dinner_reset',
       title: 'Private Dinner With Client',
       actions: [
-        'Meet Ricardo informally over dinner.',
+        'Meet the founder informally over dinner.',
         'Reinforce chemistry and show tailored attention.',
         'Probe whether the rival advisor is really converting trust into momentum.',
       ],
@@ -93,7 +93,7 @@ function competingAdvisorPlans(): RiskMitigationPlan[] {
       id: 'golf_club_invitation',
       title: 'Golf Club Invitation',
       actions: [
-        'Invite Ricardo to a club setting to build personal rapport.',
+        'Invite the founder to a club setting to build personal rapport.',
         'Test whether he values social chemistry over pure advisor brand.',
         'Accept that the move can either unlock trust fast or backfire as tone-deaf.',
       ],
@@ -105,7 +105,7 @@ function competingAdvisorPlans(): RiskMitigationPlan[] {
       onFailure: { clientTrust: -6, reputation: -3, probabilityDelta: 8 },
       catastrophicHeadline: 'Client Rejected Social Positioning',
       catastrophicDescription:
-        'Ricardo read the golf club invitation as superficial and misaligned. The relationship broke down immediately.',
+        'The founder read the golf club invitation as superficial and misaligned. The relationship broke down immediately.',
     },
   ];
 }

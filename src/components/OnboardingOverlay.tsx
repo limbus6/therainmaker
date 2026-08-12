@@ -5,7 +5,7 @@ import { getMandatePhaseSequence, isShortMandate } from '../content/mandates';
 const FLAGSHIP_SLIDES = [
   {
     title: 'Welcome to M&A Rainmaker',
-    body: `You are a sell-side M&A banker at Clearwater Advisory. You do not have the mandate yet.\n\nA priority lead has surfaced: Ricardo Mendes, founder of Solara Systems. Your first objective is to decide whether this opportunity is worth pursuing, win internal approval, and then pitch for the mandate.`,
+    body: `You are a sell-side M&A banker at Clearwater Advisory. You do not have the mandate yet.\n\nDeal Origination has surfaced three founder-led opportunities with different sectors, motives and execution risks. Your first objective is to qualify them, choose the campaign you believe in, win internal approval, and then pitch for the mandate.`,
     cta: 'Got it →',
   },
   {
@@ -15,7 +15,7 @@ const FLAGSHIP_SLIDES = [
   },
   {
     title: 'Phase 0 — Deal Origination',
-    body: `You start in Phase 0: Deal Origination.\n\nImmediate objectives:\n1. Screen the market backdrop around Solara\n2. Meet Ricardo and assess his motivations\n3. Build enough evidence for a board recommendation\n4. If approved, enter Phase 1 and pitch for the mandate\n\nStart with the Inbox and Tasks. Good luck.`,
+    body: `You start in Phase 0: Deal Origination.\n\nImmediate objectives:\n1. Compare Solara Systems, Vektor Health Tech and Nexa Automation\n2. Investigate the target you favour and meet its founder\n3. Build enough evidence for a board recommendation\n4. If approved, enter Phase 1 with that target's campaign locked in\n\nYour choice changes the founder, economics, buyer universe and deal risks through closing.`,
     cta: 'Start the Deal →',
   },
 ];

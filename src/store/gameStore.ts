@@ -80,6 +80,14 @@ import { getRoutineEmails, getRoutineTasks } from '../utils/friction';
 import { getArchetypeOfferDriver, getArchetypeOfferModifier, resolveArchetypeAbility } from '../engine/archetypeAbilities';
 
 import { loadPhaseContent, type PhaseContent } from '../content/loadPhaseContent';
+import {
+  createTargetLeads,
+  deriveTargetNarrativeId,
+  getTargetNarrative,
+  getTargetNarrativeForLead,
+  personalizeTargetNarrativeValue,
+  type TargetNarrativeId,
+} from '../content/targetNarratives';
 
 // ============================================
 // Phase 0 Origination Constants
@@ -108,19 +116,7 @@ const initialResources: PlayerResources = {
   reputation: Math.min(60, 40 + (pendingMandate?.careerReputationBonus ?? 0) + (pendingArchetype?.startReputation ?? 0)),
 };
 
-const initialClient: Client = {
-  name: 'Ricardo Mendes',
-  companyName: 'Solara Systems',
-  sector: 'Industrial SaaS / Energy Tech',
-  description: 'Founder-led industrial IoT platform specialising in predictive maintenance for energy infrastructure. €28M ARR, growing 35% YoY. The founder is considering a full exit after 12 years.',
-  objectives: ['Maximise valuation', 'Ensure cultural continuity', 'Clean exit within 6 months'],
-  valuationExpectation: '10-12x EBITDA',
-  valuationExpectationEV: 120, // ~€120M EV
-  timeSensitivity: 'medium',
-  riskTolerance: 'moderate',
-  trust: 40,
-  confidence: 35,
-};
+const initialClient: Client = { ...getTargetNarrative('solara').client };
 
 const initialTeam: TeamMember[] = [
   { id: 'tm-1', name: 'Ana Ferreira', role: 'Vice President', seniority: 'senior', capacity: 95, morale: 80, currentLoad: 10, skills: ['Financial Modelling', 'Client Management'] },
@@ -137,8 +133,8 @@ const initialEmails: Email[] = [
     sender: 'Marcus Aldridge',
     senderRole: 'Managing Partner',
     subject: 'Q3 Mandate Objective',
-    body: 'We are behind on our origination targets for this quarter. I need you to secure a new sell-side mandate within the next few weeks to close the gap.\n\nA referral just came in — Solara Systems, a founder-led industrial IoT platform. Ricardo Mendes is considering a full exit. This looks like the right profile: strong SaaS metrics, credible buyer universe. I\'ve already briefed the team.\n\nYou have a €50k origination budget. Get into the opportunity, run the qualification, and come back to me with a recommendation. Move fast — the window is open now.',
-    preview: 'A referral just came in — Solara Systems. Get into it fast.',
+    body: 'We are behind on our origination targets for this quarter. I need you to secure a new sell-side mandate within the next few weeks to close the gap.\n\nDeal Origination has surfaced three credible founder-led opportunities across industrial software, diagnostic technology and warehouse automation. Each has a different execution risk and buyer universe. I\'ve already briefed the team.\n\nYou have a €50k origination budget. Qualify the targets, choose the opportunity you believe we can win, and come back to me with a recommendation. Move fast — the window is open now.',
+    preview: 'Three founder-led opportunities are ready for qualification.',
     category: 'partner',
     state: 'unread',
     priority: 'high',
@@ -184,15 +180,15 @@ const initialDeliverables: Deliverable[] = [];
 
 const initialRisks: Risk[] = [
   {
-    id: 'risk-1', name: 'Founder May Not Be Serious',
-    description: 'Ricardo Mendes may be testing the market for a valuation number rather than genuinely committed to a sale process.',
+    id: 'risk-1', name: 'Founder Commitment Untested',
+    description: 'The selected founder may be testing the market rather than genuinely committed to a sale process. Qualification must separate curiosity from readiness.',
     category: 'client', severity: 'medium', probability: 35, mitigated: false, surfacedWeek: 1, surfacedPhase: 0,
   },
 ];
 
 const initialHeadlines: Headline[] = [
   { id: 'hl-1', week: 1, text: 'PE financing spreads tighten again across Europe.', category: 'macro' },
-  { id: 'hl-2', week: 1, text: 'Industrial IoT consolidation accelerates — three deals closed in Q1.', category: 'sector' },
+  { id: 'hl-2', week: 1, text: 'Founder-led technology assets draw strategic interest across Europe.', category: 'sector' },
   { id: 'hl-3', week: 1, text: 'Mid-market advisory mandates surge as founders eye exit window.', category: 'sector' },
 ];
 
@@ -523,53 +519,7 @@ function generateClientNote(
 // Store Actions
 // ============================================
 
-const initialLeads: Lead[] = [
-  {
-    id: 'lead-1',
-    companyName: 'Solara Systems',
-    sector: 'Industrial SaaS / Energy Tech',
-    founderName: 'Ricardo Mendes',
-    origin: 'Inbound network referral',
-    description: 'Founder-led industrial IoT platform specialising in predictive maintenance for energy infrastructure. €28M ARR, growing 35% YoY. The founder is considering a full exit after 12 years.',
-    investmentCaseSummary: 'Strong SaaS metrics and clear strategic value to industrial buyers. High likelihood of aggressive bidding if properly positioned.',
-    investigation: { sector: 'none', company: 'none', shareholder: 'none', market: 'none' },
-    meetingDone: false,
-    hiddenMotivations: 'Wife is pressuring him to retire; he is burned out but won\'t admit it easily.',
-    hiddenGrowth: 'high',
-    hiddenRisk: 'low',
-    researchNotes: []
-  },
-  {
-    id: 'lead-2',
-    companyName: 'Vektor Health Tech',
-    sector: 'MedTech / Diagnostic Software',
-    founderName: 'Dra. Clara Vance',
-    origin: 'Partner network intro',
-    description: 'AI-assisted diagnostic software for hospital radiology networks. €14M ARR, 48% YoY growth. High margin business but faces regulatory scrutiny in Germany.',
-    investmentCaseSummary: 'Rapid growth in high-demand sector. Strategic fit for healthcare conglomerates, though regulatory approvals add execution risk.',
-    investigation: { sector: 'none', company: 'none', shareholder: 'none', market: 'none' },
-    meetingDone: false,
-    hiddenMotivations: 'Wants a strategic buy-out to expand into US market.',
-    hiddenGrowth: 'high',
-    hiddenRisk: 'moderate',
-    researchNotes: []
-  },
-  {
-    id: 'lead-3',
-    companyName: 'Nexa Automation',
-    sector: 'Supply Chain Tech / Robotics',
-    founderName: 'Tomás Silva',
-    origin: 'Outreach campaign target',
-    description: 'Automated warehouse dispatch and fleet optimization platform. €19M revenue, 20% YoY growth. Solid cashflow, but heavy hardware dependency.',
-    investmentCaseSummary: 'Established enterprise client base with long-term contracts. Lower growth profile than Solara but reliable cashflow generation.',
-    investigation: { sector: 'none', company: 'none', shareholder: 'none', market: 'none' },
-    meetingDone: false,
-    hiddenMotivations: 'Co-founders have divergent views on valuation; timing is tight.',
-    hiddenGrowth: 'moderate',
-    hiddenRisk: 'high',
-    researchNotes: []
-  }
-];
+const initialLeads: Lead[] = createTargetLeads();
 
 export interface GameStore {
   phase: PhaseId;
@@ -580,6 +530,8 @@ export interface GameStore {
   // Phase 0 Mechanics
   leads: Lead[];
   activeLeadId?: string;
+  /** Narrative/economic campaign locked by the selected Phase 0 target. */
+  targetNarrativeId: TargetNarrativeId;
   preferredBidderConfirmed: boolean;
   phaseEntryDay: Partial<Record<number, number>>;
 
@@ -695,6 +647,7 @@ export interface GameStore {
   resolveBudgetRequest: (id: string, approved: boolean, approvedAmount?: number) => void;
   // Phase 0 Qualification
   investigateDimension: (leadId: string, dimension: keyof NonNullable<Lead['investigation']>) => void;
+  selectActiveLead: (leadId: string) => void;
   scheduleMeeting: (leadId: string) => void;
   addQualificationNote: (note: Omit<QualificationNote, 'id'>) => void;
   submitBoardRecommendation: (recommendation: BoardSubmission['recommendation'], rationale: string, leadId?: string) => void;
@@ -861,7 +814,7 @@ function bridgeBuyersAcrossSkippedPhases(buyers: Buyer[], skippedPhases: PhaseId
 
 const DEFAULT_PREFERRED_BUYER = 'Kestrel Capital';
 const DEFAULT_FALLBACK_BUYER = 'Vektor Industries';
-const SAVE_SCHEMA_VERSION = 15;
+const SAVE_SCHEMA_VERSION = 16;
 
 function hashIdentifier(value: string): number {
   let hash = 2166136261;
@@ -935,39 +888,6 @@ function personalizePhaseContent(content: PhaseContent, preferredBuyerName?: str
   return personalizeNarrativeValue(content, preferredBuyerName);
 }
 
-function replaceClientText(text: string, clientName?: string, companyName?: string): string {
-  if (!companyName || companyName === 'Solara Systems') return text;
-  const shortCompany = companyName.split(' ')[0];
-  const firstName = clientName ? clientName.split(' ')[0] : 'Ricardo';
-
-  return text
-    .replaceAll('Solara Systems', companyName)
-    .replaceAll('Solara', shortCompany)
-    .replaceAll('Ricardo Mendes', clientName || 'Ricardo Mendes')
-    .replaceAll('Ricardo', firstName);
-}
-
-function personalizeClientValue<T>(value: T, clientName?: string, companyName?: string): T {
-  if (!companyName || companyName === 'Solara Systems') return value;
-  if (typeof value === 'string') {
-    return replaceClientText(value, clientName, companyName) as T;
-  }
-  if (Array.isArray(value)) {
-    return value.map((item) => personalizeClientValue(item, clientName, companyName)) as T;
-  }
-  if (value && typeof value === 'object') {
-    return Object.fromEntries(
-      Object.entries(value).map(([key, item]) => [key, personalizeClientValue(item, clientName, companyName)])
-    ) as T;
-  }
-  return value;
-}
-
-function personalizeClientContent(content: PhaseContent, clientName?: string, companyName?: string): PhaseContent {
-  if (!companyName || companyName === 'Solara Systems') return content;
-  return personalizeClientValue(content, clientName, companyName);
-}
-
 // ============================================
 // Helper: generate Final Offers for Phase 7
 // ============================================
@@ -976,9 +896,11 @@ function generateFinalOffers(
   momentum: number,
   week: number,
   rngSeed: number,
+  targetNarrativeId: TargetNarrativeId,
   storyFlags: Record<string, string> = {},
 ): FinalOffer[] {
-  const BASE_EV = 120; // €M Solara baseline
+  const targetProfile = getTargetNarrative(targetNarrativeId);
+  const BASE_EV = targetProfile.baseEV;
   const offers: FinalOffer[] = [];
   const rng = createRng(deriveSeed(rngSeed, week, Math.round(momentum), buyers.length, 7));
 
@@ -1053,7 +975,7 @@ function generateFinalOffers(
       ...(archetypeDriver ? [archetypeDriver] : []),
     ];
 
-    offers.push({
+    offers.push(personalizeTargetNarrativeValue({
       buyerId: buyer.id,
       submittedPhase: 7,
       submittedWeek: week,
@@ -1064,10 +986,10 @@ function generateFinalOffers(
       structure,
       conditionality,
       exclusivityRequested: buyer.type === 'pe' || buyer.valuationPosture === 'aggressive',
-      impliedMultiple: Math.round((totalEV / 12) * 10) / 10, // assume ~€12M EBITDA
+      impliedMultiple: Math.round((totalEV / targetProfile.earningsBase) * 10) / 10,
       advisorNote: note,
       drivers,
-    });
+    }, targetProfile));
   }
 
   // Sort by totalEV descending
@@ -1346,6 +1268,7 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
   totalDays: 1,
   leads: initialLeads,
   activeLeadId: 'lead-1',
+  targetNarrativeId: 'solara',
   resources: initialResources,
   client: initialClient,
   team: initialTeam,
@@ -1553,6 +1476,7 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
         newQualNotes.push({
           id: `qn-${newDay}-${l.id}-intro`,
           week: newWeekNum,
+          targetId: l.id,
           source: 'meeting',
           content: `Introductory meeting with ${l.founderName} (${l.companyName}). Client is receptive to our advisory approach.`,
           sentiment: 'positive',
@@ -1585,6 +1509,7 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
           newQualNotes.push({
             id: `qn-${newDay}-${lead.id}-company`,
             week: newWeekNum,
+            targetId: lead.id,
             source: 'team_research',
             content: `Company screening complete for ${lead.companyName}. Financial profile and sector fit confirmed. Viable profile for a structured process.`,
             sentiment: 'positive',
@@ -1594,6 +1519,7 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
           newQualNotes.push({
             id: `qn-${newDay}-${lead.id}-shareholder`,
             week: newWeekNum,
+            targetId: lead.id,
             source: 'meeting',
             content: `Shareholder assessment complete for ${lead.companyName}. Founder appears motivated, timeline realistic, and valuation expectations within market range.`,
             sentiment: 'neutral',
@@ -1839,27 +1765,23 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
     const newWorkstreams = state.workstreams;
     let newBuyers = isCompressedBootstrap ? [] : state.buyers;
     let newClient = state.client;
+    let nextTargetNarrativeId = isCompressedBootstrap ? 'solara' as const : state.targetNarrativeId;
     if (nextPhase === 1) {
       if (state.boardSubmission?.leadId) {
-        const chosenLead = state.leads.find(l => l.id === state.boardSubmission?.leadId);
-        if (chosenLead) {
-          newClient = {
-            ...state.client,
-            name: chosenLead.founderName,
-            companyName: chosenLead.companyName,
-            sector: chosenLead.sector,
-            description: chosenLead.description,
-          };
-        }
+        const targetProfile = getTargetNarrativeForLead(state.boardSubmission.leadId);
+        nextTargetNarrativeId = targetProfile.id;
+        newClient = { ...targetProfile.client };
       }
     }
+    const targetProfile = getTargetNarrative(nextTargetNarrativeId);
 
     if (isCompressedBootstrap) {
       // This engagement is already mandated and prepared. Carry the authored
       // buyer universe into the first playable stage, but never award process
       // credit for the phases the player did not operate.
       const preparationContent = await loadPhaseContent(2);
-      newBuyers = applyArchetypeBuyerChemistry(preparationContent.buyers ?? [], state.advisorArchetype);
+      const targetPreparation = personalizeTargetNarrativeValue(preparationContent, targetProfile);
+      newBuyers = applyArchetypeBuyerChemistry(targetPreparation.buyers ?? [], state.advisorArchetype);
     }
 
     if (nextPhase >= 1) {
@@ -1868,10 +1790,10 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
         ? state.buyers.find((buyer) => buyer.id === state.preferredBidderId)?.name
         : undefined;
 
-      const clientPersonalizedContent = personalizeClientContent(rawPhaseContent, newClient.name, newClient.companyName);
-      const phaseContent = nextPhase >= 8
-        ? personalizePhaseContent(clientPersonalizedContent, preferredBuyerName)
-        : clientPersonalizedContent;
+      const bidderPersonalizedContent = nextPhase >= 8
+        ? personalizePhaseContent(rawPhaseContent, preferredBuyerName)
+        : rawPhaseContent;
+      const phaseContent = personalizeTargetNarrativeValue(bidderPersonalizedContent, targetProfile);
 
       newTasks = [...newTasks, ...applyArchetypeToTasks(phaseContent.tasks, state.advisorArchetype)];
 
@@ -1896,7 +1818,7 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
     const phaseBase = PHASE_BASE_BUDGETS[nextPhase] ?? 0;
     const newBudget = carryover + phaseBase;
     const newFinalOffers = nextPhase === 7
-      ? generateFinalOffers(newBuyers, state.resources.dealMomentum, state.week + 1, state.rngSeed, state.eventDirectorState.storyFlags)
+      ? generateFinalOffers(newBuyers, state.resources.dealMomentum, state.week + 1, state.rngSeed, nextTargetNarrativeId, state.eventDirectorState.storyFlags)
       : state.finalOffers;
     const nextOfferReveal: OfferRevealState = nextPhase === 7 && newFinalOffers.length > 0
       ? { status: 'pending', revealedBuyerIds: [] }
@@ -1918,6 +1840,7 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
       tasks: unlockedPhaseTasks,
       resources: normalizeResources({ ...state.resources, budget: newBudget, budgetMax: newBudget }),
       client: newClient,
+      targetNarrativeId: nextTargetNarrativeId,
       buyers: newBuyers,
       risks: phaseRisks,
       phaseDeadline: null,
@@ -1957,6 +1880,7 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
       team: syncTeamLoad(state.team, unlockedPhaseTasks, nextPhase),
       tempCapacityAllocations: [],
       client: newClient,
+      targetNarrativeId: nextTargetNarrativeId,
       phaseGate: null,
       resources: normalizeResources({
         ...state.resources,
@@ -1999,6 +1923,7 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
 
   debugJumpToPhase: async (targetPhase: PhaseId) => {
     const state = get();
+    const targetProfile = getTargetNarrative(state.targetNarrativeId);
     const baseBudget = PHASE_BASE_BUDGETS[targetPhase] ?? 100;
 
     const phase0Tasks = state.tasks.filter((t) => t.phase === 0).map((t) => ({ ...t }));
@@ -2011,7 +1936,8 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
     let accumulatedEmails: Email[] = targetPhase === 0 ? [...initialEmails] : [];
 
     for (let p = 1; p <= targetPhase; p++) {
-      const content = await loadPhaseContent(p as Exclude<PhaseId, 0>);
+      const rawContent = await loadPhaseContent(p as Exclude<PhaseId, 0>);
+      const content = personalizeTargetNarrativeValue(rawContent, targetProfile);
       accumulatedTasks = [...accumulatedTasks, ...content.tasks];
       accumulatedDeliverables = [...accumulatedDeliverables, ...content.deliverables];
       accumulatedRisks = [...accumulatedRisks, ...content.risks];
@@ -2046,7 +1972,7 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
       morale: 78,
     });
     const bindingOffersReceived = targetPhase >= 7 ? 1 : 0;
-    const finalOffers = targetPhase >= 7 ? generateFinalOffers(buyers, resources.dealMomentum, week, state.rngSeed, state.eventDirectorState.storyFlags) : [];
+    const finalOffers = targetPhase >= 7 ? generateFinalOffers(buyers, resources.dealMomentum, week, state.rngSeed, state.targetNarrativeId, state.eventDirectorState.storyFlags) : [];
     const risks = retireObsoleteRisks(accumulatedRisks, targetPhase, bindingOffersReceived);
     const workstreams = updatePhaseWorkstreamProgress(initialWorkstreams, unlockedTasks, targetPhase);
     const debugDirectorState = {
@@ -2081,7 +2007,8 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
       day,
       totalDays: day,
       resources,
-      client: syncClient(state.client, resources),
+      client: syncClient(targetProfile.client, resources),
+      targetNarrativeId: state.targetNarrativeId,
       tasks: unlockedTasks,
       deliverables: newDeliverables,
       risks,
@@ -2094,6 +2021,7 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
       qualificationNotes: targetPhase > 0 ? [{
         id: 'qn-debug-1',
         week,
+        targetId: targetProfile.leadId,
         source: 'internal',
         content: 'Debug jump generated a baseline qualification memo.',
         sentiment: 'positive',
@@ -2104,7 +2032,7 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
         rationale: 'Debug jump',
         status: 'approved',
         submittedWeek: 0,
-        leadId: state.leads[0]?.id ?? 'lead1',
+        leadId: targetProfile.leadId,
       } : null,
       feeNegotiation: null,
       agreedFeeTerms: targetPhase > 1 ? {
@@ -2188,9 +2116,9 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
       riskLevel: checkpoint.riskLevel ?? state.resources.riskLevel,
     });
 
-    const leadId = state.leads[0]?.id;
-    const leads = state.leads.map((lead, index) => {
-      if (index > 0) return lead;
+    const leadId = getTargetNarrative(state.targetNarrativeId).leadId;
+    const leads = state.leads.map((lead) => {
+      if (lead.id !== leadId) return lead;
       return {
         ...lead,
         meetingDone: checkpoint.leadMeetingDone ?? lead.meetingDone,
@@ -2204,6 +2132,7 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
       ? Array.from({ length: checkpoint.qualificationNotes }, (_, index) => ({
           id: `qn-debug-${checkpoint.id}-${index}`,
           week: Math.max(1, Math.ceil(checkpoint.day / 7)),
+          targetId: leadId,
           source: index === 0 ? 'team_research' as const : 'meeting' as const,
           content: index === 0
             ? 'Debug checkpoint: qualification research confirms a credible sell-side path.'
@@ -2214,7 +2143,7 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
 
     const checkpointWeek = Math.max(1, Math.ceil(checkpoint.day / 7));
     const agreedFeeTerms = checkpoint.feeAgreed ? { ...DEBUG_FEE_TERMS, agreedWeek: checkpointWeek } : state.agreedFeeTerms;
-    const finalOffers = checkpoint.phase >= 7 ? generateFinalOffers(buyers, resources.dealMomentum, checkpointWeek, state.rngSeed, preservedStoryFlags) : [];
+    const finalOffers = checkpoint.phase >= 7 ? generateFinalOffers(buyers, resources.dealMomentum, checkpointWeek, state.rngSeed, state.targetNarrativeId, preservedStoryFlags) : [];
     const feeNegotiation = checkpoint.feeAgreed ? {
       phase: 1 as PhaseId,
       pitchPresented: true,
@@ -2387,7 +2316,7 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
     const advice: Record<string, { subject: string; body: string }> = {
       client: {
         subject: `Re: "${email.subject}" — Marcus`,
-        body: `I've reviewed the situation with Ricardo.\n\nMy read: this is a trust issue as much as a tactical one. The moment a client starts second-guessing the process, you have to over-communicate — short status notes every 3 days without being asked. Frequency of contact at this stage matters more than depth.\n\nOn the substance: take their concern at face value first. Push back only after they feel heard. Don't try to win the argument before you've validated the relationship.\n\nLet me know if you want me to join the next call.`,
+        body: `I've reviewed the situation with ${state.client.name}.\n\nMy read: this is a trust issue as much as a tactical one. The moment a client starts second-guessing the process, you have to over-communicate — short status notes every 3 days without being asked. Frequency of contact at this stage matters more than depth.\n\nOn the substance: take their concern at face value first. Push back only after they feel heard. Don't try to win the argument before you've validated the relationship.\n\nLet me know if you want me to join the next call.`,
       },
       buyer: {
         subject: `Re: "${email.subject}" — Marcus`,
@@ -2395,11 +2324,11 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
       },
       partner: {
         subject: `Re: "${email.subject}" — Marcus`,
-        body: `Thanks for looping me in.\n\nMy view: partners act in their own interest — that's not a criticism, it's a feature of the ecosystem. If they're pushing in a direction that doesn't serve our client, that's a sign to recalibrate the relationship, not the deal.\n\nBe direct with them. Tell them where we're aligned and where our obligations to Solara take precedence. Good partners respect that.`,
+        body: `Thanks for looping me in.\n\nMy view: partners act in their own interest — that's not a criticism, it's a feature of the ecosystem. If they're pushing in a direction that doesn't serve our client, that's a sign to recalibrate the relationship, not the deal.\n\nBe direct with them. Tell them where we're aligned and where our obligations to ${state.client.companyName} take precedence. Good partners respect that.`,
       },
       market: {
         subject: `Re: "${email.subject}" — Marcus`,
-        body: `Market signals at this stage are noise until proven otherwise.\n\nI've been in processes where three consecutive bad headlines turned out to be entirely irrelevant to final price. Buyers know the difference between sector volatility and asset-specific risk — your job is to reinforce that Solara's story is idiosyncratic, not correlated to whatever is moving markets this week.\n\nPrepare a one-page differentiation note. Short. Factual. Send it proactively to all active buyers before they ask.`,
+        body: `Market signals at this stage are noise until proven otherwise.\n\nI've been in processes where three consecutive bad headlines turned out to be entirely irrelevant to final price. Buyers know the difference between sector volatility and asset-specific risk — your job is to reinforce that ${state.client.companyName}'s story is idiosyncratic, not correlated to whatever is moving markets this week.\n\nPrepare a one-page differentiation note. Short. Factual. Send it proactively to all active buyers before they ask.`,
       },
       internal: {
         subject: `Re: "${email.subject}" — Marcus`,
@@ -2963,6 +2892,17 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
   }),
 
   // ─── Phase 0 Qualification ───────────────────────────────────────────────
+  selectActiveLead: (leadId) => set((state) => {
+    if (state.phase !== 0 || state.boardSubmission?.status === 'pending' || state.boardSubmission?.status === 'approved') return {};
+    const profile = getTargetNarrativeForLead(leadId);
+    if (profile.leadId !== leadId) return {};
+    return {
+      activeLeadId: leadId,
+      targetNarrativeId: profile.id,
+      client: syncClient(profile.client, state.resources),
+    };
+  }),
+
   investigateDimension: (leadId, dimension) => set((state) => {
     const cost = INVESTIGATION_COST_K;
 
@@ -2993,6 +2933,7 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
     const newNote: QualificationNote = {
       id: `qn-${state.day}-${leadId}-${dimension}`,
       week: state.week,
+      targetId: leadId,
       source: 'team_research',
       content: `${dimensionNames[dimension]} investigation complete for ${updatedLeads[leadIndex].companyName}. Findings look viable for a structured process.`,
       sentiment: 'neutral',
@@ -3059,7 +3000,11 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
       qualificationNotes: state.qualificationNotes,
       recommendation,
     });
+    const profile = getTargetNarrativeForLead(leadId);
     return {
+      activeLeadId: profile.leadId,
+      targetNarrativeId: profile.id,
+      client: syncClient(profile.client, state.resources),
       boardSubmission: {
         recommendation,
         rationale,
@@ -3757,6 +3702,14 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
     if (fromVersion < 15) {
       s.archetypeAbilityUse = null;
       s.apexCeremonies = { pending: null, history: [] };
+    }
+    if (fromVersion < 16) {
+      const savedClient = s.client && typeof s.client === 'object' ? s.client as Client : undefined;
+      const savedBoard = s.boardSubmission && typeof s.boardSubmission === 'object'
+        ? s.boardSubmission as BoardSubmission
+        : undefined;
+      s.targetNarrativeId = deriveTargetNarrativeId(savedClient, savedBoard?.leadId);
+      s.activeLeadId = savedBoard?.leadId ?? getTargetNarrative(s.targetNarrativeId as string).leadId;
     }
     if (fromVersion < 11) {
       // Archetypes are a run-start identity; mid-run saves stay 'balanced'.
