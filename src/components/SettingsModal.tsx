@@ -20,6 +20,8 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const savedAt = useGameStore((s) => s.savedAt);
   const saveGame = useGameStore((s) => s.saveGame);
   const replayCount = useGameStore((s) => s.replayTrace.length);
+  const weekPace = useGameStore((s) => s.weekPace);
+  const setWeekPace = useGameStore((s) => s.setWeekPace);
 
   const lastSaved = savedAt
     ? new Date(savedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -100,6 +102,26 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         </div>
         <div className="px-4 pb-3 text-center">
           <p className="text-[11px] text-text-tertiary">{PHASE_NAMES[phase]}</p>
+        </div>
+      </div>
+
+      {/* Execution pace */}
+      <div className="mx-4 mt-3 rounded-lg border border-border-subtle bg-bg-primary/40 px-4 py-3">
+        <p className="text-[10px] font-mono uppercase tracking-widest text-text-muted mb-2">Execution Pace</p>
+        <div className="grid grid-cols-3 gap-1.5">
+          {(['deliberate', 'standard', 'sprint'] as const).map((pace) => (
+            <button
+              key={pace}
+              onClick={() => setWeekPace(pace)}
+              className={`px-2 py-1.5 rounded-md text-[11px] font-medium capitalize transition-colors ${
+                weekPace === pace
+                  ? 'bg-accent-primary/15 text-text-accent border border-accent-primary/40'
+                  : 'bg-surface-default text-text-secondary border border-transparent hover:bg-surface-hover'
+              }`}
+            >
+              {pace}
+            </button>
+          ))}
         </div>
       </div>
 

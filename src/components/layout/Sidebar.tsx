@@ -20,7 +20,7 @@ interface NavEntry {
   to: string;
   label: string;
   icon: React.ReactNode;
-  badgeKey?: 'unreadEmails' | 'activeRisks' | 'pendingTasks';
+  badgeKey?: 'unreadEmails' | 'activeRisks' | 'pendingTasks' | 'liveBuyers';
 }
 
 const NAV_ITEMS: NavEntry[] = [
@@ -28,7 +28,7 @@ const NAV_ITEMS: NavEntry[] = [
   { to: '/inbox', label: 'Inbox', icon: <Inbox size={18} />, badgeKey: 'unreadEmails' },
   { to: '/client', label: 'Client', icon: <UserCircle size={18} /> },
   { to: '/team', label: 'Team', icon: <Users size={18} /> },
-  { to: '/buyers', label: 'Buyers', icon: <Briefcase size={18} /> },
+  { to: '/buyers', label: 'Buyers', icon: <Briefcase size={18} />, badgeKey: 'liveBuyers' },
   { to: '/tasks', label: 'Tasks', icon: <ListChecks size={18} />, badgeKey: 'pendingTasks' },
   { to: '/deliverables', label: 'Deliverables', icon: <FileText size={18} /> },
   { to: '/market', label: 'Market', icon: <Newspaper size={18} /> },
@@ -40,6 +40,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const emails = useGameStore((s) => s.emails);
   const risks = useGameStore((s) => s.risks);
   const tasks = useGameStore((s) => s.tasks);
+  const buyers = useGameStore((s) => s.buyers);
   const phase = useGameStore((s) => s.phase);
   const bindingOffersReceived = useGameStore((s) => s.bindingOffersReceived);
   const playerName = useGameStore((s) => s.playerName);
@@ -53,6 +54,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     unreadEmails: emails.filter((e) => e.state === 'unread').length,
     activeRisks: getActiveRisks(risks, phase, bindingOffersReceived).filter((r) => r.severity !== 'low').length,
     pendingTasks: tasks.filter((t) => t.status === 'available' || t.status === 'recommended').length,
+    liveBuyers: buyers.filter((b) => !['dropped', 'excluded'].includes(b.status)).length,
   };
 
   const visibleNavItems: NavEntry[] = [
