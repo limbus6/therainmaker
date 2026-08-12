@@ -94,7 +94,7 @@ This roadmap turns The M&A Rainmaker from a strong one-shot 60-90 minute simulat
 - Delivered: low-priority informational mail has a one-click clear action. Low-complexity, non-recommended internal/document work has a one-click queue action on Dashboard and Tasks.
 - Safeguard: relationship, strategic, market-outreach, external-advisor, risk, buyer, dataroom, fee, and SPA choices remain individual; batching queues work but never completes it or advances time.
 - Measured: ordinary priority and urgent-email paths fall from three clicks to one. The full phase classification, click counts, safeguards, and human timing protocol live in `docs/m0.5-friction-audit.md`.
-- Engineering exit complete. Remaining validation is the scheduled full-mandate human timing pass; its result should tune thresholds, not reopen administrative UI by default.
+- Engineering exit complete. The repeatable full-mandate human timing pass is specified in `docs/roadmap-validation.md`; its result should tune thresholds, not reopen administrative UI by default.
 
 ---
 
@@ -109,6 +109,8 @@ This roadmap turns The M&A Rainmaker from a strong one-shot 60-90 minute simulat
 - Playtest and revise the slice before generalising its patterns into M1-M3. Do not mass-produce content until this unit is compelling and low-friction.
 
 **Exit criteria:** the slice completes in roughly 15-20 minutes; contains no long administrative gap; its major setup/payoff chain is recalled by playtesters; the offer reveal is described as a highlight; players want to continue without being pushed by a filler hook.
+
+**Status:** engineering scope shipped on `main`. The Golden Vektor/Ricardo chain is telegraphed, resolves in authored order, changes offer narration, and has deterministic tests; the dashboard provides the three-part return card. Timing, recall, and desire-to-continue remain observation gates in `docs/roadmap-validation.md`.
 
 **Primary files:** the M1-M3 files below, initially scoped to one Phase 5-7 path.
 
@@ -129,6 +131,8 @@ This roadmap turns The M&A Rainmaker from a strong one-shot 60-90 minute simulat
 
 **Exit criteria:** ≥90% of meaningful advances leave a legible, real source of forward pull; teasers reliably pay off; no filler hooks are needed to hit the metric; players report advancing "to find out" rather than "to process" and can comfortably stop at a phase boundary.
 
+**Status:** engineering scope shipped on `main`. `UpcomingBeat` projects only real scheduled causes from event chains, decisions, buyers, work, email, or deadlines into TurnTape/Timeline; phase transitions and the resume card provide breathing room. The ≥90% and player-language criteria remain observation measures, not fabricated telemetry.
+
 **Primary files:** `src/engine/eventDirector.ts`, `src/engine/weekEngine.ts`, `src/components/TurnTape.tsx`, `src/components/PhaseTransitionOverlay.tsx`.
 
 **Effort:** 1-2 sessions. **Depends on:** V1 (the narrow hook cadence must work before full rollout).
@@ -147,6 +151,8 @@ This roadmap turns The M&A Rainmaker from a strong one-shot 60-90 minute simulat
 - **Rival advisor as a character.** Beacon Partners stops being a one-off event and becomes a named recurring presence within the run (steals a buyer you neglect, pitches Ricardo when trust dips). This seeds M5's persistent antagonist.
 
 **Exit criteria:** in a full run, the majority of trust/chemistry movement comes from decisions the player made about people; every featured relationship arc has a visible setup and payoff; playtesters can name Ricardo's arc and at least two buyer personalities unprompted.
+
+**Status:** engineering scope shipped on `main`. Ricardo's four-state derived pulse now has distinct confident, steady, restless, and anxious copy; Kestrel and Schneider receive remembered multi-beat choices whose flags alter relationship state and offer explanations. Unprompted character recall remains a human measure.
 
 **Primary files:** `src/components/DeskDecisionCard.tsx` (generalize sources), `src/engine/weekEngine.ts`, `src/content/*` (decision content), `src/types/game.ts` (founder state, buyer decision types).
 
@@ -167,6 +173,8 @@ This roadmap turns The M&A Rainmaker from a strong one-shot 60-90 minute simulat
 
 **Exit criteria:** playtesters describe an offer reveal as a highlight; offer moments are screenshotted/shared; players can explain the major drivers of each offer; the sequence remains fast, skippable, and accessible.
 
+**Status:** engineering scope shipped on `main`. Binding offers arrive on deterministic buyer-specific days across the DD window; the staged offer reveal is causal, skippable, motion-reduced, and recorded. Board decision, signing, and closing wire now have short, skippable ceremonies tied to real outcomes, with replay records and Results gated behind the closing moment. Highlight/share sentiment remains a human measure.
+
 **Primary files:** new `src/components/OfferRevealOverlay.tsx`, `src/screens/FinalOffersScreen.tsx`, `src/engine/weekEngine.ts` (staggered arrival), `src/utils/motion.ts`.
 
 **Effort:** 1-2 sessions. **Depends on:** V1. Independent of the full M1/M2 rollout (can be parallelized after the slice).
@@ -185,6 +193,8 @@ This roadmap turns The M&A Rainmaker from a strong one-shot 60-90 minute simulat
 - Add seeded balance simulations across archetypes and fee structures. Horizontal variety is the target; no build should dominate close rate, EV, and relationship outcomes simultaneously.
 
 **Exit criteria:** two playtesters with different builds describe genuinely different runs; players can name the action their archetype enabled; ratchet builds show measurably different Phase 5-7 behavior; seeded simulations reveal no dominant build.
+
+**Status:** engineering scope shipped on `main`. Relationship Banker, Technician, and Shark each keep their disclosed passive trade-off and gain one active, once-per-mandate verb with an explicit resource/opportunity cost. Use is persisted, causal, replayable, and visible in Results alongside Decisions, Risk Profile, Relationship Index, and Used/Held. A 600 matched-seed-per-build CI simulation rotates retainer/balanced/ratchet structures and rejects a build leading close rate, EV, and relationships simultaneously. Player identity recall remains a human measure.
 
 **Primary files:** `src/components/FeeNegotiationModal.tsx`, `src/engine/resultsEngine.ts`, `src/store/gameStore.ts` (archetype state), new `src/content/archetypes.ts`, `src/screens/ResultsBoardScreen.tsx`.
 
@@ -258,7 +268,7 @@ Build M5 as independently shippable releases. Persistence creates meaning first;
 
 **Exit criteria:** the same UTC date and content version reproduce identical starting state and event order across supported devices; incompatible versions are separated by season; internal playtest group returns on consecutive days unprompted.
 
-**Status:** engineering scope shipped on `main`. Run schema v14 plus separate `ma-rainmaker-daily` and `ma-rainmaker-challenges` stores isolate comparison modes from career power. Date+content-version determinism, season separation, fixed build/mandate handoff, first-result locking, share text, challenge round-trip/tampering/season rejection, local attempt records, and Results isolation are tested. Browser QA reached Stage 1/5 from both the declared Daily configuration and a verified RM1 challenge. Consecutive-day return and real friend-to-friend challenge use remain post-deploy human measures.
+**Status:** engineering scope shipped on `main`. Run schema v15 plus separate `ma-rainmaker-daily` and `ma-rainmaker-challenges` stores isolate comparison modes from career power. Content season `solara-events-v4` separates the active-build/staggered-offer rules from prior comparisons. Date+content-version determinism, season separation, fixed build/mandate handoff, first-result locking, share text, challenge round-trip/tampering/season rejection, local attempt records, and Results isolation are tested. Consecutive-day return and real friend-to-friend challenge use remain post-deploy human measures.
 
 **Primary files:** `src/engine/rng.ts`, `src/engine/dailyMandate.ts`, `src/engine/challengeSeed.ts`, `src/store/dailyStore.ts`, `src/store/challengeStore.ts`, `src/screens/CareerScreen.tsx`, and the Daily/Challenge share-card components.
 
@@ -318,9 +328,9 @@ Across runs:
 
 ## Delivery Guardrails (inherited from Handoff.md)
 
-- Until M0 source/build hygiene is complete, edit `.tsx/.ts` as source of truth; compiled `.js/.d.ts` artifacts are committed and Vite resolves them **ahead of** `.tsx` — run `npx tsc -b` (or `npm run build`) before any browser verification. M0 must remove this shadowing risk rather than normalise it indefinitely.
+- M0 source hygiene is complete: `.tsx/.ts` are the source of truth, TypeScript emits nothing into `src`, and `npm run build` runs the source-artifact guard.
 - Keep Vite base `/therainmaker/`; game UI copy stays English.
-- Before each deploy: `git status --short` clean, build, lint, tests, browser QA on desktop + mobile, then `npm run deploy` and verify the public URL.
+- Before each deploy: inspect intended scope, build, lint, tests, browser QA on desktop + mobile, commit/push to `main`, watch the CI deploy, then verify the public bundle hash.
 - Every state-changing system emits a named causal record in development mode; every seeded bug report includes seed and content version.
 - Every save format change increments the schema version and ships a migration test before deploy.
 - Every content-heavy milestone proves one complete setup/payoff path before scaling the number of events.

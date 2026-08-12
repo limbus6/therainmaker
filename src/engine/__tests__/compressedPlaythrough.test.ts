@@ -72,10 +72,15 @@ describe('compressed mandate playthrough', () => {
     }));
     expect(checkPhaseGate(useGameStore.getState())).toMatchObject({ canTransition: true, nextPhase: 10 });
     await useGameStore.getState().advancePhase();
+    expect(useGameStore.getState().apexCeremonies.pending?.type).toBe('signing');
+    useGameStore.getState().completeApexCeremony('completed');
 
     completeCurrentPhaseTasks();
     expect(checkPhaseGate(useGameStore.getState()).canTransition).toBe(true);
     useGameStore.getState().completeGame();
+    expect(useGameStore.getState().gameComplete).toBe(false);
+    expect(useGameStore.getState().apexCeremonies.pending?.type).toBe('closing');
+    useGameStore.getState().completeApexCeremony('completed');
 
     const finalState = useGameStore.getState();
     expect(finalState.gameComplete).toBe(true);

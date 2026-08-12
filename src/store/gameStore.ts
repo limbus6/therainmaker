@@ -45,6 +45,7 @@ import type {
   ProcessRecord,
   ProcessScoringModel,
   ReplayTraceEntry,
+  ApexCeremonyState,
 } from '../types/game';
 import type { ActionCommitment } from '../types/dealBeat';
 import { createInitialEventDirectorState } from '../engine/eventDirector';
@@ -55,7 +56,7 @@ import { resolveWeek, checkPhaseGate, unlockTasks, checkDealCollapse, calcDaysTo
 import type { WeekResult, PhaseGateResult } from '../engine/weekEngine';
 import { getGoldenMandateOfferDriver } from '../engine/goldenMandate';
 import { getPeopleOfferDriver } from '../engine/peopleBeats';
-import { getArchetype, type ArchetypeId } from '../content/archetypes';
+import { getArchetype, type ArchetypeAbilityUse, type ArchetypeId } from '../content/archetypes';
 import {
   consumePendingMandate,
   getFirstMandatePhase,
@@ -76,6 +77,7 @@ import {
 import { deriveDealMomentum, explainDealMomentumChange } from '../engine/dealMomentum';
 import { appendReplayTrace } from '../engine/replayTrace';
 import { getRoutineEmails, getRoutineTasks } from '../utils/friction';
+import { getArchetypeOfferDriver, getArchetypeOfferModifier, resolveArchetypeAbility } from '../engine/archetypeAbilities';
 
 import { loadPhaseContent, type PhaseContent } from '../content/loadPhaseContent';
 
@@ -614,6 +616,8 @@ export interface GameStore {
   boardRejectionCount: number;
   /** Run identity chosen at start; null on legacy saves (no modifiers). */
   advisorArchetype: ArchetypeId | null;
+  /** The single disclosed active build action, once used in this mandate. */
+  archetypeAbilityUse: ArchetypeAbilityUse | null;
   tempCapacityAllocations: TempCapacityAllocation[];
   feeNegotiation: FeeNegotiation | null;
   agreedFeeTerms: FeeTerms | null;
@@ -621,6 +625,7 @@ export interface GameStore {
   toasts: Toast[];
   finalOffers: FinalOffer[];
   offerReveal: OfferRevealState;
+  apexCeremonies: ApexCeremonyState;
   preferredBidderId: string | null;
   spaNegotiation: SPANegotiation | null;
   agreedSPATerms: SPATerms | null;
@@ -678,6 +683,7 @@ export interface GameStore {
   executeRiskMitigationPlan: (riskId: string, planId: string) => void;
   setPlayerName: (name: string) => void;
   selectArchetype: (id: ArchetypeId) => void;
+  useArchetypeAbility: () => void;
   markOnboardingSeen: () => void;
   saveGame: () => void;
   completeGame: () => void;
@@ -711,6 +717,7 @@ export interface GameStore {
   // Final Offers
   selectPreferredBidder: (buyerId: string, confirmed?: boolean) => void;
   completeOfferReveal: (status: 'completed' | 'skipped', revealedBuyerIds: string[]) => void;
+  completeApexCeremony: (status: 'completed' | 'skipped') => void;
   // Dataroom
   setDataroomAccess: (categoryId: string, level: DataroomAccessLevel) => void;
   // SPA
@@ -854,7 +861,7 @@ function bridgeBuyersAcrossSkippedPhases(buyers: Buyer[], skippedPhases: PhaseId
 
 const DEFAULT_PREFERRED_BUYER = 'Kestrel Capital';
 const DEFAULT_FALLBACK_BUYER = 'Vektor Industries';
-const SAVE_SCHEMA_VERSION = 14;
+const SAVE_SCHEMA_VERSION = 15;
 
 function hashIdentifier(value: string): number {
   let hash = 2166136261;
@@ -994,7 +1001,9 @@ function generateFinalOffers(
           ? 0.97
           : 1
       : 1;
-    const rawEV = BASE_EV * postureMultiplier * (1 + momentumMod) * goldenModifier;
+    const sharkModifier = getArchetypeOfferModifier(storyFlags);
+    const archetypeDriver = getArchetypeOfferDriver(storyFlags);
+    const rawEV = BASE_EV * postureMultiplier * (1 + momentumMod) * goldenModifier * sharkModifier;
 
     // Structure based on buyer type
     const structure: FinalOffer['structure'] =
@@ -1041,6 +1050,7 @@ function generateFinalOffers(
         : `Diligence friction drives ${conditionality.replace('_', ' ')}.`,
       ...(goldenDriver ? [goldenDriver] : []),
       ...(peopleDriver ? [peopleDriver] : []),
+      ...(archetypeDriver ? [archetypeDriver] : []),
     ];
 
     offers.push({
@@ -1367,6 +1377,7 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
   boardSubmission: null,
   boardRejectionCount: 0,
   advisorArchetype: pendingMandate?.advisorArchetype ?? null,
+  archetypeAbilityUse: null,
   tempCapacityAllocations: [],
   feeNegotiation: null,
   agreedFeeTerms: null,
@@ -1374,6 +1385,7 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
   toasts: [],
   finalOffers: [],
   offerReveal: { status: 'completed', revealedBuyerIds: [] },
+  apexCeremonies: { pending: null, history: [] },
   preferredBidderId: null,
   spaNegotiation: null,
   agreedSPATerms: null,
@@ -1720,6 +1732,32 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
       result.criticalOutcomes.length > 0 ||
       result.directorSignal.tensionBand === 'danger';
 
+    const currentCeremonies = state.apexCeremonies ?? { pending: null, history: [] };
+    const nextApexCeremonies: ApexCeremonyState = collapse.collapsed
+      ? currentCeremonies
+      : isGameComplete
+        ? {
+            ...currentCeremonies,
+            pending: {
+              id: `closing-${state.mandateId}-${state.rngSeed}`,
+              type: 'closing',
+              day: newDay,
+              phase: 10,
+            },
+          }
+        : result.resolvedBoardSubmission
+          ? {
+              ...currentCeremonies,
+              pending: {
+                id: `board-${state.rngSeed}-${state.boardRejectionCount + 1}`,
+                type: 'board',
+                day: newDay,
+                phase: 0,
+                outcome: result.resolvedBoardSubmission.approved ? 'approved' : 'rejected',
+              },
+            }
+          : currentCeremonies;
+
     set({
       day: newDay,
       week: newWeekNum,
@@ -1765,9 +1803,9 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
       processLog,
       replayTrace,
       phaseGate: gate,
+      apexCeremonies: nextApexCeremonies,
       pitchDocumentReady,
       bindingOffersReceived: updatedBindingOffersReceived,
-      ...(isGameComplete ? { gameComplete: true } : {}),
       ...(collapse.collapsed ? {
         gameComplete: true,
         collapseReason: collapse.reason,
@@ -1893,6 +1931,17 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
       } : state.boardSubmission,
       agreedFeeTerms: isCompressedBootstrap ? ACCEPTED_MANDATE_FEE_TERMS : state.agreedFeeTerms,
     } as GameStore;
+    const nextApexCeremonies: ApexCeremonyState = nextPhase === 10
+      ? {
+          ...(state.apexCeremonies ?? { pending: null, history: [] }),
+          pending: {
+            id: `signing-${state.mandateId}-${state.rngSeed}`,
+            type: 'signing',
+            day: state.day,
+            phase: 10,
+          },
+        }
+      : state.apexCeremonies;
     set({
       phase: nextPhase,
       phaseEntryDay: isCompressedBootstrap
@@ -1935,6 +1984,7 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
       unaddressedQACount: 0,
       finalOffers: newFinalOffers,
       offerReveal: nextOfferReveal,
+      apexCeremonies: nextApexCeremonies,
       preferredBidderId: nextPhase === 7 ? null : state.preferredBidderId,
       activeMissionId: undefined,
       commitments: [],
@@ -2080,6 +2130,7 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
       offerReveal: targetPhase === 7 && finalOffers.length > 0
         ? { status: 'pending', revealedBuyerIds: [] }
         : { status: 'completed', revealedBuyerIds: finalOffers.map((offer) => offer.buyerId) },
+      apexCeremonies: { pending: null, history: [] },
       preferredBidderId: targetPhase >= 8 ? 'buyer-03' : null,
       spaNegotiation: null,
       agreedSPATerms: null,
@@ -2232,6 +2283,18 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
       offerReveal: checkpoint.phase === 7 && finalOffers.length > 0
         ? { status: 'pending', revealedBuyerIds: [] }
         : { status: 'completed', revealedBuyerIds: finalOffers.map((offer) => offer.buyerId) },
+      apexCeremonies: checkpoint.apexCeremony
+        ? {
+            pending: {
+              id: `debug-${checkpoint.id}`,
+              type: checkpoint.apexCeremony.type,
+              day: checkpoint.day,
+              phase: checkpoint.phase,
+              outcome: checkpoint.apexCeremony.outcome,
+            },
+            history: [],
+          }
+        : { pending: null, history: [] },
       spaNegotiation,
       agreedSPATerms,
       dataroomCategories: createInitialDataroomCategories(),
@@ -2731,6 +2794,7 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
     logCausalChange('archetype_selected', { id });
     return {
       advisorArchetype: id,
+      archetypeAbilityUse: null,
       resources: normalizeResources({
         ...state.resources,
         clientTrust: state.resources.clientTrust + archetype.startClientTrust,
@@ -2743,9 +2807,112 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
       ],
     };
   }),
+  useArchetypeAbility: () => set((state) => {
+    const resolution = resolveArchetypeAbility({
+      advisorArchetype: state.advisorArchetype,
+      usedAbilityId: state.archetypeAbilityUse?.abilityId ?? null,
+      phase: state.phase,
+      resources: state.resources,
+      buyers: state.buyers,
+      risks: state.risks,
+    });
+    if (!resolution) return {};
+
+    const baseResources = normalizeResources(resolution.resources);
+    const nextDirectorState = {
+      ...state.eventDirectorState,
+      storyFlags: {
+        ...state.eventDirectorState.storyFlags,
+        [resolution.storyFlag.key]: resolution.storyFlag.value,
+      },
+    };
+    const projection = {
+      ...state,
+      resources: baseResources,
+      buyers: resolution.buyers,
+      risks: resolution.risks,
+      eventDirectorState: nextDirectorState,
+    } as GameStore;
+    const nextResources = normalizeResources({
+      ...baseResources,
+      dealMomentum: deriveDealMomentum(projection),
+    });
+    const resourceDeltas = (Object.keys(nextResources) as (keyof PlayerResources)[])
+      .filter((resource) => nextResources[resource] !== state.resources[resource])
+      .map((resource) => ({
+        resource,
+        before: state.resources[resource],
+        after: nextResources[resource],
+        delta: nextResources[resource] - state.resources[resource],
+        reason: getArchetype(state.advisorArchetype)?.ability.name ?? 'Advisor ability',
+        sourceEntity: getArchetype(state.advisorArchetype)?.name,
+      }));
+    const abilityUse: ArchetypeAbilityUse = {
+      abilityId: resolution.abilityId,
+      day: state.day,
+      phase: state.phase,
+    };
+
+    logCausalChange('archetype_ability', {
+      archetype: state.advisorArchetype,
+      abilityId: resolution.abilityId,
+      phase: state.phase,
+      day: state.day,
+      deltas: resourceDeltas,
+    });
+
+    const projectedWithResources = { ...projection, resources: nextResources } as GameStore;
+    return {
+      archetypeAbilityUse: abilityUse,
+      resources: nextResources,
+      client: syncClient(state.client, nextResources),
+      buyers: resolution.buyers,
+      risks: resolution.risks,
+      eventDirectorState: {
+        ...nextDirectorState,
+        upcomingBeats: buildUpcomingBeats(projectedWithResources),
+      },
+      lastResourceDeltas: resourceDeltas,
+      processLog: appendProcessRecord(state.processLog, {
+        day: state.day,
+        phase: state.phase,
+        category: resolution.process.category,
+        rating: resolution.process.rating,
+        weight: 2,
+        sourceType: 'archetype',
+        sourceId: resolution.abilityId,
+        dedupeKey: `archetype:${resolution.abilityId}`,
+        headline: resolution.process.headline,
+        explanation: resolution.process.explanation,
+      }),
+      replayTrace: appendReplayTrace(state.replayTrace, {
+        day: state.day,
+        phase: state.phase,
+        action: 'archetype_ability',
+        input: { archetype: state.advisorArchetype, abilityId: resolution.abilityId },
+        resourceDeltas,
+        sources: [`archetype:${resolution.abilityId}`],
+      }),
+      toasts: [
+        ...state.toasts,
+        { id: `toast-ability-${resolution.abilityId}`, message: resolution.summary, type: 'success' as const },
+      ],
+    };
+  }),
   markOnboardingSeen: () => set({ hasSeenOnboarding: true }),
   saveGame: () => set({ savedAt: new Date().toISOString() }),
-  completeGame: () => set({ gameComplete: true }),
+  completeGame: () => set((state) => {
+    if (state.phase !== 10) return {};
+    const ceremonies = state.apexCeremonies ?? { pending: null, history: [] };
+    const ceremonyId = `closing-${state.mandateId}-${state.rngSeed}`;
+    if (ceremonies.history.some((record) => record.id === ceremonyId)) return { gameComplete: true };
+    return {
+      apexCeremonies: {
+        ...ceremonies,
+        pending: { id: ceremonyId, type: 'closing', day: state.day, phase: 10 },
+      },
+    };
+  }),
 
 
   dismissWeekSummary: () => set({ showWeekReport: false, isWeekInProgress: false }),
@@ -3217,8 +3384,34 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
     };
   }),
 
-  completeOfferReveal: (status, revealedBuyerIds) => set({
+  completeOfferReveal: (status, revealedBuyerIds) => set((state) => ({
     offerReveal: { status, revealedBuyerIds },
+    replayTrace: appendReplayTrace(state.replayTrace, {
+      day: state.day,
+      phase: state.phase,
+      action: 'ceremony',
+      input: { type: 'offer', status, revealedBuyerIds },
+    }),
+  })),
+
+  completeApexCeremony: (status) => set((state) => {
+    const ceremonies = state.apexCeremonies ?? { pending: null, history: [] };
+    const pending = ceremonies.pending;
+    if (!pending) return {};
+    const record = { ...pending, status };
+    return {
+      apexCeremonies: {
+        pending: null,
+        history: [...ceremonies.history.filter((item) => item.id !== pending.id), record].slice(-30),
+      },
+      replayTrace: appendReplayTrace(state.replayTrace, {
+        day: state.day,
+        phase: state.phase,
+        action: 'ceremony',
+        input: { type: pending.type, status, ceremonyId: pending.id },
+      }),
+      ...(pending.type === 'closing' ? { gameComplete: true } : {}),
+    };
   }),
 
   // SPA actions
@@ -3560,6 +3753,10 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
       s.challengeSeason = null;
       s.challengeAttemptId = null;
       s.startingReputationBonus = 0;
+    }
+    if (fromVersion < 15) {
+      s.archetypeAbilityUse = null;
+      s.apexCeremonies = { pending: null, history: [] };
     }
     if (fromVersion < 11) {
       // Archetypes are a run-start identity; mid-run saves stay 'balanced'.

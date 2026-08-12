@@ -479,6 +479,26 @@ export default function ResultsBoardScreen() {
             </p>
           );
         })()}
+        <div className="mx-auto mb-4 mt-4 grid max-w-3xl grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="rounded-[var(--radius-md)] border border-border-subtle bg-surface-default p-2.5">
+            <p className="text-[9px] font-mono uppercase tracking-wider text-text-muted">Decisions</p>
+            <p className="mt-1 text-[14px] font-mono font-semibold text-text-primary">{results.style.decisionsTaken}</p>
+          </div>
+          <div className="rounded-[var(--radius-md)] border border-border-subtle bg-surface-default p-2.5">
+            <p className="text-[9px] font-mono uppercase tracking-wider text-text-muted">Risk profile</p>
+            <p className="mt-1 text-[12px] font-semibold text-text-primary">{results.style.riskProfile} · {results.style.riskControl}</p>
+          </div>
+          <div className="rounded-[var(--radius-md)] border border-border-subtle bg-surface-default p-2.5">
+            <p className="text-[9px] font-mono uppercase tracking-wider text-text-muted">Relationship</p>
+            <p className="mt-1 text-[14px] font-mono font-semibold text-text-primary">{results.style.relationshipIndex}</p>
+          </div>
+          <div className="rounded-[var(--radius-md)] border border-border-subtle bg-surface-default p-2.5">
+            <p className="text-[9px] font-mono uppercase tracking-wider text-text-muted">Active ability</p>
+            <p className={`mt-1 text-[12px] font-semibold ${results.style.abilityUsed ? 'text-state-success' : 'text-text-secondary'}`}>
+              {results.style.abilityUsed ? 'Used' : 'Held'}
+            </p>
+          </div>
+        </div>
         <p className="text-[12px] text-text-muted">
           Completed in {state.totalDays} days (Week {state.week}) across {completedPhaseCount} mandate stages
           {' '}— {state.tasks.filter((t) => t.status === 'completed').length} tasks completed

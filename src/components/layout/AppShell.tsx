@@ -8,6 +8,7 @@ import DealCollapseOverlay from '../DealCollapseOverlay';
 import OnboardingOverlay from '../OnboardingOverlay';
 import ToastContainer from '../ToastContainer';
 import GameplayReviewBar from '../GameplayReviewBar';
+import ApexCeremonyOverlay from '../ApexCeremonyOverlay';
 import { useGameStore } from '../../store/gameStore';
 import type { PhaseId } from '../../types/game';
 
@@ -17,6 +18,7 @@ export default function AppShell() {
   const collapseHeadline = useGameStore((s) => s.collapseHeadline);
   const collapseDescription = useGameStore((s) => s.collapseDescription);
   const hasSeenOnboarding = useGameStore((s) => s.hasSeenOnboarding);
+  const pendingApexCeremony = useGameStore((s) => s.apexCeremonies.pending);
   const [showOnboarding, setShowOnboarding] = useState(!hasSeenOnboarding);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
@@ -90,6 +92,7 @@ export default function AppShell() {
           onComplete={handleTransitionComplete}
         />
       )}
+      {!transition && pendingApexCeremony && <ApexCeremonyOverlay />}
       {showCollapse && collapseHeadline && collapseDescription && (
         <DealCollapseOverlay
           headline={collapseHeadline}

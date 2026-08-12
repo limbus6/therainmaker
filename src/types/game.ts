@@ -119,7 +119,6 @@ export interface Buyer {
   notes: string;
   enteredPhase: PhaseId;
   bindingOfferSubmitted?: boolean; // set true when buyer submits binding offer before Phase 6 deadline
-  ddDropoutRisk?: number;          // 0-100: probability this buyer drops before submitting binding offer
 }
 
 // --- Tasks ---
@@ -240,7 +239,7 @@ export interface GameEvent {
 
 export type ProcessCategory = 'judgment' | 'execution' | 'stakeholder' | 'risk' | 'negotiation';
 export type ProcessScoringModel = 'legacy-v1' | 'causal-v2';
-export type ProcessSourceType = 'task' | 'email' | 'risk' | 'board' | 'pitch' | 'fee_round' | 'spa_round' | 'dataroom' | 'buyer_decision';
+export type ProcessSourceType = 'task' | 'email' | 'risk' | 'board' | 'pitch' | 'fee_round' | 'spa_round' | 'dataroom' | 'buyer_decision' | 'archetype';
 
 /** A persisted, outcome-independent observation of how the player ran the process. */
 export interface ProcessRecord {
@@ -276,7 +275,9 @@ export type ReplayActionType =
   | 'fee_round'
   | 'buyer_selection'
   | 'dataroom_access'
-  | 'spa_round';
+  | 'spa_round'
+  | 'archetype_ability'
+  | 'ceremony';
 
 /** Serializable action input plus deterministic outcome metadata for QA replay. */
 export interface ReplayTraceEntry {
@@ -590,6 +591,29 @@ export interface FinalOffer {
 export interface OfferRevealState {
   status: 'pending' | 'completed' | 'skipped';
   revealedBuyerIds: string[];
+}
+
+// ============================================
+// Apex ceremonies (board, signing, closing)
+// ============================================
+
+export type ApexCeremonyType = 'board' | 'signing' | 'closing';
+
+export interface PendingApexCeremony {
+  id: string;
+  type: ApexCeremonyType;
+  day: number;
+  phase: PhaseId;
+  outcome?: 'approved' | 'rejected';
+}
+
+export interface ApexCeremonyRecord extends PendingApexCeremony {
+  status: 'completed' | 'skipped';
+}
+
+export interface ApexCeremonyState {
+  pending: PendingApexCeremony | null;
+  history: ApexCeremonyRecord[];
 }
 
 // ============================================

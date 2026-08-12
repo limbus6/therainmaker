@@ -60,13 +60,19 @@ describe('people beats scheduling', () => {
 
   it('adapts the check-in to the founder mood', () => {
     const calm = resolvePeopleBeat(makeState(), 63)!;
+    const confident = resolvePeopleBeat(
+      makeState({ resources: { clientTrust: 80, dealMomentum: 75, riskLevel: 10 } }),
+      63,
+    )!;
     const worried = resolvePeopleBeat(
       makeState({ resources: { clientTrust: 35, dealMomentum: 30, riskLevel: 30 } }),
       63,
     )!;
     expect(calm.event.title).toBe('Ricardo checks in');
+    expect(confident.event.title).toBe('Ricardo sees leverage');
     expect(worried.event.title).toBe('Ricardo needs reassurance');
     expect(calm.email.subject).not.toBe(worried.email.subject);
+    expect(confident.email.subject).not.toBe(calm.email.subject);
   });
 
   it('skips buyer beats when the buyer has left the process', () => {

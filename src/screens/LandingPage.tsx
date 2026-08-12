@@ -81,7 +81,7 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-bg-primary flex items-center justify-center overflow-hidden relative">
+    <div className="min-h-screen w-full bg-bg-primary flex items-center justify-center overflow-x-hidden overflow-y-auto py-4 relative">
       <div className="absolute inset-0 opacity-20 pointer-events-none">
         <div className="absolute inset-0 bg-gradient-to-br from-accent-primary via-bg-primary to-bg-secondary" />
       </div>

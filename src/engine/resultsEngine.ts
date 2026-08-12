@@ -54,6 +54,13 @@ export interface ResultsBoard {
     rainmakerScore: number;
     sectorCredibilityGain: number;
   };
+  style: {
+    decisionsTaken: number;
+    riskProfile: 'Controlled' | 'Balanced' | 'Aggressive';
+    riskControl: number;
+    relationshipIndex: number;
+    abilityUsed: boolean;
+  };
   scores: {
     financialScore: number;
     clientScore: number;
@@ -284,6 +291,30 @@ function calculateCareerScore(state: GameStore, financialScore: number, processS
   };
 }
 
+function calculateStyleStats(state: GameStore): ResultsBoard['style'] {
+  const liveBuyerChemistry = state.buyers
+    .filter((buyer) => !['dropped', 'excluded'].includes(buyer.status))
+    .map((buyer) => Number.isFinite(buyer.chemistryWithSeller) ? buyer.chemistryWithSeller : 50);
+  const buyerRelationship = liveBuyerChemistry.length > 0
+    ? liveBuyerChemistry.reduce((sum, value) => sum + value, 0) / liveBuyerChemistry.length
+    : state.resources.clientTrust;
+  const relationshipIndex = Math.round((state.resources.clientTrust * 0.6) + (buyerRelationship * 0.4));
+  const riskControl = Math.max(0, Math.min(100, 100 - state.resources.riskLevel));
+  const riskProfile: ResultsBoard['style']['riskProfile'] = riskControl >= 75
+    ? 'Controlled'
+    : riskControl >= 50
+      ? 'Balanced'
+      : 'Aggressive';
+
+  return {
+    decisionsTaken: new Set((state.processLog ?? []).map((record) => record.dedupeKey)).size,
+    riskProfile,
+    riskControl,
+    relationshipIndex,
+    abilityUsed: !!state.archetypeAbilityUse,
+  };
+}
+
 // --- Legacy context (used only for migrated saves without a causal log) ---
 function generateLegacyDrivers(state: GameStore): string[] {
   const drivers: string[] = [];
@@ -415,6 +446,7 @@ export function buildResultsBoard(state: GameStore): ResultsBoard {
   const team = calculateTeamScore(state);
   const process = calculateProcessScore(state);
   const career = calculateCareerScore(state, financial.score, process.score);
+  const style = calculateStyleStats(state);
 
   // Overall score: weighted blend
   const overallDealScore = Math.round(
@@ -490,6 +522,7 @@ export function buildResultsBoard(state: GameStore): ResultsBoard {
       rainmakerScore: career.rainmakerScore,
       sectorCredibilityGain: career.sectorCredibilityGain,
     },
+    style,
     scores,
     debrief,
   };

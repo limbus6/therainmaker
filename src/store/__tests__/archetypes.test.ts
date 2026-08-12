@@ -6,6 +6,7 @@ describe('advisor archetypes', () => {
   beforeEach(() => {
     useGameStore.setState({
       advisorArchetype: null,
+      archetypeAbilityUse: null,
       resources: { ...useGameStore.getState().resources, clientTrust: 40, reputation: 50 },
     });
   });
@@ -55,6 +56,24 @@ describe('advisor archetypes', () => {
     for (const archetype of ADVISOR_ARCHETYPES) {
       expect(archetype.effects.length).toBeGreaterThan(0);
       expect(archetype.tagline.length).toBeGreaterThan(10);
+      expect(archetype.ability.effects.length).toBeGreaterThanOrEqual(3);
     }
+  });
+
+  it('persists the active action, its causal evidence, and its replay trace', () => {
+    useGameStore.setState({
+      advisorArchetype: 'relationship_banker',
+      archetypeAbilityUse: null,
+      phase: 3,
+      processLog: [],
+      replayTrace: [],
+      resources: { ...useGameStore.getState().resources, clientTrust: 50, teamCapacity: 80 },
+    });
+    useGameStore.getState().useArchetypeAbility();
+    const state = useGameStore.getState();
+    expect(state.archetypeAbilityUse).toMatchObject({ abilityId: 'founder_call', phase: 3 });
+    expect(state.processLog).toContainEqual(expect.objectContaining({ sourceType: 'archetype', sourceId: 'founder_call' }));
+    expect(state.replayTrace).toContainEqual(expect.objectContaining({ action: 'archetype_ability' }));
+    expect(state.lastResourceDeltas).toContainEqual(expect.objectContaining({ resource: 'clientTrust', delta: 10 }));
   });
 });

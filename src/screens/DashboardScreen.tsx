@@ -21,6 +21,7 @@ import PhaseZeroDashboard from '../components/PhaseZeroDashboard';
 import PhaseDeadlineModal from '../components/PhaseDeadlineModal';
 import TurnTape from '../components/TurnTape';
 import DeskDecisionCard from '../components/DeskDecisionCard';
+import ArchetypeAbilityPanel from '../components/ArchetypeAbilityPanel';
 import { getActiveRisks, getDashboardDeliverables, getMomentumLabel, applyPhaseWorkstreams } from '../utils/gameplayState';
 import { checkPhaseGate, getAdvancePacePreview } from '../engine/weekEngine';
 import { getMissionsForPhase } from '../content/missions';
@@ -333,6 +334,8 @@ export default function DashboardScreen() {
           </div>
         </div>
       )}
+
+      <ArchetypeAbilityPanel />
 
       <DeskDecisionCard />
 

@@ -77,6 +77,15 @@ function clamp(value: number, min = 0, max = 100): number {
   return Math.max(min, Math.min(max, value));
 }
 
+function hashText(value: string): number {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
 function createGameplayDirectorSignal(state: GameStore): GameplayDirectorSignal {
   const unresolvedRiskPressure = state.risks
     .filter(isActiveRisk)
@@ -506,20 +515,6 @@ function progressBuyers(
         changes.push({ buyerId: buyer.id, field: 'status', from: 'shortlisted', to: 'bidding' });
       }
     }
-
-     // Phase 5-6: Due Diligence dropout risk
-     if ((phase === 5 || phase === 6) && buyer.ddDropoutRisk && buyer.ddDropoutRisk > 0) {
-       if (rng.nextBool(buyer.ddDropoutRisk)) {
-          const oldStatus = newBuyer.status;
-          newBuyer.status = 'dropped';
-          changes.push({
-            buyerId: buyer.id,
-            field: 'status',
-            from: oldStatus,
-            to: 'dropped'
-          });
-       }
-     }
 
      // Phase 7: Final Offers — bidding buyers become preferred/excluded
      if (phase === 7) {
@@ -968,98 +963,106 @@ export function resolveWeek(state: GameStore, daysToAdvance: number = 7): WeekRe
     const currentMorale = (resourceChanges.morale as number | undefined) ?? state.resources.morale;
     resourceChanges.morale = Math.max(0, Math.min(100, currentMorale + paceMoraleDelta));
   }
-  // ─── Phase 6: Binding Offer Deadline Evaluation ──────────────────────────────
-  // When the process letter deadline passes, evaluate each active buyer's likelihood
-  // of submitting a binding offer. Three dropout risk factors:
-  //   1. High risk level (undisclosed DD issues from poor preparation)
-  //   2. Weak dataroom (not enough documents at full/partial access)
-  //   3. High unaddressed Q&A count (slow or incomplete Q&A responses)
+  // ─── Phase 6: Staggered binding-offer window ─────────────────────────────────
+  // Each buyer receives a deterministic due day inside the DD window. Credible
+  // offers therefore land across multiple advances; the formal deadline remains
+  // the final evaluation point for buyers that did not submit early.
   let bindingOfferDelta = 0;
   const updatedBuyersAfterDeadline = [...state.buyers];
-
-  if (
-    state.phase === 6 &&
-    state.phaseDeadline !== null &&
-    newDay >= state.phaseDeadline &&
-    state.day < state.phaseDeadline // only trigger once when crossing the deadline
-  ) {
-    // Compute dataroom completeness (% of categories with 'full' or 'partial' access)
+  if (state.phase === 6 && state.phaseDeadline !== null) {
     const totalCats = state.dataroomCategories.length;
-    const openCats = state.dataroomCategories.filter(c => c.accessLevel === 'full' || c.accessLevel === 'partial').length;
-    const dataroomScore = totalCats > 0 ? openCats / totalCats : 0; // 0–1
+    const openCats = state.dataroomCategories.filter((category) => category.accessLevel === 'full' || category.accessLevel === 'partial').length;
+    const dataroomScore = totalCats > 0 ? openCats / totalCats : 0;
+    const riskPenalty = Math.max(0, (state.resources.riskLevel - 40) / 100 * 0.4);
 
-    // Active DD buyers who haven't yet submitted
-    const ddBuyers = updatedBuyersAfterDeadline.filter(
-      b => !['dropped', 'excluded'].includes(b.status) && !b.bindingOfferSubmitted
-    );
-
-    for (const buyer of ddBuyers) {
-      // Base dropout probability
-      let dropoutP = 0.15; // 15% base
-
-      // Factor 1: Risk level from undisclosed DD issues
-      const riskPenalty = Math.max(0, (state.resources.riskLevel - 40) / 100 * 0.4);
-      dropoutP += riskPenalty;
-
-      // Factor 2: Weak dataroom
+    const dropoutProbability = (buyer: Buyer) => {
+      let dropoutP = 0.15 + riskPenalty;
       if (dataroomScore < 0.5) dropoutP += 0.30;
       else if (dataroomScore < 0.75) dropoutP += 0.12;
-
-      // Factor 3: Unaddressed Q&A
-      const qaPenalty = Math.min(0.30, (state.unaddressedQACount / 5) * 0.15);
-      dropoutP += qaPenalty;
-
-      // Buyer-specific modifier: high DD friction buyers are more likely to drop
+      dropoutP += Math.min(0.30, (state.unaddressedQACount / 5) * 0.15);
       if (buyer.ddFriction === 'high') dropoutP += 0.15;
       else if (buyer.ddFriction === 'medium') dropoutP += 0.05;
+      return Math.min(0.95, dropoutP);
+    };
 
-      dropoutP = Math.min(0.95, dropoutP);
+    const recordSubmission = (buyer: Buyer, arrivalDay: number) => {
+      const index = updatedBuyersAfterDeadline.findIndex((candidate) => candidate.id === buyer.id);
+      if (index < 0 || updatedBuyersAfterDeadline[index].bindingOfferSubmitted) return;
+      updatedBuyersAfterDeadline[index] = { ...updatedBuyersAfterDeadline[index], bindingOfferSubmitted: true, status: 'bidding' };
+      bindingOfferDelta += 1;
+      eventResult.emails.push({
+        id: `email-bindoffer-${buyer.id}-${arrivalDay}`,
+        week: Math.ceil(arrivalDay / 7),
+        day: arrivalDay,
+        phase: 6,
+        sender: buyer.name,
+        senderRole: 'Corporate Development',
+        subject: `Binding Offer Submitted — ${buyer.name}`,
+        body: 'We are pleased to confirm submission of our binding offer. Our legal team has also returned a marked-up draft SPA. We remain committed to completing this transaction on the process timetable.',
+        preview: `Binding offer and SPA mark-up received from ${buyer.name}.`,
+        category: 'buyer',
+        state: 'unread',
+        priority: 'high',
+        timestamp: `Day ${arrivalDay}`,
+        linkedEntityId: buyer.id,
+        linkedEntityType: 'buyer',
+      });
+    };
 
-      const rolled = rng.next();
-      const submits = rolled > dropoutP;
+    const windowBuyers = updatedBuyersAfterDeadline
+      .filter((buyer) => !['dropped', 'excluded'].includes(buyer.status))
+      .sort((a, b) => a.id.localeCompare(b.id));
+    const phaseEntryDay = state.phaseEntryDay[6] ?? Math.max(1, state.phaseDeadline - 21);
+    const windowDays = Math.max(2, state.phaseDeadline - phaseEntryDay);
 
-      const idx = updatedBuyersAfterDeadline.findIndex(b => b.id === buyer.id);
-      if (submits) {
-        updatedBuyersAfterDeadline[idx] = { ...buyer, bindingOfferSubmitted: true, status: 'bidding' };
-        bindingOfferDelta += 1;
+    for (const [index, buyer] of windowBuyers.entries()) {
+      if (buyer.bindingOfferSubmitted) continue;
+      const scheduledDay = Math.min(
+        state.phaseDeadline - 1,
+        phaseEntryDay + Math.max(1, Math.floor(((index + 1) * windowDays) / (windowBuyers.length + 1))),
+      );
+      const crossesScheduledDay = state.day < scheduledDay && newDay >= scheduledDay;
+      if (!crossesScheduledDay) continue;
+      const arrivalRng = createRng(deriveSeed(state.rngSeed, hashText(buyer.id), scheduledDay, 606));
+      if (arrivalRng.next() > dropoutProbability(buyer)) recordSubmission(buyer, scheduledDay);
+    }
+
+    const crossesDeadline = newDay >= state.phaseDeadline && state.day < state.phaseDeadline;
+    if (crossesDeadline) {
+      const remainingBuyers = updatedBuyersAfterDeadline.filter(
+        (buyer) => !['dropped', 'excluded'].includes(buyer.status) && !buyer.bindingOfferSubmitted,
+      );
+      for (const buyer of remainingBuyers) {
+        const deadlineRng = createRng(deriveSeed(state.rngSeed, hashText(buyer.id), state.phaseDeadline, 607));
+        if (deadlineRng.next() > dropoutProbability(buyer)) {
+          recordSubmission(buyer, state.phaseDeadline);
+          continue;
+        }
+
+        const index = updatedBuyersAfterDeadline.findIndex((candidate) => candidate.id === buyer.id);
+        if (index < 0) continue;
+        const reason = riskPenalty > 0.20
+          ? 'material issues identified during due diligence that were not adequately disclosed in the data room'
+          : dataroomScore < 0.5
+            ? 'insufficient documentation in the data room to complete their legal and financial review'
+            : state.unaddressedQACount > 3
+              ? 'outstanding Q&A requests that were not answered in time'
+              : 'internal constraints and transaction priorities';
+        updatedBuyersAfterDeadline[index] = { ...buyer, status: 'dropped', bindingOfferSubmitted: false };
         eventResult.emails.push({
-          id: `email-bindoffer-${buyer.id}-${newDay}`,
-          week: newWeek,
-          phase: 6,
-          sender: buyer.name,
-          senderRole: 'Corporate Development',
-          subject: `Binding Offer Submitted — ${buyer.name}`,
-          body: `We are pleased to confirm submission of our binding offer ahead of the process letter deadline. Our legal team has also returned a marked-up draft SPA for your review. We remain committed to completing this transaction on a timely basis and look forward to your feedback.`,
-          preview: `Binding offer and SPA mark-up received from ${buyer.name}.`,
-          category: 'buyer',
-          state: 'unread',
-          priority: 'high',
-          timestamp: `Week ${newWeek}`,
-          linkedEntityId: buyer.id,
-          linkedEntityType: 'buyer',
-        });
-      } else {
-        // Determine the main dropout reason for the email
-        const reason =
-          riskPenalty > 0.20 ? 'material issues identified during due diligence that were not adequately disclosed in the data room'
-          : dataroomScore < 0.5 ? 'insufficient documentation in the data room to complete their legal and financial review'
-          : state.unaddressedQACount > 3 ? 'outstanding Q&A requests that were not responded to in a timely manner'
-          : 'internal constraints and transaction priorities';
-
-        updatedBuyersAfterDeadline[idx] = { ...buyer, status: 'dropped', bindingOfferSubmitted: false };
-        eventResult.emails.push({
-          id: `email-dropout-${buyer.id}-${newDay}`,
-          week: newWeek,
+          id: `email-dropout-${buyer.id}-${state.phaseDeadline}`,
+          week: Math.ceil(state.phaseDeadline / 7),
+          day: state.phaseDeadline,
           phase: 6,
           sender: buyer.name,
           senderRole: 'Corporate Development',
           subject: `Process Withdrawal — ${buyer.name}`,
-          body: `Following our internal review, we regret to inform you that we will not be submitting a binding offer by the process letter deadline. This decision was driven by ${reason}. We wish you and your client success in completing this transaction.`,
+          body: `Following our internal review, we will not submit a binding offer. The decision was driven by ${reason}.`,
           preview: `${buyer.name} has withdrawn from the process.`,
           category: 'buyer',
           state: 'unread',
           priority: 'high',
-          timestamp: `Week ${newWeek}`,
+          timestamp: `Day ${state.phaseDeadline}`,
           linkedEntityId: buyer.id,
           linkedEntityType: 'buyer',
         });

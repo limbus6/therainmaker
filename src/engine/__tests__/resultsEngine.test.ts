@@ -200,4 +200,15 @@ describe('Results Engine', () => {
     expect(result.debrief.every((finding) => finding.sourceRecordId)).toBe(true);
     expect(result.debrief.some((finding) => finding.headline.startsWith('judgment moment'))).toBe(true);
   });
+
+  it('makes build identity legible through style statistics', () => {
+    const state = getMockState();
+    state.processLog = processRecords(0.8);
+    state.archetypeAbilityUse = { abilityId: 'founder_call', day: 20, phase: 3 };
+    const result = buildResultsBoard(state);
+    expect(result.style.decisionsTaken).toBe(10);
+    expect(result.style.riskProfile).toBe('Controlled');
+    expect(result.style.relationshipIndex).toBeGreaterThan(0);
+    expect(result.style.abilityUsed).toBe(true);
+  });
 });

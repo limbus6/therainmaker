@@ -201,12 +201,19 @@ describe('Game Store', () => {
       },
     }, 7) as Record<string, unknown>;
 
-    expect(migrated.contentVersion).toBe('solara-events-v3');
+    expect(migrated.contentVersion).toBe('solara-events-v4');
     expect(migrated.scoringModelVersion).toBe('legacy-v1');
     expect(migrated.processLog).toEqual([]);
     expect(migrated.boardRejectionCount).toBe(0);
     expect(migrated.replayTrace).toEqual([]);
     expect((migrated.resources as { budget: number }).budget).toBe(20);
     expect(migrated.resources).not.toHaveProperty('dealMomentum');
+  });
+
+  it('migrates v14 runs to active abilities and ceremony tracking without replaying old moments', async () => {
+    const migrate = useGameStore.persist.getOptions().migrate;
+    const migrated = await migrate!({ advisorArchetype: 'shark' }, 14) as Record<string, unknown>;
+    expect(migrated.archetypeAbilityUse).toBeNull();
+    expect(migrated.apexCeremonies).toEqual({ pending: null, history: [] });
   });
 });

@@ -64,7 +64,14 @@ function founderCheckIn(
   beatId: string,
   phase: PhaseId,
   offsetDays: number,
-  topic: { calm: string; worried: string; subjectCalm: string; subjectWorried: string },
+  topic: {
+    calm: string;
+    confident: string;
+    worried: string;
+    subjectCalm: string;
+    subjectConfident: string;
+    subjectWorried: string;
+  },
 ): BeatDef {
   return {
     id: beatId,
@@ -74,6 +81,9 @@ function founderCheckIn(
     build: (state, day) => {
       const mood = founderMood(state);
       const worried = mood === 'anxious' || mood === 'restless';
+      const confident = mood === 'confident';
+      const subject = worried ? topic.subjectWorried : confident ? topic.subjectConfident : topic.subjectCalm;
+      const message = worried ? topic.worried : confident ? topic.confident : topic.calm;
       const week = Math.ceil(day / 7);
       return {
         event: {
@@ -81,7 +91,7 @@ function founderCheckIn(
           week,
           phase: state.phase,
           type: 'active',
-          title: worried ? 'Ricardo needs reassurance' : 'Ricardo checks in',
+          title: worried ? 'Ricardo needs reassurance' : confident ? 'Ricardo sees leverage' : 'Ricardo checks in',
           description: FOUNDER_MOOD_NOTES[mood],
           resolved: false,
           chainId: PEOPLE_BEATS_CHAIN,
@@ -94,9 +104,9 @@ function founderCheckIn(
           phase: state.phase,
           sender: state.client.name,
           senderRole: `Founder & CEO, ${state.client.companyName}`,
-          subject: worried ? topic.subjectWorried : topic.subjectCalm,
-          body: `${FOUNDER_MOOD_NOTES[mood]}\n\n${worried ? topic.worried : topic.calm}`,
-          preview: worried ? topic.subjectWorried : topic.subjectCalm,
+          subject,
+          body: `${FOUNDER_MOOD_NOTES[mood]}\n\n${message}`,
+          preview: subject,
           category: 'client',
           state: 'unread',
           priority: 'urgent',
@@ -139,8 +149,10 @@ function founderCheckIn(
 const BEATS: BeatDef[] = [
   founderCheckIn('people-ricardo-p3', 3, 3, {
     subjectCalm: 'How is the market reading us?',
+    subjectConfident: 'Which buyer should feel the pressure first?',
     subjectWorried: 'Are the right buyers actually engaging?',
     calm: 'The teaser is out and I keep imagining who is reading it. Give me your honest read — who is leaning in, and what does that tell us?',
+    confident: 'The names opening the teaser are exactly the names we wanted. Tell me where we can press without looking overeager — I want the market to know this is competitive.',
     worried: 'The teaser went out and I have heard nothing I can hold on to. I need to know whether the silence is process or a verdict.',
   }),
   {
@@ -203,8 +215,10 @@ const BEATS: BeatDef[] = [
   },
   founderCheckIn('people-ricardo-p4', 4, 3, {
     subjectCalm: 'The shortlist is taking shape',
+    subjectConfident: 'Let us make the shortlist earn its place',
     subjectWorried: 'Are we cutting the wrong people?',
     calm: 'I looked at the shortlist draft last night. Some of these names I never expected to be real. Which of them would actually run Solara well?',
+    confident: 'The shortlist is stronger than I expected. I do not want a comfortable round now — which buyers can we challenge to prove they deserve access?',
     worried: 'Every name we cut is a door that closes. I keep thinking about the one buyer we will drop who would have paid the most. Convince me the funnel is right.',
   }),
   {
@@ -267,14 +281,18 @@ const BEATS: BeatDef[] = [
   },
   founderCheckIn('people-ricardo-p5', 5, 2, {
     subjectCalm: 'First numbers are close',
+    subjectConfident: 'The first number should not set the ceiling',
     subjectWorried: 'What if the numbers disappoint?',
     calm: 'Offers are days away. I told my wife last night that whatever comes in, we ran this properly. Still — what does your gut say?',
+    confident: 'Offers are days away and the room feels competitive. If the first number is good, do not let me fall in love with it — show me how we keep the ceiling open.',
     worried: 'I cannot sleep. Twelve years of my life get a number this week. If it comes in low, I need to know what we do — tell me there is a plan for that.',
   }),
   founderCheckIn('people-ricardo-p6', 6, 4, {
     subjectCalm: 'The data room feels like an X-ray',
+    subjectConfident: 'Diligence is proving the story',
     subjectWorried: 'They are looking for reasons to walk',
     calm: 'Strange feeling, watching strangers read twelve years of decisions. The questions are sharp but fair. Anything in there I should be worried about?',
+    confident: 'The hard questions are making the company look better, not worse. Where can we use that confidence without giving buyers permission to expand the scope?',
     worried: 'Every Q&A request reads like an accusation. My CFO says that is normal. It does not feel normal. Are we losing anyone in there?',
   }),
   {

@@ -1,4 +1,4 @@
-import type { BuyerStatus, PhaseId } from '../types/game';
+import type { ApexCeremonyType, BuyerStatus, PhaseId } from '../types/game';
 
 export interface ReviewCheckpoint {
   id: string;
@@ -22,6 +22,10 @@ export interface ReviewCheckpoint {
   pitchDocumentReady?: boolean;
   feeAgreed?: boolean;
   spaAgreed?: boolean;
+  apexCeremony?: {
+    type: ApexCeremonyType;
+    outcome?: 'approved' | 'rejected';
+  };
 }
 
 export const REVIEW_CHECKPOINTS: ReviewCheckpoint[] = [
@@ -50,6 +54,22 @@ export const REVIEW_CHECKPOINTS: ReviewCheckpoint[] = [
     leadInvestigated: true,
     leadMeetingDone: true,
     qualificationNotes: 2,
+  },
+  {
+    id: 'p0-ic-decision',
+    phase: 0,
+    label: 'IC Decision Reveal',
+    description: 'Approved board outcome queued for ceremony QA.',
+    route: '/game',
+    day: 18,
+    clientTrust: 55,
+    dealMomentum: 42,
+    riskLevel: 18,
+    boardApproved: true,
+    leadInvestigated: true,
+    leadMeetingDone: true,
+    qualificationNotes: 2,
+    apexCeremony: { type: 'board', outcome: 'approved' },
   },
   {
     id: 'p1-pitch-build',
