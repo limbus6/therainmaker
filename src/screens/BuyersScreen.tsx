@@ -131,34 +131,40 @@ export default function BuyersScreen() {
                     <td className="py-2.5 px-2"><StatusChip label={buyer.status.replace('_', ' ')} variant={statusVariant[buyer.status]} /></td>
                     <td className="py-2.5 px-2 text-[12px] text-text-secondary">{getBuyerOfferLabel(buyer, finalOffers)}</td>
                     <td className="py-2.5 px-2 text-[12px] font-mono text-text-muted">{buyer.executionCredibility}%</td>
-                    {phase === 4 && (
-                      <td className="py-2.5 px-2">
-                        <button
-                          type="button"
-                          onClick={() => setBuyerShortlisted(buyer.id, !isShortlisted)}
-                          disabled={decisionDisabled}
-                          title={
-                            !shortlistAnalysisReady
-                              ? 'Complete Score Buyer Seriousness first'
-                              : shortlistFull
-                                ? 'The shortlist is limited to five buyers'
-                                : !isShortlisted && !canEnterShortlist
-                                  ? 'Only buyers with an NDA and live engagement can be shortlisted'
-                                  : undefined
-                          }
-                          className={`inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] border px-2.5 py-1.5 text-[11px] font-semibold transition-colors ${
-                            isShortlisted
-                              ? 'border-state-danger/30 bg-state-danger/5 text-state-danger hover:bg-state-danger/10'
-                              : decisionDisabled
-                                ? 'cursor-not-allowed border-border-subtle bg-surface-default text-text-muted/50'
-                                : 'border-border-accent bg-border-accent/10 text-text-accent hover:bg-border-accent/20'
-                          }`}
-                        >
-                          {isShortlisted ? <UserMinus size={11} /> : <UserPlus size={11} />}
-                          {isShortlisted ? 'Remove' : 'Shortlist'}
-                        </button>
-                      </td>
-                    )}
+                    {phase === 4 && (() => {
+                      const disabledReason = !shortlistAnalysisReady
+                        ? 'Complete Score Buyer Seriousness first'
+                        : shortlistFull
+                          ? 'Shortlist is limited to five buyers'
+                          : !isShortlisted && !canEnterShortlist
+                            ? 'Needs an NDA before it can be shortlisted'
+                            : undefined;
+                      return (
+                        <td className="py-2.5 px-2">
+                          <div className="flex flex-col items-start gap-1">
+                            <button
+                              type="button"
+                              onClick={() => setBuyerShortlisted(buyer.id, !isShortlisted)}
+                              disabled={decisionDisabled}
+                              title={disabledReason}
+                              className={`inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] border px-2.5 py-1.5 text-[11px] font-semibold transition-colors ${
+                                isShortlisted
+                                  ? 'border-state-danger/30 bg-state-danger/5 text-state-danger hover:bg-state-danger/10'
+                                  : decisionDisabled
+                                    ? 'cursor-not-allowed border-border-subtle bg-surface-default text-text-muted/50'
+                                    : 'border-border-accent bg-border-accent/10 text-text-accent hover:bg-border-accent/20'
+                              }`}
+                            >
+                              {isShortlisted ? <UserMinus size={11} /> : <UserPlus size={11} />}
+                              {isShortlisted ? 'Remove' : 'Shortlist'}
+                            </button>
+                            {disabledReason && (
+                              <span className="text-[10px] leading-tight text-text-muted">{disabledReason}</span>
+                            )}
+                          </div>
+                        </td>
+                      );
+                    })()}
                   </tr>
                   );
                 })}
