@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { Calendar, Clock, AlertTriangle } from 'lucide-react';
+import { getNextMandatePhase } from '../content/mandates';
 
 interface PhaseDeadlineModalProps {
   phase: 3 | 4 | 6;
@@ -45,9 +46,16 @@ const ADVISORY: Record<3 | 4 | 6, (weeks: number) => string> = {
 const WEEKS = [1, 2, 3, 4] as const;
 
 export default function PhaseDeadlineModal({ phase }: PhaseDeadlineModalProps) {
-  const { setPhaseDeadline, week } = useGameStore();
+  const { setPhaseDeadline, week, mandateId } = useGameStore();
   const [selected, setSelected] = useState<1 | 2 | 3 | 4>(phase === 6 ? 3 : 2);
-  const copy = PHASE_COPY[phase];
+  const nextPhase = getNextMandatePhase(mandateId, phase);
+  const copy = phase === 3 && nextPhase === 5
+    ? {
+        title: 'Set Outreach Deadline',
+        description: 'Set the window for teaser review, NDAs, and buyer qualification. Once the gate is clear, this compressed mandate moves directly into the NBO round.',
+        action: 'Set Market Outreach Deadline',
+      }
+    : PHASE_COPY[phase];
   const advisory = ADVISORY[phase](selected);
 
   return (

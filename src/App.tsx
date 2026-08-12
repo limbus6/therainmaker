@@ -5,6 +5,7 @@ import AppShell from './components/layout/AppShell';
 const LandingPage = lazy(() => import('./screens/LandingPage'));
 const DashboardScreen = lazy(() => import('./screens/DashboardScreen'));
 const MandateMarketScreen = lazy(() => import('./screens/MandateMarketScreen'));
+const CareerScreen = lazy(() => import('./screens/CareerScreen'));
 const InboxScreen = lazy(() => import('./screens/InboxScreen'));
 const ClientScreen = lazy(() => import('./screens/ClientScreen'));
 const TeamScreen = lazy(() => import('./screens/TeamScreen'));
@@ -33,6 +34,7 @@ export default function App() {
         <Route index element={<LandingPage />} />
         <Route path="results" element={<ResultsBoardScreen />} />
         <Route path="mandates" element={<MandateMarketScreen />} />
+        <Route path="career" element={<CareerScreen />} />
         <Route element={<AppShell />}>
           <Route path="game" element={<DashboardScreen />} />
           <Route path="inbox" element={<InboxScreen />} />

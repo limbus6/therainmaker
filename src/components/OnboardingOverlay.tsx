@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useGameStore } from '../store/gameStore';
+import { getMandatePhaseSequence, isShortMandate } from '../content/mandates';
 
-const SLIDES = [
+const FLAGSHIP_SLIDES = [
   {
     title: 'Welcome to M&A Rainmaker',
     body: `You are a sell-side M&A banker at Clearwater Advisory. You do not have the mandate yet.\n\nA priority lead has surfaced: Ricardo Mendes, founder of Solara Systems. Your first objective is to decide whether this opportunity is worth pursuing, win internal approval, and then pitch for the mandate.`,
@@ -19,6 +20,24 @@ const SLIDES = [
   },
 ];
 
+const SHORT_MANDATE_SLIDES = [
+  {
+    title: 'Your Mandate Is Live',
+    body: `You are a sell-side M&A banker at Clearwater Advisory. Solara has already appointed the firm and the preparation work is complete.\n\nThe market is opening now. Your job is to protect competitive tension, manage Ricardo and the buyers, and convert the process into a clean close.`,
+    cta: 'Got it →',
+  },
+  {
+    title: 'A Compressed Engagement',
+    body: `This mandate focuses on five consequential stages rather than the complete 11-phase flagship process.\n\n• Market Outreach\n• Non-Binding Offers\n• Final Offers\n• SPA Negotiation\n• Closing\n\nAdministrative bridge work is assumed. Your score comes only from the decisions and execution you actually control.`,
+    cta: 'Understood →',
+  },
+  {
+    title: 'Stage 1 — Market Outreach',
+    body: `The buyer universe is ready and the teaser can go out.\n\nImmediate objectives:\n1. Set the outreach deadline\n2. Launch the first buyer wave\n3. Process NDAs and buyer questions\n4. Qualify enough credible buyers for the NBO round\n\nStart with the decision card and Deal Desk.`,
+    cta: 'Open the Market →',
+  },
+];
+
 interface OnboardingOverlayProps {
   onComplete: () => void;
 }
@@ -27,9 +46,12 @@ export default function OnboardingOverlay({ onComplete }: OnboardingOverlayProps
   const [slide, setSlide] = useState(0);
   const markOnboardingSeen = useGameStore((s) => s.markOnboardingSeen);
   const playerName = useGameStore((s) => s.playerName);
+  const mandateId = useGameStore((s) => s.mandateId);
+  const slides = isShortMandate(mandateId) ? SHORT_MANDATE_SLIDES : FLAGSHIP_SLIDES;
+  const stageCount = getMandatePhaseSequence(mandateId).length;
 
-  const current = SLIDES[slide];
-  const isLast = slide === SLIDES.length - 1;
+  const current = slides[slide];
+  const isLast = slide === slides.length - 1;
 
   const handleNext = () => {
     if (isLast) {
@@ -46,7 +68,7 @@ export default function OnboardingOverlay({ onComplete }: OnboardingOverlayProps
 
         {/* Progress dots */}
         <div className="flex gap-1.5 px-6 pt-5">
-          {SLIDES.map((_, i) => (
+          {slides.map((_, i) => (
             <div
               key={i}
               className={`h-1 rounded-full flex-1 transition-all duration-300 ${
@@ -74,7 +96,7 @@ export default function OnboardingOverlay({ onComplete }: OnboardingOverlayProps
         {/* Footer */}
         <div className="px-6 pb-6 flex items-center justify-between">
           <span className="text-[11px] font-mono text-text-muted">
-            {slide + 1} / {SLIDES.length}
+            {slide + 1} / {slides.length}{isShortMandate(mandateId) ? ` · ${stageCount} stages` : ''}
           </span>
           <button
             onClick={handleNext}

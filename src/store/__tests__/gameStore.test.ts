@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useGameStore } from '../gameStore';
 import type { Buyer, Lead, GameTask } from '../../types/game';
+import { phase2Buyers } from '../../content/phase2';
 
 describe('Game Store', () => {
   beforeEach(() => {
@@ -26,7 +27,8 @@ describe('Game Store', () => {
       processLog: [],
       scoringModelVersion: 'causal-v2',
       phaseEntryDay: {},
-      day: 1
+      day: 1,
+      mandateId: 'solara-flagship',
     });
   });
 
@@ -112,6 +114,73 @@ describe('Game Store', () => {
     const state = useGameStore.getState();
     expect(state.phase).toBe(1);
     expect(state.phaseEntryDay[1]).toBe(10);
+  });
+
+  it('starts a short mandate at Outreach with accepted terms and no skipped-phase credit', async () => {
+    useGameStore.setState({
+      mandateId: 'solara-headwinds',
+      phase: 0,
+      day: 1,
+      phaseEntryDay: { 0: 1 },
+      tasks: [],
+      emails: [],
+      deliverables: [],
+      risks: [],
+      headlines: [],
+      buyers: [],
+      processLog: [],
+      replayTrace: [],
+      advisorArchetype: 'relationship_banker',
+    });
+
+    await useGameStore.getState().startMandate();
+
+    const state = useGameStore.getState();
+    expect(state.phase).toBe(3);
+    expect(state.phaseEntryDay).toEqual({ 3: 1 });
+    expect(state.tasks.length).toBeGreaterThan(0);
+    expect(state.tasks.every((task) => task.phase === 3)).toBe(true);
+    expect(state.buyers.length).toBeGreaterThan(2);
+    expect(state.buyers.every((buyer) => buyer.status === 'identified')).toBe(true);
+    expect(state.buyers[0].chemistryWithSeller).toBe(55);
+    expect(state.boardSubmission?.status).toBe('approved');
+    expect(state.agreedFeeTerms?.successFeePercent).toBe(2);
+    expect(state.processLog).toEqual([]);
+    expect(state.replayTrace.at(-1)?.input).toMatchObject({ skippedPhases: [1, 2] });
+  });
+
+  it('bridges omitted shortlist and diligence phases without loading their tasks', async () => {
+    useGameStore.setState({
+      mandateId: 'solara-headwinds',
+      phase: 3,
+      day: 20,
+      week: 3,
+      phaseEntryDay: { 3: 1 },
+      tasks: [],
+      emails: [],
+      deliverables: [],
+      risks: [],
+      headlines: [],
+      buyers: [
+        { ...phase2Buyers[0], id: 'credible', status: 'active', executionCredibility: 85, interest: 'warm' } as Buyer,
+        { ...phase2Buyers[1], id: 'weak', status: 'active', executionCredibility: 40, interest: 'lukewarm' } as Buyer,
+      ],
+    });
+
+    await useGameStore.getState().advancePhase();
+    let state = useGameStore.getState();
+    expect(state.phase).toBe(5);
+    expect(state.tasks.some((task) => task.phase === 4)).toBe(false);
+    expect(state.buyers.find((buyer) => buyer.id === 'credible')?.status).toBe('shortlisted');
+    expect(state.buyers.find((buyer) => buyer.id === 'weak')?.status).toBe('excluded');
+
+    await useGameStore.getState().advancePhase();
+    state = useGameStore.getState();
+    expect(state.phase).toBe(7);
+    expect(state.tasks.some((task) => task.phase === 6)).toBe(false);
+    expect(state.buyers.find((buyer) => buyer.id === 'credible')?.status).toBe('bidding');
+    expect(state.finalOffers.length).toBeGreaterThan(0);
+    expect(state.bindingOffersReceived).toBe(state.finalOffers.length);
   });
 
   it('migrates pre-v8 saves without pretending they contain causal evidence', async () => {

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useGameStore } from '../store/gameStore';
+import { useCareerStore } from '../store/careerStore';
 import { PHASE_NAMES } from '../types/game';
 import type { GameTask } from '../types/game';
 import type { ActionCommitment } from '../types/dealBeat';
@@ -23,12 +24,14 @@ import DeskDecisionCard from '../components/DeskDecisionCard';
 import { getActiveRisks, getDashboardDeliverables, getMomentumLabel, applyPhaseWorkstreams } from '../utils/gameplayState';
 import { checkPhaseGate, getAdvancePacePreview } from '../engine/weekEngine';
 import { getMissionsForPhase } from '../content/missions';
+import { getMandatePhaseSequence, isShortMandate } from '../content/mandates';
 import { getMissionProgress, getActiveMission } from '../utils/missionProgress';
 import { explainDealMomentum } from '../engine/dealMomentum';
+import { buildBeaconSummary } from '../engine/beaconCareer';
 import { getRoutineTasks } from '../utils/friction';
 import { formatTaskEffectSummary } from '../utils/effectLabels';
 import { pulseGlow, staggerReveal } from '../utils/motion';
-import { ArrowRight, Mail, AlertTriangle, ChevronRight, Wallet, Users, Presentation, FileText, Handshake, Trophy, ScrollText, Clock, Target, ListChecks } from 'lucide-react';
+import { ArrowRight, Mail, AlertTriangle, ChevronRight, Wallet, Users, Presentation, FileText, Handshake, Trophy, ScrollText, Clock, Target, ListChecks, Swords } from 'lucide-react';
 
 function kpiColor(value: number, thresholds: [number, number] = [30, 60]) {
   if (value >= thresholds[1]) return 'success' as const;
@@ -126,6 +129,13 @@ export default function DashboardScreen() {
 
   const phaseBudget = useGameStore((s) => s.phaseBudget);
   const phaseGate = checkPhaseGate(gameState);
+  const mandatePhases = getMandatePhaseSequence(gameState.mandateId);
+  const mandateStage = Math.max(0, mandatePhases.indexOf(phase));
+  const nextMandatePhase = phaseGate.nextPhase;
+  const shortMandate = isShortMandate(gameState.mandateId);
+  const beaconTombstones = useCareerStore((state) => state.beaconTombstones);
+  const rivalry = buildBeaconSummary(beaconTombstones);
+  const latestBeaconEncounter = beaconTombstones.at(-1);
   const nextScheduledBeat = gameState.eventDirectorState.upcomingBeats[0];
 
   const advancePreview = getAdvancePacePreview(gameState);
@@ -216,7 +226,7 @@ export default function DashboardScreen() {
         <div>
           <h1 className="text-2xl font-display font-semibold text-text-primary">Dashboard</h1>
           <p className="text-[12px] text-text-muted mt-1">
-            Phase {phase}: {PHASE_NAMES[phase]} — Day {day} <span className="opacity-50">(Week {week})</span>
+            {shortMandate ? `Stage ${mandateStage + 1}/${mandatePhases.length}` : `Phase ${phase}`}: {PHASE_NAMES[phase]} — Day {day} <span className="opacity-50">(Week {week})</span>
             {daysUntilDeadline !== null && (
               <span className={`ml-2 inline-flex items-center gap-1 text-[11px] font-mono px-2 py-0.5 rounded-full border ${
                 daysUntilDeadline <= 7 ? 'border-red-500/40 text-red-400 bg-red-500/10' : 'border-yellow-500/40 text-yellow-400 bg-yellow-500/10'
@@ -270,7 +280,7 @@ export default function DashboardScreen() {
                 : inProgressTasks.length > 0
                   ? 'Let committed work land'
                   : canAdvancePhase
-                    ? (phase === 10 ? 'Review the mandate result' : `Move to ${PHASE_NAMES[(phase + 1) as keyof typeof PHASE_NAMES]}`)
+                    ? (phase === 10 ? 'Review the mandate result' : `Move to ${PHASE_NAMES[nextMandatePhase]}`)
                     : nextGateRequirement?.label ?? 'Review the live deal state'}
           </p>
           <p className="mt-0.5 text-[11px] text-text-muted">
@@ -302,7 +312,7 @@ export default function DashboardScreen() {
         )}
         {!urgentDecisionEmail && !nextPriority && inProgressTasks.length === 0 && canAdvancePhase && (
           <button type="button" onClick={() => phase === 10 ? completeGame() : advancePhase()} className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-[var(--radius-md)] bg-green-600 px-4 py-2 text-[12px] font-semibold text-white hover:bg-green-500">
-            {phase === 10 ? 'View Results' : 'Advance Phase'} <ArrowRight size={13} />
+            {phase === 10 ? 'View Results' : `Advance to ${PHASE_NAMES[nextMandatePhase]}`} <ArrowRight size={13} />
           </button>
         )}
       </div>
@@ -487,7 +497,7 @@ export default function DashboardScreen() {
             <>
               <ChevronRight size={14} className="text-text-muted/40" />
               <button onClick={() => phase === 10 ? completeGame() : advancePhase()} className="flex items-center gap-1.5 px-4 py-2 bg-green-600 hover:bg-green-500 text-white text-[12px] font-semibold rounded-[var(--radius-md)] transition-colors">
-                {phase === 10 ? 'View Results' : `Advance to Phase ${phase + 1}`} <ArrowRight size={13} />
+                {phase === 10 ? 'View Results' : `Advance to ${PHASE_NAMES[nextMandatePhase]}`} <ArrowRight size={13} />
               </button>
             </>
           )}
@@ -512,6 +522,30 @@ export default function DashboardScreen() {
           </div>
         </div>
       </div>
+
+      {!shortMandate && (
+        <Panel
+          title="Rival Desk — Beacon Partners"
+          subtitle="Your persistent career rival is watching the flagship process"
+          variant="accent"
+          headerRight={<Link to="/career" className="text-[11px] text-text-accent hover:underline">Career record</Link>}
+        >
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <Swords size={18} className="shrink-0 text-text-accent" />
+              <div>
+                <p className="text-[12px] font-semibold text-text-primary">Clearwater {rivalry.clearwaterWins}—{rivalry.beaconWins} Beacon</p>
+                <p className="text-[10px] text-text-secondary">
+                  {latestBeaconEncounter ? `Last encounter: ${latestBeaconEncounter.grade}.` : 'No prior encounter. This flagship will set the first direct result.'}
+                </p>
+              </div>
+            </div>
+            <p className="max-w-md text-[9px] leading-relaxed text-text-muted sm:text-right">
+              Career history creates narrative pressure only. Beacon applies no hidden difficulty or rubber-banding modifier to this run.
+            </p>
+          </div>
+        </Panel>
+      )}
 
       {phase === 0 ? (
         <PhaseZeroDashboard />

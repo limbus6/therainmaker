@@ -1,6 +1,7 @@
 import { useGameStore } from '../store/gameStore';
 import { PHASE_NAMES } from '../types/game';
 import type { PhaseId } from '../types/game';
+import { getMandatePhaseSequence, isShortMandate } from '../content/mandates';
 import Panel from '../components/ui/Panel';
 import StatusChip from '../components/ui/StatusChip';
 import { CheckCircle2, Lock, MapPin } from 'lucide-react';
@@ -10,9 +11,12 @@ export default function TimelineScreen() {
   const day = useGameStore((s) => s.day);
   const phaseEntryDay = useGameStore((s) => s.phaseEntryDay) || {};
   const upcomingBeats = useGameStore((s) => s.eventDirectorState.upcomingBeats);
+  const mandateId = useGameStore((s) => s.mandateId);
   const currentWeek = Math.ceil(day / 7);
 
-  const phases = (Object.keys(PHASE_NAMES) as unknown as PhaseId[]).map(Number) as PhaseId[];
+  const phases = [...getMandatePhaseSequence(mandateId)];
+  const currentStage = Math.max(0, phases.indexOf(phase));
+  const shortMandate = isShortMandate(mandateId);
 
   return (
     <div className="space-y-6 max-w-[1200px]">
@@ -28,13 +32,14 @@ export default function TimelineScreen() {
           <div className="absolute left-6 top-0 bottom-0 w-px bg-border-subtle" />
 
           <div className="space-y-0">
-            {phases.map((p) => {
+            {phases.map((p, index) => {
               const isCurrent = p === phase;
-              const isCompleted = p < phase;
-              const isFuture = p > phase;
+              const isCompleted = index < currentStage;
+              const isFuture = index > currentStage;
               
               const startDay = phaseEntryDay[p];
-              const nextPhaseStartDay = phaseEntryDay[(p + 1) as PhaseId];
+              const nextPhase = phases[index + 1] as PhaseId | undefined;
+              const nextPhaseStartDay = nextPhase === undefined ? undefined : phaseEntryDay[nextPhase];
               const hasStarted = startDay !== undefined;
               
               const startWeek = hasStarted ? Math.ceil(startDay / 7) : null;
@@ -68,7 +73,9 @@ export default function TimelineScreen() {
                   {/* Phase Info */}
                   <div className={`flex-1 pt-1 ${isFuture ? 'opacity-40' : ''}`}>
                     <div className="flex items-center gap-3">
-                      <span className="text-[10px] font-mono uppercase tracking-widest text-text-muted">Phase {p}</span>
+                      <span className="text-[10px] font-mono uppercase tracking-widest text-text-muted">
+                        {shortMandate ? `Stage ${index + 1} · Process phase ${p}` : `Phase ${p}`}
+                      </span>
                       {isCurrent && <StatusChip label="Current" variant="accent" />}
                       {isCompleted && <StatusChip label="Complete" variant="success" />}
                       {isFuture && <StatusChip label="Locked" variant="muted" />}
@@ -135,8 +142,8 @@ export default function TimelineScreen() {
           </div>
           <div className="h-8 w-px bg-border-subtle" />
           <div className="text-center">
-            <div className="text-3xl font-mono font-bold text-text-primary">{phase}</div>
-            <div className="text-[10px] font-mono uppercase tracking-widest text-text-muted">Phase</div>
+            <div className="text-3xl font-mono font-bold text-text-primary">{shortMandate ? `${currentStage + 1}/${phases.length}` : phase}</div>
+            <div className="text-[10px] font-mono uppercase tracking-widest text-text-muted">{shortMandate ? 'Stage' : 'Phase'}</div>
           </div>
           <div className="h-8 w-px bg-border-subtle" />
           <div>

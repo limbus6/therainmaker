@@ -56,7 +56,12 @@ import type { WeekResult, PhaseGateResult } from '../engine/weekEngine';
 import { getGoldenMandateOfferDriver } from '../engine/goldenMandate';
 import { getPeopleOfferDriver } from '../engine/peopleBeats';
 import { getArchetype, type ArchetypeId } from '../content/archetypes';
-import { consumePendingMandate } from '../content/mandates';
+import {
+  consumePendingMandate,
+  getFirstMandatePhase,
+  getNextMandatePhase,
+  getSkippedMandatePhases,
+} from '../content/mandates';
 import { PHASE_BASE_BUDGETS, STAFF_PROFILES, CONTRACTOR_PROFILES, MITIGATION_ACTIONS } from '../config/phaseBudgets';
 import { getRiskMitigationPlans } from '../config/riskMitigation';
 import { REVIEW_CHECKPOINTS_BY_ID } from '../config/reviewCheckpoints';
@@ -87,6 +92,7 @@ export const INVESTIGATION_CAPACITY_COST = 4; // % team capacity per investigati
 // M5a: a mandate chosen on the market travels through a reload and is
 // consumed exactly once when the fresh run initialises.
 const pendingMandate = typeof window !== 'undefined' ? consumePendingMandate() : null;
+const pendingArchetype = getArchetype(pendingMandate?.advisorArchetype);
 
 const initialResources: PlayerResources = {
   budget: PHASE_BASE_BUDGETS[0],
@@ -94,10 +100,10 @@ const initialResources: PlayerResources = {
   teamCapacity: 90,
   teamCapacityMax: 100,
   morale: 80,
-  clientTrust: 40,
+  clientTrust: 40 + (pendingArchetype?.startClientTrust ?? 0),
   dealMomentum: 25,
   riskLevel: 10,
-  reputation: Math.min(60, 40 + (pendingMandate?.careerReputationBonus ?? 0)),
+  reputation: Math.min(60, 40 + (pendingMandate?.careerReputationBonus ?? 0) + (pendingArchetype?.startReputation ?? 0)),
 };
 
 const initialClient: Client = {
@@ -288,6 +294,17 @@ const DEBUG_FEE_TERMS: FeeTerms = {
   ratchetBonusPercent: 5.0,
   totalFeeProjection: 2050,
   agreedWeek: 0,
+};
+
+const ACCEPTED_MANDATE_FEE_TERMS: FeeTerms = {
+  retainerType: 'upfront',
+  retainerAmount: 50,
+  successFeePercent: 2,
+  ratchetEnabled: true,
+  ratchetThresholdEV: 100,
+  ratchetBonusPercent: 5,
+  totalFeeProjection: 2050,
+  agreedWeek: 1,
 };
 
 const DEBUG_SPA_TERMS: SPATerms = {
@@ -622,6 +639,14 @@ export interface GameStore {
   mandateDifficulty: MandateDifficultyProfile;
   /** Which market engagement this run is (M5a). */
   mandateId: string;
+  /** Daily runs are mechanically isolated from the career progression layer. */
+  runMode: 'career' | 'daily' | 'challenge';
+  dailyKey: string | null;
+  dailySeason: string | null;
+  challengeCode: string | null;
+  challengeSeason: string | null;
+  challengeAttemptId: string | null;
+  startingReputationBonus: number;
   processLog: ProcessRecord[];
   replayTrace: ReplayTraceEntry[];
 
@@ -635,6 +660,7 @@ export interface GameStore {
   selectMissionFocus: (missionId: string) => void;
   commitToAction: (taskId: string) => void;
   commitAndAdvance: (taskId: string) => void;
+  startMandate: () => Promise<void>;
   advanceWeek: () => void;
   advancePhase: () => Promise<void>;
   debugJumpToPhase: (targetPhase: PhaseId) => Promise<void>;
@@ -799,9 +825,36 @@ function normalizeResources(resources: PlayerResources): PlayerResources {
   };
 }
 
+function applyArchetypeBuyerChemistry(buyers: Buyer[], archetypeId: ArchetypeId | null): Buyer[] {
+  const chemistryBonus = getArchetype(archetypeId)?.startBuyerChemistry ?? 0;
+  if (chemistryBonus === 0) return buyers;
+  return buyers.map((buyer) => ({
+    ...buyer,
+    chemistryWithSeller: Math.min(100, buyer.chemistryWithSeller + chemistryBonus),
+  }));
+}
+
+function bridgeBuyersAcrossSkippedPhases(buyers: Buyer[], skippedPhases: PhaseId[]): Buyer[] {
+  const skipsShortlist = skippedPhases.includes(4);
+  const skipsDiligence = skippedPhases.includes(6);
+
+  return buyers.map((buyer) => {
+    let next = { ...buyer };
+    if (skipsShortlist && next.status === 'active') {
+      next = next.executionCredibility >= 70 || next.interest === 'hot' || next.interest === 'on_fire'
+        ? { ...next, status: 'shortlisted' }
+        : { ...next, status: 'excluded' };
+    }
+    if (skipsDiligence && next.status === 'shortlisted') {
+      next = { ...next, status: 'bidding', bindingOfferSubmitted: true };
+    }
+    return next;
+  });
+}
+
 const DEFAULT_PREFERRED_BUYER = 'Kestrel Capital';
 const DEFAULT_FALLBACK_BUYER = 'Vektor Industries';
-const SAVE_SCHEMA_VERSION = 12;
+const SAVE_SCHEMA_VERSION = 14;
 
 function hashIdentifier(value: string): number {
   let hash = 2166136261;
@@ -1313,7 +1366,7 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
   qualificationNotes: [],
   boardSubmission: null,
   boardRejectionCount: 0,
-  advisorArchetype: null,
+  advisorArchetype: pendingMandate?.advisorArchetype ?? null,
   tempCapacityAllocations: [],
   feeNegotiation: null,
   agreedFeeTerms: null,
@@ -1340,6 +1393,13 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
   scoringModelVersion: 'causal-v2' as const,
   mandateDifficulty: pendingMandate?.difficulty ?? DEFAULT_MANDATE_DIFFICULTY,
   mandateId: pendingMandate?.id ?? 'solara-flagship',
+  runMode: pendingMandate?.runMode ?? 'career',
+  dailyKey: pendingMandate?.dailyKey ?? null,
+  dailySeason: pendingMandate?.dailySeason ?? null,
+  challengeCode: pendingMandate?.challengeCode ?? null,
+  challengeSeason: pendingMandate?.challengeSeason ?? null,
+  challengeAttemptId: pendingMandate?.challengeAttemptId ?? null,
+  startingReputationBonus: pendingMandate?.startingReputationBonus ?? pendingMandate?.careerReputationBonus ?? 0,
   processLog: [],
   replayTrace: [],
   turnPlayback: null,
@@ -1349,6 +1409,13 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
 
   // Actions
   selectMissionFocus: (missionId: string) => set({ activeMissionId: missionId }),
+
+  startMandate: async () => {
+    const state = get();
+    const firstPhase = getFirstMandatePhase(state.mandateId);
+    if (state.phase !== 0 || firstPhase === 0) return;
+    await get().advancePhase();
+  },
 
   commitToAction: (taskId: string) => {
     const state = get();
@@ -1712,7 +1779,10 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
 
   advancePhase: async () => {
     const state = get();
-    const nextPhase = Math.min(state.phase + 1, 10) as PhaseId;
+    const nextPhase = getNextMandatePhase(state.mandateId, state.phase);
+    if (nextPhase === null) return;
+    const skippedPhases = getSkippedMandatePhases(state.mandateId, state.phase, nextPhase);
+    const isCompressedBootstrap = state.phase === 0 && nextPhase > 1;
     // Stamp phase emails with current game day so timestamps are accurate.
     const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
     function stampEmails(emails: Email[]): Email[] {
@@ -1723,13 +1793,13 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
         timestamp: `Day ${state.day + i} (Week ${state.week}), ${DAY_NAMES[(state.day + i - 1) % 5]}`,
       }));
     }
-    let newTasks = state.tasks;
-    let newEmails = state.emails;
-    let newDeliverables = state.deliverables;
-    let newRisks = state.risks;
-    let newHeadlines = state.headlines;
+    let newTasks = isCompressedBootstrap ? [] : state.tasks;
+    let newEmails = isCompressedBootstrap ? [] : state.emails;
+    let newDeliverables = isCompressedBootstrap ? [] : state.deliverables;
+    let newRisks = isCompressedBootstrap ? [] : state.risks;
+    let newHeadlines = isCompressedBootstrap ? [] : state.headlines;
     const newWorkstreams = state.workstreams;
-    let newBuyers = state.buyers;
+    let newBuyers = isCompressedBootstrap ? [] : state.buyers;
     let newClient = state.client;
     if (nextPhase === 1) {
       if (state.boardSubmission?.leadId) {
@@ -1746,6 +1816,14 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
       }
     }
 
+    if (isCompressedBootstrap) {
+      // This engagement is already mandated and prepared. Carry the authored
+      // buyer universe into the first playable stage, but never award process
+      // credit for the phases the player did not operate.
+      const preparationContent = await loadPhaseContent(2);
+      newBuyers = applyArchetypeBuyerChemistry(preparationContent.buyers ?? [], state.advisorArchetype);
+    }
+
     if (nextPhase >= 1) {
       const rawPhaseContent = await loadPhaseContent(nextPhase as Exclude<PhaseId, 0>);
       const preferredBuyerName = state.preferredBidderId
@@ -1757,31 +1835,26 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
         ? personalizePhaseContent(clientPersonalizedContent, preferredBuyerName)
         : clientPersonalizedContent;
 
-      newTasks = [...state.tasks, ...applyArchetypeToTasks(phaseContent.tasks, state.advisorArchetype)];
+      newTasks = [...newTasks, ...applyArchetypeToTasks(phaseContent.tasks, state.advisorArchetype)];
 
       // Mark obsolete Phase 0 emails as read when advancing to Phase 1+
-      const cleanedExistingEmails = state.emails.map((e) =>
+      const cleanedExistingEmails = newEmails.map((e) =>
         e.phase === 0 ? { ...e, state: 'read' as const } : e
       );
 
       newEmails = [...cleanedExistingEmails, ...stampEmails(phaseContent.emails)];
-      newDeliverables = [...state.deliverables, ...phaseContent.deliverables];
-      newRisks = [...state.risks, ...phaseContent.risks];
-      newHeadlines = [...state.headlines, ...phaseContent.headlines];
+      newDeliverables = [...newDeliverables, ...phaseContent.deliverables];
+      newRisks = [...newRisks, ...phaseContent.risks];
+      newHeadlines = [...newHeadlines, ...phaseContent.headlines];
       if (phaseContent.buyers) {
-        const chemistryBonus = getArchetype(state.advisorArchetype)?.startBuyerChemistry ?? 0;
-        const incoming = chemistryBonus === 0
-          ? phaseContent.buyers
-          : phaseContent.buyers.map((buyer) => ({
-              ...buyer,
-              chemistryWithSeller: Math.min(100, buyer.chemistryWithSeller + chemistryBonus),
-            }));
-        newBuyers = [...state.buyers, ...incoming];
+        const incoming = applyArchetypeBuyerChemistry(phaseContent.buyers, state.advisorArchetype);
+        newBuyers = [...newBuyers, ...incoming];
       }
     }
-    const phaseSpent = Math.max(0, state.resources.budgetMax - state.resources.budget);
-    const newTotalBudgetSpent = state.totalBudgetSpent + phaseSpent;
-    const carryover = Math.max(0, state.resources.budget);
+    newBuyers = bridgeBuyersAcrossSkippedPhases(newBuyers, skippedPhases);
+    const phaseSpent = isCompressedBootstrap ? 0 : Math.max(0, state.resources.budgetMax - state.resources.budget);
+    const newTotalBudgetSpent = isCompressedBootstrap ? 0 : state.totalBudgetSpent + phaseSpent;
+    const carryover = isCompressedBootstrap ? 0 : Math.max(0, state.resources.budget);
     const phaseBase = PHASE_BASE_BUDGETS[nextPhase] ?? 0;
     const newBudget = carryover + phaseBase;
     const newFinalOffers = nextPhase === 7
@@ -1790,7 +1863,9 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
     const nextOfferReveal: OfferRevealState = nextPhase === 7 && newFinalOffers.length > 0
       ? { status: 'pending', revealedBuyerIds: [] }
       : state.offerReveal;
-    const nextBindingOffersReceived = nextPhase === 7 ? state.bindingOffersReceived : 0;
+    const nextBindingOffersReceived = nextPhase === 7
+      ? (skippedPhases.includes(6) ? newFinalOffers.length : state.bindingOffersReceived)
+      : 0;
     const unlockedPhaseTasks = unlockTasks(newTasks);
     const phaseWorkstreams = updatePhaseWorkstreamProgress(newWorkstreams, unlockedPhaseTasks, nextPhase);
     const phaseRisks = retireObsoleteRisks(newRisks, nextPhase, nextBindingOffersReceived);
@@ -1809,10 +1884,20 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
       risks: phaseRisks,
       phaseDeadline: null,
       eventDirectorState: phaseDirectorState,
+      boardSubmission: isCompressedBootstrap ? {
+        recommendation: 'proceed',
+        rationale: 'Mandate accepted from the career market.',
+        status: 'approved',
+        submittedWeek: 1,
+        leadId: state.leads[0]?.id,
+      } : state.boardSubmission,
+      agreedFeeTerms: isCompressedBootstrap ? ACCEPTED_MANDATE_FEE_TERMS : state.agreedFeeTerms,
     } as GameStore;
     set({
       phase: nextPhase,
-      phaseEntryDay: { ...state.phaseEntryDay, [nextPhase]: state.day },
+      phaseEntryDay: isCompressedBootstrap
+        ? { [nextPhase]: state.day }
+        : { ...state.phaseEntryDay, [nextPhase]: state.day },
       tasks: unlockedPhaseTasks,
       emails: newEmails,
       deliverables: newDeliverables,
@@ -1836,19 +1921,28 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
         upcomingBeats: buildUpcomingBeats(phaseProjection),
       },
       feeNegotiation: null,
-      // agreedFeeTerms intentionally preserved — fee terms negotiated in Phase 1 must survive to resultsEngine
+      agreedFeeTerms: isCompressedBootstrap ? ACCEPTED_MANDATE_FEE_TERMS : state.agreedFeeTerms,
+      boardSubmission: isCompressedBootstrap ? {
+        recommendation: 'proceed',
+        rationale: 'Mandate accepted from the career market.',
+        status: 'approved',
+        submittedWeek: 1,
+        leadId: state.leads[0]?.id,
+      } : state.boardSubmission,
       phaseDeadline: null,
-      pitchDocumentReady: false,
+      pitchDocumentReady: isCompressedBootstrap,
       bindingOffersReceived: nextBindingOffersReceived,
       unaddressedQACount: 0,
       finalOffers: newFinalOffers,
       offerReveal: nextOfferReveal,
       preferredBidderId: nextPhase === 7 ? null : state.preferredBidderId,
+      activeMissionId: undefined,
+      commitments: [],
       replayTrace: appendReplayTrace(state.replayTrace, {
         day: state.day,
         phase: state.phase,
         action: 'phase_advance',
-        input: { fromPhase: state.phase, toPhase: nextPhase },
+        input: { fromPhase: state.phase, toPhase: nextPhase, skippedPhases },
       }),
     });
   },
@@ -3455,6 +3549,17 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
     }
     if (fromVersion < 12) {
       s.mandateId = 'solara-flagship';
+    }
+    if (fromVersion < 13) {
+      s.runMode = 'career';
+      s.dailyKey = null;
+      s.dailySeason = null;
+    }
+    if (fromVersion < 14) {
+      s.challengeCode = null;
+      s.challengeSeason = null;
+      s.challengeAttemptId = null;
+      s.startingReputationBonus = 0;
     }
     if (fromVersion < 11) {
       // Archetypes are a run-start identity; mid-run saves stay 'balanced'.

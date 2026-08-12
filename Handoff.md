@@ -1,18 +1,43 @@
 # Gameplay Redesign Handoff
 
-## Current Snapshot (2026-08-11)
+## Current Snapshot (2026-08-12)
 
-The historical review below remains useful design context, but its implementation-status claims are superseded by this snapshot and `roadmap.md`.
+The historical review and phased plan below remain useful design context, but every implementation-status claim in them is superseded by this snapshot and `roadmap.md`. **M0 through M6, including challenge seeds, are complete on `main` and live** at `https://limbus6.github.io/therainmaker/`. The run save schema is **v14** and the release has 135/135 tests. The previous production baseline was M0 through M5a in `7b9ce2d` (schema v12, 104/104 tests).
 
-- Fluidity v2 and the M0 trust work are on `main`; the current working tree adds the next M0 package.
-- The 80 authored events now live in `src/content/events/index.ts`; `weekEngine.ts` imports the catalogue instead of owning it inline.
-- Save schema v8 adds an explicit content version, a causal-v2 scoring model for new games, mandate difficulty, and a persisted, deduplicated process log. Migrated saves retain legacy-v1 scoring.
-- Results Board evaluates Judgment, Execution Discipline, Stakeholder Management, Risk Stewardship, and Negotiation Craft independently of deal outcome, then builds a source-specific Player Debrief.
-- Team traits/growth and person-level task allocation remain deliberately deferred pending the M0.5 friction audit.
-- M2 people beats (2026-08-11): `src/engine/founderPulse.ts` derives Ricardo's mood from live state (never stored, never numeric); `src/engine/peopleBeats.ts` schedules telegraphed check-ins (P3-6, mood-variant copy/options) and buyer relationship beats (Kestrel P3, Schneider P4/P6) whose responses move `chemistryWithSeller`/`ddFriction` via the new `EmailResponseOption.buyerEffects` channel and record story flags that narrate the buyer's final offer (`getPeopleOfferDriver`). Beats live in the authored lane beside the golden arc — never subject to the weighted pool. CONTENT_VERSION bumped to `solara-events-v3` with the sequence baseline regenerated.
-- Save schema v9 (playtest-driven): `boardRejectionCount` powers an IC pity ladder (+20%/rejection; a third evidence-backed proceed submission is approved outright) and phases 0-1 carry a momentum floor of 10 — pre-mandate runs can cool but not collapse by decay. The Board modal telegraphs qualitative case strength (strong/mixed/thin + named gaps, never probabilities) via `src/engine/boardCase.ts`, prefills resubmissions, and the meeting button reflects its scheduled state (action now idempotent).
-- Process score coverage (also playtest-driven): board judgment is rated on verified evidence via `assessBoardCase` (no string-length proxies), presenting the pitch without the deck is a recorded judgment miss, low-complexity tasks record at weight 1, and categories blend toward neutral until they hold `FULL_CONFIDENCE_WEIGHT` (6) of evidence — one decision can no longer swing a discipline ±50.
-- Current verification target: build, lint, full tests, and desktop/mobile browser QA before publication.
+**Read this before touching anything:**
+- Compiled `.js`/`.d.ts`/`.map` artifacts are **gone from `src/`** (`noEmit: true` in tsconfig; Vite resolves `.ts`/`.tsx` directly). The old "run `tsc -b` before browser QA" gotcha from earlier in this document no longer applies — ignore any instruction below that references it.
+- **Deploy is CI-based**, not manual. Pushing to `main` runs `.github/workflows/deploy.yml`: install → lint → test → build → deploy to `gh-pages` (deploy step gated to `push` on `main` only; PRs get the same pipeline minus the deploy step — a PR build once overwrote production before this gate existed, don't regress it). `npm run deploy` still works locally if ever needed, but the normal path is: commit, push, watch the Actions run.
+- `src/vite-env.d.ts` is authored source (types `import.meta.env`) force-added past the `src/**/*.d.ts` ignore rule — don't delete it as a stray artifact.
+
+### What shipped, in order
+
+- **M0 — Trust the Numbers**: seeded RNG everywhere; `dealMomentum` is **derived** (`engine/dealMomentum.ts`), never stored, shown with a "Derived" tag; integer resources at the engine boundary; honest resource-effect labels; replay trace; source-artifact CI guard (`scripts/check-source-artifacts.mjs`).
+- **M0.5 — Cut the Work**: friction audit (`docs/m0.5-friction-audit.md`, ~67% fewer clicks on the main path), "Next Meaningful Action" panel, Start/Commit & Advance combined CTAs, batch queue/clear on routine tasks, inline TurnTape responses.
+- **Event catalogue extraction**: all 80 authored events live in `src/content/events/index.ts`; `weekEngine.ts` imports the catalogue instead of owning it inline. `CONTENT_VERSION` (`src/content/contentVersion.ts`) is now also the Daily/RM1 comparison season: bump it whenever authored content, balance, mandate/build configuration, or state-driven selection could make results mechanically incomparable. When event content or selection changes, regenerate `src/engine/__tests__/__fixtures__/eventSequences.baseline.json` (`UPDATE_EVENT_SEQUENCE_FIXTURE=1` env var on the sequence test) in the same commit — this is a hard regression gate, not a suggestion.
+- **Causal process scoring**: append-only deduplicated `processLog`, five disciplines (Judgment/Execution/Stakeholder/Risk/Negotiation) computed independently of deal outcome, `mandateDifficulty` adjustment, evidence-confidence blend toward neutral until `FULL_CONFIDENCE_WEIGHT` (6) of recorded evidence exists. Board judgment rated via `engine/boardCase.ts` on verified investigation/meeting/notes, not string-length proxies. Results Board shows the five disciplines plus a source-linked Player Debrief.
+- **Board pity ladder + pre-mandate floor**: `boardRejectionCount` adds +20% IC approval per prior rejection; a third evidence-backed "proceed" submission is approved outright. Phases 0-1 carry a `dealMomentum` floor of 10 — dice can delay a mandate, never kill it by decay.
+- **M2 — People**: `engine/founderPulse.ts` derives Ricardo's mood (confident/steady/restless/anxious) from live trust/momentum/risk/deadline state — never stored, never numeric. `engine/peopleBeats.ts` schedules telegraphed check-ins (P3-6) and buyer relationship beats (Kestrel P3, Schneider P4+P6) in the authored lane beside the golden arc (never subject to the weighted event pool). Responses move `chemistryWithSeller`/`ddFriction` via `EmailResponseOption.buyerEffects` and record story flags that narrate the buyer's eventual offer (`getPeopleOfferDriver`).
+- **M3 — Offer ceremony**: `engine/offerReactions.ts` gives the existing sealed-envelope reveal its payoff layer — mood×tier reaction matrix with relationship-decision overrides, market chatter from buyer facts, best-so-far comparison framing, staggered reveal motion.
+- **M4 — Builds**: three advisor archetypes (`content/archetypes.ts`: Relationship Banker / Technician / Shark) chosen once at run start on a new landing step, disclosed modifiers only (task work factors, start deltas, negotiation patience bonus). Results financial block computes ratchet bonus (threshold-gated), retainer income, and Total Advisory Fee; the run summary names the build.
+- **M5a — Career**: `store/careerStore.ts` in its own localStorage key (`ma-rainmaker-career`, independent of the run save) mints a tombstone per completed run (deduped by mandate+seed) and tracks 0-20 career reputation earned by process quality, not luck. `screens/MandateMarketScreen.tsx` (`/mandates`) offers three condition-variant mandates over the same authored content (Flagship/Headwinds/Hot Market — different difficulty profile and seed), with career reputation disclosed as a starting bonus. "Play Again" is now "Choose Next Mandate".
+
+### M5a.2–M6 release scope
+
+- **M5a.2 — Phase compression**: Flagship keeps all 11 process phases; Headwinds and Hot Market use five playable stages (`3 → 5 → 7 → 8 → 10`). The active plan is derived from `mandateId`, so schema remains v12. Short runs bootstrap with accepted standard fee terms and the authored Phase 2 buyer universe, then bridge only buyer state across omitted Shortlist/DD stages. Skipped work creates no process evidence. Dashboard, Topbar, Timeline, phase gates, replay trace, onboarding, deadline copy, market cards, and Results all describe the compressed sequence honestly.
+- **M5b — Deal Shelf**: `/career` is a real collection screen with totals, close rate, aggregate EV/fees, source-named records, and newest-first tombstones containing mandate, outcome, buyer, EV, multiple, fee, grade, process score, build, date, and elapsed days. Failed deals remain visible. Results and the market both link to it, and “Choose Next Mandate” remains the primary continuation. The store retains the latest 50 entries; a 50-entry browser fixture was used for QA and removed afterwards.
+- **M5c — persistent Beacon**: career store v2 adds a separate 50-entry Beacon ledger and market step. On a normal mandate choice Beacon deterministically takes the highest-difficulty declined mandate; after a player collapse Beacon enters the restarted process; every player close records a Clearwater win. Each result states the rule that caused it. The market shows the rivalry score, the Deal Shelf explains every encounter, and flagship dashboards show a Rival Desk that explicitly applies no hidden difficulty/rubber-banding modifier.
+- **M6 — daily + challenge comparability**: run schema v14 supports `career`, `daily`, and `challenge` modes. UTC date + `CONTENT_VERSION` feed the Daily's documented deterministic seed; the result fixes one short mandate, advisor archetype, buyer pool, difficulty, and RNG sequence with zero career-reputation bonus. Daily results live in `ma-rainmaker-daily`, separate from career/Beacon, and the first result for a date+season is locked (replays are labelled unranked). Results includes a copyable text/emoji card; the Deal Shelf includes current-season daily bests and recent results. Challenge codes use `RM1` + season hash + mandate + build + seed + fixed starting reputation bonus + checksum. Altered or incompatible-season codes fail before save handoff. The Challenge Room verifies and discloses the complete configuration before a separate Play action; results live in `ma-rainmaker-challenges`, grouped by code with local best score/close/speed, and never touch Career, Beacon, or Daily.
+- Verification: 135/135 tests, including the complete gated compressed playthrough, 50-entry retention, career v1→v2 and run v12→v14 migration, Beacon rules/determinism, UTC season seeding, daily first-result locking, challenge round-trip/tampering/season rejection, challenge attempt comparison, and rendered Results isolation tests proving Daily and Challenge do not mint career or Beacon tombstones. Build/source guard/lint are clean. Browser QA covered Daily fixed configuration → fixed build → Stage 1/5; empty and populated career/Beacon ledgers; normal market choice → named Beacon result; Beacon’s flagship Rival Desk; and Challenge invalid rejection → verified configuration → deliberate launch → fixed Shark build → Stage 1/5. The Challenge Room has no horizontal overflow at 390 px and no console errors. QA also caught and fixed a blur/click race that could skip the verified preview. Earlier M5a.2 responsive QA remains green at desktop, 900 px, and 390 px.
+
+### Known-good, deliberately deferred
+
+- **Human outcome validation after deployment**: collectibility with a real 50-run career, unprompted Beacon recall, and consecutive-day daily return are behavioral exit criteria, not safely answerable by automated QA. Engineering instrumentation and surfaces are present; run the stated playtests before claiming those behavioral measures.
+- Team traits/growth and person-level task allocation, deferred pending the M0.5 friction audit (audit is done; this item is still open).
+- Small known items: dead `Buyer.ddDropoutRisk` field (declared, never assigned); M2 confident-mood check-in copy variant (currently folded into "steady"); apex ceremonies for board/signing/closing beyond the offer reveal, following the M3 pattern.
+
+### Verification protocol every session should follow
+
+`npm run test` (must stay 100% green — the event-sequence baseline test is a hard gate), `npm run build`, `npm run lint`, then browser QA via the dev server (`.claude/launch.json`, port 5199) before pushing. Push to `main` deploys automatically; watch the Actions run (`gh run list --branch main --limit 1`) and confirm the new bundle hash is live (`grep -o 'index-[A-Za-z0-9_-]*\.js' dist/index.html` vs what `https://limbus6.github.io/therainmaker/` serves) before considering a change shipped.
 
 ## Purpose
 
@@ -282,12 +307,13 @@ A → B → D → C → E. Phase A alone changes the feel of the game more than 
 7. Run `npm.cmd run build` and `npm.cmd run lint`.
 8. Test the vertical slice through the live-style browser flow, then regenerate committed artifacts and deploy only after the local flow is stable.
 
-## Delivery Guardrails
+## Delivery Guardrails (current)
 
-- Edit `.ts` and `.tsx` as the source of truth.
-- Run `npm.cmd run build` after TypeScript changes because generated artifacts are committed.
-- Preserve the Vite base path `/therainmaker/`.
+- Edit `.ts` and `.tsx` as the source of truth — there are no compiled artifacts committed under `src/` anymore, so this is now just "the source of truth," full stop.
+- Preserve the Vite base path `/therainmaker/`. `window.location.replace('/')` anywhere is a bug (it 404s on GitHub Pages) — use `import.meta.env.BASE_URL`. This has bitten "Start New" and "Play Again" once each; both fixed, watch for the pattern recurring in new reset/restart flows.
+- Any change to persisted `gameStore` state bumps `SAVE_SCHEMA_VERSION` and ships a migration + migration test. Same for `careerStore` if its shape changes (bump its own `version`).
+- Any change to authored event content or event-selection logic bumps `CONTENT_VERSION` and regenerates the event-sequence baseline fixture in the same commit.
 - Do not reintroduce stale phase blockers or make `riskLevel` a hard Phase 9 gate.
-- Do not reintroduce Portuguese copy into the live game UI.
-- Keep `Fixes.md` review submission behaviour honest: GitHub Pages cannot directly write repository files.
-- Before deployment, verify `git status --short`, build, lint, browser QA, `main`, `gh-pages`, and the public Pages URL.
+- Do not reintroduce Portuguese copy into the live game UI. This handoff document itself stays English.
+- `FeeNegotiationModal.tsx` and `SPANegotiationModal.tsx` are protected systems — the strongest negotiation UX in the project. Don't refactor or "improve" them incidentally; only touch them for an explicitly scoped, approved task.
+- Before considering any change shipped: `npm run test` (100% green), `npm run build`, `npm run lint`, browser QA, then push to `main` and confirm the CI run succeeded and the live bundle hash matches.

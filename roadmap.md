@@ -196,33 +196,39 @@ This roadmap turns The M&A Rainmaker from a strong one-shot 60-90 minute simulat
 
 *Without a meta-layer the Rainmaker is a good film; with one it's a game people come back to.*
 
-Build M5 as four independently shippable releases. Persistence should create meaning early; content scale and progression come only after the smallest version works.
+Build M5 as independently shippable releases. Persistence creates meaning first; shorter replays, collection UI, and the persistent rival follow only after the smallest loop works.
 
 ### M5a — Career shell and tombstones
 
 - Career profile (`ma-rainmaker-career`) is separate from the versioned run save. Starting a new mandate clears the run, never the career.
-- Every completed deal mints a tombstone: company, buyer, EV, multiple, grade, date, build, and content version. Failed deals receive a sober history entry, not a punitive mechanic that pressures the player to grind the stain away.
-- Show the shelf immediately after results and make the next mandate CTA visible. This is the first complete persistence loop.
+- Every completed deal mints a deduplicated tombstone: mandate, company, buyer, EV, multiple, total fee, grade, process score, date, build, and days. Failed deals receive a sober history entry.
+- Career reputation is capped at 20 and earned by process quality rather than outcome luck. The mandate market discloses the carried starting bonus and per-mandate best close.
+- Results hands directly to “Choose Next Mandate”; Flagship, Headwinds, and Hot Market use deterministic career-step seeds.
 
-**Exit criteria:** completed and failed runs survive reloads and migrations correctly; a player understands the shelf without explanation; the tombstone feels like a reward worth collecting.
+**Status:** shipped in `7b9ce2d` (schema v12). **Exit criteria:** completed and failed runs survive reloads; revisiting Results cannot duplicate a tombstone; the next engagement starts with the declared seed, difficulty, and career bonus.
 
-### M5b — Short mandates and mandate market
+### M5a.2 — Phase compression for short mandates
 
-- Create three **hand-authored** 15-20 minute mandates before building procedural generation: a family-sale emotional mandate, an aggressive competitive process, and a distressed mandate at risk of collapse.
-- Compress to 4-5 phases by preserving decisions, relationships, and reveals while removing process administration. Reuse checkpoint/jump infrastructure but never skip a causal setup needed by a later payoff.
-- Once the three mandates prove genuinely different, extract reusable templates and generation rules for a market containing small (~15-20 min), mid (~40 min), and flagship 11-phase deals.
+- Keep Flagship on the complete 11-phase process. Headwinds and Hot Market use a five-stage plan: Market Outreach → Non-Binding Offers → Final Offers → SPA Negotiation → Closing.
+- Derive the active sequence from `mandateId`; do not persist a second phase-plan source of truth. Compressed runs start with an accepted mandate, standard disclosed fee terms, and the authored buyer universe.
+- Bridge only the minimum buyer state across omitted Shortlist and DD stages. Omitted work must never create process-score evidence or appear as completed player work.
+- Timeline, Dashboard, Topbar, phase gates, replay trace, and Results must describe the mandate stages honestly while preserving the underlying process phase IDs.
 
-**Exit criteria:** all three short mandates fit the target length, feel authored rather than reskinned, and produce different decision patterns; players start a second mandate within five minutes of finishing the first.
+**Exit criteria:** both short conditions traverse exactly five stages; Flagship is unchanged; offer reveal and SPA remain fully playable; no omitted task blocks a later gate; deterministic tests cover start and every compressed bridge; an organic short run completes without debug jumps.
 
-### M5c — Reputation and horizontal progression
+**Status:** shipped on `main`. Deterministic start/bridge tests and a complete gated five-stage playthrough pass. Schema remains v12 for this slice because the plan derives from `mandateId`.
 
-- Persistent reputation gates new **variety**: sectors, mandate structures, buyer mixes, tougher trade-offs, and fee leverage. It should not become a permanent power curve that trivialises early deals or forces grinding.
-- Declined and failed deals have narrative/economic consequences, but no streak loss, arbitrary decay, or permanent numerical handicap.
-- Career earnings and fee structure outcomes become legible on the career screen without replacing deal quality and relationships as success measures.
+### M5b — Tombstone shelf and career legibility
 
-**Exit criteria:** unlocks expand choice rather than raw power; returning to a small mandate remains interesting; players can explain why a mandate became available.
+- Build a real collection screen from the captured tombstones: mandate, outcome, buyer, EV, fee, grade, process score, build, and elapsed days.
+- Add career totals and records without turning reputation into an unbounded power curve. Failed deals remain visible history, not a grind penalty.
+- Link the shelf from Results and the mandate market; keep choosing the next mandate within one clear action.
 
-### M5d — Beacon as persistent antagonist
+**Exit criteria:** the shelf survives reloads, remains readable with 50 entries, explains every record, and makes a completed run feel collectible.
+
+**Status:** shipped on `main`. `/career` provides the complete Deal Shelf, career totals, named record provenance, failure history, and direct navigation from Results/Market. Store tests cover the 50-entry boundary; browser QA covered empty and 50-entry states. Perceived collectibility remains a human playtest measure.
+
+### M5c — Beacon as persistent antagonist
 
 - Beacon wins selected mandates the player declines or loses, maintains a parallel tombstone history, and appears as rival advisor in flagship deals.
 - Rival progress follows explicit rules and named events. It creates narrative pressure, not rubber-banding or silent cheating.
@@ -230,9 +236,11 @@ Build M5 as four independently shippable releases. Persistence should create mea
 
 **Exit criteria:** players can name the rival and recall at least one prior encounter; Beacon's progress is understandable; victory feels earned rather than scripted.
 
-**Primary files:** new `src/store/careerStore.ts`, new `src/screens/CareerScreen.tsx` + `MandateMarketScreen.tsx`, `src/content/mandates.ts`, `src/engine/resultsEngine.ts`, `src/screens/LandingPage.tsx`.
+**Status:** shipped on `main`. Career store v2 persists a separate Beacon history. The market-choice, player-loss, and player-win rules are explicit, seeded, deduplicated, tested, and shown beside each record; flagship runs expose the remembered rivalry without mechanical cheating. Unprompted recall remains a human playtest measure.
 
-**Effort:** 6-9 sessions across M5a-M5d. **Depends on:** M0-M4 (a career of runs is only as good as one run).
+**Primary files:** `src/store/careerStore.ts`, new `src/screens/CareerScreen.tsx`, `src/screens/MandateMarketScreen.tsx`, `src/content/mandates.ts`, `src/store/gameStore.ts`, `src/engine/resultsEngine.ts`.
+
+**Depends on:** M0-M4 (a career of runs is only as good as one run).
 
 ---
 
@@ -246,11 +254,13 @@ Build M5 as four independently shippable releases. Persistence should create mea
 - Daily results are stored separately from career progression. Career unlocks must not alter the daily configuration or give experienced profiles a mechanical advantage.
 - **Shareable result card:** score, grade, EV, multiple, build — as copyable text/emoji block (Wordle mechanism: comparability → conversation → daily return).
 - **Personal bests & league:** career screen tracks best multiple, best EV, fastest close, per-mandate-size records.
-- Optional: challenge seeds — share a seed string, friend plays the identical deal.
+- **Challenge seeds:** `RM1` codes fix season, mandate, build, RNG seed, difficulty (through the versioned mandate), buyer/content pool, and starting reputation bonus. A checksum rejects altered codes; incompatible seasons are rejected before launch. Challenge attempts are stored outside Career, Beacon, and Daily and are locally comparable by score, close value, and speed.
 
 **Exit criteria:** the same UTC date and content version reproduce identical starting state and event order across supported devices; incompatible versions are separated by season; internal playtest group returns on consecutive days unprompted.
 
-**Primary files:** `src/engine/rng.ts` (UTC date/content-version seeding), `src/screens/CareerScreen.tsx`, new share-card component.
+**Status:** engineering scope shipped on `main`. Run schema v14 plus separate `ma-rainmaker-daily` and `ma-rainmaker-challenges` stores isolate comparison modes from career power. Date+content-version determinism, season separation, fixed build/mandate handoff, first-result locking, share text, challenge round-trip/tampering/season rejection, local attempt records, and Results isolation are tested. Browser QA reached Stage 1/5 from both the declared Daily configuration and a verified RM1 challenge. Consecutive-day return and real friend-to-friend challenge use remain post-deploy human measures.
+
+**Primary files:** `src/engine/rng.ts`, `src/engine/dailyMandate.ts`, `src/engine/challengeSeed.ts`, `src/store/dailyStore.ts`, `src/store/challengeStore.ts`, `src/screens/CareerScreen.tsx`, and the Daily/Challenge share-card components.
 
 **Effort:** 1-2 sessions. **Depends on:** M5 (small mandates), M4 (builds make comparison interesting).
 
@@ -260,7 +270,7 @@ Build M5 as four independently shippable releases. Persistence should create mea
 
 ```
 M0 ──► M0.5 ──► V1 ──┬──► M1 ──┐
-                      ├──► M2 ──┼──► M4 ──► M5a ──► M5b ──► M5c ──► M5d ──► M6
+                      ├──► M2 ──┼──► M4 ──► M5a ──► M5a.2 ──► M5b ──► M5c ──► M6
                       └──► M3 ──┘
 ```
 
@@ -269,7 +279,7 @@ M0 ──► M0.5 ──► V1 ──┬──► M1 ──┐
 - **V1 proves the integrated loop.** Build one excellent Phase 5-7 slice containing the first narrow implementation of M1-M3, revise it, then expand those systems across the game.
 - **M1, M2, and M3 can expand in parallel** after V1 establishes the pattern. Their content and systems must preserve its setup/payoff standard.
 - **M4 before career scale.** Active builds give repeat runs a deliberate axis of variety.
-- **M5 ships incrementally.** Persistence and tombstones first, three handcrafted short mandates second, horizontal progression third, persistent Beacon last. Procedural mandate generation begins only after handcrafted variety is proven.
+- **M5 ships incrementally.** Persistence and the market first, honest short-run compression second, the collectible shelf third, persistent Beacon last.
 - **M6 last.** Comparability and habit mechanics sit on a game already worth repeating and use versioned deterministic seeds.
 
 A recommended cadence: ship and playtest after every milestone (build + lint + tests + browser QA + deploy, per Handoff guardrails). V1 is a mandatory playtest gate, and every M5 sub-release ships independently.

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useGameStore } from '../../store/gameStore';
 import { PHASE_NAMES } from '../../types/game';
+import { getMandatePhaseSequence, isShortMandate } from '../../content/mandates';
 import {
   Settings,
   Bell,
@@ -21,7 +22,9 @@ function KpiPill({ label, value, color }: { label: string; value: string | numbe
 }
 
 export default function Topbar({ onMenuToggle }: { onMenuToggle: () => void }) {
-  const { phase, day, week, resources, emails } = useGameStore();
+  const { phase, day, week, resources, emails, mandateId, runMode, dailyKey } = useGameStore();
+  const mandatePhases = getMandatePhaseSequence(mandateId);
+  const stage = Math.max(0, mandatePhases.indexOf(phase)) + 1;
   const unreadCount = emails.filter((e) => e.state === 'unread').length;
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -42,7 +45,19 @@ export default function Topbar({ onMenuToggle }: { onMenuToggle: () => void }) {
         </h1>
         <div className="hidden md:flex items-center gap-3">
           <div className="h-4 w-px bg-border-subtle" />
-          <span className="text-[11px] font-mono uppercase tracking-wider text-text-muted">P{phase}</span>
+          <span className="text-[11px] font-mono uppercase tracking-wider text-text-muted">
+            {isShortMandate(mandateId) ? `S${stage}/${mandatePhases.length}` : `P${phase}`}
+          </span>
+          {runMode === 'daily' && (
+            <span className="rounded-full border border-border-accent bg-accent-soft px-2 py-0.5 text-[9px] font-mono uppercase tracking-wider text-text-accent">
+              Daily {dailyKey?.slice(-10)}
+            </span>
+          )}
+          {runMode === 'challenge' && (
+            <span className="rounded-full border border-border-accent bg-accent-soft px-2 py-0.5 text-[9px] font-mono uppercase tracking-wider text-text-accent">
+              Challenge
+            </span>
+          )}
           <span className="hidden lg:inline text-[12px] text-text-secondary">{PHASE_NAMES[phase]}</span>
           <div className="h-4 w-px bg-border-subtle" />
           <span className="text-[12px] font-mono text-text-muted">

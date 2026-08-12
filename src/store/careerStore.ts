@@ -7,6 +7,13 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import {
+  buildBeaconMarketTombstone,
+  buildBeaconRunTombstone,
+  type BeaconTombstone,
+} from '../engine/beaconCareer';
+
+export type { BeaconTombstone } from '../engine/beaconCareer';
 
 export interface Tombstone {
   /** Dedupe key for the run (mandateId + run seed). */
@@ -26,11 +33,21 @@ export interface Tombstone {
   completedAt: string;           // ISO date
 }
 
-interface CareerState {
+export interface CareerState {
   tombstones: Tombstone[];
   /** 0-20: slow-earned, disclosed as a start bonus on mandate cards. */
   careerReputation: number;
+  beaconTombstones: BeaconTombstone[];
+  marketStep: number;
   recordMandate: (tombstone: Tombstone) => void;
+  recordMarketDecision: (chosenMandateId: string, completedAt: string) => void;
+  recordBeaconRun: (input: {
+    playerRunKey: string;
+    mandateId: string;
+    playerOutcome: 'closed' | 'collapsed';
+    seed: number;
+    completedAt: string;
+  }) => void;
 }
 
 function reputationDelta(tombstone: Tombstone): number {
@@ -47,6 +64,8 @@ export const useCareerStore = create<CareerState>()(
     (set, get) => ({
       tombstones: [],
       careerReputation: 0,
+      beaconTombstones: [],
+      marketStep: 0,
 
       recordMandate: (tombstone) => {
         if (get().tombstones.some((existing) => existing.runKey === tombstone.runKey)) return;
@@ -55,10 +74,36 @@ export const useCareerStore = create<CareerState>()(
           careerReputation: Math.max(0, Math.min(20, state.careerReputation + reputationDelta(tombstone))),
         }));
       },
+
+      recordMarketDecision: (chosenMandateId, completedAt) => {
+        const step = get().marketStep;
+        const beaconTombstone = buildBeaconMarketTombstone(chosenMandateId, step, completedAt);
+        set((state) => ({
+          marketStep: state.marketStep + 1,
+          beaconTombstones: beaconTombstone && !state.beaconTombstones.some((entry) => entry.runKey === beaconTombstone.runKey)
+            ? [...state.beaconTombstones, beaconTombstone].slice(-50)
+            : state.beaconTombstones,
+        }));
+      },
+
+      recordBeaconRun: (input) => {
+        const beaconTombstone = buildBeaconRunTombstone(input);
+        if (!beaconTombstone || get().beaconTombstones.some((entry) => entry.runKey === beaconTombstone.runKey)) return;
+        set((state) => ({
+          beaconTombstones: [...state.beaconTombstones, beaconTombstone].slice(-50),
+        }));
+      },
     }),
     {
       name: 'ma-rainmaker-career',
-      version: 1,
+      version: 2,
+      migrate: (persistedState, fromVersion) => {
+        const state = persistedState as Partial<CareerState>;
+        if (fromVersion < 2) {
+          return { ...state, beaconTombstones: [], marketStep: 0 } as CareerState;
+        }
+        return state as CareerState;
+      },
     },
   ),
 );

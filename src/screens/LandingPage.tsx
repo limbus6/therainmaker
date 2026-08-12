@@ -10,6 +10,8 @@ export default function LandingPage() {
   const setPlayerName = useGameStore((s) => s.setPlayerName);
   const phase = useGameStore((s) => s.phase);
   const week = useGameStore((s) => s.week);
+  const runMode = useGameStore((s) => s.runMode);
+  const advisorArchetype = useGameStore((s) => s.advisorArchetype);
 
   let persistedState: { playerName?: string; phase?: number; week?: number } | null = null;
   try {
@@ -45,25 +47,36 @@ export default function LandingPage() {
   };
 
   const [showArchetypes, setShowArchetypes] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
   const selectArchetype = useGameStore((s) => s.selectArchetype);
+  const startMandate = useGameStore((s) => s.startMandate);
 
   const handleEnterClick = () => setShowNameForm(true);
 
-  const handleSaveName = () => {
+  const handleSaveName = async () => {
     const trimmed = nameInput.trim();
     if (!trimmed) { setError('Please enter your name to continue.'); return; }
     setPlayerName(trimmed);
+    if (runMode === 'daily' || runMode === 'challenge') {
+      setIsStarting(true);
+      await startMandate();
+      navigate('/game');
+      return;
+    }
     setShowNameForm(false);
     setShowArchetypes(true);
   };
 
-  const handlePickArchetype = (id: (typeof ADVISOR_ARCHETYPES)[number]['id']) => {
+  const handlePickArchetype = async (id: (typeof ADVISOR_ARCHETYPES)[number]['id']) => {
+    if (isStarting) return;
+    setIsStarting(true);
     selectArchetype(id);
+    await startMandate();
     navigate('/game');
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') handleSaveName();
+    if (e.key === 'Enter') void handleSaveName();
     if (e.key === 'Escape') { setShowNameForm(false); setError(''); }
   };
 
@@ -90,7 +103,8 @@ export default function LandingPage() {
                 <button
                   key={archetype.id}
                   onClick={() => handlePickArchetype(archetype.id)}
-                  className="rounded-2xl border-2 border-border-subtle bg-bg-secondary/95 p-4 text-left backdrop-blur-md shadow-xl transition-all hover:border-accent-primary hover:-translate-y-0.5 active:scale-95"
+                  disabled={isStarting}
+                  className="rounded-2xl border-2 border-border-subtle bg-bg-secondary/95 p-4 text-left backdrop-blur-md shadow-xl transition-all hover:border-accent-primary hover:-translate-y-0.5 active:scale-95 disabled:cursor-wait disabled:opacity-60"
                 >
                   <p className="text-[14px] font-bold text-text-primary">{archetype.name}</p>
                   <p className="mt-1 text-[11px] italic text-text-secondary leading-snug">{archetype.tagline}</p>
@@ -107,8 +121,13 @@ export default function LandingPage() {
           <div className="w-full max-w-sm space-y-4 relative mt-4 md:-mt-48 z-20 bg-bg-secondary/95 p-6 rounded-2xl border-2 border-border-subtle backdrop-blur-md shadow-2xl">
             <div className="space-y-2">
               <label className="block text-[11px] font-mono uppercase tracking-widest text-text-muted text-left font-bold border-b border-border-subtle/30 pb-1 mb-2">
-                Identity
+                {runMode === 'daily' ? 'Daily identity' : runMode === 'challenge' ? 'Challenge identity' : 'Identity'}
               </label>
+              {(runMode === 'daily' || runMode === 'challenge') && (
+                <p className="text-left text-[10px] leading-relaxed text-text-secondary">
+                  {runMode === 'daily' ? 'Today’s' : 'This challenge’s'} build is fixed for every player: {ADVISOR_ARCHETYPES.find((archetype) => archetype.id === advisorArchetype)?.name ?? 'Fixed build'}.
+                </p>
+              )}
               <input
                 autoFocus
                 type="text"
@@ -123,8 +142,9 @@ export default function LandingPage() {
             </div>
             <div className="space-y-2 pt-1">
               <button
-                onClick={handleSaveName}
-                className="w-full px-4 py-3 rounded-xl bg-accent-primary hover:bg-accent-primary/90 active:scale-95 transition-all duration-150 text-base font-bold text-text-primary shadow-lg"
+                onClick={() => { void handleSaveName(); }}
+                disabled={isStarting}
+                className="w-full px-4 py-3 rounded-xl bg-accent-primary hover:bg-accent-primary/90 active:scale-95 transition-all duration-150 text-base font-bold text-text-primary shadow-lg disabled:cursor-wait disabled:opacity-60"
               >
                 Start →
               </button>

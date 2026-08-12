@@ -20,6 +20,7 @@ import type { EventDirectorState } from '../types/game';
 import { getGoldenMandateUpcomingBeat, resolveGoldenMandateBeat } from './goldenMandate';
 import { getPeopleUpcomingBeat, resolvePeopleBeat, PEOPLE_BEATS_CHAIN } from './peopleBeats';
 import { EVENT_POOL } from '../content/events';
+import { getNextMandatePhase } from '../content/mandates';
 
 // ============================================
 // Week Resolution Engine
@@ -1414,6 +1415,7 @@ export interface PhaseGateResult {
 
 export function checkPhaseGate(state: GameStore): PhaseGateResult {
   const { phase, tasks } = state;
+  const nextPhase = getNextMandatePhase(state.mandateId, phase) ?? phase;
   const phaseTasks = tasks.filter((t) => t.phase === phase);
   const completedCount = phaseTasks.filter((t) => t.status === 'completed').length;
   const totalCount = phaseTasks.length;
@@ -1439,7 +1441,7 @@ export function checkPhaseGate(state: GameStore): PhaseGateResult {
           { label: 'Qualification notes gathered', met: hasQualNotes },
           { label: 'Board submission approved', met: boardApproved },
         ],
-        nextPhase: 1,
+        nextPhase,
       };
     }
 
@@ -1454,7 +1456,7 @@ export function checkPhaseGate(state: GameStore): PhaseGateResult {
           { label: 'Pitch presented to client', met: pitchPresented },
           { label: 'Fee terms agreed', met: feeAgreed },
         ],
-        nextPhase: 2,
+        nextPhase,
       };
     }
 
@@ -1472,7 +1474,7 @@ export function checkPhaseGate(state: GameStore): PhaseGateResult {
           { label: 'Teaser prepared', met: !!teaserDone },
           { label: 'Buyer list approved by client', met: !!buyerListDone },
         ],
-        nextPhase: 3,
+        nextPhase,
       };
     }
 
@@ -1497,7 +1499,7 @@ export function checkPhaseGate(state: GameStore): PhaseGateResult {
           { label: 'Buyers qualified', met: !!buyerQualified },
           { label: `Qualified NDA buyers: ${activeBuyersWithNDA}/${requiredNdaBuyers} or deadline reached`, met: enoughBuyers || deadlinePassed },
         ],
-        nextPhase: 4,
+        nextPhase,
       };
     }
 
@@ -1519,7 +1521,7 @@ export function checkPhaseGate(state: GameStore): PhaseGateResult {
           { label: `Shortlisted buyers: ${shortlistedBuyers}/2 required`, met: shortlistedBuyers >= 2 },
           { label: 'Wait for NBO deadline (optional)', met: deadlinePassed, optional: true },
         ],
-        nextPhase: 5,
+        nextPhase,
       };
     }
 
@@ -1542,7 +1544,7 @@ export function checkPhaseGate(state: GameStore): PhaseGateResult {
           { label: `NBOs received: ${nbosReceived}/2 required`, met: nbosReceived >= 2 },
           { label: 'Client selected DD candidates', met: clientSelectedDD },
         ],
-        nextPhase: 6,
+        nextPhase,
       };
     }
 
@@ -1563,7 +1565,7 @@ export function checkPhaseGate(state: GameStore): PhaseGateResult {
           { label: `Binding offers received: ${state.bindingOffersReceived} (need ≥1)`, met: bindingOffersIn },
           { label: `Active buyers remain: ${activeDDBuyers} (need ≥1)`, met: activeDDBuyers >= 1 },
         ],
-        nextPhase: 7,
+        nextPhase,
       };
     }
 
@@ -1577,7 +1579,7 @@ export function checkPhaseGate(state: GameStore): PhaseGateResult {
           { label: 'Preferred bidder selected', met: preferredSelected },
           { label: 'Exclusivity agreement prepared (optional quality boost)', met: exclusivityReady, optional: true },
         ],
-        nextPhase: 8,
+        nextPhase,
       };
     }
 
@@ -1591,7 +1593,7 @@ export function checkPhaseGate(state: GameStore): PhaseGateResult {
           { label: 'SPA terms agreed by preferred buyer', met: spaNegotiationAgreed },
           { label: 'Signing checklist completed', met: !!signingChecklist },
         ],
-        nextPhase: 9,
+        nextPhase,
       };
     }
 
@@ -1605,7 +1607,7 @@ export function checkPhaseGate(state: GameStore): PhaseGateResult {
           { label: 'Signature version locked', met: !!docLocked },
           { label: 'SPA signed', met: !!signedOff },
         ],
-        nextPhase: 10,
+        nextPhase,
       };
     }
 
@@ -1623,7 +1625,7 @@ export function checkPhaseGate(state: GameStore): PhaseGateResult {
           { label: 'Success fee realised', met: successFeeRealised },
           { label: `Optional closing work completed (${completedCount}/${totalCount})`, met: completedCount === totalCount, optional: true },
         ],
-        nextPhase: Math.min(phase + 1, 10) as PhaseId,
+        nextPhase,
       };
     }
   }

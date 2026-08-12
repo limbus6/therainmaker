@@ -2,12 +2,17 @@ import { useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../store/gameStore';
 import { buildResultsBoard } from '../engine/resultsEngine';
+import { createChallengeCode } from '../engine/challengeSeed';
 import { getArchetype } from '../content/archetypes';
 import { useCareerStore } from '../store/careerStore';
-import { getMandate } from '../content/mandates';
+import { useDailyStore, type DailyResult } from '../store/dailyStore';
+import { buildChallengeAttemptSummary, useChallengeStore, type ChallengeResult } from '../store/challengeStore';
+import { getMandate, getMandatePhaseSequence } from '../content/mandates';
 import type { ResultsBoard } from '../engine/resultsEngine';
 import ProgressBar from '../components/ui/ProgressBar';
-import { Trophy, TrendingUp, Users, Shield, Briefcase, Star, ChevronRight, RotateCcw } from 'lucide-react';
+import DailyShareCard from '../components/DailyShareCard';
+import ChallengeShareCard from '../components/ChallengeShareCard';
+import { Trophy, TrendingUp, Users, Shield, Briefcase, Star, ChevronRight, RotateCcw, LibraryBig } from 'lucide-react';
 
 const OUTCOME_LABELS: Record<ResultsBoard['dealOutcome'], string> = {
   deal_failed: 'Deal Failed',
@@ -87,6 +92,31 @@ export default function ResultsBoardScreen() {
   const navigate = useNavigate();
   const results = useMemo(() => buildResultsBoard(state), [state]);
   const recordMandate = useCareerStore((s) => s.recordMandate);
+  const recordBeaconRun = useCareerStore((s) => s.recordBeaconRun);
+  const recordDailyResult = useDailyStore((s) => s.recordDailyResult);
+  const dailyResults = useDailyStore((s) => s.results);
+  const challengeResults = useChallengeStore((s) => s.results);
+  const recordChallengeResult = useChallengeStore((s) => s.recordChallengeResult);
+  const savedDailyResult = state.dailyKey
+    ? dailyResults.find((result) => result.dailyKey === state.dailyKey)
+    : undefined;
+  const challengeCode = useMemo(() => {
+    if (state.challengeCode) return state.challengeCode;
+    if (!state.advisorArchetype) return null;
+    return createChallengeCode({
+      mandateId: state.mandateId,
+      archetypeId: state.advisorArchetype,
+      seed: state.rngSeed,
+      startingReputationBonus: state.startingReputationBonus,
+      seasonId: state.contentVersion,
+    });
+  }, [state.advisorArchetype, state.challengeCode, state.contentVersion, state.mandateId, state.rngSeed, state.startingReputationBonus]);
+  const challengeAttemptSummary = useMemo(
+    () => challengeCode ? buildChallengeAttemptSummary(challengeResults, challengeCode) : null,
+    [challengeCode, challengeResults],
+  );
+  const completedPhaseCount = getMandatePhaseSequence(state.mandateId)
+    .filter((phase) => state.phaseEntryDay[phase] !== undefined).length;
 
   // Mint the tombstone once per run; the store dedupes by runKey so a
   // revisited results screen never double-records.
@@ -95,8 +125,56 @@ export default function ResultsBoardScreen() {
     const mandate = getMandate(state.mandateId);
     const preferredBuyer = state.buyers.find((b) => b.id === state.preferredBidderId);
     const collapsed = results.dealOutcome === 'deal_failed';
+    const runKey = `${state.mandateId}-${state.rngSeed}`;
+    const completedAt = new Date().toISOString();
+    if (state.runMode === 'daily' && state.dailyKey && state.dailySeason) {
+      const dailyResult: DailyResult = {
+        dailyKey: state.dailyKey,
+        dateKey: state.dailyKey.slice(-10),
+        seasonId: state.dailySeason,
+        seed: state.rngSeed,
+        mandateId: state.mandateId,
+        mandateLabel: mandate?.label ?? state.mandateId,
+        outcome: collapsed ? 'collapsed' : 'closed',
+        score: results.scores.overallDealScore,
+        grade: results.scores.overallGrade,
+        closingValue: collapsed ? 0 : results.financial.closingValue,
+        impliedMultiple: collapsed ? null : results.financial.closingValue > 0 ? Math.round((results.financial.closingValue / 12) * 10) / 10 : null,
+        archetype: getArchetype(state.advisorArchetype)?.name ?? 'Daily rotation',
+        processScore: results.scores.processScore,
+        daysTaken: state.totalDays,
+        completedAt,
+      };
+      recordDailyResult(dailyResult);
+      return;
+    }
+    if (
+      state.runMode === 'challenge' && state.challengeCode && state.challengeSeason
+      && state.challengeAttemptId
+    ) {
+      const challengeResult: ChallengeResult = {
+        attemptId: state.challengeAttemptId,
+        challengeCode: state.challengeCode,
+        seasonId: state.challengeSeason,
+        seed: state.rngSeed,
+        mandateId: state.mandateId,
+        mandateLabel: mandate?.label ?? state.mandateId,
+        outcome: collapsed ? 'collapsed' : 'closed',
+        score: results.scores.overallDealScore,
+        grade: results.scores.overallGrade,
+        closingValue: collapsed ? 0 : results.financial.closingValue,
+        impliedMultiple: collapsed ? null : results.financial.closingValue > 0 ? Math.round((results.financial.closingValue / 12) * 10) / 10 : null,
+        archetype: getArchetype(state.advisorArchetype)?.name ?? 'Fixed challenge build',
+        startingReputationBonus: state.startingReputationBonus,
+        processScore: results.scores.processScore,
+        daysTaken: state.totalDays,
+        completedAt,
+      };
+      recordChallengeResult(challengeResult);
+      return;
+    }
     recordMandate({
-      runKey: `${state.mandateId}-${state.rngSeed}`,
+      runKey,
       mandateId: state.mandateId,
       mandateLabel: mandate?.label ?? state.mandateId,
       companyName: state.client.companyName,
@@ -109,7 +187,14 @@ export default function ResultsBoardScreen() {
       outcome: collapsed ? 'collapsed' : 'closed',
       archetype: state.advisorArchetype,
       daysTaken: state.totalDays,
-      completedAt: new Date().toISOString(),
+      completedAt,
+    });
+    recordBeaconRun({
+      playerRunKey: runKey,
+      mandateId: state.mandateId,
+      playerOutcome: collapsed ? 'collapsed' : 'closed',
+      seed: state.rngSeed,
+      completedAt,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.gameComplete]);
@@ -143,10 +228,35 @@ export default function ResultsBoardScreen() {
         </div>
         <h1 className="text-4xl font-display font-semibold text-text-primary">The M&A Rainmaker</h1>
         <p className="text-[13px] text-text-secondary">Solara Systems — {state.client.sector}</p>
+        {state.runMode === 'daily' && state.dailyKey && (
+          <p className="text-[10px] font-mono uppercase tracking-wider text-text-accent">Daily · {state.dailyKey.slice(-10)} UTC · {state.dailySeason}</p>
+        )}
         {state.collapseHeadline && (
           <p className="text-[12px] text-state-danger/80 max-w-md mx-auto">{state.collapseHeadline}</p>
         )}
       </div>
+
+      {state.runMode === 'daily' && savedDailyResult && <DailyShareCard result={savedDailyResult} />}
+
+      {challengeCode && (
+        <ChallengeShareCard
+          target={{
+            challengeCode,
+            seasonId: state.challengeSeason ?? state.contentVersion,
+            score: results.scores.overallDealScore,
+            grade: results.scores.overallGrade,
+            outcome: results.dealOutcome === 'deal_failed' ? 'collapsed' : 'closed',
+            closingValue: results.dealOutcome === 'deal_failed' ? 0 : results.financial.closingValue,
+            impliedMultiple: results.dealOutcome === 'deal_failed' || results.financial.closingValue <= 0
+              ? null
+              : Math.round((results.financial.closingValue / 12) * 10) / 10,
+            archetype: getArchetype(state.advisorArchetype)?.name ?? 'Fixed challenge build',
+            startingReputationBonus: state.startingReputationBonus,
+            daysTaken: state.totalDays,
+          }}
+          attemptCount={challengeAttemptSummary?.attempts.length ?? 0}
+        />
+      )}
 
       {/* Top Summary Strip */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -301,29 +411,40 @@ export default function ResultsBoardScreen() {
           </div>
         </Card>
 
-        <Card title="Career Impact" icon={<Star size={14} />}>
-          <div className="space-y-4">
-            <div className="flex justify-between text-[12px]">
-              <span className="text-text-secondary">Reputation Gain</span>
-              <span className={`font-mono font-semibold ${results.career.reputationGain >= 0 ? 'text-state-success' : 'text-state-danger'}`}>
-                {results.career.reputationGain > 0 ? '+' : ''}{results.career.reputationGain}
-              </span>
+        {state.runMode !== 'career' ? (
+          <Card title={state.runMode === 'daily' ? 'Daily Comparison' : 'Challenge Comparison'} icon={<Star size={14} />}>
+            <div className="space-y-3 text-[11px] leading-relaxed text-text-secondary">
+              <p>Career reputation unchanged.</p>
+              <p>Beacon rivalry unchanged.</p>
+              <p>{state.runMode === 'daily' ? 'Build, buyer pool, difficulty and seed are fixed by the UTC date and comparison season.' : 'Mandate, build, buyer pool, difficulty, seed and starting bonus are fixed by the challenge code.'}</p>
+              <p className="font-mono text-text-accent">Season {state.dailySeason ?? state.challengeSeason}</p>
             </div>
-            <div>
-              <div className="flex justify-between text-[12px] mb-1">
-                <span className="text-text-secondary">Rainmaker Score</span>
-                <span className="font-mono text-text-primary">{results.career.rainmakerScore}</span>
+          </Card>
+        ) : (
+          <Card title="Career Impact" icon={<Star size={14} />}>
+            <div className="space-y-4">
+              <div className="flex justify-between text-[12px]">
+                <span className="text-text-secondary">Reputation Gain</span>
+                <span className={`font-mono font-semibold ${results.career.reputationGain >= 0 ? 'text-state-success' : 'text-state-danger'}`}>
+                  {results.career.reputationGain > 0 ? '+' : ''}{results.career.reputationGain}
+                </span>
               </div>
-              <ProgressBar value={results.career.rainmakerScore} color="accent" size="md" />
+              <div>
+                <div className="flex justify-between text-[12px] mb-1">
+                  <span className="text-text-secondary">Rainmaker Score</span>
+                  <span className="font-mono text-text-primary">{results.career.rainmakerScore}</span>
+                </div>
+                <ProgressBar value={results.career.rainmakerScore} color="accent" size="md" />
+              </div>
+              <div className="flex justify-between text-[12px]">
+                <span className="text-text-secondary">Sector Credibility</span>
+                <span className={`font-mono font-semibold ${results.career.sectorCredibilityGain >= 0 ? 'text-state-success' : 'text-state-danger'}`}>
+                  {results.career.sectorCredibilityGain > 0 ? '+' : ''}{results.career.sectorCredibilityGain}
+                </span>
+              </div>
             </div>
-            <div className="flex justify-between text-[12px]">
-              <span className="text-text-secondary">Sector Credibility</span>
-              <span className={`font-mono font-semibold ${results.career.sectorCredibilityGain >= 0 ? 'text-state-success' : 'text-state-danger'}`}>
-                {results.career.sectorCredibilityGain > 0 ? '+' : ''}{results.career.sectorCredibilityGain}
-              </span>
-            </div>
-          </div>
-        </Card>
+          </Card>
+        )}
 
         <Card title="Player Debrief" icon={<Trophy size={14} />}>
           <div className="space-y-2.5">
@@ -359,17 +480,24 @@ export default function ResultsBoardScreen() {
           );
         })()}
         <p className="text-[12px] text-text-muted">
-          Completed in {state.totalDays} days (Week {state.week}) across {state.phase + 1} phases
+          Completed in {state.totalDays} days (Week {state.week}) across {completedPhaseCount} mandate stages
           {' '}— {state.tasks.filter((t) => t.status === 'completed').length} tasks completed
           {' '}— {state.buyers.length} buyers engaged
         </p>
       </div>
 
-      {/* Play Again */}
-      <div className="flex justify-center pt-4 pb-8">
+      {/* Career and next mandate */}
+      <div className="flex flex-wrap justify-center gap-3 pt-4 pb-8">
         <button
-          onClick={() => { window.location.hash = '#/mandates'; }}
-          className="flex items-center gap-2 px-6 py-3 text-[12px] font-mono uppercase tracking-wider text-text-accent border border-accent-primary/30 rounded-[var(--radius-md)] hover:bg-accent-soft hover:shadow-[var(--shadow-glow-soft)] transition-all duration-200"
+          onClick={() => navigate('/career')}
+          className="flex items-center gap-2 px-6 py-3 text-[12px] font-mono uppercase tracking-wider text-text-secondary border border-border-default rounded-[var(--radius-md)] hover:border-border-accent hover:text-text-accent transition-all duration-200"
+        >
+          <LibraryBig size={14} />
+          View Career
+        </button>
+        <button
+          onClick={() => navigate('/mandates')}
+          className="flex items-center gap-2 px-6 py-3 text-[12px] font-mono uppercase tracking-wider text-white bg-accent-primary border border-accent-primary rounded-[var(--radius-md)] hover:bg-accent-hover hover:shadow-[var(--shadow-glow-soft)] transition-all duration-200"
         >
           <RotateCcw size={14} />
           Choose Next Mandate
