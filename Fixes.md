@@ -213,3 +213,12 @@ no dashboard o Lead actions: Solara systems, em particular "conduct Research" mo
 - Context: Teasers sent and NDAs coming in.
 
 Risks and solutions are not aligned.
+
+
+## 2026-08-12 13:32:59.772 UTC
+- Phase: P3 — Market Outreach
+- Checkpoint: Outreach Live
+- Route: /buyers
+- Context: Teasers sent and NDAs coming in.
+
+I am stuck because there a meaningful action it is unmet "Shortlisted buyers"
