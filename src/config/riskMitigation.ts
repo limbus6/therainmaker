@@ -110,6 +110,105 @@ function competingAdvisorPlans(): RiskMitigationPlan[] {
   ];
 }
 
+function confidentialityBreachPlans(): RiskMitigationPlan[] {
+  return [
+    {
+      id: 'confidentiality_control_cell',
+      title: 'Confidentiality Control Cell',
+      actions: [
+        'Audit teaser recipients, downloads, and data-room access logs.',
+        'Watermark materials and restrict sensitive folders by buyer tier.',
+        'Agree a leak-response protocol with the client before widening outreach.',
+      ],
+      budgetCost: 1,
+      capacityCost: 5,
+      successChance: 0.8,
+      onSuccess: { clientTrust: 5, reputation: 3, riskLevel: -7, probabilityDelta: -22 },
+      onFailure: { clientTrust: -3, dealMomentum: -2, riskLevel: 5, probabilityDelta: 8 },
+    },
+    {
+      id: 'sequenced_outreach_ring',
+      title: 'Sequence the Outreach Ring',
+      actions: [
+        'Pause the broad wave while Tier 1 responses are validated.',
+        'Release materials in small, traceable buyer cohorts.',
+        'Keep the client informed before each new cohort is contacted.',
+      ],
+      budgetCost: 0,
+      capacityCost: 7,
+      successChance: 0.72,
+      onSuccess: { clientTrust: 6, reputation: 2, riskLevel: -5, probabilityDelta: -18 },
+      onFailure: { dealMomentum: -4, riskLevel: 3, probabilityDelta: 6 },
+    },
+  ];
+}
+
+function ndaBottleneckPlans(): RiskMitigationPlan[] {
+  return [
+    {
+      id: 'nda_triage_lane',
+      title: 'NDA Triage Lane',
+      actions: [
+        'Rank NDA requests by buyer quality and process urgency.',
+        'Use pre-approved fallback language for recurring redlines.',
+        'Set a 48-hour owner and escalation path for every live NDA.',
+      ],
+      budgetCost: 0,
+      capacityCost: 6,
+      successChance: 0.76,
+      onSuccess: { dealMomentum: 5, teamCapacity: 3, riskLevel: -6, probabilityDelta: -20 },
+      onFailure: { morale: -3, dealMomentum: -3, riskLevel: 4, probabilityDelta: 8 },
+    },
+    {
+      id: 'external_nda_surge',
+      title: 'External Counsel NDA Surge',
+      actions: [
+        'Brief external counsel on the approved NDA playbook.',
+        'Route non-standard redlines to a dedicated surge team.',
+        'Clear the backlog while the core deal team protects buyer momentum.',
+      ],
+      budgetCost: 4,
+      capacityCost: 2,
+      successChance: 0.84,
+      onSuccess: { dealMomentum: 7, teamCapacity: 4, riskLevel: -7, probabilityDelta: -24 },
+      onFailure: { budget: -1, dealMomentum: -2, riskLevel: 4, probabilityDelta: 7 },
+    },
+  ];
+}
+
+function lowResponseRatePlans(): RiskMitigationPlan[] {
+  return [
+    {
+      id: 'tier_one_reengagement',
+      title: 'Tier 1 Re-Engagement Sprint',
+      actions: [
+        'Call silent Tier 1 decision-makers through the strongest warm routes.',
+        'Tailor one-page synergy angles to each priority buyer.',
+        'Set a clear response deadline before reallocating management access.',
+      ],
+      budgetCost: 1,
+      capacityCost: 6,
+      successChance: 0.73,
+      onSuccess: { dealMomentum: 7, clientTrust: 3, riskLevel: -6, probabilityDelta: -20 },
+      onFailure: { dealMomentum: -4, clientTrust: -2, riskLevel: 5, probabilityDelta: 9 },
+    },
+    {
+      id: 'qualified_second_wave',
+      title: 'Launch a Qualified Second Wave',
+      actions: [
+        'Add pre-screened Tier 2 strategics and sponsors to the buyer universe.',
+        'Prioritise buyers with current sector appetite and credible funding.',
+        'Launch a controlled second wave without weakening confidentiality.',
+      ],
+      budgetCost: 2,
+      capacityCost: 8,
+      successChance: 0.69,
+      onSuccess: { dealMomentum: 6, reputation: 3, riskLevel: -5, probabilityDelta: -17 },
+      onFailure: { dealMomentum: -3, riskLevel: 6, probabilityDelta: 10 },
+    },
+  ];
+}
+
 const CATEGORY_PLANS: Record<string, RiskMitigationPlan[]> = {
   client: [
     {
@@ -360,6 +459,15 @@ export function getRiskMitigationPlans(risk: Risk): RiskMitigationPlan[] {
   }
   if (name.includes('competing advisor') || name.includes('competitor')) {
     return competingAdvisorPlans();
+  }
+  if (name.includes('confidentiality') && (name.includes('breach') || name.includes('leak'))) {
+    return confidentialityBreachPlans();
+  }
+  if (name.includes('nda') && (name.includes('bottleneck') || name.includes('processing'))) {
+    return ndaBottleneckPlans();
+  }
+  if (name.includes('low response') || name.includes('response rate')) {
+    return lowResponseRatePlans();
   }
   return CATEGORY_PLANS[risk.category] ?? CATEGORY_PLANS.market;
 }

@@ -457,6 +457,7 @@ function progressBuyers(
 
   const changes: BuyerChange[] = [];
   const completedIds = new Set(completedTasks.map((t) => t.id));
+  const shortlistAlreadyChosen = buyers.some((buyer) => buyer.status === 'shortlisted');
 
   const updated = buyers.map((buyer) => {
     const newBuyer = { ...buyer };
@@ -495,7 +496,9 @@ function progressBuyers(
 
     // Phase 4: Shortlist progression
     if (phase === 4) {
-      if (buyer.status === 'active' && completedIds.has('task-61')) {
+      // Preserve an explicit player shortlist. The automatic scoring fallback
+      // only runs when no direct shortlist decision has been made yet.
+      if (!shortlistAlreadyChosen && buyer.status === 'active' && completedIds.has('task-61')) {
         if (buyer.executionCredibility >= 70) {
           newBuyer.status = 'shortlisted';
           changes.push({ buyerId: buyer.id, field: 'status', from: 'active', to: 'shortlisted' });
@@ -1541,7 +1544,7 @@ export function checkPhaseGate(state: GameStore): PhaseGateResult {
           { label: 'Shortlist built', met: shortlistBuilt },
           { label: 'Client approved shortlist', met: clientApproved },
           { label: 'Process note sent to buyers', met: processNote },
-          { label: `Shortlisted buyers: ${shortlistedBuyers}/2 required`, met: shortlistedBuyers >= 2 },
+          { label: `Shortlist selected in Buyers: ${shortlistedBuyers}/2 required`, met: shortlistedBuyers >= 2 },
           { label: 'Wait for NBO deadline (optional)', met: deadlinePassed, optional: true },
         ],
         nextPhase,

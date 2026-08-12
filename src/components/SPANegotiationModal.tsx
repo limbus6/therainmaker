@@ -46,7 +46,9 @@ export default function SPANegotiationModal({ onClose }: Props) {
   const [specificIndemnity, setSpecificIndemnity] = useState(false);
   const [showReactions, setShowReactions] = useState(false);
 
-  const preferredBuyer = buyers.find((b) => b.id === preferredBidderId || b.status === 'preferred');
+  const preferredBuyer = preferredBidderId
+    ? buyers.find((buyer) => buyer.id === preferredBidderId)
+    : undefined;
   const maxRounds = 3;
 
   // Not yet initialised

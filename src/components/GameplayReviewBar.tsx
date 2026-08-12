@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Bug, ChevronDown, ChevronUp, Send, SkipForward } from 'lucide-react';
 import { REVIEW_CHECKPOINTS } from '../config/reviewCheckpoints';
 import { useGameStore } from '../store/gameStore';
@@ -53,6 +54,8 @@ export default function GameplayReviewBar() {
   const debugJumpToCheckpoint = useGameStore((s) => s.debugJumpToCheckpoint);
   const addToast = useGameStore((s) => s.addToast);
   const currentPhase = useGameStore((s) => s.phase);
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const [selectedPhase, setSelectedPhase] = useState<PhaseId>(currentPhase);
   const [selectedCheckpointId, setSelectedCheckpointId] = useState(
@@ -61,30 +64,46 @@ export default function GameplayReviewBar() {
   const [reviewText, setReviewText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const selectedCheckpointIdRef = useRef(selectedCheckpointId);
+  selectedCheckpointIdRef.current = selectedCheckpointId;
+
+  useEffect(() => {
+    const selected = REVIEW_CHECKPOINTS.find((checkpoint) => checkpoint.id === selectedCheckpointIdRef.current);
+    const currentCheckpoint = selected?.phase === currentPhase
+      ? selected
+      : REVIEW_CHECKPOINTS.find((checkpoint) => checkpoint.phase === currentPhase);
+    setSelectedPhase(currentPhase);
+    if (currentCheckpoint) setSelectedCheckpointId(currentCheckpoint.id);
+  }, [currentPhase]);
 
   const availableCheckpoints = REVIEW_CHECKPOINTS.filter((cp) => cp.phase === selectedPhase);
   const selectedCheckpoint =
     availableCheckpoints.find((cp) => cp.id === selectedCheckpointId) ?? availableCheckpoints[0];
 
-  const handleJump = () => {
+  const handleJump = async () => {
     if (!selectedCheckpoint) return;
-    debugJumpToCheckpoint(selectedCheckpoint.id);
+    await debugJumpToCheckpoint(selectedCheckpoint.id);
+    navigate(selectedCheckpoint.route);
     addToast(`Jumped to scenario: P${selectedCheckpoint.phase} ${selectedCheckpoint.label}`, 'info');
   };
 
   const handleSubmitReview = async () => {
-    if (!selectedCheckpoint || !reviewText.trim()) {
+    const reportCheckpoint = selectedCheckpoint?.phase === currentPhase
+      ? selectedCheckpoint
+      : REVIEW_CHECKPOINTS.find((checkpoint) => checkpoint.phase === currentPhase);
+
+    if (!reportCheckpoint || !reviewText.trim()) {
       addToast('Please write a review note before sending.', 'warning');
       return;
     }
 
     const payload: ReviewPayload = {
-      phase: selectedCheckpoint.phase,
-      phaseLabel: PHASE_NAMES[selectedCheckpoint.phase],
-      checkpointId: selectedCheckpoint.id,
-      checkpointLabel: selectedCheckpoint.label,
-      checkpointDescription: selectedCheckpoint.description,
-      route: selectedCheckpoint.route,
+      phase: currentPhase,
+      phaseLabel: PHASE_NAMES[currentPhase],
+      checkpointId: reportCheckpoint.id,
+      checkpointLabel: reportCheckpoint.label,
+      checkpointDescription: reportCheckpoint.description,
+      route: location.pathname,
       review: reviewText.trim(),
     };
 

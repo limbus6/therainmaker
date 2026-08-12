@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useGameStore } from '../store/gameStore';
 import Panel from '../components/ui/Panel';
 import StatusChip from '../components/ui/StatusChip';
@@ -30,9 +31,13 @@ const categoryLabels: Record<TaskCategory, string> = {
 type ViewFilter = 'all' | 'available' | 'in_progress' | 'completed';
 
 export default function TasksScreen() {
-  const { tasks, workstreams, startTask, commitAndAdvance, queueRoutineTasks, phase, leads, resources } = useGameStore();
-  const [filter, setFilter] = useState<ViewFilter>('all');
-  const [expandedTask, setExpandedTask] = useState<string | null>(null);
+  const { tasks, workstreams, startTask, commitAndAdvance, queueRoutineTasks, phase, leads, buyers, resources } = useGameStore();
+  const [filterState, setFilterState] = useState<{ phase: number; value: ViewFilter }>(() => ({ phase, value: 'all' }));
+  const [expandedState, setExpandedState] = useState<{ phase: number; taskId: string | null }>(() => ({ phase, taskId: null }));
+  const filter = filterState.phase === phase ? filterState.value : 'all';
+  const expandedTask = expandedState.phase === phase ? expandedState.taskId : null;
+  const setFilter = (value: ViewFilter) => setFilterState({ phase, value });
+  const setExpandedTask = (taskId: string | null) => setExpandedState({ phase, taskId });
 
   const filteredTasks = tasks.filter((t) => {
     if (t.phase !== phase) return false;
@@ -54,6 +59,47 @@ export default function TasksScreen() {
     { key: 'in_progress', label: 'In Progress' },
     { key: 'completed', label: 'Completed' },
   ];
+
+  const shortlistCount = buyers.filter((buyer) => buyer.status === 'shortlisted').length;
+  const needsShortlistDecision = phase === 4 && shortlistCount < 2 && filter === 'all';
+  const hasCompletedTasks = tasks.some((task) => task.phase === phase && task.status === 'completed');
+  const emptyTaskState = (
+    <div className="p-8 text-center border border-dashed border-border-default rounded-[var(--radius-lg)]">
+      <p className="text-[13px] font-medium text-text-secondary">
+        {needsShortlistDecision
+          ? 'Task work is complete — the shortlist decision still needs you.'
+          : filter === 'all'
+            ? 'No open tasks in this phase.'
+            : `No ${filter.replace('_', ' ')} tasks in this phase.`}
+      </p>
+      <p className="mx-auto mt-1 max-w-lg text-[11px] leading-relaxed text-text-muted">
+        {needsShortlistDecision
+          ? `Select at least two engaged buyers in the Buyers view (${shortlistCount}/2 selected). This is a direct decision, not another timed task.`
+          : hasCompletedTasks && filter === 'all'
+            ? 'Completed work remains available under the Completed filter.'
+            : 'Choose another filter or return to the Dashboard for the next meaningful action.'}
+      </p>
+      <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+        {needsShortlistDecision && (
+          <Link
+            to="/buyers"
+            className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] bg-accent-primary px-4 py-2 text-[12px] font-semibold text-white hover:bg-accent-hover"
+          >
+            Choose Shortlist
+          </Link>
+        )}
+        {!needsShortlistDecision && hasCompletedTasks && filter === 'all' && (
+          <button
+            type="button"
+            onClick={() => setFilter('completed')}
+            className="rounded-[var(--radius-md)] border border-border-accent bg-border-accent/10 px-4 py-2 text-[12px] font-semibold text-text-accent hover:bg-border-accent/20"
+          >
+            Review Completed Work
+          </button>
+        )}
+      </div>
+    </div>
+  );
 
   const renderTaskList = (taskList: GameTask[]) => (
     <div className="space-y-1.5">
@@ -188,18 +234,12 @@ export default function TasksScreen() {
           </div>
         ))}
         {filteredTasks.length === 0 && (
-          <div className="p-8 text-center border border-dashed border-border-default rounded-[var(--radius-lg)]">
-            <p className="text-[13px] text-text-muted">No tasks found for this view.</p>
-          </div>
+          emptyTaskState
         )}
       </div>
     );
   } else {
-    taskContent = filteredTasks.length > 0 ? renderTaskList(filteredTasks) : (
-      <div className="p-8 text-center border border-dashed border-border-default rounded-[var(--radius-lg)]">
-        <p className="text-[13px] text-text-muted">No tasks found for this view.</p>
-      </div>
-    );
+    taskContent = filteredTasks.length > 0 ? renderTaskList(filteredTasks) : emptyTaskState;
   }
 
   return (

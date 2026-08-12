@@ -103,7 +103,7 @@ on the dashboard the deliverables are showing stuff from very initial phases. it
 
 It's taking too long to have exclusivity agreement prepared. and we could have a possibility to simply attribute exclusivity to whoever we would want not the one htat is asking.
 
-> ⏳ Pending — Proactive exclusivity assignment (player chooses bidder rather than waiting for buyer request) is a feature addition. Not implemented in this cycle.
+> ✅ Fixed — Phase 7 now lets the player select any bidder with a binding offer and grant exclusivity immediately. The exclusivity agreement task is an optional quality boost, not a waiting gate, and no buyer request is required.
 
 
 ## 2026-05-19 11:35:55.268 UTC
@@ -114,7 +114,7 @@ It's taking too long to have exclusivity agreement prepared. and we could have a
 
 The buyer that is moving to sign is not what I selected as preferred.
 
-> ✅ Fixed — `initSPANegotiation` now strictly uses `preferredBidderId` to find the buyer for SPA. The previous OR-fallback (`|| b.status === 'preferred'`) that could select a different buyer has been removed.
+> ✅ Fixed — Both the SPA preview and `initSPANegotiation` now strictly use `preferredBidderId`. The previous status-based fallback that could display or initialise a different buyer has been removed.
 
 
 ## 2026-05-19 11:39:06.583 UTC
@@ -214,6 +214,8 @@ no dashboard o Lead actions: Solara systems, em particular "conduct Research" mo
 
 Risks and solutions are not aligned.
 
+> ✅ Fixed — The three Phase 3 outreach risks now receive risk-specific plans instead of generic category fallbacks: confidentiality controls / sequenced outreach for leak risk, NDA triage / external counsel surge for the processing bottleneck, and targeted re-engagement / a qualified second wave for low response. Each plan's actions, cost, capacity, probability and effects now address the named risk directly.
+
 
 ## 2026-08-12 13:32:59.772 UTC
 - Phase: P3 — Market Outreach
@@ -223,6 +225,8 @@ Risks and solutions are not aligned.
 
 I am stuck because there a meaningful action it is unmet "Shortlisted buyers"
 
+> ✅ Fixed — Shortlisting is now a direct Phase 4 player decision in the Buyers view. Once Buyer Seriousness has been scored, the player can add or remove engaged buyers, with a visible 2-buyer minimum and 5-buyer maximum; the phase gate reacts immediately and links directly to the decision.
+
 
 ## 2026-08-12 13:33:49.771 UTC
 - Phase: P3 — Market Outreach
@@ -231,3 +235,7 @@ I am stuck because there a meaningful action it is unmet "Shortlisted buyers"
 - Context: Teasers sent and NDAs coming in.
 
 No tasks found for this view.
+
+> ✅ Fixed — The Tasks empty state now distinguishes a completed work queue from a missing task. If Phase 4 is blocked on the shortlist, it explains that this is a direct buyer decision and provides a `Choose Shortlist` action; completed work remains available through its filter, which resets safely when the phase changes.
+
+> ✅ Fixed — Gameplay review metadata now follows the actual game phase and browser route. Checkpoint jumps also navigate to their declared review route, preventing P4 or Tasks feedback from being incorrectly filed as P3 `/buyers` feedback.

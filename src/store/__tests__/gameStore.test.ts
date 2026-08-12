@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { useGameStore } from '../gameStore';
 import type { Buyer, Lead, GameTask } from '../../types/game';
 import { phase2Buyers } from '../../content/phase2';
+import { checkPhaseGate } from '../../engine/weekEngine';
 
 describe('Game Store', () => {
   beforeEach(() => {
@@ -181,6 +182,40 @@ describe('Game Store', () => {
     expect(state.buyers.find((buyer) => buyer.id === 'credible')?.status).toBe('bidding');
     expect(state.finalOffers.length).toBeGreaterThan(0);
     expect(state.bindingOffersReceived).toBe(state.finalOffers.length);
+  });
+
+  it('lets the player complete a provisional shortlist directly from engaged buyers', () => {
+    useGameStore.setState({
+      phase: 4,
+      tasks: [{ id: 'task-60', phase: 4, status: 'completed' } as GameTask],
+      buyers: [
+        { ...phase2Buyers[0], id: 'nda-buyer', status: 'nda_signed' } as Buyer,
+        { ...phase2Buyers[1], id: 'reviewing-buyer', status: 'reviewing' } as Buyer,
+      ],
+      replayTrace: [],
+      toasts: [],
+    });
+
+    useGameStore.getState().setBuyerShortlisted('nda-buyer', true);
+    useGameStore.getState().setBuyerShortlisted('reviewing-buyer', true);
+
+    let state = useGameStore.getState();
+    expect(state.buyers.map((buyer) => buyer.status)).toEqual(['shortlisted', 'shortlisted']);
+    expect(state.replayTrace.map((entry) => entry.input.decision)).toEqual(['shortlist', 'shortlist']);
+
+    useGameStore.getState().setBuyerShortlisted('nda-buyer', false);
+    state = useGameStore.getState();
+    expect(state.buyers.find((buyer) => buyer.id === 'nda-buyer')?.status).toBe('active');
+  });
+
+  it('loads the P3 review checkpoint with P3 tasks and a P3 gate', async () => {
+    await useGameStore.getState().debugJumpToCheckpoint('p3-outreach-live');
+
+    const state = useGameStore.getState();
+    const gate = checkPhaseGate(state);
+    expect(state.phase).toBe(3);
+    expect(state.tasks.some((task) => task.phase === 3 && task.status !== 'completed')).toBe(true);
+    expect(gate.requirements.some((requirement) => requirement.label.includes('Shortlist selected'))).toBe(false);
   });
 
   it('migrates pre-v8 saves without pretending they contain causal evidence', async () => {

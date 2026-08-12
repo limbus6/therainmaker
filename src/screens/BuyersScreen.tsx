@@ -1,7 +1,7 @@
 import { useGameStore } from '../store/gameStore';
 import Panel from '../components/ui/Panel';
 import StatusChip from '../components/ui/StatusChip';
-import { Briefcase, Users } from 'lucide-react';
+import { Briefcase, CheckCircle2, UserMinus, UserPlus, Users } from 'lucide-react';
 import type { BuyerInterest, BuyerStatus } from '../types/game';
 import { getBuyerOfferLabel } from '../utils/gameplayState';
 
@@ -30,6 +30,12 @@ export default function BuyersScreen() {
   const buyers = useGameStore((s) => s.buyers);
   const finalOffers = useGameStore((s) => s.finalOffers);
   const phase = useGameStore((s) => s.phase);
+  const tasks = useGameStore((s) => s.tasks);
+  const setBuyerShortlisted = useGameStore((s) => s.setBuyerShortlisted);
+  const shortlistCount = buyers.filter((buyer) => buyer.status === 'shortlisted').length;
+  const shortlistAnalysisReady = tasks.some((task) => (
+    task.phase === 4 && task.id === 'task-60' && task.status === 'completed'
+  ));
 
   return (
     <div className="space-y-6 max-w-[1200px]">
@@ -69,20 +75,55 @@ export default function BuyersScreen() {
             ))}
           </div>
 
+          {phase === 4 && (
+            <Panel title="Provisional Shortlist" variant="elevated">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 size={14} className={shortlistCount >= 2 ? 'text-state-success' : 'text-state-warning'} />
+                    <p className="text-[13px] font-semibold text-text-primary">
+                      {shortlistCount} buyer{shortlistCount === 1 ? '' : 's'} selected <span className="font-normal text-text-muted">(minimum 2 · maximum 5)</span>
+                    </p>
+                  </div>
+                  <p className="mt-1 text-[11px] text-text-muted">
+                    {shortlistAnalysisReady
+                      ? shortlistCount >= 2
+                        ? 'The phase gate has enough shortlisted buyers. You can still refine the list before advancing.'
+                        : 'Choose at least two engaged buyers below. You do not need to wait for another task or event.'
+                      : 'Complete Score Buyer Seriousness before selecting the buyers that advance.'}
+                  </p>
+                </div>
+                <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-mono uppercase tracking-wider ${
+                  shortlistCount >= 2
+                    ? 'border-state-success/30 bg-state-success/10 text-state-success'
+                    : 'border-state-warning/30 bg-state-warning/10 text-state-warning'
+                }`}>
+                  {shortlistCount >= 2 ? 'Gate ready' : `${2 - shortlistCount} still needed`}
+                </span>
+              </div>
+            </Panel>
+          )}
+
           {/* Buyer Table */}
           <Panel title="Buyer Pipeline">
             <div className="overflow-x-auto -mx-1">
-            <table className="w-full min-w-[600px]">
+            <table className={`w-full ${phase === 4 ? 'min-w-[720px]' : 'min-w-[600px]'}`}>
               <thead>
                 <tr className="border-b border-border-subtle">
-                  {['Name', 'Type', 'Geography', 'Interest', 'Status', 'Valuation / Offer', 'Exec. Cred.'].map((h) => (
+                  {['Name', 'Type', 'Geography', 'Interest', 'Status', 'Valuation / Offer', 'Exec. Cred.', ...(phase === 4 ? ['Decision'] : [])].map((h) => (
                     <th key={h} className="text-left text-[10px] font-mono uppercase tracking-wider text-text-muted pb-2 px-2">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {buyers.map((buyer) => (
-                  <tr key={buyer.id} className="border-b border-border-subtle/50 hover:bg-surface-hover transition-colors cursor-pointer">
+                {buyers.map((buyer) => {
+                  const isShortlisted = buyer.status === 'shortlisted';
+                  const canEnterShortlist = ['nda_signed', 'reviewing', 'active'].includes(buyer.status);
+                  const shortlistFull = shortlistCount >= 5 && !isShortlisted;
+                  const decisionDisabled = !shortlistAnalysisReady || (!isShortlisted && (!canEnterShortlist || shortlistFull));
+
+                  return (
+                  <tr key={buyer.id} className="border-b border-border-subtle/50 hover:bg-surface-hover transition-colors">
                     <td className="py-2.5 px-2 text-[12px] font-medium text-text-primary">{buyer.name}</td>
                     <td className="py-2.5 px-2"><StatusChip label={buyer.type.replace('_', ' ')} /></td>
                     <td className="py-2.5 px-2 text-[12px] text-text-secondary">{buyer.geography}</td>
@@ -90,8 +131,37 @@ export default function BuyersScreen() {
                     <td className="py-2.5 px-2"><StatusChip label={buyer.status.replace('_', ' ')} variant={statusVariant[buyer.status]} /></td>
                     <td className="py-2.5 px-2 text-[12px] text-text-secondary">{getBuyerOfferLabel(buyer, finalOffers)}</td>
                     <td className="py-2.5 px-2 text-[12px] font-mono text-text-muted">{buyer.executionCredibility}%</td>
+                    {phase === 4 && (
+                      <td className="py-2.5 px-2">
+                        <button
+                          type="button"
+                          onClick={() => setBuyerShortlisted(buyer.id, !isShortlisted)}
+                          disabled={decisionDisabled}
+                          title={
+                            !shortlistAnalysisReady
+                              ? 'Complete Score Buyer Seriousness first'
+                              : shortlistFull
+                                ? 'The shortlist is limited to five buyers'
+                                : !isShortlisted && !canEnterShortlist
+                                  ? 'Only buyers with an NDA and live engagement can be shortlisted'
+                                  : undefined
+                          }
+                          className={`inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] border px-2.5 py-1.5 text-[11px] font-semibold transition-colors ${
+                            isShortlisted
+                              ? 'border-state-danger/30 bg-state-danger/5 text-state-danger hover:bg-state-danger/10'
+                              : decisionDisabled
+                                ? 'cursor-not-allowed border-border-subtle bg-surface-default text-text-muted/50'
+                                : 'border-border-accent bg-border-accent/10 text-text-accent hover:bg-border-accent/20'
+                          }`}
+                        >
+                          {isShortlisted ? <UserMinus size={11} /> : <UserPlus size={11} />}
+                          {isShortlisted ? 'Remove' : 'Shortlist'}
+                        </button>
+                      </td>
+                    )}
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
             </div>

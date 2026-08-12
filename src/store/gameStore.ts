@@ -667,6 +667,8 @@ export interface GameStore {
   removeToast: (id: string) => void;
   // Deadline
   setPhaseDeadline: (weeks: number) => void;
+  // Shortlist
+  setBuyerShortlisted: (buyerId: string, shortlisted: boolean) => void;
   // Final Offers
   selectPreferredBidder: (buyerId: string, confirmed?: boolean) => void;
   completeOfferReveal: (status: 'completed' | 'skipped', revealedBuyerIds: string[]) => void;
@@ -3278,7 +3280,47 @@ export const useGameStore = create<GameStore>()(persist((rawSet, get) => {
     };
   }),
 
-  // ─── Competitor Mitigation ───────────────────────────────────────────────
+  // ─── Buyer selection ─────────────────────────────────────────────────────
+  setBuyerShortlisted: (buyerId, shortlisted) => set((state) => {
+    if (state.phase !== 4) return {};
+    const analysisReady = state.tasks.some((task) => (
+      task.phase === 4 && task.id === 'task-60' && task.status === 'completed'
+    ));
+    if (!analysisReady) return {};
+
+    const buyer = state.buyers.find((candidate) => candidate.id === buyerId);
+    if (!buyer) return {};
+    const eligibleStatuses: BuyerStatus[] = ['nda_signed', 'reviewing', 'active', 'shortlisted'];
+    if (!eligibleStatuses.includes(buyer.status)) return {};
+
+    const shortlistCount = state.buyers.filter((candidate) => candidate.status === 'shortlisted').length;
+    if (shortlisted && (buyer.status === 'shortlisted' || shortlistCount >= 5)) return {};
+    if (!shortlisted && buyer.status !== 'shortlisted') return {};
+
+    const nextStatus: BuyerStatus = shortlisted ? 'shortlisted' : 'active';
+    return {
+      buyers: state.buyers.map((candidate) => (
+        candidate.id === buyerId ? { ...candidate, status: nextStatus } : candidate
+      )),
+      replayTrace: appendReplayTrace(state.replayTrace, {
+        day: state.day,
+        phase: state.phase,
+        action: 'buyer_selection',
+        input: { buyerId, decision: shortlisted ? 'shortlist' : 'remove_from_shortlist' },
+      }),
+      toasts: [
+        ...state.toasts,
+        {
+          id: `toast-shortlist-${buyerId}-${state.day}-${shortlisted ? 'add' : 'remove'}`,
+          message: shortlisted
+            ? `${buyer.name} added to the provisional shortlist.`
+            : `${buyer.name} removed from the provisional shortlist.`,
+          type: 'info' as const,
+        },
+      ],
+    };
+  }),
+
   // Final offer selection
   selectPreferredBidder: (buyerId, confirmed = false) => set((state) => {
     if (state.preferredBidderConfirmed) return {};

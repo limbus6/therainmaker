@@ -162,6 +162,9 @@ export default function DashboardScreen() {
   const activeTasks = tasks.filter((t) =>
     t.phase === phase && (t.status === 'available' || t.status === 'recommended')
   );
+  const shortlistCount = buyers.filter((buyer) => buyer.status === 'shortlisted').length;
+  const shortlistAnalysisReady = tasks.some((task) => task.phase === 4 && task.id === 'task-60' && task.status === 'completed');
+  const needsShortlistDecision = phase === 4 && shortlistAnalysisReady && shortlistCount < 2;
   const routineTasks = getRoutineTasks(tasks, phase);
   const inProgressTasks = tasks.filter((task) => task.phase === phase && task.status === 'in_progress');
   const urgentDecisionEmail = dashboardEmails.find((email) =>
@@ -284,6 +287,8 @@ export default function DashboardScreen() {
                 ? nextPriority.name
                 : inProgressTasks.length > 0
                   ? 'Let committed work land'
+                  : needsShortlistDecision
+                    ? `Choose the provisional shortlist (${shortlistCount}/2)`
                   : canAdvancePhase
                     ? (phase === 10 ? 'Review the mandate result' : `Move to ${PHASE_NAMES[nextMandatePhase]}`)
                     : nextGateRequirement?.label ?? 'Review the live deal state'}
@@ -295,6 +300,8 @@ export default function DashboardScreen() {
                 ? `${formatTaskEffectSummary(nextPriority.effectSummary)} — start it here without opening Tasks.`
                 : inProgressTasks.length > 0
                   ? advancePreview.reason
+                  : needsShortlistDecision
+                    ? 'Select the engaged buyers that advance directly in the Buyers view; no additional timed task is required.'
                   : canAdvancePhase
                     ? 'The required gate is clear; no extra administration is needed.'
                     : 'This is the first unmet requirement blocking the phase gate.'}
@@ -314,6 +321,11 @@ export default function DashboardScreen() {
           <button type="button" onClick={advanceWeek} disabled={isWeekInProgress} className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-[var(--radius-md)] bg-accent-primary px-4 py-2 text-[12px] font-semibold text-white hover:bg-accent-hover disabled:opacity-50">
             Advance ~{daysPreview}d <ArrowRight size={13} />
           </button>
+        )}
+        {!urgentDecisionEmail && !nextPriority && inProgressTasks.length === 0 && needsShortlistDecision && (
+          <Link to="/buyers" className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-[var(--radius-md)] bg-accent-primary px-4 py-2 text-[12px] font-semibold text-white hover:bg-accent-hover">
+            <Users size={13} /> Choose Shortlist
+          </Link>
         )}
         {!urgentDecisionEmail && !nextPriority && inProgressTasks.length === 0 && canAdvancePhase && (
           <button type="button" onClick={() => phase === 10 ? completeGame() : advancePhase()} className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-[var(--radius-md)] bg-green-600 px-4 py-2 text-[12px] font-semibold text-white hover:bg-green-500">
@@ -489,6 +501,11 @@ export default function DashboardScreen() {
                   {phase === 7 && (
                     <Link to="/final-offers" className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-md)] border text-[12px] font-medium transition-colors ml-2 ${preferredBidderId ? 'border-green-500/30 bg-green-500/5 text-green-400' : 'border-accent-primary/40 bg-accent-soft text-text-accent hover:bg-accent-primary/20'}`}>
                       <Trophy size={12} /> {preferredBidderId ? '✓ Preferred Bidder Set' : 'Compare & Select Bidder'}
+                    </Link>
+                  )}
+                  {phase === 4 && (
+                    <Link to="/buyers" className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-md)] border text-[12px] font-medium transition-colors ml-2 ${shortlistCount >= 2 ? 'border-green-500/30 bg-green-500/5 text-green-400' : 'border-accent-primary/40 bg-accent-soft text-text-accent hover:bg-accent-primary/20'}`}>
+                      <Users size={12} /> {shortlistCount >= 2 ? `✓ Shortlist Set (${shortlistCount})` : `Choose Shortlist (${shortlistCount}/2)`}
                     </Link>
                   )}
                   {phase === 8 && (
